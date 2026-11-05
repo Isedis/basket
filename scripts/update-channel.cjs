@@ -10,7 +10,7 @@ if(git(['status','--porcelain']))throw new Error('Commit the tested release befo
 const release=JSON.parse(fs.readFileSync(path.join(root,'distribution/windows/manifest.json'),'utf8'));
 const committed=JSON.parse(git(['show','HEAD:distribution/windows/manifest.json']));
 if(release.sha256!==committed.sha256 || release.version!==require('../package.json').version)throw new Error('Release manifest mismatch.');
-const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Автоматический черновик брендбука по проекту Godot. Проверка, скачивание и установка следующих обновлений из программы.'});
+const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Локальное MCP-подключение Claude Code и Codex. Контекст, брендбук, задачи и изображения напрямую; отчёты агентов, привязка к проекту и проверка версии контекста.'});
 fs.mkdirSync(path.join(root,'updates'),{recursive:true});
 fs.writeFileSync(path.join(root,'updates/latest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(`Update channel prepared: ${manifest.version}, immutable commit ${manifest.commit}`);

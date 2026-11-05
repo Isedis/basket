@@ -7,6 +7,8 @@ const brandbook = require('../src/brandbook.cjs');
 const {readImage} = require('./image-analysis.cjs');
 const {Updater} = require('../src/updater.cjs');
 const windowsUpdater = require('./windows-updater.cjs');
+const agentConfig = require('../src/agent-config.cjs');
+const agentService = require('../src/agent-service.cjs');
 let root = null;
 let lastScan = null;
 let win;
@@ -55,6 +57,17 @@ if(primary)app.whenReady().then(async () => {
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');
+  const getAgentConfig=()=>agentConfig.connection(requireProject(),{executable:process.execPath,entry:path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});
+  ipcMain.handle('agents:info',async ()=>{
+    const config=await getAgentConfig();
+    return {...config,status:await agentConfig.status(config)};
+  });
+  ipcMain.handle('agents:configure',async (_,client)=>{
+    const config=await getAgentConfig();
+    const result=await agentConfig.configure(client,config);
+    return {...result,status:await agentConfig.status(config)};
+  });
+  ipcMain.handle('agents:reports',()=>agentService.listReports(requireProject()));
   ipcMain.handle('project:restore', async () => {
     try {
       const settings = JSON.parse(await fs.readFile(preferences, 'utf8'));

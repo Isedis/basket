@@ -4,6 +4,8 @@ const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
 const core = require('../src/core.cjs');
+const {Client}=require('@modelcontextprotocol/client');
+const {StdioClientTransport}=require('@modelcontextprotocol/client/stdio');
 
 async function main() {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(),'opora-electron-'));
@@ -66,14 +68,14 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.2.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.3.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
     await page.getByRole('heading',{name:'Обновления Опоры'}).waitFor();
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.2.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.3.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('[data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -82,6 +84,28 @@ async function main() {
     await page.getByRole('button',{name:'Скопировать запрос'}).click();
     const copied=await app.evaluate(({clipboard})=>clipboard.readText());
     assert.match(copied,/Не менять размер кнопок/);
+    await page.locator('[data-tab="agents"]').click();
+    await page.locator('[data-action="configure-agent"][data-client="claude"]').waitFor();
+    await page.locator('[data-action="configure-agent"][data-client="claude"]').click();
+    await page.getByRole('heading',{name:'Подключить Claude Code'}).waitFor();
+    await page.getByRole('button',{name:'Добавить подключение'}).click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open);
+    const configured=JSON.parse(await fs.readFile(path.join(project,'.mcp.json'),'utf8'));
+    const spec=Object.values(configured.mcpServers)[0];
+    assert.equal(spec.env.ELECTRON_RUN_AS_NODE,'1');
+    const mcpClient=new Client({name:'native-agent-test',version:'1.0.0'},{capabilities:{}});
+    try {
+      await mcpClient.connect(new StdioClientTransport({command:spec.command,args:spec.args,env:spec.env,stderr:'pipe'}));
+      const identified=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+      const style=(await mcpClient.callTool({name:'opora_get_brandbook',arguments:{project_id:identified.project_id}})).structuredContent;
+      const reference=await mcpClient.callTool({name:'opora_get_reference',arguments:{project_id:identified.project_id,revision:style.revision,reference_id:style.references[0].id}});
+      assert.ok(reference.content.some(c=>c.type==='image' && c.mimeType==='image/png'));
+      const submitted=await mcpClient.callTool({name:'opora_report_progress',arguments:{project_id:identified.project_id,revision:style.revision,agent:'claude',request_id:'native-report-0001',phase:'ready_for_review',summary:'MCP report visible in Opora',checks:[{name:'Gameplay test',result:'not_run'}]}});
+      assert.ok(!submitted.isError);
+    } finally {await mcpClient.close();}
+    await page.getByRole('button',{name:'Обновить данные'}).click();
+    await page.getByText('MCP report visible in Opora',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(__dirname,'../artifacts/agents.png'),fullPage:true});
     const data=await core.loadProject(project);
     assert.equal(data.state.references[0].status,'approved');
     assert.ok((await fs.readFile(path.join(project,'CLAUDE.md'),'utf8')).startsWith('# Existing Claude instructions\nUse existing components.\n'));
@@ -101,7 +125,7 @@ async function main() {
     await reopened.getByRole('button',{name:'Продолжить работу'}).click();
     await reopened.locator('[data-field="name"]').fill('Native game');
     assert.equal((await core.loadProject(project)).state.brand.direction,'My hand-edited visual direction');
-    console.log('PASS real Electron: automatic brandbook, native image sampling/copy, selective regeneration, reference preservation, updates dialog and check through Electron network stack (intercepted test response), context export, clipboard, save/restore, save-failure recovery');
+    console.log('PASS real Electron: brandbook, updates, context, MCP setup in temporary Claude config, real child MCP tools/image/report, report displayed in UI, save/restore.');
   } finally {
     if(app) await app.close();
     await fs.rm(temp,{recursive:true,force:true});

@@ -32,6 +32,10 @@ let applyingBrand = false;
 let pendingBrand = null;
 let updateState = null;
 let updatesOpen = false;
+let agentConnection = null;
+let agentActivity = {reports:[],unreadable:0};
+let agentLoading = false;
+let pendingAgent = null;
 const bridge = window.opora;
 
 function toast(message, error = false) {
@@ -111,9 +115,40 @@ function context() {
   const synced = syncedRevision === revision;
   return `${pageTitle('ОБЩАЯ ТОЧКА ОТСЧЁТА','Пусть помощники видят целое.','Тот же замысел и те же ограничения — в Claude и Codex.',`<span class="badge ${synced?'':'orange'}">${synced?'✓ ПЕРЕДАНО В ФАЙЛЫ':'ЕСТЬ ЧТО ПЕРЕДАТЬ'}</span>`)}${demoBanner()}<div class="context-layout"><section class="card"><h2>Из приложения — в работу</h2><div class="context-steps"><div class="context-step"><span class="step-number">1</span><div><strong>Выберите задачу</strong>Добавьте проверяемые критерии готовности.</div></div><div class="context-step"><span class="step-number">2</span><div><strong>Обновите памятку</strong>Проверьте файлы перед записью в проект.</div></div><div class="context-step"><span class="step-number">3</span><div><strong>Передайте запрос агенту</strong>Вставьте его в Claude или Codex. Попросите перечитать контекст даже в старом чате.</div></div></div><button class="button full" data-action="preview-sync">Обновить файлы проекта →</button><button class="button secondary full section-gap" data-action="copy-brief">Скопировать запрос</button><hr class="mini-divider"><span class="file-tag">AGENTS.md</span><span class="file-tag">CLAUDE.md</span><span class="file-tag">.opora/CONTEXT.md</span><p class="small-note">Существующие инструкции сохраняются. Перед обновлением создаётся резервная копия.</p><p class="context-note">Файлы помогают удерживать контекст, но не гарантируют, что агент выполнит все правила. Результат нужно просмотреть в Godot.</p></section><section class="card"><div class="card-header"><h2>Что получит помощник</h2><span class="badge muted">ПРЕДПРОСМОТР</span></div><pre id="context-preview" class="code-preview"></pre></section></div>`;
 }
+function agents() {
+  const info=agentConnection;
+  const connectionCards=['claude','codex'].map(client=>{
+    const configured=info?.status?.[client]?.configured;
+    return `<section class="card"><div class="card-header"><h2>${client==='claude'?'Claude Code':'Codex CLI'}</h2><span class="badge ${configured?'':'muted'}">${configured?'НАСТРОЕНО':'НЕ НАСТРОЕНО'}</span></div><p class="small">${client==='claude'?'Настройки этой игры в .mcp.json. Claude может запросить разрешение на проектный MCP-сервер.':'Запись с отдельным именем в настройках Codex пользователя. Остальные серверы сохраняются.'}</p><button class="button secondary" data-action="configure-agent" data-client="${client}" ${!info?'disabled':''}>${configured?'Обновить подключение':'Настроить подключение'}</button>${info?.status?.[client]?.error?`<p class="context-note">${escapeHtml(info.status[client].error)}</p>`:''}</section>`;
+  }).join('');
+  return `${pageTitle('ОБЩАЯ ПАМЯТЬ БЕЗ КОПИРОВАНИЯ','Помощники подключаются напрямую.','Локальный MCP: контекст, брендбук, задачи и отчёты.', '<button class="button small secondary" data-action="refresh-agents">Обновить данные</button>')}${demoBanner()}<div class="grid-two">${connectionCards}</div><section class="card section-gap"><div class="card-header"><h2>Как начать работу</h2><span class="badge muted">STDIO · БЕЗ ПОРТА</span></div><p class="small">После настройки перезапустите терминальную сессию агента в папке игры. При необходимости подтвердите подключение в самом клиенте. Затем попросите его прочитать Опору и выполнить задачу.</p><div class="hint">${info?`Проект: <strong>${escapeHtml(info.project_name)}</strong><br>Сервер: <span class="file-tag">${escapeHtml(info.server_name)}</span><br>Папка: ${escapeHtml(info.root)}`:agentLoading?'Читаю настройки…':'Подключите папку игры в приложении Windows.'}</div><p class="small-note">«Настроено» означает, что запись сохранена, а не что агент уже установил связь. Сервер читает последние сохранённые данные и работает даже при закрытом окне Опоры. У агентов остаются их обычные требования к авторизации и разрешениям.</p><button class="text-button" data-action="copy-agent-start" ${!info?'disabled':''}>Скопировать первый запрос →</button></section><section class="card section-gap"><div class="card-header"><div><h2>Отчёты агентов</h2><p class="small">Обновляются, пока открыт этот раздел. Завершение задачи подтверждаете вы.</p></div><span class="badge muted">${agentActivity.reports.length}</span></div>${agentActivity.reports.length?`<div class="agent-reports">${agentActivity.reports.map(r=>`<article class="agent-report"><div class="spaced"><h3>${({claude:'Claude Code',codex:'Codex',other:'Агент'})[r.agent]||'Агент'} · ${({in_progress:'В работе',blocked:'Нужна помощь',ready_for_review:'Готово к просмотру'})[r.phase]||'Отчёт'}</h3><small>${escapeHtml(new Date(r.recordedAt).toLocaleString('ru-RU'))}</small></div><p>${escapeHtml(r.summary)}</p>${r.task_id?`<span class="file-tag">${escapeHtml(state.tasks.find(t=>t.id===r.task_id)?.title||r.task_id)}</span>`:''}${r.stale?'<p class="context-note">После этого отчёта контекст проекта изменился.</p>':''}${r.fromDifferentPath?'<p class="context-note">Отчёт был создан в другой папке проекта.</p>':''}${r.checks.length?`<ul class="report-checks">${r.checks.map(c=>`<li><span class="badge ${c.result==='failed'?'orange':'muted'}">${({passed:'ЗАЯВЛЕНО: ПРОШЛО',failed:'ЗАЯВЛЕНО: ОШИБКА',not_run:'НЕ ЗАПУСКАЛОСЬ'})[c.result]}</span> ${escapeHtml(c.name)}${c.evidence?`<p>${escapeHtml(c.evidence)}</p>`:''}</li>`).join('')}</ul>`:''}<p class="small-note">Это отчёт агента. Опора сама не запускала эти проверки.</p></article>`).join('')}</div>`:'<div class="empty"><strong>Здесь появятся результаты работы</strong>Агент может отправить ход работы, блокер или результат на просмотр через opora_report_progress.</div>'}${agentActivity.unreadable?`<p class="context-note">Не удалось прочитать отчётов: ${agentActivity.unreadable}.</p>`:''}</section>`;
+}
+async function refreshAgents() {
+  if(!root || !bridge?.agentInfo || agentLoading)return;
+  const project=root;agentLoading=true;
+  try {
+    await persist();
+    const [info,activity]=await Promise.all([bridge.agentInfo(),bridge.agentReports()]);
+    if(root!==project)return;
+    agentConnection=info;agentActivity=activity;
+    if(tab==='agents')render();
+  } catch(error) {fail(error);} finally {agentLoading=false;}
+}
+async function refreshReports() {
+  if(tab!=='agents' || !root || !bridge?.agentReports || agentLoading || $('#modal').open)return;
+  const project=root;
+  try {const activity=await bridge.agentReports();if(root===project && tab==='agents' && JSON.stringify(activity)!==JSON.stringify(agentActivity)){agentActivity=activity;render();}} catch(error) {fail(error);}
+}
+setInterval(refreshReports,3000);
+function configureAgent(client) {
+  if(!agentConnection)return;
+  pendingAgent=client;
+  const file=client==='claude'?agentConnection.claudeFile:agentConnection.codexFile;
+  showModal(`<h2 id="modal-title">Подключить ${client==='claude'?'Claude Code':'Codex'}</h2><p>Будет добавлен локальный MCP-сервер для игры «${escapeHtml(agentConnection.project_name)}».</p><p class="small-note">Файл настроек: <span class="file-tag">${escapeHtml(file)}</span></p><p>Остальные подключения сохранятся. Если файл уже существует, перед изменением создаётся локальная резервная копия. Опора не меняет настройки авторизации клиента.</p><details><summary>Что будет запускаться</summary><pre class="code-preview">${escapeHtml(JSON.stringify(agentConnection.spec,null,2))}</pre></details><p class="small-note">Настройка не устанавливает сам Claude Code или Codex. После добавления перезапустите сессию агента. При переносе папки игры или приложения обновите подключение здесь.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Отмена</button><button class="button" data-action="confirm-agent">Добавить подключение</button></div>`);
+}
 function render() {
   refreshChrome();
-  $('#main').innerHTML = ({overview,brand,tasks,context})[tab]();
+  $('#main').innerHTML = ({overview,brand,tasks,context,agents})[tab]();
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
   document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
@@ -131,7 +166,7 @@ async function loadImages() {
   }
 }
 function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
-function closeModal() {$('#modal').close(); pendingSync = null; pendingBrand = null; updatesOpen=false;}
+function closeModal() {$('#modal').close(); pendingSync = null; pendingBrand = null; pendingAgent=null;updatesOpen=false;}
 
 function renderUpdates() {
   const info=updateState;
@@ -186,6 +221,7 @@ async function openProject() {
   const project = await bridge.openProject();
   if (!project) return;
   root = project.root;
+  agentConnection=null;agentActivity={reports:[],unreadable:0};
   state = project.state || blankState(project.info.name);
   revision = 0; syncedRevision = -1; failedSave = false;
   tab = 'overview';
@@ -237,7 +273,7 @@ document.addEventListener('submit', event => {
 });
 document.addEventListener('click', async event => {
   const nav = event.target.closest('[data-tab]');
-  if (nav) {tab = nav.dataset.tab; render(); return;}
+  if (nav) {tab = nav.dataset.tab; render(); if(tab==='agents')await refreshAgents();return;}
   const button = event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   const action = button.dataset.action;
@@ -245,6 +281,16 @@ document.addEventListener('click', async event => {
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'refresh-agents') await refreshAgents();
+    if (action === 'configure-agent') configureAgent(button.dataset.client);
+    if (action === 'confirm-agent' && pendingAgent) {
+      button.disabled=true;
+      try {await persist();await bridge.configureAgent(pendingAgent);closeModal();await refreshAgents();toast('Настройки сохранены. Перезапустите сессию агента в папке игры.');} finally {button.disabled=false;}
+    }
+    if (action === 'copy-agent-start' && agentConnection) {
+      await bridge.copy(`Работаем над игрой «${state.name}» в папке ${agentConnection.root}. Используй MCP-сервер ${agentConnection.server_name}: сначала opora_get_project, проверь папку, затем opora_get_context и брендбук. Выполни выбранную задачу. Перед отправкой отчёта используй актуальную revision. Незапущенные проверки отметь not_run. Результат отправь через opora_report_progress со статусом ready_for_review; завершение подтверждает пользователь.`);
+      toast('Первый запрос скопирован. Вставьте его в новую сессию агента.');
+    }
     if (action === 'updates') await showUpdates();
     if (action === 'check-updates') {button.disabled=true;try {updateState={...updateState,...await bridge.checkUpdates()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
     if (action === 'download-update') {button.disabled=true;try {updateState={...updateState,...await bridge.downloadUpdate()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
@@ -297,13 +343,13 @@ document.addEventListener('click', async event => {
       state.references = state.references.filter(r=>r.id !== button.dataset.id);
       changed(); render(); toast('Образец убран из контекста. Файл оставлен в папке проекта.');
     }
-    if (action === 'help') showModal('<h2 id="modal-title">Общая память вашей игры</h2><ol class="help-list"><li>Подключите корень игры Godot. Opora добавит свою папку .opora; код и сцены не меняются.</li><li>Опишите игру и постоянные замечания. Добавьте брендбук и изображения, когда будете готовы. Неутверждённое остаётся черновиком.</li><li>Выберите задачу с критериями готовности. В разделе «Контекст для ИИ» посмотрите и обновите файлы проекта.</li><li>Скопируйте запрос в Claude Code или Codex, работающий из корня этой игры. В существующем чате тоже попросите перечитать памятку.</li><li>Проверьте результат в Godot. Новое замечание внесите в Opora и снова обновите контекст. Агент не получает обновления автоматически.</li></ol><p>Opora работает без API, не запускает агентов и не проверяет изображения на соответствие стилю. У каждого проекта своя память. Используйте существующую папку игры: отдельный Git worktree для этого не нужен.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');
+    if (action === 'help') showModal('<h2 id="modal-title">Общая память вашей игры</h2><ol class="help-list"><li>Подключите корень игры Godot. Opora добавит свою папку .opora; код и сцены не меняются.</li><li>Опишите игру и постоянные замечания. Добавьте брендбук и изображения, когда будете готовы. Неутверждённое остаётся черновиком.</li><li>Для прямого подключения откройте «Агенты · MCP», настройте клиент и перезапустите его сессию. Он сможет читать последние сохранённые данные без копирования.</li><li>При работе через файлы выберите задачу с критериями готовности. В разделе «Контекст для ИИ» посмотрите и обновите файлы проекта.</li><li>Скопируйте запрос в Claude Code или Codex, работающий из корня этой игры. В существующем чате тоже попросите перечитать памятку.</li><li>Проверьте результат в Godot. Новое замечание внесите в Opora и снова обновите контекст. Агент не получает обновления автоматически.</li></ol><p>Opora работает без API, не запускает агентов и не проверяет изображения на соответствие стилю. У каждого проекта своя память. Используйте существующую папку игры: отдельный Git worktree для этого не нужен.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');
   } catch(error) {fail(error);}
 });
 window.addEventListener('beforeunload', () => {if (!root) persist();});
 $('#modal').addEventListener('cancel', event => {
   if(updatesOpen && updateState?.status==='installing'){event.preventDefault();return;}
-  pendingSync = null;pendingBrand=null;updatesOpen=false;
+  pendingSync = null;pendingBrand=null;pendingAgent=null;updatesOpen=false;
 });
 async function initialize() {
   if (!bridge?.restoreProject) return;
