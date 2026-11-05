@@ -46,7 +46,7 @@ async function listReports(root,limit=30) {
   for(const entry of entries) {
     if(!/^[a-f0-9]{64}\.json$/.test(entry.name) || !entry.isFile())continue;
     try {
-      const item=JSON.parse((await boundedRead(path.join(current.root,directory,entry.name),128*1024)).toString('utf8'));
+      const item=JSON.parse((await boundedRead(path.join(current.root,directory,entry.name),512*1024)).toString('utf8'));
       if(item.version!==1 || typeof item.project_id!=='string' || typeof item.revision!=='string' || typeof item.summary!=='string' || !['in_progress','blocked','ready_for_review'].includes(item.phase) || !['claude','codex','other'].includes(item.agent) || typeof item.recordedAt!=='string' || !Array.isArray(item.checks) || item.checks.some(c=>!c || typeof c.name!=='string' || !['passed','failed','not_run'].includes(c.result))) {unreadable++;continue;}
       reports.push({...item,stale:item.revision!==current.revision,fromDifferentPath:item.project_id!==current.project_id});
     } catch {unreadable++;}
@@ -67,7 +67,7 @@ async function reportProgress(root,input) {
   const report={version:1,id,...payload,fingerprint,brand_revision:current.brand_revision,recordedAt:new Date().toISOString(),selfReported:true};
   try {await fs.writeFile(path.join(current.root,relative),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});} catch(error) {
     if(error.code!=='EEXIST')throw error;
-    const existing=JSON.parse((await boundedRead(path.join(current.root,relative),128*1024)).toString('utf8'));
+    const existing=JSON.parse((await boundedRead(path.join(current.root,relative),512*1024)).toString('utf8'));
     if(existing.fingerprint!==fingerprint)throw fault('DUPLICATE_REQUEST','Этот request_id уже использован для другого отчёта. Используйте новый.');
     return {report_id:id,duplicate:true,task_status_unchanged:true};
   }

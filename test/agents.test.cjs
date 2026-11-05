@@ -54,6 +54,14 @@ test('MCP image reads are limited to registered references of the current revisi
   assert.equal(image.mimeType,'image/png');assert.equal(Buffer.from(image.data,'base64').toString(),'reference bytes');
   await assert.rejects(service.getReference(root,{project_id:s.project_id,revision:s.revision,reference_id:'../../outside'}),/не найден/);
 });
+test('Reports near tool field limits remain readable and idempotent with multibyte text',async t=>{
+  const {root}=await fixture(t);const s=await service.snapshot(root);
+  const input={project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'long-report-0001',phase:'ready_for_review',summary:'И'.repeat(12000),checks:Array.from({length:30},()=>({name:'Проверка',result:'not_run',evidence:'Я'.repeat(2000)}))};
+  await service.reportProgress(root,input);
+  assert.equal((await service.reportProgress(root,input)).duplicate,true);
+  const result=await service.listReports(root);
+  assert.equal(result.unreadable,0);assert.equal(result.reports[0].summary.length,12000);
+});
 test('Claude project configuration preserves other servers and backs up exact original content',async t=>{
   const {config}=await fixture(t);
   const original='{"mcpServers":{"existing":{"command":"example","env":{"TOKEN":"test-placeholder"}}},"other":true}\n';
