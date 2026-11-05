@@ -1,5 +1,6 @@
 """Build the self-contained Windows launcher; does not rebuild/download the app."""
 from pathlib import Path
+import zipfile
 
 root = Path(__file__).resolve().parent.parent
 launcher = r'''@echo off
@@ -23,5 +24,13 @@ exit /b 0
 # OPORA_POWERSHELL_START
 '''
 launcher += (root / 'scripts/windows-launcher.ps1').read_text(encoding='utf-8')
-(root / 'START-OPORA.cmd').write_bytes(launcher.replace('\n', '\r\n').encode('utf-8'))
-print('Prepared START-OPORA.cmd (self-contained, UTF-8, CRLF).')
+payload = launcher.replace('\n', '\r\n').encode('utf-8')
+(root / 'START-OPORA.cmd').write_bytes(payload)
+# A ZIP gives browsers an actual download instead of displaying the CMD as text.
+fix = root / 'distribution/Opora-launcher-fix.zip'
+fix.parent.mkdir(exist_ok=True)
+info = zipfile.ZipInfo('START-OPORA.cmd', date_time=(1980, 1, 1, 0, 0, 0))
+info.compress_type = zipfile.ZIP_DEFLATED
+with zipfile.ZipFile(fix, 'w') as archive:
+    archive.writestr(info, payload)
+print('Prepared START-OPORA.cmd and distribution/Opora-launcher-fix.zip.')
