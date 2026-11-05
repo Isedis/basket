@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-iqSI/x/lwVrCGxamQcmU7ClkTFKIo9YdjtzsMCS1z7E=' 'sha256-JdO0SBi83hiNPE7ZFQCV6NZ2sxFg5e/4PxnMTGmX2cE='; style-src 'sha256-FiqD4i0+VWw+BXr5Br7NXsbayTiMANgSLdYHCLpweUI='; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Опора — память вашей игры</title>
+  <style>:root{color-scheme:dark;--bg:#101514;--panel:#191f1d;--border:#2d3530;--text:#ecefe6;--muted:#a3afa6;--faint:#7b8a80;--accent:#d7ed9c;--orange:#e0b38d;--radius:15px;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}button,input,textarea,select{font:inherit}button,a,input,textarea,select{outline-offset:4px}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible{outline:2px solid var(--accent)}button{color:inherit}a{color:inherit}.sidebar{width:252px;position:fixed;inset:0 auto 0 0;background:#151b18;border-right:1px solid var(--border);padding:30px 20px 0;display:flex;flex-direction:column}.logo{display:flex;align-items:center;gap:9px;text-decoration:none;font-size:31px;font-weight:650;letter-spacing:-1.8px;padding:0 10px;margin-bottom:48px}.logo-mark{display:inline-flex;position:relative;align-items:center;justify-content:center;border:2px solid var(--accent);color:var(--accent);border-radius:11px;width:33px;height:33px;font-size:26px;font-weight:500;line-height:1;letter-spacing:0}.logo-mark span{position:absolute;right:0;top:-9px;background:#151b18}.version{font-size:10px;letter-spacing:0;margin-left:auto;border:1px solid var(--border);color:var(--faint);padding:3px 5px;border-radius:4px}.sidebar-label{font-size:9px;color:var(--faint);letter-spacing:1.7px;margin:0 10px 13px}.project-switch{display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:1px solid #354034;border-radius:9px;padding:12px 10px;text-align:left;margin-bottom:30px}.project-switch strong{display:block;font-size:12px;font-weight:600;max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-switch small{font-size:10px;color:var(--muted);display:block;margin-top:4px}.project-icon{font-size:22px;color:var(--accent)}.switch-arrow{margin-left:auto;color:var(--faint)}nav{display:grid;gap:5px}.nav-item{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:7px;padding:12px 11px;background:transparent;text-align:left;font-size:12px;color:var(--muted)}.nav-item>span:first-child{font-size:18px;width:20px}.nav-item:hover{background:#202822}.nav-item.active{background:#293526;color:var(--accent)}.nav-short,.count{margin-left:auto;font-size:10px;opacity:.65}.count{border:1px solid #536444;padding:1px 5px;border-radius:4px}.sidebar-bottom{margin-top:auto;padding:30px 12px}.agent-dots{display:flex;margin-bottom:15px}.agent-dots span{height:29px;width:29px;border-radius:50%;background:#3d342c;border:2px solid #151b18;display:grid;place-items:center;color:#d9b395;font-size:12px}.agent-dots span+span{margin-left:-5px;background:#2b3931;color:var(--accent)}.sidebar-bottom strong{font-weight:500;line-height:1.6;font-size:13px}.sidebar-bottom p{color:var(--faint);font-size:11px;line-height:1.7}.text-button{border:0;padding:0;background:none;color:var(--accent);font-size:11px}.offline{border-top:1px solid var(--border);padding:17px 4px;font-size:10px;color:var(--faint)}.status-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px}.workspace{margin-left:252px;min-height:100vh;display:flex;flex-direction:column}.topbar{height:78px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:15px;padding:0 38px}.breadcrumb{font-size:9px;color:var(--faint);letter-spacing:1.3px;white-space:nowrap}.breadcrumb span{padding:0 13px}.breadcrumb strong{font-size:11px;font-weight:500;letter-spacing:0;color:var(--muted)}.top-actions{display:flex;gap:20px;align-items:center}.save-status{font-size:10px;color:var(--faint)}.button{border:1px solid transparent;border-radius:7px;padding:12px 17px;background:var(--accent);color:#1a2411;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:12px}.button:hover{filter:brightness(1.08)}.button.secondary{border-color:#39443b;background:transparent;color:var(--text);font-weight:450}.button.small{padding:9px 12px;font-size:11px}.button.dark{background:#202a20;color:var(--accent);border-color:#3e4e35}.button.danger{color:#edaf9b;border-color:#6b4439}.button.full{width:100%}main{width:100%;max-width:1450px;margin:auto;padding:36px 38px 30px;flex:1}.eyebrow{color:var(--accent);font-size:10px;letter-spacing:1.8px;margin-bottom:10px}.page-title{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:27px}h1{font-size:30px;font-weight:500;letter-spacing:-1px;margin:0 0 9px}h2{font-size:17px;font-weight:500;letter-spacing:-.3px;margin:0}h3{font-size:13px;font-weight:550;margin:0}p{line-height:1.65}.subtitle{margin:0;color:var(--muted);font-size:12px}.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid #3e4c36;border-radius:5px;padding:5px 8px;font-size:9px;letter-spacing:.4px;color:var(--accent);white-space:nowrap}.badge.orange{background:#302820;color:#e3bc99;border-color:#584536}.badge.muted{color:var(--muted);border-color:var(--border)}.demo-banner{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px solid #414a34;border-radius:9px;background:#20271c;font-size:11px;color:#c5ceba;margin-bottom:22px}.demo-banner strong{font-weight:550}.demo-banner button{margin-left:auto;white-space:nowrap}.hero{display:grid;grid-template-columns:1fr 248px;border:1px solid #49533a;border-radius:var(--radius);overflow:hidden;background:#252d21;margin-bottom:22px}.hero-content{padding:25px 27px;position:relative}.hero .eyebrow{font-size:9px;color:#b7c49e;margin-bottom:15px}.hero h2{font-size:23px;color:#f1f3e8;line-height:1.3;margin-bottom:12px;max-width:500px}.hero p{font-size:12px;color:#b6c1ab;max-width:580px;margin:0 0 20px}.hero-meta{display:flex;gap:13px;align-items:center}.hero-art{position:relative;min-height:215px;overflow:hidden;background:repeating-radial-gradient(ellipse at 53% 50%,transparent 0 21px,#a1ba6822 22px 23px,transparent 24px 45px);display:grid;place-items:center}.orbit{width:105px;height:105px;border-radius:50%;background:radial-gradient(circle at 32% 25%,#c8d7a4 0,#829467 40%,#3a4730 70%);box-shadow:0 0 70px #b3d17415;position:relative}.orbit:before{content:'';position:absolute;inset:36px -35px;transform:rotate(-25deg);border:1px solid #c8daa36b;border-radius:50%}.orbit:after{content:'';position:absolute;width:11px;height:11px;border-radius:50%;background:var(--orange);top:-30px;right:4px}.hero-art>span{position:absolute;bottom:17px;font-size:8px;color:#b3c49e;letter-spacing:2px}.grid-two{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:23px}.card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:21px}.card-header .index{color:var(--faint);font-size:10px;margin-right:9px}.card-header h2{font-size:14px}.card p.small,.small-note{font-size:11px;color:var(--muted);line-height:1.7}.overview-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}.stat{padding:17px 18px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px}.stat-icon{color:var(--accent);font-size:21px;width:28px}.stat strong{font-size:12px;font-weight:500;display:block}.stat small{font-size:10px;color:var(--faint);display:block;margin-top:5px}.field{display:block;margin-bottom:17px}.field:last-child{margin-bottom:0}.field>span{font-size:11px;color:var(--muted);display:block;margin-bottom:8px}.field input,.field textarea,.field select{width:100%;color:var(--text);background:#111714;border:1px solid #344035;border-radius:7px;padding:11px 12px;font-size:12px;line-height:1.6;resize:vertical;min-width:0}.field input:focus,.field textarea:focus,.field select:focus{outline:1px solid #9fb779;border-color:#9fb779}.field textarea{min-height:82px}.field input::placeholder,.field textarea::placeholder{color:#68776a}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field-help{font-size:10px;color:var(--faint);margin-top:6px;display:block;line-height:1.6}.palette{display:flex;gap:7px;margin:16px 0}.swatch{flex:1;height:47px;border-radius:6px;border:1px solid #ffffff12}.swatch-0{background:#151e21}.swatch-1{background:#2b423f}.swatch-2{background:#b7cb9b}.swatch-3{background:#e7dfca}.swatch-4{background:#dba775}.mini-divider{border:0;border-top:1px solid var(--border);margin:19px 0}.hint{border-left:2px solid #a9c37b;padding:1px 0 1px 13px;font-size:11px;color:var(--muted);line-height:1.8}.hint strong{color:var(--text);font-weight:500}.rule-item{display:flex;gap:10px;font-size:12px;color:#c7d0c6;line-height:1.7;margin:13px 0}.rule-item:before{content:'↳';color:var(--accent)}.empty{padding:25px 14px;text-align:center;border:1px dashed #43503e;border-radius:10px;color:var(--muted);font-size:12px;line-height:1.8}.empty strong{display:block;color:var(--text);font-size:14px;font-weight:500;margin-bottom:5px}.section-gap{margin-top:20px}.reference-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.reference{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:#121814}.reference img{width:100%;height:155px;object-fit:contain;background:#0c110f;display:block}.reference-info{padding:11px}.reference-name{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:10px}.reference-controls{display:flex;justify-content:space-between;gap:5px}.reference-controls select{max-width:130px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:#1d271e;color:var(--text);padding:4px}.icon-button{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:2px 7px}.board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}.column{padding:15px;background:#151c18;border:1px solid var(--border);border-radius:12px;min-height:340px}.column-header{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0 18px;color:var(--muted)}.column-header span:last-child{margin-left:auto;font-size:10px}.column-dot{width:6px;height:6px;border-radius:50%;background:#83907c}.column-dot.active{background:var(--accent)}.column-dot.done{background:#86bba8}.task{border:1px solid var(--border);border-radius:9px;padding:15px;background:#1c241f;margin-bottom:12px}.task.selected{border-color:#819a58}.task-meta{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--faint);margin-bottom:12px}.task h3{line-height:1.6;font-weight:500}.task p{font-size:11px;color:var(--muted);white-space:pre-wrap;margin:11px 0 16px}.task-footer{display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid var(--border);padding-top:12px}.task-footer button{font-size:10px}.task select{width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;background:#151c18;color:var(--muted);font-size:10px;margin-bottom:12px}.context-layout{display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start}.context-steps{display:grid;gap:18px;margin:20px 0}.context-step{display:flex;gap:10px;font-size:11px;line-height:1.7;color:var(--muted)}.step-number{flex-shrink:0;width:23px;height:23px;display:grid;place-items:center;border:1px solid #48543d;color:var(--accent);border-radius:50%;font-size:10px}.context-step strong{display:block;color:var(--text);font-weight:500}.code-preview{font:11px/1.9 Consolas,'Courier New',monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:600px;overflow:auto;color:#bac8b4;margin:0;background:#111713;border:1px solid var(--border);border-radius:8px;padding:20px}.context-note{font-size:11px;color:var(--orange);line-height:1.7}.file-tag{display:inline-block;font-family:Consolas,monospace;font-size:10px;border:1px solid var(--border);background:#151c18;padding:4px 6px;border-radius:4px;margin:3px 4px 3px 0;color:var(--muted)}.spaced{display:flex;align-items:center;justify-content:space-between;gap:16px}.stack{display:flex;flex-wrap:wrap;gap:9px}.brand-status{display:flex;align-items:center;gap:10px}.brand-status select{font-size:11px;background:#242d22;color:var(--accent);border:1px solid #4c5b3e;padding:8px;border-radius:6px}footer{padding:20px 38px;border-top:1px solid #232c25;display:flex;justify-content:space-between;color:var(--faint);font-size:9px;letter-spacing:.5px}dialog{color:var(--text);background:#1a221c;border:1px solid #526047;border-radius:16px;padding:28px;width:min(760px,90vw);max-height:85vh;box-shadow:0 20px 100px #0009}dialog::backdrop{background:#060a08bb;backdrop-filter:blur(5px)}dialog h2{font-size:23px;margin-bottom:12px}dialog p{font-size:12px;color:var(--muted)}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:23px}.modal-actions .danger{margin-right:auto}dialog .code-preview{max-height:40vh}details{margin:12px 0}summary{font-size:12px;cursor:pointer;color:var(--muted);padding:7px 0}.toast{position:fixed;bottom:25px;left:calc(50% + 126px);transform:translateX(-50%) translateY(20px);max-width:650px;padding:14px 20px;border:1px solid #617049;border-radius:9px;background:#283323;color:#e7efd7;font-size:12px;box-shadow:0 12px 35px #0005;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}.toast.error{border-color:#95614a;background:#382820;color:#f1c7ac}.help-list{font-size:12px;line-height:1.9;color:var(--muted);padding-left:20px}.help-list li{margin-bottom:9px}.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(min-width:1500px){main{padding-top:45px}.hero-content{padding:32px}.hero-art{min-height:245px}}@media(max-width:1150px){.sidebar{width:218px;padding-left:14px;padding-right:14px}.workspace{margin-left:218px}.topbar{padding:0 24px}main{padding:28px 24px}.top-actions{gap:10px}.save-status{max-width:150px}.hero{grid-template-columns:1fr 180px}.context-layout{grid-template-columns:230px 1fr}.reference-grid{grid-template-columns:repeat(2,1fr)}.toast{left:calc(50% + 109px)}}@media(max-width:850px){.sidebar{position:static;width:100%;padding:16px}.logo{margin-bottom:15px}.sidebar-label,.project-switch,.sidebar-bottom,.offline{display:none}nav{display:flex}.nav-item{width:auto;flex:1;padding:10px 8px;font-size:10px}.nav-short,.count{display:none}.workspace{margin-left:0}.topbar{height:auto;padding:15px 20px;flex-wrap:wrap}.grid-two,.context-layout{grid-template-columns:1fr}.overview-stats{gap:7px}.stat{padding:12px 8px}.stat-icon{display:none}.board{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.hero-art{display:none}.page-title{align-items:start}.page-title h1{font-size:26px}.toast{left:50%;width:90%}.reference-grid{grid-template-columns:repeat(2,1fr)}footer{padding:20px}.demo-banner{flex-wrap:wrap}.demo-banner button{margin-left:0}.brand-status{flex-direction:column;align-items:start}.field-row{grid-template-columns:1fr}}
+</style>
+  
+  
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="logo" href="#overview" aria-label="Опора, главная"><span class="logo-mark">о<span>·</span></span>опора<span class="version">0.1</span></a>
+    <div class="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <button class="project-switch" data-action="open"><span class="project-icon">◈</span><span><strong id="side-name">Тихая орбита</strong><small id="side-mode">Демонстрационный проект</small></span><span class="switch-arrow">→</span></button>
+    <nav aria-label="Разделы проекта">
+      <button data-tab="overview" class="nav-item active"><span>◫</span>Обзор<span class="nav-short">01</span></button>
+      <button data-tab="brand" class="nav-item"><span>◐</span>Визуальный стиль<span class="nav-short">02</span></button>
+      <button data-tab="tasks" class="nav-item"><span>☷</span>Задачи<span id="task-count" class="count">3</span></button>
+      <button data-tab="context" class="nav-item"><span>⌘</span>Контекст для ИИ<span class="nav-short">04</span></button>
+    </nav>
+    <div class="sidebar-bottom"><div class="agent-dots"><span>C</span><span>→</span></div><strong>Один замысел.<br>Для обоих помощников.</strong><p>Общие решения для Claude и Codex, рядом с вашей игрой.</p><button class="text-button" data-action="help">Как это работает →</button></div>
+    <div class="offline"><span class="status-dot"></span>Локально · без API и подписок</div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb">МОИ ИГРЫ <span>/</span> <strong id="header-name">Тихая орбита</strong></div><div class="top-actions"><span id="save-status" class="save-status" role="status">Демо · изменения в браузере</span><button class="button small secondary" data-action="open">Подключить проект <span>→</span></button></div></header>
+    <main id="main"></main>
+    <footer><span>Меньше повторений. Больше игры.</span><span id="footer-status">GODOT WORKSPACE / DEMO</span></footer>
+  </div>
+  <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>/* Shared context format for desktop and demo. No network or filesystem access. */
+function validateState(state) {
+  if (!state || state.version !== 1 || typeof state.name !== 'string' || !state.name.trim()) throw new Error('Укажите название игры.');
+  for (const key of ['genre', 'pitch', 'experience', 'goal', 'pillars', 'rules']) {
+    if (typeof state[key] !== 'string') throw new Error(`Некорректное поле: ${key}`);
+  }
+  if (!state.brand || !['draft', 'approved'].includes(state.brand.status)) throw new Error('Некорректный статус брендбука.');
+  for (const key of ['palette', 'fonts', 'direction', 'avoid']) if (typeof state.brand[key] !== 'string') throw new Error(`Некорректное поле стиля: ${key}`);
+  if (!Array.isArray(state.tasks) || !Array.isArray(state.references)) throw new Error('Повреждены задачи или эталоны.');
+  const ids = new Set();
+  for (const task of state.tasks) {
+    if (!task || typeof task.id !== 'string' || ids.has(task.id) || typeof task.title !== 'string' || typeof task.acceptance !== 'string' || !['backlog', 'active', 'done'].includes(task.status)) throw new Error('Некорректная задача.');
+    ids.add(task.id);
+  }
+  if (state.activeTaskId && !ids.has(state.activeTaskId)) throw new Error('Выбранная задача не найдена.');
+  for (const ref of state.references) {
+    if (!ref || typeof ref.id !== 'string' || typeof ref.name !== 'string' || !/^\.opora\/references\/[a-zA-Z0-9_-]+\.(png|jpe?g|webp)$/.test(ref.file) || !['draft', 'approved'].includes(ref.status)) throw new Error('Некорректный визуальный эталон.');
+  }
+  return state;
+}
+
+function contextMarkdown(state) {
+  validateState(state);
+  const s = state;
+  const brandStatus = s.brand.status === 'approved' ? 'УТВЕРЖДЁН пользователем' : 'ЧЕРНОВИК — окончательные визуальные решения не утверждены';
+  const active = s.tasks.find(t => t.id === s.activeTaskId && t.status !== 'done');
+  const text = v => v.trim() || 'Не задано. Не считать это принятым решением.';
+  return `# ${s.name}: общий контекст игры
+
+Эту памятку создаёт Opora. Меняйте решения через приложение; изменения здесь могут быть заменены при следующей синхронизации.
+Актуальность: ${s.updatedAt || 'не указана'}. Движок: Godot.
+
+## Игра
+Жанр: ${text(s.genre)}
+
+Замысел: ${text(s.pitch)}
+
+Ощущение игрока: ${text(s.experience)}
+
+## Основы, которые нужно сохранять
+${text(s.pillars)}
+
+## Текущая цель
+${text(s.goal)}
+
+## Брендбук
+Статус: ${brandStatus}
+
+### Визуальное направление
+${text(s.brand.direction)}
+
+### Палитра
+${text(s.brand.palette)}
+
+### Шрифты и типографика
+${text(s.brand.fonts)}
+
+### Не использовать
+${text(s.brand.avoid)}
+
+### Эталоны (пути от корня проекта)
+${s.references.length ? s.references.map(r => `- [${r.status === 'approved' ? 'УТВЕРЖДЁН' : 'КАНДИДАТ, не эталон'}] ${r.name}: ${r.file}`).join('\n') : 'Эталоны ещё не добавлены. Не заявлять визуальное соответствие без эталонов.'}
+
+## Постоянные замечания пользователя
+${text(s.rules)}
+
+## Выбранная задача
+${active ? `${active.title}\n\nКритерии готовности:\n${text(active.acceptance)}` : 'Нет выбранной незавершённой задачи. Уточнить конкретный запрос пользователя.'}
+
+## Остальные задачи
+${s.tasks.filter(t => t.id !== active?.id).map(t => `- [${({backlog:'в очереди', active:'в работе', done:'готово'})[t.status]}] ${t.title}`).join('\n') || 'Нет.'}
+
+## Завершение работы
+Проверь критерии выбранной задачи, сохрани существующие решения вне её рамок.
+Сообщи, что изменилось, что проверено и что требует просмотра в Godot.
+Эта памятка не доказывает, что агент её прочёл или что результат соответствует стилю.
+`;
+}
+
+function taskBrief(state) {
+  return `Работаем над проектом Godot «${state.name}».
+Сначала перечитай AGENTS.md или CLAUDE.md, затем .opora/CONTEXT.md и перечисленные визуальные эталоны.
+Выполни выбранную в памятке задачу по её критериям готовности.
+Если выбранной задачи нет, сначала уточни конкретную задачу.
+Ниже — текущая версия контекста на случай, если файлы ещё не синхронизированы.
+
+${contextMarkdown(state)}`;
+}
+
+
+const OporaContext = {validateState, contextMarkdown, taskBrief};
+if (typeof module !== 'undefined' && module.exports) module.exports = OporaContext;
+</script><script>/* Local renderer. Filesystem access is limited to the desktop bridge. */
+const $ = selector => document.querySelector(selector);
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const id = () => crypto.randomUUID();
+const demoState = () => ({
+  version:1, name:'Тихая орбита', genre:'Incremental idle · космическая станция',
+  pitch:'Маленькая станция на краю обитаемого космоса. Игрок восстанавливает её, запускает производство и постепенно открывает новые орбиты.',
+  experience:'Спокойное любопытство. Каждый небольшой шаг делает станцию чуть более живой.',
+  goal:'Собрать главное меню, которое ощущается частью мира игры.',
+  pillars:'Медленный, ощутимый прогресс.\nУютная научная фантастика без военной эстетики.\nЧистый интерфейс: один главный акцент на экране.',
+  rules:'Не менять стиль соседних экранов ради одной задачи.\nНе добавлять свечение и градиенты без обсуждения.\nИспользовать существующие компоненты интерфейса.',
+  brand:{status:'draft',direction:'Тихая ретрофутуристичная обсерватория. Матовые поверхности, тонкие линии, немного воздуха. Скругления сдержанные. Это направление для обсуждения, ещё не утверждённый брендбук.',palette:'#151E21 — фон\n#2B423F — панели\n#B7CB9B — основной акцент\n#E7DFCA — текст\n#DBA775 — редкий тёплый акцент',fonts:'Пока не выбраны. Не подменять системными шрифтами молча.',avoid:'Кислотный неон, военные HUD, глянцевые 3D-кнопки. Не вводить новые акцентные цвета.'},
+  tasks:[{id:'menu',title:'Собрать главное меню',acceptance:'Кнопки: продолжить, новая игра, настройки.\nОдин основной акцент.\nСостояния наведения и фокуса.\nПроверить в Godot при 1280×720 и 1920×1080.',status:'active'},{id:'icons',title:'Определить стиль иконок ресурсов',acceptance:'Подготовить три образца в одном стиле: энергия, металл, исследования. Не считать образцы утверждёнными автоматически.',status:'backlog'},{id:'brief',title:'Сформулировать ощущение игры',acceptance:'Короткое описание без противоречий с основной механикой.',status:'done'}],
+  activeTaskId:'menu', references:[], updatedAt:new Date().toISOString()
+});
+const blankState = name => ({version:1,name,genre:'',pitch:'',experience:'',goal:'',pillars:'',rules:'',brand:{status:'draft',direction:'',palette:'',fonts:'',avoid:''},tasks:[],activeTaskId:null,references:[],updatedAt:new Date().toISOString()});
+let state;
+try {state = JSON.parse(localStorage.getItem('opora-demo') || 'null'); if (state) OporaContext.validateState(state);} catch {state = null;}
+state ||= demoState();
+let root = null;
+let tab = 'overview';
+let timer = null;
+let toastTimer;
+let revision = 0;
+let syncedRevision = -1;
+let saves = Promise.resolve();
+let failedSave = false;
+let pendingSync = null;
+let closing = false;
+const bridge = window.opora;
+
+function toast(message, error = false) {
+  clearTimeout(toastTimer);
+  $('#toast').textContent = message;
+  $('#toast').className = 'toast visible' + (error ? ' error' : '');
+  toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), error ? 11000 : 5500);
+}
+function fail(error) {console.error(error); toast(error.message || String(error), true);}
+function status(text) {$('#save-status').textContent = text;}
+function persist() {
+  clearTimeout(timer);
+  timer = null;
+  const snapshot = structuredClone(state);
+  const saveRevision = revision;
+  if (!root) {
+    try {localStorage.setItem('opora-demo', JSON.stringify(snapshot)); failedSave = false; status('Демо · сохранено в браузере');} catch {failedSave = true; toast('Не удалось сохранить демо в браузере.', true);}
+    return Promise.resolve();
+  }
+  saves = saves.catch(() => {}).then(() => bridge.save(snapshot)).then(() => {
+    failedSave = false;
+    if (saveRevision === revision) status('Сохранено в проекте');
+  }).catch(error => {failedSave = true; status('Не сохранено · ошибка'); fail(error); throw error;});
+  // Attach a rejection handler for debounced, unawaited saves as well.
+  saves.catch(() => {});
+  return saves;
+}
+function changed() {
+  state.updatedAt = new Date().toISOString();
+  revision++;
+  status('Сохраняю…');
+  clearTimeout(timer);
+  timer = setTimeout(() => {persist();}, 450);
+  refreshChrome();
+}
+function refreshChrome() {
+  $('#side-name').textContent = state.name;
+  $('#header-name').textContent = state.name;
+  $('#side-mode').textContent = root ? 'Godot · папка подключена' : 'Демонстрационный проект';
+  $('#task-count').textContent = state.tasks.filter(t => t.status !== 'done').length;
+  $('#footer-status').textContent = root ? 'GODOT WORKSPACE / LOCAL' : 'GODOT WORKSPACE / DEMO';
+  document.querySelectorAll('[data-tab]').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
+}
+function field(label, key, placeholder = '', multiline = false, rows = 3) {
+  const value = key.split('.').reduce((obj,k) => obj[k], state);
+  return `<label class="field"><span>${escapeHtml(label)}</span>${multiline ? `<textarea rows="${rows}" data-field="${key}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value)}</textarea>` : `<input data-field="${key}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">`}</label>`;
+}
+function pageTitle(eyebrow, title, subtitle, action = '') {return `<div class="page-title"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p class="subtitle">${subtitle}</p></div>${action}</div>`;}
+function demoBanner() {return root ? '' : '<div class="demo-banner"><span>◈</span><span><strong>Это пример, а не ваша игра.</strong> Всё можно попробовать. Файлы игры появятся здесь после подключения.</span><button class="text-button" data-action="open">Выбрать папку →</button></div>';}
+function overview() {
+  const active = state.tasks.find(t => t.id === state.activeTaskId && t.status !== 'done');
+  return `${pageTitle('ПАМЯТЬ ПРОЕКТА','У каждой игры — своя опора.','Замысел, стиль и следующая задача. В одном месте.', '<span class="badge">◈ GODOT</span>')}${demoBanner()}
+  <section class="hero"><div class="hero-content"><div class="eyebrow">СЕЙЧАС В ФОКУСЕ</div><h2>${escapeHtml(state.goal || 'С чего начнём вашу игру?')}</h2><p>${active ? escapeHtml(active.title) + ' · задача выбрана для передачи помощнику.' : 'Опишите ближайшую цель и выберите одну задачу для помощника.'}</p><div class="hero-meta"><button class="button small" data-action="goto-context">Подготовить контекст <span>→</span></button><button class="text-button" data-action="goto-tasks">К задачам →</button></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"></div><span>KEEP THE VISION IN ORBIT</span></div></section>
+  <div class="overview-stats"><div class="stat"><span class="stat-icon">◐</span><div><strong>${state.brand.status === 'approved' ? 'Стиль утверждён' : 'Стиль в разработке'}</strong><small>${state.references.filter(r=>r.status === 'approved').length} утверждённых эталонов</small></div></div><div class="stat"><span class="stat-icon">☷</span><div><strong>${state.tasks.filter(t=>t.status!=='done').length} задач в работе и очереди</strong><small>${active ? 'Одна выбрана для помощника' : 'Выберите следующую'}</small></div></div><div class="stat"><span class="stat-icon">⌘</span><div><strong>${syncedRevision === revision ? 'Контекст синхронизирован' : 'Контекст ждёт передачи'}</strong><small>Общая памятка для двух агентов</small></div></div></div>
+  <div class="grid-two"><section class="card"><div class="card-header"><h2><span class="index">01 /</span>Паспорт игры</h2><span class="badge muted">ЗАМЫСЕЛ</span></div>${field('Название игры','name','Как называется проект?')}${field('Жанр и формат','genre','Например: roguelike, 2D, PC')}${field('О чём игра','pitch','Что делает игрок и ради чего?',true)}${field('Что должен чувствовать игрок','experience','Какое ощущение объединяет механику и графику?',true)}${field('Ближайшая цель','goal','Один конкретный результат',true)}</section>
+  <div><section class="card"><div class="card-header"><h2><span class="index">02 /</span>То, что держит игру вместе</h2></div>${field('Основы игры','pillars','Три главных принципа. По одному на строку.',true,4)}<div class="hint">Это опора для решений помощника: <strong>какой результат подходит именно этой игре.</strong></div></section><section class="card section-gap"><div class="card-header"><h2><span class="index">03 /</span>Чтобы не повторять снова</h2><span class="badge orange">ВАЖНО</span></div>${field('Постоянные замечания','rules','Например: не менять размеры кнопок; использовать существующие иконки.',true,5)}<p class="small">Раздражающую мелочь достаточно записать здесь один раз, затем передать обновлённую памятку агенту.</p></section></div></div>`;
+}
+function brand() {
+  return `${pageTitle('ВИЗУАЛЬНЫЙ ЯЗЫК','Один мир. Один стиль.','Не просто «сделай красиво», а конкретные решения и эталоны.',`<label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Брендбук: черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Брендбук: утверждён</option></select></label>`)}${demoBanner()}
+  <div class="grid-two"><section class="card"><div class="card-header"><h2>Направление и границы</h2><span class="badge muted">ХАРАКТЕР</span></div>${field('Как выглядит мир игры','brand.direction','Формы, материалы, настроение, плотность деталей…',true,5)}${field('Чего избегаем','brand.avoid','Что точно не подходит этой игре?',true,4)}</section><section class="card"><div class="card-header"><h2>Визуальные константы</h2></div>${field('Палитра и назначение цветов','brand.palette','#HEX — где и для чего использовать',true,5)}${field('Шрифты и размеры','brand.fonts','Название шрифта, путь к файлу, размеры заголовков и текста',true,4)}</section></div>
+  <section class="card section-gap"><div class="card-header"><div><h2>Покажите, как должно быть</h2><p class="small">Утверждённый экран полезнее десятка слов про атмосферу.</p></div><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length ? `<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>` : '<div class="empty"><strong>Здесь будет визуальная точка отсчёта</strong>Добавьте меню, кнопку или набор иконок, которые уже нравятся.<br>Образец станет эталоном только после вашего утверждения.</div>'}<p class="small-note">PNG, JPG, WebP · до 20 МБ на изображение. Копии сохраняются в папке игры, чтобы агент мог их открыть. Автоматической оценки сходства пока нет.</p></section>`;
+}
+function taskCard(task) {
+  const selected = state.activeTaskId === task.id && task.status !== 'done';
+  return `<article class="task ${selected?'selected':''}"><div class="task-meta"><span>${selected?'↳ В КОНТЕКСТЕ ПОМОЩНИКА':'ЗАДАЧА'}</span><button class="text-button" data-action="edit-task" data-id="${escapeHtml(task.id)}" aria-label="Изменить задачу ${escapeHtml(task.title)}">⋯</button></div><h3>${escapeHtml(task.title)}</h3><p>${escapeHtml(task.acceptance || 'Добавьте критерии готовности.')}</p><select data-task-status="${escapeHtml(task.id)}" aria-label="Статус задачи ${escapeHtml(task.title)}">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([v,t])=>`<option value="${v}" ${task.status===v?'selected':''}>${t}</option>`).join('')}</select><div class="task-footer"><span class="badge ${selected?'':'muted'}">${selected?'ТЕКУЩАЯ':'GODOT'}</span>${task.status!=='done'?`<button class="text-button" data-action="select-task" data-id="${escapeHtml(task.id)}">${selected?'Открыть контекст →':'Выбрать →'}</button>`:'<span class="small-note">Завершена ✓</span>'}</div></article>`;
+}
+function tasks() {
+  return `${pageTitle('ОТ ЗАМЫСЛА К РЕЗУЛЬТАТУ','Следующий понятный шаг.','Одна выбранная задача — меньше решений на усмотрение помощника.','<button class="button" data-action="new-task">+ Новая задача</button>')}${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span class="column-dot ${key}"></span>${label}<span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Здесь пока нет задач.</div>'}</section>`).join('')}</div><p class="small-note section-gap">Статусы меняете вы. Приложение не наблюдает за терминалами и не считает задачу выполненной по словам агента.</p>`;
+}
+function context() {
+  const synced = syncedRevision === revision;
+  return `${pageTitle('ОБЩАЯ ТОЧКА ОТСЧЁТА','Пусть помощники видят целое.','Тот же замысел и те же ограничения — в Claude и Codex.',`<span class="badge ${synced?'':'orange'}">${synced?'✓ ПЕРЕДАНО В ФАЙЛЫ':'ЕСТЬ ЧТО ПЕРЕДАТЬ'}</span>`)}${demoBanner()}<div class="context-layout"><section class="card"><h2>Из приложения — в работу</h2><div class="context-steps"><div class="context-step"><span class="step-number">1</span><div><strong>Выберите задачу</strong>Добавьте проверяемые критерии готовности.</div></div><div class="context-step"><span class="step-number">2</span><div><strong>Обновите памятку</strong>Проверьте файлы перед записью в проект.</div></div><div class="context-step"><span class="step-number">3</span><div><strong>Передайте запрос агенту</strong>Вставьте его в Claude или Codex. Попросите перечитать контекст даже в старом чате.</div></div></div><button class="button full" data-action="preview-sync">Обновить файлы проекта →</button><button class="button secondary full section-gap" data-action="copy-brief">Скопировать запрос</button><hr class="mini-divider"><span class="file-tag">AGENTS.md</span><span class="file-tag">CLAUDE.md</span><span class="file-tag">.opora/CONTEXT.md</span><p class="small-note">Существующие инструкции сохраняются. Перед обновлением создаётся резервная копия.</p><p class="context-note">Файлы помогают удерживать контекст, но не гарантируют, что агент выполнит все правила. Результат нужно просмотреть в Godot.</p></section><section class="card"><div class="card-header"><h2>Что получит помощник</h2><span class="badge muted">ПРЕДПРОСМОТР</span></div><pre id="context-preview" class="code-preview"></pre></section></div>`;
+}
+function render() {
+  refreshChrome();
+  $('#main').innerHTML = ({overview,brand,tasks,context})[tab]();
+  if (tab === 'context') updatePreview();
+  if (tab === 'brand' && root) loadImages();
+}
+async function updatePreview() {
+  const node = $('#context-preview');
+  if (!node) return;
+  try {node.textContent = OporaContext.contextMarkdown(state);} catch(error) {node.textContent = error.message;}
+}
+async function loadImages() {
+  for (const ref of state.references) {
+    const img = document.querySelector(`[data-reference="${CSS.escape(ref.id)}"]`);
+    if (!img) continue;
+    try {img.src = await bridge.referenceImage(ref.file);} catch {img.alt = `Не удалось загрузить: ${ref.name}`;}
+  }
+}
+function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
+function closeModal() {$('#modal').close(); pendingSync = null;}
+function editTask(taskId) {
+  const task = state.tasks.find(t=>t.id===taskId);
+  showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><p>Опишите результат так, чтобы помощнику не пришлось додумывать за вас.</p><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
+}
+async function openProject() {
+  if (!bridge) {showModal('<h2 id="modal-title">Подключение — в приложении Windows</h2><p>Сейчас открыт браузерный демонстрационный режим. Он позволяет проверить интерфейс, но не читает папки компьютера.</p><p>Запустите Opora.exe и выберите папку, в которой лежит project.godot. Игра останется на месте; переносить её не нужно.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>'); return;}
+  await persist();
+  const project = await bridge.openProject();
+  if (!project) return;
+  root = project.root;
+  state = project.state || blankState(project.info.name);
+  revision = 0; syncedRevision = -1; failedSave = false;
+  tab = 'overview';
+  await persist();
+  render();
+  toast('Проект подключён. Инструкции агентов пока не изменены.');
+}
+async function previewSync() {
+  if (!root) {toast('Подключите папку игры в приложении Windows. В демо можно скопировать запрос.', true); return;}
+  await persist();
+  const snapshot = structuredClone(state);
+  const files = await bridge.preview(snapshot);
+  pendingSync = {state:snapshot, revision};
+  showModal(`<h2 id="modal-title">Передать общий контекст</h2><p>Будут обновлены только перечисленные файлы. Код и сцены игры не меняются. В AGENTS.md и CLAUDE.md заменяется только блок Opora; остальное сохраняется.</p>${files.map(f=>`<details><summary>${escapeHtml(f.file)} ${f.existing?'· существующие инструкции сохранятся':''}</summary><pre class="code-preview">${escapeHtml(f.content)}</pre></details>`).join('')}<p>Предыдущие версии сохранятся в <span class="file-tag">.opora/backups/</span>. Данные и эталоны Opora лежат рядом с игрой: учитывайте их при публикации репозитория.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Отмена</button><button class="button" data-action="confirm-sync">Обновить эти файлы</button></div>`);
+}
+
+document.addEventListener('input', event => {
+  const key = event.target.dataset.field;
+  if (!key) return;
+  const parts = key.split('.');
+  if (parts.length === 2) state[parts[0]][parts[1]] = event.target.value;
+  else state[key] = event.target.value;
+  changed();
+});
+document.addEventListener('change', event => {
+  const taskId = event.target.dataset.taskStatus;
+  if (taskId) {
+    const task = state.tasks.find(t=>t.id === taskId);
+    task.status = event.target.value;
+    if (task.status === 'done' && state.activeTaskId === taskId) state.activeTaskId = null;
+    changed(); render();
+  }
+  const refId = event.target.dataset.refStatus;
+  if (refId) {state.references.find(r=>r.id===refId).status = event.target.value; changed();}
+});
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'task-form') return;
+  event.preventDefault();
+  const form = event.target;
+  const data = new FormData(form);
+  const title = data.get('title').trim();
+  const acceptance = data.get('acceptance').trim();
+  if (!title || !acceptance) {toast('Добавьте название и критерии готовности.', true); return;}
+  const existing = state.tasks.find(t=>t.id === form.dataset.id);
+  if (existing) Object.assign(existing,{title,acceptance});
+  else state.tasks.push({id:id(),title,acceptance,status:'backlog'});
+  changed(); closeModal(); render();
+});
+document.addEventListener('click', async event => {
+  const nav = event.target.closest('[data-tab]');
+  if (nav) {tab = nav.dataset.tab; render(); return;}
+  const button = event.target.closest('[data-action]');
+  if (!button || button.disabled) return;
+  const action = button.dataset.action;
+  try {
+    if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
+    if (action === 'goto-context') {tab='context'; render();}
+    if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'new-task') editTask();
+    if (action === 'edit-task') editTask(button.dataset.id);
+    if (action === 'delete-task') {
+      state.tasks = state.tasks.filter(t=>t.id !== button.dataset.id);
+      if (state.activeTaskId === button.dataset.id) state.activeTaskId = null;
+      changed(); closeModal(); render();
+    }
+    if (action === 'select-task') {
+      if (state.activeTaskId === button.dataset.id) {tab='context'; render(); return;}
+      state.activeTaskId = button.dataset.id;
+      state.tasks.find(t=>t.id===button.dataset.id).status = 'active';
+      changed(); render(); toast('Задача выбрана. Обновите контекст перед передачей агенту.');
+    }
+    if (action === 'close-modal') closeModal();
+    if (action === 'discard-close') bridge?.readyToClose();
+    if (action === 'copy-brief') {
+      const text = OporaContext.taskBrief(state);
+      if (bridge) await bridge.copy(text); else await navigator.clipboard.writeText(text);
+      toast('Запрос скопирован. Вставьте его в Claude или Codex.');
+    }
+    if (action === 'preview-sync') await previewSync();
+    if (action === 'confirm-sync' && pendingSync) {
+      button.disabled = true;
+      try {
+        const snapshot = pendingSync;
+        const result = await bridge.sync(snapshot.state);
+        syncedRevision = snapshot.revision;
+        closeModal(); render(); toast(`Контекст записан. Резервная копия: ${result.backup}`);
+      } finally {button.disabled = false;}
+    }
+    if (action === 'add-reference') {
+      if (!root) {toast('Сначала подключите папку игры в приложении Windows.',true); return;}
+      const refs = await bridge.addReferences();
+      state.references.push(...refs);
+      if (refs.length) {changed(); render();}
+    }
+    if (action === 'remove-reference') {
+      state.references = state.references.filter(r=>r.id !== button.dataset.id);
+      changed(); render(); toast('Образец убран из контекста. Файл оставлен в папке проекта.');
+    }
+    if (action === 'help') showModal('<h2 id="modal-title">Общая память вашей игры</h2><ol class="help-list"><li>Подключите корень игры Godot. Opora добавит свою папку .opora; код и сцены не меняются.</li><li>Опишите игру и постоянные замечания. Добавьте брендбук и изображения, когда будете готовы. Неутверждённое остаётся черновиком.</li><li>Выберите задачу с критериями готовности. В разделе «Контекст для ИИ» посмотрите и обновите файлы проекта.</li><li>Скопируйте запрос в Claude Code или Codex, работающий из корня этой игры. В существующем чате тоже попросите перечитать памятку.</li><li>Проверьте результат в Godot. Новое замечание внесите в Opora и снова обновите контекст. Агент не получает обновления автоматически.</li></ol><p>Opora работает без API, не запускает агентов и не проверяет изображения на соответствие стилю. У каждого проекта своя память. Используйте существующую папку игры: отдельный Git worktree для этого не нужен.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');
+  } catch(error) {fail(error);}
+});
+window.addEventListener('beforeunload', () => {if (!root) persist();});
+$('#modal').addEventListener('cancel', () => {pendingSync = null;});
+async function initialize() {
+  if (!bridge?.restoreProject) return;
+  try {
+    const project = await bridge.restoreProject();
+    if (project?.error) {toast(project.error, true); return;}
+    if (!project) return;
+    root = project.root;
+    state = project.state || blankState(project.info.name);
+    render(); status('Проект открыт · локальные данные');
+  } catch(error) {fail(error);}
+}
+bridge?.onCloseRequested?.(async () => {
+  if (closing) return;
+  closing = true;
+  try {await persist(); await saves; bridge.readyToClose();} catch {
+    closing = false;
+    showModal('<h2 id="modal-title">Изменения не сохранены</h2><p>Проверьте название игры и доступ к её папке. Можно вернуться к работе или закрыть приложение, потеряв последние несохранённые изменения.</p><div class="modal-actions"><button class="button secondary" data-action="discard-close">Закрыть без сохранения</button><button class="button" data-action="close-modal">Продолжить работу</button></div>');
+  }
+});
+render();
+initialize();
+</script></body>
+</html>

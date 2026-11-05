@@ -1,0 +1,256 @@
+/* Local renderer. Filesystem access is limited to the desktop bridge. */
+const $ = selector => document.querySelector(selector);
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const id = () => crypto.randomUUID();
+const demoState = () => ({
+  version:1, name:'Тихая орбита', genre:'Incremental idle · космическая станция',
+  pitch:'Маленькая станция на краю обитаемого космоса. Игрок восстанавливает её, запускает производство и постепенно открывает новые орбиты.',
+  experience:'Спокойное любопытство. Каждый небольшой шаг делает станцию чуть более живой.',
+  goal:'Собрать главное меню, которое ощущается частью мира игры.',
+  pillars:'Медленный, ощутимый прогресс.\nУютная научная фантастика без военной эстетики.\nЧистый интерфейс: один главный акцент на экране.',
+  rules:'Не менять стиль соседних экранов ради одной задачи.\nНе добавлять свечение и градиенты без обсуждения.\nИспользовать существующие компоненты интерфейса.',
+  brand:{status:'draft',direction:'Тихая ретрофутуристичная обсерватория. Матовые поверхности, тонкие линии, немного воздуха. Скругления сдержанные. Это направление для обсуждения, ещё не утверждённый брендбук.',palette:'#151E21 — фон\n#2B423F — панели\n#B7CB9B — основной акцент\n#E7DFCA — текст\n#DBA775 — редкий тёплый акцент',fonts:'Пока не выбраны. Не подменять системными шрифтами молча.',avoid:'Кислотный неон, военные HUD, глянцевые 3D-кнопки. Не вводить новые акцентные цвета.'},
+  tasks:[{id:'menu',title:'Собрать главное меню',acceptance:'Кнопки: продолжить, новая игра, настройки.\nОдин основной акцент.\nСостояния наведения и фокуса.\nПроверить в Godot при 1280×720 и 1920×1080.',status:'active'},{id:'icons',title:'Определить стиль иконок ресурсов',acceptance:'Подготовить три образца в одном стиле: энергия, металл, исследования. Не считать образцы утверждёнными автоматически.',status:'backlog'},{id:'brief',title:'Сформулировать ощущение игры',acceptance:'Короткое описание без противоречий с основной механикой.',status:'done'}],
+  activeTaskId:'menu', references:[], updatedAt:new Date().toISOString()
+});
+const blankState = name => ({version:1,name,genre:'',pitch:'',experience:'',goal:'',pillars:'',rules:'',brand:{status:'draft',direction:'',palette:'',fonts:'',avoid:''},tasks:[],activeTaskId:null,references:[],updatedAt:new Date().toISOString()});
+let state;
+try {state = JSON.parse(localStorage.getItem('opora-demo') || 'null'); if (state) OporaContext.validateState(state);} catch {state = null;}
+state ||= demoState();
+let root = null;
+let tab = 'overview';
+let timer = null;
+let toastTimer;
+let revision = 0;
+let syncedRevision = -1;
+let saves = Promise.resolve();
+let failedSave = false;
+let pendingSync = null;
+let closing = false;
+const bridge = window.opora;
+
+function toast(message, error = false) {
+  clearTimeout(toastTimer);
+  $('#toast').textContent = message;
+  $('#toast').className = 'toast visible' + (error ? ' error' : '');
+  toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), error ? 11000 : 5500);
+}
+function fail(error) {console.error(error); toast(error.message || String(error), true);}
+function status(text) {$('#save-status').textContent = text;}
+function persist() {
+  clearTimeout(timer);
+  timer = null;
+  const snapshot = structuredClone(state);
+  const saveRevision = revision;
+  if (!root) {
+    try {localStorage.setItem('opora-demo', JSON.stringify(snapshot)); failedSave = false; status('Демо · сохранено в браузере');} catch {failedSave = true; toast('Не удалось сохранить демо в браузере.', true);}
+    return Promise.resolve();
+  }
+  saves = saves.catch(() => {}).then(() => bridge.save(snapshot)).then(() => {
+    failedSave = false;
+    if (saveRevision === revision) status('Сохранено в проекте');
+  }).catch(error => {failedSave = true; status('Не сохранено · ошибка'); fail(error); throw error;});
+  // Attach a rejection handler for debounced, unawaited saves as well.
+  saves.catch(() => {});
+  return saves;
+}
+function changed() {
+  state.updatedAt = new Date().toISOString();
+  revision++;
+  status('Сохраняю…');
+  clearTimeout(timer);
+  timer = setTimeout(() => {persist();}, 450);
+  refreshChrome();
+}
+function refreshChrome() {
+  $('#side-name').textContent = state.name;
+  $('#header-name').textContent = state.name;
+  $('#side-mode').textContent = root ? 'Godot · папка подключена' : 'Демонстрационный проект';
+  $('#task-count').textContent = state.tasks.filter(t => t.status !== 'done').length;
+  $('#footer-status').textContent = root ? 'GODOT WORKSPACE / LOCAL' : 'GODOT WORKSPACE / DEMO';
+  document.querySelectorAll('[data-tab]').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
+}
+function field(label, key, placeholder = '', multiline = false, rows = 3) {
+  const value = key.split('.').reduce((obj,k) => obj[k], state);
+  return `<label class="field"><span>${escapeHtml(label)}</span>${multiline ? `<textarea rows="${rows}" data-field="${key}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value)}</textarea>` : `<input data-field="${key}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">`}</label>`;
+}
+function pageTitle(eyebrow, title, subtitle, action = '') {return `<div class="page-title"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p class="subtitle">${subtitle}</p></div>${action}</div>`;}
+function demoBanner() {return root ? '' : '<div class="demo-banner"><span>◈</span><span><strong>Это пример, а не ваша игра.</strong> Всё можно попробовать. Файлы игры появятся здесь после подключения.</span><button class="text-button" data-action="open">Выбрать папку →</button></div>';}
+function overview() {
+  const active = state.tasks.find(t => t.id === state.activeTaskId && t.status !== 'done');
+  return `${pageTitle('ПАМЯТЬ ПРОЕКТА','У каждой игры — своя опора.','Замысел, стиль и следующая задача. В одном месте.', '<span class="badge">◈ GODOT</span>')}${demoBanner()}
+  <section class="hero"><div class="hero-content"><div class="eyebrow">СЕЙЧАС В ФОКУСЕ</div><h2>${escapeHtml(state.goal || 'С чего начнём вашу игру?')}</h2><p>${active ? escapeHtml(active.title) + ' · задача выбрана для передачи помощнику.' : 'Опишите ближайшую цель и выберите одну задачу для помощника.'}</p><div class="hero-meta"><button class="button small" data-action="goto-context">Подготовить контекст <span>→</span></button><button class="text-button" data-action="goto-tasks">К задачам →</button></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"></div><span>KEEP THE VISION IN ORBIT</span></div></section>
+  <div class="overview-stats"><div class="stat"><span class="stat-icon">◐</span><div><strong>${state.brand.status === 'approved' ? 'Стиль утверждён' : 'Стиль в разработке'}</strong><small>${state.references.filter(r=>r.status === 'approved').length} утверждённых эталонов</small></div></div><div class="stat"><span class="stat-icon">☷</span><div><strong>${state.tasks.filter(t=>t.status!=='done').length} задач в работе и очереди</strong><small>${active ? 'Одна выбрана для помощника' : 'Выберите следующую'}</small></div></div><div class="stat"><span class="stat-icon">⌘</span><div><strong>${syncedRevision === revision ? 'Контекст синхронизирован' : 'Контекст ждёт передачи'}</strong><small>Общая памятка для двух агентов</small></div></div></div>
+  <div class="grid-two"><section class="card"><div class="card-header"><h2><span class="index">01 /</span>Паспорт игры</h2><span class="badge muted">ЗАМЫСЕЛ</span></div>${field('Название игры','name','Как называется проект?')}${field('Жанр и формат','genre','Например: roguelike, 2D, PC')}${field('О чём игра','pitch','Что делает игрок и ради чего?',true)}${field('Что должен чувствовать игрок','experience','Какое ощущение объединяет механику и графику?',true)}${field('Ближайшая цель','goal','Один конкретный результат',true)}</section>
+  <div><section class="card"><div class="card-header"><h2><span class="index">02 /</span>То, что держит игру вместе</h2></div>${field('Основы игры','pillars','Три главных принципа. По одному на строку.',true,4)}<div class="hint">Это опора для решений помощника: <strong>какой результат подходит именно этой игре.</strong></div></section><section class="card section-gap"><div class="card-header"><h2><span class="index">03 /</span>Чтобы не повторять снова</h2><span class="badge orange">ВАЖНО</span></div>${field('Постоянные замечания','rules','Например: не менять размеры кнопок; использовать существующие иконки.',true,5)}<p class="small">Раздражающую мелочь достаточно записать здесь один раз, затем передать обновлённую памятку агенту.</p></section></div></div>`;
+}
+function brand() {
+  return `${pageTitle('ВИЗУАЛЬНЫЙ ЯЗЫК','Один мир. Один стиль.','Не просто «сделай красиво», а конкретные решения и эталоны.',`<label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Брендбук: черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Брендбук: утверждён</option></select></label>`)}${demoBanner()}
+  <div class="grid-two"><section class="card"><div class="card-header"><h2>Направление и границы</h2><span class="badge muted">ХАРАКТЕР</span></div>${field('Как выглядит мир игры','brand.direction','Формы, материалы, настроение, плотность деталей…',true,5)}${field('Чего избегаем','brand.avoid','Что точно не подходит этой игре?',true,4)}</section><section class="card"><div class="card-header"><h2>Визуальные константы</h2></div>${field('Палитра и назначение цветов','brand.palette','#HEX — где и для чего использовать',true,5)}${field('Шрифты и размеры','brand.fonts','Название шрифта, путь к файлу, размеры заголовков и текста',true,4)}</section></div>
+  <section class="card section-gap"><div class="card-header"><div><h2>Покажите, как должно быть</h2><p class="small">Утверждённый экран полезнее десятка слов про атмосферу.</p></div><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length ? `<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>` : '<div class="empty"><strong>Здесь будет визуальная точка отсчёта</strong>Добавьте меню, кнопку или набор иконок, которые уже нравятся.<br>Образец станет эталоном только после вашего утверждения.</div>'}<p class="small-note">PNG, JPG, WebP · до 20 МБ на изображение. Копии сохраняются в папке игры, чтобы агент мог их открыть. Автоматической оценки сходства пока нет.</p></section>`;
+}
+function taskCard(task) {
+  const selected = state.activeTaskId === task.id && task.status !== 'done';
+  return `<article class="task ${selected?'selected':''}"><div class="task-meta"><span>${selected?'↳ В КОНТЕКСТЕ ПОМОЩНИКА':'ЗАДАЧА'}</span><button class="text-button" data-action="edit-task" data-id="${escapeHtml(task.id)}" aria-label="Изменить задачу ${escapeHtml(task.title)}">⋯</button></div><h3>${escapeHtml(task.title)}</h3><p>${escapeHtml(task.acceptance || 'Добавьте критерии готовности.')}</p><select data-task-status="${escapeHtml(task.id)}" aria-label="Статус задачи ${escapeHtml(task.title)}">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([v,t])=>`<option value="${v}" ${task.status===v?'selected':''}>${t}</option>`).join('')}</select><div class="task-footer"><span class="badge ${selected?'':'muted'}">${selected?'ТЕКУЩАЯ':'GODOT'}</span>${task.status!=='done'?`<button class="text-button" data-action="select-task" data-id="${escapeHtml(task.id)}">${selected?'Открыть контекст →':'Выбрать →'}</button>`:'<span class="small-note">Завершена ✓</span>'}</div></article>`;
+}
+function tasks() {
+  return `${pageTitle('ОТ ЗАМЫСЛА К РЕЗУЛЬТАТУ','Следующий понятный шаг.','Одна выбранная задача — меньше решений на усмотрение помощника.','<button class="button" data-action="new-task">+ Новая задача</button>')}${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span class="column-dot ${key}"></span>${label}<span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Здесь пока нет задач.</div>'}</section>`).join('')}</div><p class="small-note section-gap">Статусы меняете вы. Приложение не наблюдает за терминалами и не считает задачу выполненной по словам агента.</p>`;
+}
+function context() {
+  const synced = syncedRevision === revision;
+  return `${pageTitle('ОБЩАЯ ТОЧКА ОТСЧЁТА','Пусть помощники видят целое.','Тот же замысел и те же ограничения — в Claude и Codex.',`<span class="badge ${synced?'':'orange'}">${synced?'✓ ПЕРЕДАНО В ФАЙЛЫ':'ЕСТЬ ЧТО ПЕРЕДАТЬ'}</span>`)}${demoBanner()}<div class="context-layout"><section class="card"><h2>Из приложения — в работу</h2><div class="context-steps"><div class="context-step"><span class="step-number">1</span><div><strong>Выберите задачу</strong>Добавьте проверяемые критерии готовности.</div></div><div class="context-step"><span class="step-number">2</span><div><strong>Обновите памятку</strong>Проверьте файлы перед записью в проект.</div></div><div class="context-step"><span class="step-number">3</span><div><strong>Передайте запрос агенту</strong>Вставьте его в Claude или Codex. Попросите перечитать контекст даже в старом чате.</div></div></div><button class="button full" data-action="preview-sync">Обновить файлы проекта →</button><button class="button secondary full section-gap" data-action="copy-brief">Скопировать запрос</button><hr class="mini-divider"><span class="file-tag">AGENTS.md</span><span class="file-tag">CLAUDE.md</span><span class="file-tag">.opora/CONTEXT.md</span><p class="small-note">Существующие инструкции сохраняются. Перед обновлением создаётся резервная копия.</p><p class="context-note">Файлы помогают удерживать контекст, но не гарантируют, что агент выполнит все правила. Результат нужно просмотреть в Godot.</p></section><section class="card"><div class="card-header"><h2>Что получит помощник</h2><span class="badge muted">ПРЕДПРОСМОТР</span></div><pre id="context-preview" class="code-preview"></pre></section></div>`;
+}
+function render() {
+  refreshChrome();
+  $('#main').innerHTML = ({overview,brand,tasks,context})[tab]();
+  if (tab === 'context') updatePreview();
+  if (tab === 'brand' && root) loadImages();
+}
+async function updatePreview() {
+  const node = $('#context-preview');
+  if (!node) return;
+  try {node.textContent = OporaContext.contextMarkdown(state);} catch(error) {node.textContent = error.message;}
+}
+async function loadImages() {
+  for (const ref of state.references) {
+    const img = document.querySelector(`[data-reference="${CSS.escape(ref.id)}"]`);
+    if (!img) continue;
+    try {img.src = await bridge.referenceImage(ref.file);} catch {img.alt = `Не удалось загрузить: ${ref.name}`;}
+  }
+}
+function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
+function closeModal() {$('#modal').close(); pendingSync = null;}
+function editTask(taskId) {
+  const task = state.tasks.find(t=>t.id===taskId);
+  showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><p>Опишите результат так, чтобы помощнику не пришлось додумывать за вас.</p><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
+}
+async function openProject() {
+  if (!bridge) {showModal('<h2 id="modal-title">Подключение — в приложении Windows</h2><p>Сейчас открыт браузерный демонстрационный режим. Он позволяет проверить интерфейс, но не читает папки компьютера.</p><p>Запустите Opora.exe и выберите папку, в которой лежит project.godot. Игра останется на месте; переносить её не нужно.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>'); return;}
+  await persist();
+  const project = await bridge.openProject();
+  if (!project) return;
+  root = project.root;
+  state = project.state || blankState(project.info.name);
+  revision = 0; syncedRevision = -1; failedSave = false;
+  tab = 'overview';
+  await persist();
+  render();
+  toast('Проект подключён. Инструкции агентов пока не изменены.');
+}
+async function previewSync() {
+  if (!root) {toast('Подключите папку игры в приложении Windows. В демо можно скопировать запрос.', true); return;}
+  await persist();
+  const snapshot = structuredClone(state);
+  const files = await bridge.preview(snapshot);
+  pendingSync = {state:snapshot, revision};
+  showModal(`<h2 id="modal-title">Передать общий контекст</h2><p>Будут обновлены только перечисленные файлы. Код и сцены игры не меняются. В AGENTS.md и CLAUDE.md заменяется только блок Opora; остальное сохраняется.</p>${files.map(f=>`<details><summary>${escapeHtml(f.file)} ${f.existing?'· существующие инструкции сохранятся':''}</summary><pre class="code-preview">${escapeHtml(f.content)}</pre></details>`).join('')}<p>Предыдущие версии сохранятся в <span class="file-tag">.opora/backups/</span>. Данные и эталоны Opora лежат рядом с игрой: учитывайте их при публикации репозитория.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Отмена</button><button class="button" data-action="confirm-sync">Обновить эти файлы</button></div>`);
+}
+
+document.addEventListener('input', event => {
+  const key = event.target.dataset.field;
+  if (!key) return;
+  const parts = key.split('.');
+  if (parts.length === 2) state[parts[0]][parts[1]] = event.target.value;
+  else state[key] = event.target.value;
+  changed();
+});
+document.addEventListener('change', event => {
+  const taskId = event.target.dataset.taskStatus;
+  if (taskId) {
+    const task = state.tasks.find(t=>t.id === taskId);
+    task.status = event.target.value;
+    if (task.status === 'done' && state.activeTaskId === taskId) state.activeTaskId = null;
+    changed(); render();
+  }
+  const refId = event.target.dataset.refStatus;
+  if (refId) {state.references.find(r=>r.id===refId).status = event.target.value; changed();}
+});
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'task-form') return;
+  event.preventDefault();
+  const form = event.target;
+  const data = new FormData(form);
+  const title = data.get('title').trim();
+  const acceptance = data.get('acceptance').trim();
+  if (!title || !acceptance) {toast('Добавьте название и критерии готовности.', true); return;}
+  const existing = state.tasks.find(t=>t.id === form.dataset.id);
+  if (existing) Object.assign(existing,{title,acceptance});
+  else state.tasks.push({id:id(),title,acceptance,status:'backlog'});
+  changed(); closeModal(); render();
+});
+document.addEventListener('click', async event => {
+  const nav = event.target.closest('[data-tab]');
+  if (nav) {tab = nav.dataset.tab; render(); return;}
+  const button = event.target.closest('[data-action]');
+  if (!button || button.disabled) return;
+  const action = button.dataset.action;
+  try {
+    if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
+    if (action === 'goto-context') {tab='context'; render();}
+    if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'new-task') editTask();
+    if (action === 'edit-task') editTask(button.dataset.id);
+    if (action === 'delete-task') {
+      state.tasks = state.tasks.filter(t=>t.id !== button.dataset.id);
+      if (state.activeTaskId === button.dataset.id) state.activeTaskId = null;
+      changed(); closeModal(); render();
+    }
+    if (action === 'select-task') {
+      if (state.activeTaskId === button.dataset.id) {tab='context'; render(); return;}
+      state.activeTaskId = button.dataset.id;
+      state.tasks.find(t=>t.id===button.dataset.id).status = 'active';
+      changed(); render(); toast('Задача выбрана. Обновите контекст перед передачей агенту.');
+    }
+    if (action === 'close-modal') closeModal();
+    if (action === 'discard-close') bridge?.readyToClose();
+    if (action === 'copy-brief') {
+      const text = OporaContext.taskBrief(state);
+      if (bridge) await bridge.copy(text); else await navigator.clipboard.writeText(text);
+      toast('Запрос скопирован. Вставьте его в Claude или Codex.');
+    }
+    if (action === 'preview-sync') await previewSync();
+    if (action === 'confirm-sync' && pendingSync) {
+      button.disabled = true;
+      try {
+        const snapshot = pendingSync;
+        const result = await bridge.sync(snapshot.state);
+        syncedRevision = snapshot.revision;
+        closeModal(); render(); toast(`Контекст записан. Резервная копия: ${result.backup}`);
+      } finally {button.disabled = false;}
+    }
+    if (action === 'add-reference') {
+      if (!root) {toast('Сначала подключите папку игры в приложении Windows.',true); return;}
+      const refs = await bridge.addReferences();
+      state.references.push(...refs);
+      if (refs.length) {changed(); render();}
+    }
+    if (action === 'remove-reference') {
+      state.references = state.references.filter(r=>r.id !== button.dataset.id);
+      changed(); render(); toast('Образец убран из контекста. Файл оставлен в папке проекта.');
+    }
+    if (action === 'help') showModal('<h2 id="modal-title">Общая память вашей игры</h2><ol class="help-list"><li>Подключите корень игры Godot. Opora добавит свою папку .opora; код и сцены не меняются.</li><li>Опишите игру и постоянные замечания. Добавьте брендбук и изображения, когда будете готовы. Неутверждённое остаётся черновиком.</li><li>Выберите задачу с критериями готовности. В разделе «Контекст для ИИ» посмотрите и обновите файлы проекта.</li><li>Скопируйте запрос в Claude Code или Codex, работающий из корня этой игры. В существующем чате тоже попросите перечитать памятку.</li><li>Проверьте результат в Godot. Новое замечание внесите в Opora и снова обновите контекст. Агент не получает обновления автоматически.</li></ol><p>Opora работает без API, не запускает агентов и не проверяет изображения на соответствие стилю. У каждого проекта своя память. Используйте существующую папку игры: отдельный Git worktree для этого не нужен.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');
+  } catch(error) {fail(error);}
+});
+window.addEventListener('beforeunload', () => {if (!root) persist();});
+$('#modal').addEventListener('cancel', () => {pendingSync = null;});
+async function initialize() {
+  if (!bridge?.restoreProject) return;
+  try {
+    const project = await bridge.restoreProject();
+    if (project?.error) {toast(project.error, true); return;}
+    if (!project) return;
+    root = project.root;
+    state = project.state || blankState(project.info.name);
+    render(); status('Проект открыт · локальные данные');
+  } catch(error) {fail(error);}
+}
+bridge?.onCloseRequested?.(async () => {
+  if (closing) return;
+  closing = true;
+  try {await persist(); await saves; bridge.readyToClose();} catch {
+    closing = false;
+    showModal('<h2 id="modal-title">Изменения не сохранены</h2><p>Проверьте название игры и доступ к её папке. Можно вернуться к работе или закрыть приложение, потеряв последние несохранённые изменения.</p><div class="modal-actions"><button class="button secondary" data-action="discard-close">Закрыть без сохранения</button><button class="button" data-action="close-modal">Продолжить работу</button></div>');
+  }
+});
+render();
+initialize();
