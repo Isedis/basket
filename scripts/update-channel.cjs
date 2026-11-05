@@ -10,7 +10,7 @@ if(git(['status','--porcelain']))throw new Error('Commit the tested release befo
 const release=JSON.parse(fs.readFileSync(path.join(root,'distribution/windows/manifest.json'),'utf8'));
 const committed=JSON.parse(git(['show','HEAD:distribution/windows/manifest.json']));
 if(release.sha256!==committed.sha256 || release.version!==require('../package.json').version)throw new Error('Release manifest mismatch.');
-const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Разбор брендбука с конкретными проблемами и подсказками: палитра, контраст текстовых пар, шрифты и эталоны. Создание задачи из замечания и инструмент opora_review_brandbook для MCP-агента.'});
+const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Новый интерфейс по брендбуку Isidacorp: чёрный фон, светлый текст и JetBrains Mono. Текущая задача на рабочем столе, поля брендбука рядом с разбором, меньше пояснений и быстрые клавиши Ctrl+1…5, Ctrl+N, Ctrl+S.'});
 fs.mkdirSync(path.join(root,'updates'),{recursive:true});
 fs.writeFileSync(path.join(root,'updates/latest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(`Update channel prepared: ${manifest.version}, immutable commit ${manifest.commit}`);

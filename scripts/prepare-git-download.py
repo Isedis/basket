@@ -16,7 +16,7 @@ packaged = root / 'release/Opora-win32-x64'
 if not (packaged / 'Opora.exe').is_file():
     raise RuntimeError('Run npm run package:win first.')
 shutil.copyfile(root / 'OPORA.md', packaged / 'GUIDE.md')
-(packaged / 'START-HERE.txt').write_text('ОПОРА ' + version + '\n\nЗапустите Opora.exe из полностью распакованной папки.\nВыберите папку игры с project.godot: Опора подготовит черновик брендбука.\nУ существующего проекта нажмите «Визуальный стиль → Собрать брендбук из проекта».\nСледующие версии доступны через кнопку «Обновления» в верхней панели.\nПодробности: GUIDE.md.\n', encoding='utf-8-sig')
+(packaged / 'START-HERE.txt').write_text('ОПОРА ' + version + '\n\nЗапустите Opora.exe из полностью распакованной папки.\nВыберите папку игры с project.godot: Опора подготовит черновик брендбука.\nУ существующего проекта нажмите «Брендбук → Собрать из проекта».\nСледующие версии доступны через кнопку «Обновления» в верхней панели.\nПодробности: GUIDE.md.\n', encoding='utf-8-sig')
 source = root / f'release/Opora-{version}-windows-x64.zip'
 with zipfile.ZipFile(source,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for file in sorted(packaged.rglob('*')):
@@ -25,12 +25,16 @@ with zipfile.ZipFile(source) as archive:
     if archive.testzip() is not None: raise RuntimeError('ZIP checksum failure')
 html = (root / 'ui/index.html').read_text()
 css = (root / 'ui/style.css').read_text()
+for font in ['JetBrainsMono-Regular.ttf', 'JetBrainsMono-SemiBold.ttf']:
+    encoded = base64.b64encode((root / 'ui/fonts' / font).read_bytes()).decode()
+    css = css.replace("url('fonts/" + font + "')", "url('data:font/ttf;base64," + encoded + "')")
 context = (root / 'ui/context.js').read_text()
 review = (root / 'ui/brand-review.js').read_text()
 app = (root / 'ui/app.js').read_text()
 def csp_hash(text):
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'"
 html=html.replace("script-src 'self'", 'script-src ' + csp_hash(context) + ' ' + csp_hash(review) + ' ' + csp_hash(app)).replace("style-src 'self'", 'style-src ' + csp_hash(css))
+html=html.replace("font-src 'self'", "font-src 'self' data:")
 html=html.replace('<link rel="stylesheet" href="style.css">','<style>'+css+'</style>')
 html=html.replace('  <script defer src="context.js"></script>','').replace('  <script defer src="app.js"></script>','')
 html=html.replace('  <script defer src="brand-review.js"></script>','')

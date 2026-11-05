@@ -114,7 +114,7 @@ function assessBrandbook(state,options={}) {
   const unverified=approved.filter(r=>!evidence || !evidence[r.id] || evidence[r.id].status==='unchecked');
   check('references','Есть доступные утверждённые эталоны',approved.length && !unavailable.length && !unverified.length?'pass':unavailable.length?'issue':'needs_info');
   if(!approved.length)add('references-missing','warning','Нет утверждённого визуального эталона',refs.length?'Изображения добавлены, но все остаются кандидатами.':'Изображения-образцы не добавлены.','Выберите экран или набор компонентов, который действительно подходит игре. Утвердите образец после просмотра.','references');
-  if(unverified.length)add('references-unchecked','note','Доступность файлов эталонов ещё не проверена','Утверждённых образцов без файловой проверки: '+unverified.length+'.','Откройте проект в приложении и нажмите «Проверить брендбук».','references');
+  if(unverified.length)add('references-unchecked','note','Доступность файлов эталонов ещё не проверена','Утверждённых образцов без файловой проверки: '+unverified.length+'.','Откройте проект в приложении и нажмите «Проверить →».','references');
   if(unavailable.length)add('references-unavailable','error','Файлы утверждённых эталонов недоступны',unavailable.map(r=>r.name).slice(0,8).join(', '),'Добавьте доступные копии изображений заново и просмотрите их перед утверждением.','references');
 
   const restrictions=!!fields.avoid.trim() && !/^Предлагаемые правила:/iu.test(fields.avoid.trim());
