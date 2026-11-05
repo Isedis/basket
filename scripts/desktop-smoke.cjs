@@ -61,6 +61,19 @@ async function main() {
     assert.equal(await page.locator('[data-field="brand.status"]').inputValue(),'draft');
     assert.equal(await page.locator('[data-ref-status]').first().inputValue(),'approved');
     assert.equal((await core.loadProject(project)).state.references.length,2);
+    await page.locator('[data-field="brand.palette"]').fill('Основной текст: #444444 на #333333\n#EEDDBB — светлый акцент');
+    await page.getByRole('button',{name:'Проверить брендбук',exact:true}).click();
+    const contrastFinding=page.locator('#brand-review-panel .brand-finding').filter({hasText:'Контраст ниже выбранного ориентира'});
+    await contrastFinding.getByRole('button',{name:'+ Добавить задачу'}).click();
+    assert.equal(await contrastFinding.getByRole('button',{name:'Задача уже добавлена'}).isDisabled(),true);
+    await page.waitForFunction(()=>document.querySelector('#save-status')?.textContent.includes('Сохранено'));
+    assert.equal((await core.loadProject(project)).state.tasks.filter(t=>t.brandFindingId?.startsWith('contrast-')).length,1);
+    await page.screenshot({path:path.join(__dirname,'../artifacts/brand-review.png'),fullPage:true});
+    await page.locator('[data-field="brand.palette"]').fill('Основной текст: #FFFFFF на #333333\n#EEDDBB — светлый акцент');
+    await page.getByRole('button',{name:'Проверить брендбук',exact:true}).click();
+    assert.ok(!(await page.locator('#brand-review-panel').textContent()).includes('Контраст ниже выбранного ориентира'));
+    await page.getByRole('button',{name:'Скопировать разбор для агента'}).click();
+    assert.match(await app.evaluate(({clipboard})=>clipboard.readText()),/Разбор брендбука/);
     await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
     await page.screenshot({path:path.join(__dirname,'../artifacts/brandbook.png'),fullPage:true});
     const byte=Buffer.from('x');
@@ -68,14 +81,14 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.3.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.4.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
     await page.getByRole('heading',{name:'Обновления Опоры'}).waitFor();
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.3.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.4.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('[data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -98,6 +111,8 @@ async function main() {
       await mcpClient.connect(new StdioClientTransport({command:spec.command,args:spec.args,env:spec.env,stderr:'pipe'}));
       const identified=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
       const style=(await mcpClient.callTool({name:'opora_get_brandbook',arguments:{project_id:identified.project_id}})).structuredContent;
+      const audit=await mcpClient.callTool({name:'opora_review_brandbook',arguments:{project_id:identified.project_id}});
+      assert.equal(audit.structuredContent.review.checks.find(c=>c.id==='contrast').status,'pass');
       const reference=await mcpClient.callTool({name:'opora_get_reference',arguments:{project_id:identified.project_id,revision:style.revision,reference_id:style.references[0].id}});
       assert.ok(reference.content.some(c=>c.type==='image' && c.mimeType==='image/png'));
       const submitted=await mcpClient.callTool({name:'opora_report_progress',arguments:{project_id:identified.project_id,revision:style.revision,agent:'claude',request_id:'native-report-0001',phase:'ready_for_review',summary:'MCP report visible in Opora',checks:[{name:'Gameplay test',result:'not_run'}]}});
@@ -125,7 +140,7 @@ async function main() {
     await reopened.getByRole('button',{name:'Продолжить работу'}).click();
     await reopened.locator('[data-field="name"]').fill('Native game');
     assert.equal((await core.loadProject(project)).state.brand.direction,'My hand-edited visual direction');
-    console.log('PASS real Electron: brandbook, updates, context, MCP setup in temporary Claude config, real child MCP tools/image/report, report displayed in UI, save/restore.');
+    console.log('PASS real Electron: brandbook review, contrast correction, task deduplication, copied advice, MCP assessment/image/report, updates and save/restore.');
   } finally {
     if(app) await app.close();
     await fs.rm(temp,{recursive:true,force:true});

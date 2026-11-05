@@ -36,6 +36,11 @@ let agentConnection = null;
 let agentActivity = {reports:[],unreadable:0};
 let agentLoading = false;
 let pendingAgent = null;
+let brandAssessment = null;
+let assessmentFor = null;
+let reviewBusy = false;
+let reviewTimer = null;
+let reviewErrorFor = null;
 const bridge = window.opora;
 
 function toast(message, error = false) {
@@ -70,6 +75,7 @@ function changed() {
   clearTimeout(timer);
   timer = setTimeout(() => {persist();}, 450);
   refreshChrome();
+  if(tab==='brand'){refreshReviewPanel();queueBrandReview();}
 }
 function refreshChrome() {
   $('#side-name').textContent = state.name;
@@ -96,9 +102,42 @@ function overview() {
 function brand() {
   return `${pageTitle('ВИЗУАЛЬНЫЙ ЯЗЫК','Один мир. Один стиль.','Не просто «сделай красиво», а конкретные решения и эталоны.',`<label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Брендбук: черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Брендбук: утверждён</option></select></label>`)}${demoBanner()}
   <section class="card scan-card"><div class="card-header"><div><div class="eyebrow">ИЗ ФАЙЛОВ В ПРАВИЛА</div><h2>${scanning?'Изучаю ваш проект…':'Брендбук из вашей игры'}</h2><p class="small">Цвета, шрифты, оформление и образцы — по тому, что уже есть в проекте. Локально, без API.</p></div><button class="button small" data-action="scan-brand" ${scanning?'disabled':''}>${scanning?'Читаю файлы…':state.brand.analysis?'Пересобрать черновик':'Собрать брендбук из проекта'}</button></div><p class="small-note">Результат остаётся черновиком. При повторном анализе вы выбираете, какие поля заменить. Утверждённые образцы сохраняются.</p></section>
+  <div id="brand-review-panel">${brandReviewPanel()}</div>
   ${state.brand.analysis?analysisSummary(state.brand.analysis):''}
   <div class="grid-two"><section class="card"><div class="card-header"><h2>Направление и границы</h2><span class="badge muted">ХАРАКТЕР</span></div>${field('Как выглядит мир игры','brand.direction','Формы, материалы, настроение, плотность деталей…',true,5)}${field('Чего избегаем','brand.avoid','Что точно не подходит этой игре?',true,4)}</section><section class="card"><div class="card-header"><h2>Визуальные константы</h2></div>${field('Палитра и назначение цветов','brand.palette','#HEX — где и для чего использовать',true,5)}${field('Шрифты и размеры','brand.fonts','Название шрифта, путь к файлу, размеры заголовков и текста',true,4)}</section></div>
   <section class="card section-gap"><div class="card-header"><div><h2>Покажите, как должно быть</h2><p class="small">Утверждённый экран полезнее десятка слов про атмосферу.</p></div><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length ? `<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>` : '<div class="empty"><strong>Здесь будет визуальная точка отсчёта</strong>Добавьте меню, кнопку или набор иконок, которые уже нравятся.<br>Образец станет эталоном только после вашего утверждения.</div>'}<p class="small-note">PNG, JPG, WebP · до 20 МБ на изображение. Копии сохраняются в папке игры, чтобы агент мог их открыть. Автоматической оценки сходства пока нет.</p></section>`;
+}
+function currentBrandReview() {
+  return brandAssessment && assessmentFor===OporaBrandReview.reviewSignature(state)?brandAssessment:OporaBrandReview.assessBrandbook(state);
+}
+function brandReviewPanel() {
+  const report=currentBrandReview();
+  const renderFinding=finding=>{
+    const exists=state.tasks.some(t=>t.brandFindingId===finding.id && t.status!=='done');
+    return `<article class="brand-finding ${finding.severity}"><div class="spaced"><h3>${escapeHtml(finding.title)}</h3><span class="badge ${finding.severity==='error'?'orange':'muted'}">${({error:'ПРОБЛЕМА',warning:'УТОЧНИТЬ',note:'НА ЗАМЕТКУ'})[finding.severity]}</span></div><p>${escapeHtml(finding.detail)}</p><div class="hint">${escapeHtml(finding.suggestion)}</div><div class="stack"><button class="text-button" data-action="brand-finding-task" data-id="${escapeHtml(finding.id)}" ${exists?'disabled':''}>${exists?'Задача уже добавлена':'+ Добавить задачу'}</button><button class="text-button" data-action="focus-brand-field" data-field-key="${escapeHtml(finding.field)}">Открыть поле →</button></div></article>`;
+  };
+  return `<section class="card brand-assessment"><div class="card-header"><div><div class="eyebrow">ЧТО ПОМОЖЕТ АГЕНТУ</div><h2>Разбор брендбука</h2></div><button class="button small secondary" data-action="review-brand" ${reviewBusy?'disabled':''}>${reviewBusy?'Проверяю…':'Проверить брендбук'}</button></div><div class="review-summary"><strong>${report.ready}<span> / ${report.total}</span></strong><div><h3>Пунктов с достаточными данными</h3><p>Полнота записанных правил. Это не оценка красоты игры.</p></div></div><details class="review-checklist"><summary>Какие пункты проверяются</summary><ul>${report.checks.map(c=>`<li><span>${c.status==='pass'?'✓':c.status==='issue'?'!':'?'}</span>${escapeHtml(c.label)}<small>${({pass:'ДАННЫЕ ЕСТЬ',issue:'ЕСТЬ ПРОБЛЕМА',needs_info:'НУЖНО УТОЧНИТЬ'})[c.status]}</small></li>`).join('')}</ul></details>${report.findings.length?`<div class="review-findings">${report.findings.slice(0,3).map(renderFinding).join('')}${report.findings.length>3?`<details><summary>Ещё замечаний: ${report.findings.length-3}</summary>${report.findings.slice(3).map(renderFinding).join('')}</details>`:''}</div>`:'<div class="hint">По этим проверкам проблем не найдено. Посмотрите реальные экраны: согласованность графики и ощущения игрока здесь не оценивались.</div>'}${report.pairs.length?`<details class="contrast-results"><summary>Проверенные текстовые пары · ${report.pairs.length}</summary>${report.pairs.map(p=>`<div class="contrast-result"><div class="color-preview" data-review-fg="${escapeHtml(p.foreground)}" data-review-bg="${escapeHtml(p.background)}">Продолжить игру</div><div><strong>${p.ratio===null?'Нужна подложка':OporaBrandReview.formatBrandRatio(p.ratio)+':1'}</strong><p>${escapeHtml(p.foreground)} на ${escapeHtml(p.background)}</p></div></div>`).join('')}<p class="small-note">Превью использует шрифт приложения, а не игры. ${escapeHtml(report.contrastBasis)}</p></details>`:''}<div class="spaced section-gap"><button class="text-button" data-action="copy-brand-review">Скопировать разбор для агента →</button><span class="small-note">${report.checkedAt?'Файлы проверены: '+escapeHtml(new Date(report.checkedAt).toLocaleTimeString('ru-RU')):'Доступность файлов ещё не проверена'}</span></div><p class="small-note">${escapeHtml(report.scope)} Результат также доступен через MCP: opora_review_brandbook.</p></section>`;
+}
+function refreshReviewPanel() {
+  const panel=$('#brand-review-panel');if(!panel)return;
+  const open=[...panel.querySelectorAll('details')].map(el=>el.open);
+  panel.innerHTML=brandReviewPanel();
+  panel.querySelectorAll('details').forEach((el,index)=>{if(open[index])el.open=true;});
+  panel.querySelectorAll('[data-review-fg]').forEach(el=>{el.style.color=el.dataset.reviewFg;el.style.backgroundColor=el.dataset.reviewBg;});
+}
+function queueBrandReview() {
+  clearTimeout(reviewTimer);
+  if(root && bridge?.reviewBrandbook && tab==='brand' && !scanning && !applyingBrand && assessmentFor!==OporaBrandReview.reviewSignature(state) && reviewErrorFor!==OporaBrandReview.reviewSignature(state))reviewTimer=setTimeout(()=>reviewBrand().catch(fail),400);
+}
+async function reviewBrand(force=false) {
+  if(reviewBusy)return;
+  const project=root,signature=OporaBrandReview.reviewSignature(state);
+  if(!force && (assessmentFor===signature || reviewErrorFor===signature))return;
+  reviewBusy=true;refreshReviewPanel();
+  try {
+    const result=root && bridge?.reviewBrandbook?await bridge.reviewBrandbook(structuredClone(state)):OporaBrandReview.assessBrandbook(state);
+    if(root===project && signature===OporaBrandReview.reviewSignature(state)){brandAssessment=result;assessmentFor=signature;reviewErrorFor=null;}
+  } catch(error) {reviewErrorFor=signature;throw error;} finally {reviewBusy=false;refreshReviewPanel();queueBrandReview();}
 }
 function analysisSummary(report) {
   const colors=report.colors.length?report.colors:report.imageColors;
@@ -152,6 +191,7 @@ function render() {
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
   document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
+  if(tab==='brand'){refreshReviewPanel();queueBrandReview();}
 }
 async function updatePreview() {
   const node = $('#context-preview');
@@ -221,6 +261,7 @@ async function openProject() {
   const project = await bridge.openProject();
   if (!project) return;
   root = project.root;
+  brandAssessment=null;assessmentFor=null;reviewErrorFor=null;
   agentConnection=null;agentActivity={reports:[],unreadable:0};
   state = project.state || blankState(project.info.name);
   revision = 0; syncedRevision = -1; failedSave = false;
@@ -281,6 +322,26 @@ document.addEventListener('click', async event => {
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'focus-brand-field') {
+      const key=button.dataset.fieldKey;
+      if(!['palette','fonts','direction','avoid','status','references'].includes(key))return;
+      const field=key==='references'?document.querySelector('[data-action="add-reference"]'):document.querySelector(`[data-field="brand.${key}"]`);
+      field?.scrollIntoView({behavior:'smooth',block:'center'});field?.focus({preventScroll:true});
+    }
+    if (action === 'review-brand') await reviewBrand(true);
+    if (action === 'brand-finding-task') {
+      const finding=currentBrandReview().findings.find(f=>f.id===button.dataset.id);
+      if(!finding){toast('Это замечание уже устранено.');return;}
+      if(state.tasks.some(t=>t.brandFindingId===finding.id && t.status!=='done'))return;
+      state.tasks.push({id:id(),title:'Брендбук: '+finding.title,acceptance:`Проблема: ${finding.detail}\nПредложение: ${finding.suggestion}\nКритерий: ${finding.acceptance}\nПодготовить предложение пользователю; не менять .opora/project.json напрямую и не утверждать стиль самостоятельно.`,status:'backlog',brandFindingId:finding.id});
+      changed();refreshReviewPanel();toast('Задача добавлена в очередь. Выберите её в разделе «Задачи».');
+    }
+    if (action === 'copy-brand-review') {
+      const report=currentBrandReview();
+      const text=`Разбор брендбука игры «${state.name}».\n${report.scope}\nПунктов с достаточными данными: ${report.ready}/${report.total}.\n\n${report.findings.map(f=>`${f.title}\n${f.detail}\nЧто предложить: ${f.suggestion}`).join('\n\n')}\n\n${report.contrastBasis}\nПредложи изменения на просмотр пользователю. Не утверждай стиль и не меняй .opora/project.json напрямую.`;
+      if(bridge)await bridge.copy(text);else await navigator.clipboard.writeText(text);
+      toast('Разбор скопирован. Агент также может получить его через MCP.');
+    }
     if (action === 'refresh-agents') await refreshAgents();
     if (action === 'configure-agent') configureAgent(button.dataset.client);
     if (action === 'confirm-agent' && pendingAgent) {

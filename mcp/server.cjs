@@ -3,6 +3,7 @@ const {McpServer}=require('@modelcontextprotocol/server');
 const {StdioServerTransport}=require('@modelcontextprotocol/server/stdio');
 const z=require('zod/v4');
 const service=require('../src/agent-service.cjs');
+const {reviewProject}=require('../src/brand-review.cjs');
 const {version}=require('../package.json');
 const projectId=z.string().regex(/^[a-f0-9]{32}$/);
 const revision=z.string().regex(/^[a-f0-9]{64}$/);
@@ -19,6 +20,10 @@ function makeServer(root) {
   register('opora_get_brandbook','Get visual rules and approved vs draft reference image IDs. Use opora_get_reference to view an image.',{project_id:projectId},async input=>{
     const s=await service.snapshot(root);service.guard(s,input.project_id);
     return json({...service.identity(s),brand:s.state.brand,references:s.state.references});
+  });
+  register('opora_review_brandbook','Assess written brand rules: explicit color pairs and contrast, missing font/role rules, draft status, and reference file availability. Returns explainable suggestions, not an artistic rating or proof that the game looks correct. Does not modify rules or approve them.',{project_id:projectId},async input=>{
+    const s=await service.snapshot(root);service.guard(s,input.project_id);
+    return json({...service.identity(s),review:await reviewProject(root,s.state)});
   });
   register('opora_list_tasks','Read task requirements and acceptance criteria. Only the user confirms completion.',{project_id:projectId},async input=>{
     const s=await service.snapshot(root);service.guard(s,input.project_id);

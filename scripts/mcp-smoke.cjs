@@ -21,11 +21,13 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,7);
+    const tools=await client.listTools();assert.equal(tools.tools.length,8);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
     const context=(await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id}})).structuredContent;
     assert.match(context.markdown,/Keyboard navigation/);
+    const assessment=await client.callTool({name:'opora_review_brandbook',arguments:{project_id:project.project_id}});
+    assert.ok(!assessment.isError);assert.ok(assessment.structuredContent.review.findings.some(f=>f.id==='contrast-unspecified'));
     const wrong=await client.callTool({name:'opora_get_context',arguments:{project_id:'0'.repeat(32)}});assert.equal(wrong.isError,true);
     state.rules='Changed while agent was working';await saveProject(root,state);
     const args={project_id:project.project_id,revision:project.revision,agent:'codex',request_id:'mcp-report-0001',task_id:'menu',phase:'ready_for_review',summary:'Prepared for review',checks:[{name:'Godot functional test',result:'not_run'}]};
@@ -36,7 +38,7 @@ async function main() {
     assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 7 tools, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 8 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

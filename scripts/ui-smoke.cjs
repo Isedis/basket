@@ -11,7 +11,7 @@ async function main() {
   await fs.writeFile(path.join(fixture,'project.godot'),'config_version=5\n[application]\nconfig/name="UI test game"\n');
   await fs.writeFile(path.join(fixture,'AGENTS.md'),'# Existing rules\nKeep original assets.\n');
   const server = http.createServer(async (req,res) => {
-    const files = {'/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/app.js':'app.js'};
+    const files = {'/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/brand-review.js':'brand-review.js','/app.js':'app.js'};
     const file = files[req.url];
     if (!file) {res.writeHead(404); res.end(); return;}
     const types={'.html':'text/html','.css':'text/css','.js':'text/javascript'};

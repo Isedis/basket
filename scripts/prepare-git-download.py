@@ -26,13 +26,15 @@ with zipfile.ZipFile(source) as archive:
 html = (root / 'ui/index.html').read_text()
 css = (root / 'ui/style.css').read_text()
 context = (root / 'ui/context.js').read_text()
+review = (root / 'ui/brand-review.js').read_text()
 app = (root / 'ui/app.js').read_text()
 def csp_hash(text):
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'"
-html=html.replace("script-src 'self'", 'script-src ' + csp_hash(context) + ' ' + csp_hash(app)).replace("style-src 'self'", 'style-src ' + csp_hash(css))
+html=html.replace("script-src 'self'", 'script-src ' + csp_hash(context) + ' ' + csp_hash(review) + ' ' + csp_hash(app)).replace("style-src 'self'", 'style-src ' + csp_hash(css))
 html=html.replace('<link rel="stylesheet" href="style.css">','<style>'+css+'</style>')
-html=html.replace('<script defer src="context.js"></script>','').replace('<script defer src="app.js"></script>','')
-html=html.replace('</body>','<script>'+context+'</script><script>'+app+'</script></body>')
+html=html.replace('  <script defer src="context.js"></script>','').replace('  <script defer src="app.js"></script>','')
+html=html.replace('  <script defer src="brand-review.js"></script>','')
+html=html.replace('</body>','<script>'+context+'</script><script>'+review+'</script><script>'+app+'</script></body>')
 (root / 'artifacts').mkdir(exist_ok=True)
 (root / 'artifacts/Opora-demo.html').write_text(html)
 target = root / "distribution/windows"
