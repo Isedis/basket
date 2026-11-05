@@ -19,6 +19,8 @@ try {state = JSON.parse(localStorage.getItem('opora-demo') || 'null'); if (state
 state ||= demoState();
 let root = null;
 let tab = 'overview';
+let renderedTab=null;
+let renderedRoot;
 let timer = null;
 let toastTimer;
 let revision = 0;
@@ -50,7 +52,7 @@ function toast(message, error = false) {
   toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), error ? 11000 : 5500);
 }
 function fail(error) {console.error(error); toast(error.message || String(error), true);}
-function status(text) {$('#save-status').textContent = text;}
+function status(text) {$('#save-status').textContent = text;$('#save-status').title=text;}
 function persist() {
   clearTimeout(timer);
   timer = null;
@@ -80,10 +82,15 @@ function changed() {
 function refreshChrome() {
   $('#side-name').textContent = state.name;
   $('#header-name').textContent = state.name;
+  $('#header-route').textContent=({overview:'/desk',tasks:'/tasks',brand:'/brand',agents:'/agents',context:'/context'})[tab];
   $('#side-mode').textContent = root ? 'Godot / локально' : 'Демо';
   $('#header-name').title = root || 'Демонстрационный проект';
   $('#task-count').textContent = state.tasks.filter(t => t.status !== 'done').length;
-  $('#footer-status').textContent = root ? 'LOCAL / GODOT' : 'DEMO / GODOT';
+  $('#footer-status').textContent = root ? '[LOCAL]' : '[DEMO]';
+  $('#terminal-brand').textContent=state.brand.status==='approved'?'СТИЛЬ: УТВЕРЖДЁН':'СТИЛЬ: ЧЕРНОВИК';
+  const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
+  $('#side-active-task').textContent=active?.title || 'Нет выбранной задачи';
+  $('#side-active-task').title=active?.title || '';
   document.querySelectorAll('[data-tab]').forEach(button => {
     const active=button.dataset.tab===tab;
     button.classList.toggle('active',active);
@@ -94,7 +101,7 @@ function field(label, key, placeholder = '', multiline = false, rows = 3) {
   const value = key.split('.').reduce((obj,k) => obj[k], state);
   return `<label class="field"><span>${escapeHtml(label)}</span>${multiline ? `<textarea rows="${rows}" data-field="${key}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value)}</textarea>` : `<input data-field="${key}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">`}</label>`;
 }
-function pageTitle(eyebrow, title, subtitle, action = '') {return `<div class="page-title"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${subtitle?`<p class="subtitle">${subtitle}</p>`:''}</div>${action}</div>`;}
+function pageTitle(eyebrow, title, subtitle, action = '') {return `<div class="page-title"><div><h1><span class="page-prompt" aria-hidden="true">&gt;</span>${title}</h1>${subtitle?`<p class="subtitle">${subtitle}</p>`:''}</div>${action}</div>`;}
 
 function demoBanner() {return root?'':'<div class="demo-banner"><span><strong>ДЕМО</strong> / Тихая орбита</span><button class="text-button" data-action="open">Выбрать папку игры →</button></div>';}
 
@@ -202,8 +209,11 @@ function configureAgent(client) {
   showModal(`<h2 id="modal-title">Подключить ${client==='claude'?'Claude Code':'Codex'}</h2><p>Будет добавлен локальный MCP-сервер для игры «${escapeHtml(agentConnection.project_name)}».</p><p class="small-note">Файл настроек: <span class="file-tag">${escapeHtml(file)}</span></p><p>Остальные подключения сохранятся. Если файл уже существует, перед изменением создаётся локальная резервная копия. Опора не меняет настройки авторизации клиента.</p><details><summary>Что будет запускаться</summary><pre class="code-preview">${escapeHtml(JSON.stringify(agentConnection.spec,null,2))}</pre></details><p class="small-note">Настройка не устанавливает сам Claude Code или Codex. После добавления перезапустите сессию агента. При переносе папки игры или приложения обновите подключение здесь.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Отмена</button><button class="button" data-action="confirm-agent">Добавить подключение</button></div>`);
 }
 function render() {
+  const routeChanged=renderedTab!==tab || renderedRoot!==root;
   refreshChrome();
   $('#main').innerHTML = ({overview,brand,tasks,context,agents})[tab]();
+  if(routeChanged)$('#main').scrollTop=0;
+  renderedTab=tab;renderedRoot=root;
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
   document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
@@ -221,8 +231,8 @@ async function loadImages() {
     try {img.src = await bridge.referenceImage(ref.file);} catch {img.alt = `Не удалось загрузить: ${ref.name}`;}
   }
 }
-function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
-function closeModal() {$('#modal').close(); pendingSync = null; pendingBrand = null; pendingAgent=null;updatesOpen=false;}
+function showModal(content) {$('#modal').classList.remove('command-dialog');$('#modal-content').innerHTML = content; $('#modal').showModal();}
+function closeModal() {$('#modal').close();$('#modal').classList.remove('command-dialog'); pendingSync = null; pendingBrand = null; pendingAgent=null;updatesOpen=false;}
 
 function renderUpdates() {
   const info=updateState;
@@ -297,6 +307,7 @@ async function previewSync() {
 }
 
 document.addEventListener('input', event => {
+  if(event.target.id==='command-search'){commandIndex=0;renderCommands();return;}
   const key = event.target.dataset.field;
   if (!key) return;
   const parts = key.split('.');
@@ -329,12 +340,15 @@ document.addEventListener('submit', event => {
   changed(); closeModal(); render();
 });
 document.addEventListener('click', async event => {
+  const command=event.target.closest('[data-command]');
+  if(command){await executeCommand(command.dataset.command);return;}
   const nav = event.target.closest('[data-tab]');
   if (nav) {tab = nav.dataset.tab; render(); if(tab==='agents')await refreshAgents();return;}
   const button = event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   const action = button.dataset.action;
   try {
+    if (action === 'commands') showCommands();
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
@@ -401,11 +415,7 @@ document.addEventListener('click', async event => {
     }
     if (action === 'close-modal') closeModal();
     if (action === 'discard-close') bridge?.readyToClose();
-    if (action === 'copy-brief') {
-      const text = OporaContext.taskBrief(state);
-      if (bridge) await bridge.copy(text); else await navigator.clipboard.writeText(text);
-      toast('Запрос скопирован.');
-    }
+    if (action === 'copy-brief') await copyBrief();
     if (action === 'preview-sync') await previewSync();
     if (action === 'confirm-sync' && pendingSync) {
       button.disabled = true;
@@ -458,16 +468,24 @@ render();
 initialize();
 
 function showHelp() {
-  showModal('<h2 id="modal-title">Справка</h2><ol class="help-list"><li>Откройте папку игры с project.godot.</li><li>Выберите задачу и задайте критерии готовности.</li><li>Настройте Claude / Codex в разделе «Агенты» или скопируйте запрос.</li><li>Зафиксируйте стиль и эталоны в «Брендбуке».</li><li>Проверьте результат в Godot; замечания добавьте в правила.</li></ol><details class="technical-note" open><summary>Клавиши</summary><p>Ctrl+1…5 — разделы<br>Ctrl+N — новая задача<br>Ctrl+S — сохранить<br>Ctrl+Enter — сохранить задачу / скопировать контекст<br>F1 — справка</p></details><details class="technical-note"><summary>Данные и проверки</summary><p>Данные игры хранятся в .opora. Инструкции для агентов обновляются по кнопке; MCP читает сохранённые данные напрямую. Перед изменением инструкций создаётся резервная копия.</p><p>Разбор брендбука проверяет записанные правила. Он не оценивает художественное качество изображений и не запускает игру. Результат и отчёты агента проверяйте в Godot.</p></details><div class="modal-actions"><button class="button" data-action="close-modal">Закрыть</button></div>');
+  showModal('<h2 id="modal-title">Справка</h2><ol class="help-list"><li>Откройте папку игры с project.godot.</li><li>Выберите задачу и задайте критерии готовности.</li><li>Настройте Claude / Codex в разделе «Агенты» или скопируйте запрос.</li><li>Зафиксируйте стиль и эталоны в «Брендбуке».</li><li>Проверьте результат в Godot; замечания добавьте в правила.</li></ol><details class="technical-note" open><summary>Клавиши</summary><p>Ctrl+K — команды<br>Ctrl+1…5 — разделы<br>Ctrl+N — новая задача<br>Ctrl+S — сохранить<br>Ctrl+Enter — сохранить задачу / скопировать контекст<br>F1 — справка</p></details><details class="technical-note"><summary>Данные и проверки</summary><p>Данные игры хранятся в .opora. Инструкции для агентов обновляются по кнопке; MCP читает сохранённые данные напрямую. Перед изменением инструкций создаётся резервная копия.</p><p>Разбор брендбука проверяет записанные правила. Он не оценивает художественное качество изображений и не запускает игру. Результат и отчёты агента проверяйте в Godot.</p></details><div class="modal-actions"><button class="button" data-action="close-modal">Закрыть</button></div>');
 }
 document.addEventListener('keydown',async event=>{
   const modifier=(event.ctrlKey||event.metaKey) && !event.altKey;
+  if($('#modal').open && $('#command-search')) {
+    if(modifier && event.code==='KeyK'){event.preventDefault();closeModal();}
+    else if(event.target.id==='command-search' && ['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();const count=filteredCommands().length;if(count){commandIndex=(commandIndex+(event.key==='ArrowDown'?1:-1)+count)%count;renderCommands();}}
+    else if(event.target.id==='command-search' && event.key==='Enter'){event.preventDefault();const command=filteredCommands()[commandIndex];if(command)await executeCommand(command.id);}
+    return;
+  }
   if($('#modal').open) {
+    if(modifier && event.code==='KeyK'){event.preventDefault();return;}
     if(modifier && event.key==='Enter' && $('#task-form')){event.preventDefault();$('#task-form').requestSubmit();}
     return;
   }
   try {
-    if(modifier && /^[1-5]$/.test(event.key)) {
+    if(modifier && event.code==='KeyK'){event.preventDefault();showCommands();}
+    else if(modifier && /^[1-5]$/.test(event.key)) {
       event.preventDefault();tab=['overview','tasks','brand','agents','context'][Number(event.key)-1];render();if(tab==='agents')await refreshAgents();
     } else if(modifier && event.code==='KeyN') {event.preventDefault();tab='tasks';render();editTask();}
     else if(modifier && event.code==='KeyS') {event.preventDefault();await persist();}
@@ -475,3 +493,46 @@ document.addEventListener('keydown',async event=>{
     else if(event.key==='F1') {event.preventDefault();showHelp();}
   } catch(error) {fail(error);}
 });
+
+async function copyBrief() {
+  const text=OporaContext.taskBrief(state);
+  if(bridge)await bridge.copy(text);else await navigator.clipboard.writeText(text);
+  toast('Запрос скопирован.');
+}
+let commandIndex=0;
+const appCommands=[
+  ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
+  {id:'new-task',label:'Новая задача',aliases:'new task создать добавить',hint:'Задачи',key:'Ctrl N',run:()=>{tab='tasks';render();editTask();}},
+  {id:'copy',label:'Скопировать запрос',aliases:'copy brief копировать контекст',hint:'Для агента',key:'',run:copyBrief},
+  {id:'review',label:'Проверить брендбук',aliases:'review audit разбор оценка',hint:'Стиль',key:'',run:async()=>{tab='brand';render();await reviewBrand(true);}},
+  {id:'open',label:'Открыть проект',aliases:'open project папка переключить',hint:'Проект',key:'',run:openProject},
+  {id:'save',label:'Сохранить проект',aliases:'save сохранить',hint:'Данные',key:'Ctrl S',run:persist},
+  {id:'updates',label:'Обновления',aliases:'update version версия',hint:'Приложение',key:'',run:showUpdates},
+  {id:'help',label:'Справка',aliases:'help клавиши помощь',hint:'Приложение',key:'F1',run:showHelp}
+];
+function filteredCommands() {
+  const terms=($('#command-search')?.value || '').toLocaleLowerCase('ru-RU').replace(/^[/\s>:]+/,'').trim().split(/\s+/).filter(Boolean);
+  return appCommands.filter(command=>terms.every(term=>(command.label+' '+command.aliases).toLocaleLowerCase('ru-RU').includes(term)));
+}
+function renderCommands() {
+  const input=$('#command-search');if(!input)return;
+  const commands=filteredCommands();commandIndex=Math.min(commandIndex,Math.max(0,commands.length-1));
+  $('#command-results').innerHTML=commands.map((command,i)=>`<li class="command-option" id="command-${command.id}" role="option" aria-selected="${i===commandIndex}" data-command="${command.id}" title="${command.hint}"><span class="command-marker" aria-hidden="true">${i===commandIndex?'>':' '}</span><span class="command-label">${command.label}</span><kbd>${command.key}</kbd></li>`).join('');
+  $('#command-empty').hidden=commands.length>0;
+  $('#command-count').textContent=String(commands.length).padStart(2,'0');
+  if(commands.length){input.setAttribute('aria-activedescendant','command-'+commands[commandIndex].id);$('#command-'+commands[commandIndex].id).scrollIntoView({block:'nearest'});}
+  else input.removeAttribute('aria-activedescendant');
+}
+function showCommands() {
+  if($('#modal').open)return;
+  if(scanning || applyingBrand){toast('Дождитесь подготовки брендбука.');return;}
+  commandIndex=0;
+  showModal('<div class="command-heading"><h2 id="modal-title">Команды</h2><span><span id="command-count">00</span> / действий</span></div><label class="command-prompt"><span aria-hidden="true">&gt;</span><input id="command-search" role="combobox" aria-label="Найти команду" aria-controls="command-results" aria-expanded="true" aria-autocomplete="list" placeholder="Найти команду или раздел…" autocomplete="off" spellcheck="false"></label><ul id="command-results" role="listbox" aria-label="Действия Опоры"></ul><p id="command-empty" class="command-empty" role="status" hidden>Действие не найдено</p><div class="command-footer"><span>↑↓ выбрать <span aria-hidden="true">/</span> Enter выполнить <span aria-hidden="true">/</span> Esc закрыть</span><button class="text-button" data-action="close-modal">Закрыть</button></div>');
+  $('#modal').classList.add('command-dialog');
+  renderCommands();$('#command-search').focus();
+}
+async function executeCommand(commandId) {
+  const command=appCommands.find(item=>item.id===commandId);if(!command)return;
+  closeModal();
+  try {await command.run();}catch(error){fail(error);}
+}

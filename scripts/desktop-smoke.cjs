@@ -74,6 +74,12 @@ async function main() {
     assert.ok(!(await page.locator('#brand-review-panel').textContent()).includes('Контраст ниже выбранного ориентира'));
     await page.getByRole('button',{name:'Скопировать разбор →'}).click();
     assert.match(await app.evaluate(({clipboard})=>clipboard.readText()),/Разбор брендбука/);
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox',{name:'Найти команду'}).fill('/context');
+    await page.keyboard.press('Enter');
+    await page.locator('#context-preview').waitFor();
+    assert.match(await page.locator('#context-preview').textContent(),/Не менять размер кнопок/);
+    await page.locator('nav [data-tab="brand"]').click();
     await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
     await page.screenshot({path:path.join(__dirname,'../artifacts/brandbook.png'),fullPage:true});
     const byte=Buffer.from('x');
@@ -81,7 +87,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.5.1',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.6.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -89,11 +95,11 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.5.1');
+    assert.equal(diagnostics.currentVersion,'0.6.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.5.1/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.6.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();

@@ -47,7 +47,7 @@ if(process.env.OPORA_UPDATE_JOB){
 }
 `);
     const runtime=path.dirname(require('electron'));
-    for(const [folder,version] of [[directory,'0.5.0'],[source,require('../package.json').version]]){
+    for(const [folder,version] of [[directory,'0.5.1'],[source,require('../package.json').version]]){
       await fs.cp(runtime,folder,{recursive:true});
       await fs.rename(path.join(folder,'electron'),path.join(folder,'Opora.exe'));
       pkg.version=version;await fs.writeFile(path.join(appSource,'package.json'),JSON.stringify(pkg));
@@ -85,7 +85,7 @@ if(process.env.OPORA_UPDATE_JOB){
     assert.equal(state.status,'installed');assert.equal(proof?.version,plan.version);
     assert.equal(proof?.name,'Сохранённая игра');assert.equal(proof?.executable,path.join(directory,'Opora.exe'));
     assert.equal((await core.loadProject(game)).state.rules,'Не терять решения при обновлении');
-    assert.equal(JSON.parse(asar.extractFile(path.join(plan.backup,'resources/app.asar'),'package.json')).version,'0.5.0');
+    assert.equal(JSON.parse(asar.extractFile(path.join(plan.backup,'resources/app.asar'),'package.json')).version,'0.5.1');
     console.log('PASS real restart: helper readiness → old GUI closes → files replaced → new Electron GUI confirms '+plan.version+' → same project restored; backup retained. Linux runtime.');
   }catch(error){
     for(const file of ['installer.log','stderr.log'])try{console.error((await fs.readFile(path.join(job,file),'utf8')).slice(-5000));}catch{}

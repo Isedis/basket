@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Единая память проекта Godot для Claude и Codex",
   "private": true,
   "main": "desktop/main.cjs",
