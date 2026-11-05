@@ -1,30 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.0",
-  "commit": "4a27ba02930f8aea29d7fa7804f99a2903526dbd",
-  "size": 161348130,
-  "sha256": "86f44b073093745213a1e91b91006e7e758627e3c5d2bcf6419165d035b84025",
+  "version": "0.6.1",
+  "commit": "5008e3050304db513d27ff6ca04b9497cd8a1da0",
+  "size": 161349519,
+  "sha256": "86f91d397ebfddc3e7c3e12df04ee7383fac2739146e9c0441dd4b03ebe2d1b0",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "bb1e7a26af8039c22cd7e9c6e08815b47bec223b1616d9259bc7d50f4d32bd87"
+      "sha256": "c21f1d9d19460d14f1d7797b7be18ebd96c924fb108663105d99769f318c41f3"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "83ab9eabd17b9bfafaf23450abc3f5b6c87811f72eb67456f01898811acce308"
+      "sha256": "afa3436a310842a5abf0b185aa8f1a53d8fe62389a217746296a4d91ea4387a0"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "dad80afc98dc55a72f7f207c9ae9fec6fd1428461416a85ccbf76fa90b301cdc"
+      "sha256": "0f479e186f693f1b5014a98357cb1da8820e227d50887fe503e21fdaebb7684a"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 10353186,
-      "sha256": "840a107923b13aca7f374e4610554da824ee4ba861706a7279dbc50f1eff0bc1"
+      "size": 10354575,
+      "sha256": "daf78a8d50051b2679d897fe9634315471895d1d5c6f70df38449d2456373f96"
     }
   ],
-  "notes": "Терминальный интерфейс: плоские панели, инверсная навигация, постоянная строка состояния и текущая задача в боковой панели. Ctrl+K открывает поиск по командам: стрелки выбирают действие, Enter выполняет, Escape закрывает. С версий до 0.5.1 нужен один ручной переход на готовую сборку."
+  "appPatch": {
+    "runtimeVersion": "45.2.3",
+    "size": 3240437,
+    "sha256": "136bbc3858c0ddf333efc06ff40b36f88ad8afc4a96a1d9e5cff550f06df8df5",
+    "parts": [
+      {
+        "name": "Opora-Windows.zip.part01",
+        "size": 3240437,
+        "sha256": "136bbc3858c0ddf333efc06ff40b36f88ad8afc4a96a1d9e5cff550f06df8df5"
+      }
+    ]
+  },
+  "notes": "Малые обновления: при той же версии Electron загружается только приложение. Готовая загрузка используется повторно. Для перехода со старых версий есть отдельный Opora-small-update.zip без повторной загрузки Electron."
 }
