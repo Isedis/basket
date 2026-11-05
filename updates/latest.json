@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
-  "version": "0.4.0",
-  "commit": "3de13a1cac3c39c3508b61dbacdaca6aa8563ff4",
-  "size": 162059768,
-  "sha256": "c10eea5d9016c935afdd7915aef01e2f24538c4105c2683d0f1f5fb176cbe957",
+  "version": "0.5.0",
+  "commit": "fe2bb82f00724bbc19f11cf19c53a855032762ef",
+  "size": 161334613,
+  "sha256": "c4ce8e4c5faaffd8ec43c9f251e839609d419a5bfcb82105c0edfbe4679fe2ed",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "bad9e6b3039246b0b9b266c23acbc2a2c9baa5c58be74c5694d42bda2c53d34a"
+      "sha256": "97bf36acc3c53fd5322e60b8ad81a936d4628dce235abb1299273a8eff8a9329"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "c5ff9c9481a0756cfe90a2f370d9d3fed15c80e4dd7c28ae722e1ff2eb44f8b8"
+      "sha256": "c2052e715858d3be4387aedb6f1f25e249d6f142d21b6a9d28cbd25480c2a605"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "97c7d1f64ea1d11a8110cea330a9137cc6555fdd136b3c5e8648ed183230f076"
+      "sha256": "de9ace58dc6d891bd0992aaae166f31802929e987f46f79ac8bb8f0a0c5a2025"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 11064824,
-      "sha256": "3b8e520861fe1015cf17576b987f023cf6fe2224d533f902611517daca40d962"
+      "size": 10339669,
+      "sha256": "0033fb5b5e737fec2f8421624bff1c7700bb02d1613cdd902f06a8c6a310fb09"
     }
   ],
-  "notes": "Разбор брендбука с конкретными проблемами и подсказками: палитра, контраст текстовых пар, шрифты и эталоны. Создание задачи из замечания и инструмент opora_review_brandbook для MCP-агента."
+  "notes": "Новый интерфейс по брендбуку Isidacorp: чёрный фон, светлый текст и JetBrains Mono. Текущая задача на рабочем столе, поля брендбука рядом с разбором, меньше пояснений и быстрые клавиши Ctrl+1…5, Ctrl+N, Ctrl+S."
 }
