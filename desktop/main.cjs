@@ -36,9 +36,8 @@ if(primary)app.whenReady().then(async () => {
   const updater=new Updater({currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:(url,options)=>{if(proxyError)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
   let installing=false;
   ipcMain.handle('updates:info',async ()=>{
-    let previousInstall=null;
-    try {previousInstall=JSON.parse((await fs.readFile(path.join(app.getPath('userData'),'update-result.json'),'utf8')).replace(/^\uFEFF/,''));} catch {}
-    return {...updater.info(),previousInstall};
+    const previousInstall=await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'));
+    return {...updater.info(),previousInstall,installDirectory:path.dirname(process.execPath)};
   });
   ipcMain.handle('updates:check',()=>updater.check());
   ipcMain.handle('updates:download',()=>updater.download());
@@ -136,6 +135,9 @@ if(primary)app.whenReady().then(async () => {
     const ext = path.extname(file).slice(1);
     return `data:image/${['jpg','jpeg'].includes(ext)?'jpeg':ext};base64,${data.toString('base64')}`;
   });
-  win.loadFile(path.join(__dirname,'../ui/index.html'));
+  await win.loadFile(path.join(__dirname,'../ui/index.html'));
+  try {await windowsUpdater.confirmLaunch({version:require('../package.json').version});}
+  catch(error) {dialog.showErrorBox('Подтверждение обновления',error.message);}
+  finally {delete process.env.OPORA_UPDATE_JOB;delete process.env.OPORA_UPDATE_TOKEN;}
 });
 app.on('window-all-closed', () => app.quit());

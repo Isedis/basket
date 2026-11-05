@@ -67,7 +67,7 @@ async function main() {
       if (method==='sync') return core.syncProject(fixture,arg);
       if (method==='copy') {copied=arg; return true;}
       if (method==='readyToClose') {closed=true; return;}
-      if (method==='updateInfo') return {status:'idle',currentVersion:'0.2.0',supported:true};
+      if (method==='updateInfo') return {status:'idle',currentVersion:'0.2.0',supported:true,installDirectory:'C:/Games/Opora',previousInstall:{status:'failed',phase:'Замена приложения',error:'TEST: replacement blocked',log:'C:/Games/.opora-update-test/installer.log'}};
       if (method==='checkUpdates') return {status:'available',currentVersion:'0.2.0',latestVersion:'0.3.0',supported:true,total:100};
       if (method==='downloadUpdate') return {status:'downloaded',currentVersion:'0.2.0',latestVersion:'0.3.0',supported:true,total:100,received:100};
       if (method==='installUpdate') {installed=true;return {restarting:true};}
@@ -117,6 +117,11 @@ async function main() {
     await app.locator('nav [data-tab="overview"]').click();
     await app.locator('[data-field="goal"]').fill('Сохранить перед закрытием');
     await app.getByRole('button',{name:'Обновления',exact:true}).click();
+    await app.getByText('Папка и диагностика',{exact:true}).click();
+    await app.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
+    await app.waitForFunction(()=>document.querySelector('#toast').textContent==='Диагностика скопирована.');
+    assert.equal(JSON.parse(copied).installDirectory,'C:/Games/Opora');
+    assert.equal(JSON.parse(copied).previousInstall.error,'TEST: replacement blocked');
     await app.getByRole('button',{name:'Проверить обновления'}).click();
     await app.getByRole('button',{name:'Скачать обновление'}).click();
     await app.getByRole('button',{name:'Установить и перезапустить'}).click();

@@ -1,0 +1,96 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const os=require('node:os');
+const {EventEmitter}=require('node:events');
+const asar=require('@electron/asar');
+const {prepareInstall,launchInstaller,confirmLaunch,readResult}=require('../desktop/windows-updater.cjs');
+async function fixture(t,version='0.5.1'){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'opora-win-update-'));
+  t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const directory=path.join(root,"игра [app] % ! & '");
+  await fs.mkdir(directory);await fs.writeFile(path.join(directory,'Opora.exe'),'old executable');
+  const input=path.join(root,'input');await fs.mkdir(input);
+  await fs.writeFile(path.join(input,'package.json'),JSON.stringify({name:'opora',version}));
+  const archive=path.join(root,'fixture.asar');await asar.createPackage(input,archive);
+  const calls=[];
+  const runPowerShell=async (script,env,options)=>{
+    calls.push({script,env,options});
+    assert.equal(path.dirname(options.cwd),root);assert.notEqual(options.cwd,directory);
+    if(env.OPORA_UPDATE_STAGE){
+      const app=path.join(env.OPORA_UPDATE_STAGE,'Opora-win32-x64');
+      await fs.mkdir(path.join(app,'resources'),{recursive:true});
+      await fs.writeFile(path.join(app,'Opora.exe'),'new executable');
+      await fs.copyFile(archive,path.join(app,'resources/app.asar'));
+    }
+  };
+  const download={archive:path.join(root,'release.zip'),version:'0.5.1',directory:path.join(root,'downloads')};
+  return {root,directory,archive,calls,runPowerShell,download};
+}
+test('Windows preparation stages on the install drive, uses real ASAR metadata and leaves the old app untouched',async t=>{
+  const f=await fixture(t);
+  const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  assert.equal(plan.version,'0.5.1');assert.equal(f.calls.length,2);
+  assert.equal(path.dirname(plan.job),path.dirname(f.directory));
+  assert.ok(plan.source.startsWith(plan.job+path.sep));
+  assert.match(plan.hashes['resources/app.asar'],/^[a-f0-9]{64}$/);
+  assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+  assert.match(await fs.readFile(plan.script,'utf8'),/CurrentDirectory=\$Plan.job/);
+});
+test('An MCP preflight failure stops before extraction and does not leave a replacement directory',async t=>{
+  const f=await fixture(t);let called=0;
+  await assert.rejects(prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:async()=>{called++;throw new Error('Close MCP first');}}),/MCP/);
+  assert.equal(called,1);
+  assert.equal((await fs.readdir(f.root)).filter(p=>p.startsWith('.opora-update-')).length,0);
+  assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+});
+test('A wrong or truncated ASAR fails before the GUI is asked to quit',async t=>{
+  for(const invalid of ['wrong-version','truncated']){
+    const f=await fixture(t,invalid==='wrong-version'?'0.1.0':'0.5.1');
+    if(invalid==='truncated')await fs.writeFile(f.archive,'broken asar');
+    await assert.rejects(prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),/ASAR|Версия/);
+    assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+  }
+});
+function fakeSpawn(callback){return (_command,_args,options)=>{
+  const child=new EventEmitter();child.pid=34567;child.unref=()=>{};
+  process.nextTick(()=>{child.emit('spawn');Promise.resolve(callback(child,options)).catch(error=>child.emit('error',error));});return child;
+};}
+test('A spawned PowerShell is insufficient: readiness must match the job token and PID before shutdown is allowed',async t=>{
+  const f=await fixture(t);const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  let returned=false;
+  const spawnProcess=fakeSpawn(async(child,options)=>{
+    assert.equal(options.cwd,plan.job);assert.equal(options.detached,true);
+    assert.equal(returned,false);
+    await new Promise(resolve=>setTimeout(resolve,40));
+    await fs.writeFile(path.join(plan.job,'ready.json'),JSON.stringify({token:plan.token,pid:child.pid}));
+  });
+  await launchInstaller(plan,path.join(f.root,'profile/update-result.json'),{spawnProcess});returned=true;
+  assert.equal((await readResult(path.join(plan.job,'plan.json'))).directory,f.directory);
+  await assert.rejects(fs.access(path.join(plan.job,'cancel')));
+});
+test('A helper that exits before readiness records an error, cancels late work and never permits quitting',async t=>{
+  const f=await fixture(t);const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  const result=path.join(f.root,'update-result.json');
+  await assert.rejects(launchInstaller(plan,result,{spawnProcess:fakeSpawn(child=>child.emit('exit',1))}),/не запущен/);
+  assert.equal((await readResult(result)).status,'failed');
+  await fs.access(path.join(plan.job,'cancel'));
+  assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+});
+test('An unrelated ready file cannot authorize the GUI to close',async t=>{
+  const f=await fixture(t);const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  const spawnProcess=fakeSpawn(async child=>{await fs.writeFile(path.join(plan.job,'ready.json'),JSON.stringify({token:'wrong',pid:child.pid}));});
+  await assert.rejects(launchInstaller(plan,path.join(f.root,'result.json'),{spawnProcess,readyTimeoutMs:150}),/не запущен/);
+  await fs.access(path.join(plan.job,'cancel'));
+});
+test('Startup acknowledgement binds to the running version, executable, job and token',async t=>{
+  const f=await fixture(t);const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  await fs.writeFile(path.join(plan.job,'plan.json'),JSON.stringify(plan));
+  const input={job:plan.job,token:plan.token,version:plan.version,executable:path.join(f.directory,'Opora.exe')};
+  for(const change of [{version:'0.3.0'},{token:'wrong'},{executable:path.join(f.root,'other/Opora.exe')}])await assert.rejects(confirmLaunch({...input,...change}),/подтвердить/);
+  await assert.rejects(fs.access(path.join(plan.job,'launch-ack.json')));
+  assert.equal(await confirmLaunch(input),true);
+  const ack=await readResult(path.join(plan.job,'launch-ack.json'));
+  assert.equal(ack.pid,process.pid);assert.equal(ack.version,'0.5.1');
+});

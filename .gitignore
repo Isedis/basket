@@ -6,4 +6,6 @@ artifacts/
 /Opora-App.backup-*/
 /.opora-install-*/
 /.opora-launch.lock
+/.opora-update-*/
+/*.update.lock
 /distribution/windows/Opora-Windows.zip

@@ -10,7 +10,7 @@ if(git(['status','--porcelain']))throw new Error('Commit the tested release befo
 const release=JSON.parse(fs.readFileSync(path.join(root,'distribution/windows/manifest.json'),'utf8'));
 const committed=JSON.parse(git(['show','HEAD:distribution/windows/manifest.json']));
 if(release.sha256!==committed.sha256 || release.version!==require('../package.json').version)throw new Error('Release manifest mismatch.');
-const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Новый интерфейс по брендбуку Isidacorp: чёрный фон, светлый текст и JetBrains Mono. Текущая задача на рабочем столе, поля брендбука рядом с разбором, меньше пояснений и быстрые клавиши Ctrl+1…5, Ctrl+N, Ctrl+S.'});
+const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Исправлены установка и перезапуск Windows: отдельная рабочая папка установщика, подтверждение готовности до закрытия окна, проверка запуска новой версии, диагностика и восстановление прежней копии. Перед установкой закройте MCP-сессии Опоры. В версиях до 0.5.1 требуется однократно установить готовую сборку вручную.'});
 fs.mkdirSync(path.join(root,'updates'),{recursive:true});
 fs.writeFileSync(path.join(root,'updates/latest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(`Update channel prepared: ${manifest.version}, immutable commit ${manifest.commit}`);
