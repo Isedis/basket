@@ -3,4 +3,7 @@ release/
 artifacts/
 *.log
 /Opora-App/
+/Opora-App.backup-*/
+/.opora-install-*/
+/.opora-launch.lock
 /distribution/windows/Opora-Windows.zip

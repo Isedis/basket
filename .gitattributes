@@ -1,0 +1,2 @@
+# Keep the downloadable batch file byte-for-byte with Windows line endings.
+START-OPORA.cmd -text whitespace=cr-at-eol
