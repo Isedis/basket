@@ -10,6 +10,7 @@ const {Updater} = require('../src/updater.cjs');
 const windowsUpdater = require('./windows-updater.cjs');
 const agentConfig = require('../src/agent-config.cjs');
 const agentService = require('../src/agent-service.cjs');
+const projectMap = require('../src/project-map.cjs');
 let root = null;
 let lastScan = null;
 let win;
@@ -92,6 +93,7 @@ if(primary)app.whenReady().then(async () => {
   });
   ipcMain.handle('project:save', (_, state,baseBrand,baseState) => core.saveProject(requireProject(), state,{baseBrand,baseState}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
+  ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));
   ipcMain.handle('project:preview', (_, state) => core.previewSync(requireProject(), state));
   ipcMain.handle('project:sync', (_, state,baseBrand,baseState) => core.syncProject(requireProject(), state,{baseBrand,baseState}));
   ipcMain.handle('brandbook:review',(_,state)=>brandReview.reviewProject(requireProject(),state));

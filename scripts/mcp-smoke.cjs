@@ -21,9 +21,17 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,10);
+    const tools=await client.listTools();assert.equal(tools.tools.length,11);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
+    await fs.writeFile(path.join(root,'menu.tscn'),'[gd_scene format=3]\n[ext_resource type="Script" path="res://menu.gd" id="1"]\n');
+    await fs.writeFile(path.join(root,'menu.gd'),'extends Control\nfunc open_menu():\n  pass\n');
+    const map=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,kind:'scene'}})).structuredContent;
+    assert.equal(map.files[0].file,'menu.tscn');assert.equal(map.total,1);
+    const focused=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,file:'menu.gd'}})).structuredContent;
+    assert.equal(focused.incoming[0].from,'menu.tscn');assert.equal(focused.selected.functions[0].name,'open_menu');
+    const wrongMap=await client.callTool({name:'opora_get_project_map',arguments:{project_id:'0'.repeat(32)}});assert.equal(wrongMap.isError,true);
+    const unsafeMap=await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,file:'../private'}});assert.equal(unsafeMap.isError,true);
     const context=(await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id}})).structuredContent;
     assert.match(context.markdown,/Keyboard navigation/);
     const cached=await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id,known_revision:context.revision}});
@@ -55,7 +63,7 @@ async function main() {
     }finally{await second.close();}
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 10 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 11 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

@@ -87,7 +87,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.7.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.8.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -95,11 +95,11 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.7.0');
+    assert.equal(diagnostics.currentVersion,'0.8.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.7.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.8.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -170,6 +170,28 @@ async function main() {
     await page.getByText('MCP report visible in Opora',{exact:true}).waitFor();
     await page.screenshot({path:path.join(__dirname,'../artifacts/agents.png'),fullPage:true});
     const data=await core.loadProject(project);
+    await fs.writeFile(path.join(project,'menu.tscn'),'[gd_scene format=3]\n[ext_resource type="Theme" path="res://ui/theme.tres" id="1"]\n[ext_resource type="Script" path="res://menu.gd" id="2"]\n[ext_resource type="Texture2D" path="res://ui/menu.png" id="3"]\n');
+    await fs.writeFile(path.join(project,'menu.gd'),'extends Control\nfunc show_menu():\n  pass\n');
+    await page.locator('nav [data-tab="map"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'project.godot'}).waitFor();
+    await page.locator('#map-search').fill('menu.tscn');
+    await page.waitForFunction(()=>document.querySelector('.map-file-list')?.querySelectorAll('[data-map-file]').length===1);
+    await page.locator('.map-file-list [data-map-file="menu.tscn"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'menu.tscn'}).waitFor();
+    await page.locator('.map-detail [data-map-file="ui/theme.tres"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'ui/theme.tres'}).waitFor();
+    assert.match(await page.locator('.map-detail').textContent(),/menu.tscn:2/);
+    await page.locator('[data-map-action="copy"]').click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Карта файла скопирована для агента.');
+    assert.match(await app.evaluate(({clipboard})=>clipboard.readText()),/opora_get_project_map/);
+    await page.locator('.map-detail [data-map-file="menu.tscn"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'menu.tscn'}).waitFor();
+    await page.screenshot({path:path.join(__dirname,'../artifacts/project-map.png'),fullPage:true});
+    await page.locator('.map-detail [data-map-file="ui/theme.tres"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'ui/theme.tres'}).waitFor();
+    await fs.rm(path.join(project,'ui/theme.tres'));
+    await page.locator('[data-map-action="refresh"]').click();
+    await page.waitForFunction(()=>document.querySelector('.map-focus-heading')?.textContent.includes('Файл отсутствует'));
     assert.equal(data.state.references[0].status,'approved');
     assert.ok((await fs.readFile(path.join(project,'CLAUDE.md'),'utf8')).startsWith('# Existing Claude instructions\nUse existing components.\n'));
     assert.deepEqual(errors,[]);

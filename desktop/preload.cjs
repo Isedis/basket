@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('opora', {
   preview: state => ipcRenderer.invoke('project:preview', state),
   sync: (state,baseBrand,baseState) => ipcRenderer.invoke('project:sync', state,baseBrand,baseState),
   projectSnapshot: () => ipcRenderer.invoke('project:snapshot'),
+  projectMap: options => ipcRenderer.invoke('project:map', options),
   scanBrandbook: () => ipcRenderer.invoke('brandbook:scan'),
   applyBrandbook: selection => ipcRenderer.invoke('brandbook:apply', selection),
   reviewBrandbook: state => ipcRenderer.invoke('brandbook:review', state),

@@ -49,6 +49,7 @@ let reviewBusy = false;
 let reviewTimer = null;
 let reviewErrorFor = null;
 const bridge = window.opora;
+const projectMapView=window.OporaProjectMap.create({getRoot:()=>root,bridge,notify:toast,onError:fail});
 
 function toast(message, error = false) {
   clearTimeout(toastTimer);
@@ -106,7 +107,7 @@ function changed() {
 function refreshChrome() {
   $('#side-name').textContent = state.name;
   $('#header-name').textContent = state.name;
-  $('#header-route').textContent=({overview:'/desk',tasks:'/tasks',brand:'/brand',agents:'/agents',context:'/context'})[tab];
+  $('#header-route').textContent=({overview:'/desk',tasks:'/tasks',brand:'/brand',agents:'/agents',context:'/context',map:'/map'})[tab];
   $('#side-mode').textContent = root ? 'Godot / локально' : 'Демо';
   $('#header-name').title = root || 'Демонстрационный проект';
   $('#task-count').textContent = state.tasks.filter(t => t.status !== 'done').length;
@@ -235,7 +236,8 @@ function configureAgent(client) {
 function render() {
   const routeChanged=renderedTab!==tab || renderedRoot!==root;
   refreshChrome();
-  $('#main').innerHTML = ({overview,brand,tasks,context,agents})[tab]();
+  $('#main').innerHTML = tab==='map'?'<div id="project-map-view"></div>':({overview,brand,tasks,context,agents})[tab]();
+  if(tab==='map')projectMapView.mount($('#project-map-view'));
   if(routeChanged)$('#main').scrollTop=0;
   renderedTab=tab;renderedRoot=root;
   if (tab === 'context') updatePreview();
@@ -520,8 +522,8 @@ document.addEventListener('keydown',async event=>{
   }
   try {
     if(modifier && event.code==='KeyK'){event.preventDefault();showCommands();}
-    else if(modifier && /^[1-5]$/.test(event.key)) {
-      event.preventDefault();tab=['overview','tasks','brand','agents','context'][Number(event.key)-1];render();if(tab==='agents')await refreshAgents();
+    else if(modifier && /^[1-6]$/.test(event.key)) {
+      event.preventDefault();tab=['overview','tasks','brand','agents','context','map'][Number(event.key)-1];render();if(tab==='agents')await refreshAgents();
     } else if(modifier && event.code==='KeyN') {event.preventDefault();tab='tasks';render();editTask();}
     else if(modifier && event.code==='KeyS') {event.preventDefault();await persist();}
     else if(modifier && event.key==='Enter' && tab==='context') {event.preventDefault();document.querySelector('[data-action="copy-brief"]')?.click();}
@@ -584,7 +586,7 @@ async function resolveBrandConflict(useRemote) {
 }
 let commandIndex=0;
 const appCommands=[
-  ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
+  ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка'],['map','Карта проекта','map files сцены скрипты связи']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
   {id:'new-task',label:'Новая задача',aliases:'new task создать добавить',hint:'Задачи',key:'Ctrl N',run:()=>{tab='tasks';render();editTask();}},
   {id:'copy',label:'Скопировать запрос',aliases:'copy brief копировать контекст',hint:'Для агента',key:'',run:copyBrief},
   {id:'review',label:'Проверить брендбук',aliases:'review audit разбор оценка',hint:'Стиль',key:'',run:async()=>{tab='brand';render();await reviewBrand(true);}},

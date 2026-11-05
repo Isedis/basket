@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Единая память проекта Godot для Claude и Codex",
   "private": true,
   "main": "desktop/main.cjs",
@@ -13,7 +13,7 @@
     "test:launcher": "node scripts/launcher-smoke.cjs",
     "test:installer": "node scripts/installer-smoke.cjs",
     "test:restart": "node scripts/update-restart-smoke.cjs",
-    "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/image-analysis.cjs && node --check desktop/windows-updater.cjs && node --check src/core.cjs && node --check src/brandbook.cjs && node --check src/updater.cjs && node --check ui/context.js && node --check ui/app.js && node --check src/agent-service.cjs && node --check src/agent-config.cjs && node --check mcp/server.cjs && node --check ui/brand-review.js && node --check src/brand-review.cjs",
+    "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/image-analysis.cjs && node --check desktop/windows-updater.cjs && node --check src/core.cjs && node --check src/project-map.cjs && node --check ui/project-map.js && node --check src/brandbook.cjs && node --check src/updater.cjs && node --check ui/context.js && node --check ui/app.js && node --check src/agent-service.cjs && node --check src/agent-config.cjs && node --check mcp/server.cjs && node --check ui/brand-review.js && node --check src/brand-review.cjs",
     "package:win": "electron-packager . Opora --platform=win32 --arch=x64 --out=release --electron-version=45.2.3 --overwrite --prune=true --ignore=^/release --ignore=^/artifacts --ignore=^/test --ignore=^/docs --ignore=^/scripts --ignore=^/distribution --ignore=^/updates --ignore=^/Opora-App --ignore=^/Opora-demo.html --ignore=^/START-OPORA.cmd --ignore=^/package-lock.json --ignore=^/.git"
   },
   "devDependencies": {

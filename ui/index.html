@@ -8,11 +8,12 @@
   <link rel="stylesheet" href="style.css">
   <script defer src="context.js"></script>
   <script defer src="brand-review.js"></script>
+  <script defer src="project-map.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
   <aside class="sidebar">
-    <button class="logo" data-tab="overview" aria-label="Открыть рабочий стол"><span class="studio-name">Isidacorp</span><span class="product-name">ОПОРА <span class="version">/ 0.7.0</span></span></button>
+    <button class="logo" data-tab="overview" aria-label="Открыть рабочий стол"><span class="studio-name">Isidacorp</span><span class="product-name">ОПОРА <span class="version">/ 0.8.0</span></span></button>
     <div class="sidebar-label">ПРОЕКТ / GODOT</div>
     <button class="project-switch" data-action="open"><span class="project-icon">[ ]</span><span><strong id="side-name">Тихая орбита</strong><small id="side-mode">Демо</small></span><span class="switch-arrow">/</span></button>
     <nav aria-label="Разделы проекта">
@@ -21,6 +22,7 @@
       <button data-tab="brand" class="nav-item" title="Ctrl+3"><span class="nav-code" aria-hidden="true">[3]</span>Брендбук</button>
       <button data-tab="agents" class="nav-item" title="Ctrl+4"><span class="nav-code" aria-hidden="true">[4]</span>Агенты</button>
       <button data-tab="context" class="nav-item" title="Ctrl+5"><span class="nav-code" aria-hidden="true">[5]</span>Контекст</button>
+      <button data-tab="map" class="nav-item" title="Ctrl+6"><span class="nav-code" aria-hidden="true">[6]</span>Карта проекта</button>
     </nav>
     <section class="sidebar-task"><div class="sidebar-label">ТЕКУЩАЯ ЗАДАЧА</div><p id="side-active-task">Нет выбранной задачи</p><button class="text-button" data-action="goto-context">Контекст →</button></section>
     <div class="sidebar-bottom"><button class="text-button" data-action="help">[?] Справка <span>F1</span></button></div>
@@ -30,7 +32,7 @@
     <div id="brand-conflict" class="context-note conflict-bar" hidden><span>Данные изменены параллельно. Ваши правки остались в этом окне.</span><button class="text-button" data-action="brand-conflict">Сравнить версии →</button></div>
     <main id="main"></main>
   </div>
-  <footer class="terminal-statusbar"><span class="terminal-session">ОПОРА / 0.7.0</span><span id="footer-status">[DEMO]</span><span id="terminal-brand">СТИЛЬ: ЧЕРНОВИК</span><span class="terminal-keys">^1…5 разделы <span aria-hidden="true">|</span> ^N задача <span aria-hidden="true">|</span> ^K команды</span><span id="save-status" class="save-status" role="status">Демо</span></footer>
+  <footer class="terminal-statusbar"><span class="terminal-session">ОПОРА / 0.8.0</span><span id="footer-status">[DEMO]</span><span id="terminal-brand">СТИЛЬ: ЧЕРНОВИК</span><span class="terminal-keys">^1…6 разделы <span aria-hidden="true">|</span> ^N задача <span aria-hidden="true">|</span> ^K команды</span><span id="save-status" class="save-status" role="status">Демо</span></footer>
   <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>

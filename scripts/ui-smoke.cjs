@@ -11,7 +11,7 @@ async function main() {
   await fs.writeFile(path.join(fixture,'project.godot'),'config_version=5\n[application]\nconfig/name="UI test game"\n');
   await fs.writeFile(path.join(fixture,'AGENTS.md'),'# Existing rules\nKeep original assets.\n');
   const server = http.createServer(async (req,res) => {
-    const files = {'/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/brand-review.js':'brand-review.js','/app.js':'app.js','/fonts/JetBrainsMono-Regular.ttf':'fonts/JetBrainsMono-Regular.ttf','/fonts/JetBrainsMono-SemiBold.ttf':'fonts/JetBrainsMono-SemiBold.ttf'};
+    const files = {'/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/brand-review.js':'brand-review.js','/app.js':'app.js','/project-map.js':'project-map.js','/fonts/JetBrainsMono-Regular.ttf':'fonts/JetBrainsMono-Regular.ttf','/fonts/JetBrainsMono-SemiBold.ttf':'fonts/JetBrainsMono-SemiBold.ttf'};
     const file = files[req.url];
     if (!file) {res.writeHead(404); res.end(); return;}
     const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.ttf':'font/ttf'};
@@ -81,7 +81,19 @@ async function main() {
     await page.locator('nav [data-tab="context"]').click();
     assert.match(await page.locator('#context-preview').textContent(),/УТВЕРЖДЁН пользователем/);
     await page.screenshot({path:path.join(__dirname,'../artifacts/context.png'),fullPage:true});
-    console.log('PASS demo: persisted edits, task creation/selection, brand status, shared context');
+    await page.keyboard.press('Control+6');
+    await page.locator('.map-focus-heading h2').filter({hasText:'scenes/main_menu.tscn'}).waitFor();
+    assert.equal(await page.locator('.map-detail [data-map-file="scripts/main_menu.gd"]').count(),1);
+    await page.locator('.map-detail [data-map-file="scripts/main_menu.gd"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'scripts/main_menu.gd'}).waitFor();
+    assert.match(await page.locator('.map-symbols').textContent(),/_on_play_pressed/);
+    await page.locator('[data-map-action="main"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'scenes/main_menu.tscn'}).waitFor();
+    await page.screenshot({path:path.join(__dirname,'../artifacts/project-map-wide.png'),fullPage:true});
+    await page.locator('#map-search').fill('theme');
+    await page.waitForFunction(()=>document.querySelector('.map-file-list')?.querySelectorAll('[data-map-file]').length===1);
+    assert.match(await page.locator('.map-file-list').textContent(),/game_theme.tres/);
+    console.log('PASS demo: persisted edits, tasks, brand status, shared context and navigable project map');
 
     const desktop = await browser.newContext({viewport:{width:1440,height:1000}});
     let copied=''; let closed=false; let installed=false;
