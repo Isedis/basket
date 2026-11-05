@@ -87,7 +87,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.6.1',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.7.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -95,11 +95,11 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.6.1');
+    assert.equal(diagnostics.currentVersion,'0.7.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.6.1/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.7.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -128,6 +128,43 @@ async function main() {
       assert.ok(reference.content.some(c=>c.type==='image' && c.mimeType==='image/png'));
       const submitted=await mcpClient.callTool({name:'opora_report_progress',arguments:{project_id:identified.project_id,revision:style.revision,agent:'claude',request_id:'native-report-0001',phase:'ready_for_review',summary:'MCP report visible in Opora',checks:[{name:'Gameplay test',result:'not_run'}]}});
       assert.ok(!submitted.isError);
+      await page.locator('nav [data-tab="brand"]').click();
+      await page.getByRole('button',{name:'Заполнить через агента',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Запрос скопирован. Вставьте его в подключённого агента.');
+      assert.match(await app.evaluate(({clipboard})=>clipboard.readText()),/opora_update_brandbook/);
+      const before=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+      const filled=await mcpClient.callTool({name:'opora_update_brandbook',arguments:{project_id:before.project_id,revision:before.revision,agent:'claude',request_id:'native-brand-001',summary:'Style proposal via MCP',fields:{direction:'MCP direction received live',fonts:'Game.ttf; body 18 px'}}});
+      assert.ok(!filled.isError,JSON.stringify(filled));
+      await page.waitForFunction(()=>document.querySelector('[data-field="brand.direction"]')?.value==='MCP direction received live');
+      assert.equal(await page.locator('[data-field="brand.status"]').inputValue(),'draft');
+      await app.evaluate(({ipcMain})=>{
+        global.oporaSaveHandler=ipcMain._invokeHandlers.get('project:save');
+        global.oporaSaveWaiting=false;
+        const gate=new Promise(resolve=>global.oporaReleaseSave=resolve);
+        ipcMain.removeHandler('project:save');
+        ipcMain.handle('project:save',async(event,...args)=>{global.oporaSaveWaiting=true;await gate;return global.oporaSaveHandler(event,...args);});
+      });
+      await page.locator('[data-field="brand.direction"]').fill('Unsaved manual proposal');
+      while(!await app.evaluate(()=>global.oporaSaveWaiting))await new Promise(resolve=>setTimeout(resolve,50));
+      const fresh=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+      const competing=await mcpClient.callTool({name:'opora_update_brandbook',arguments:{project_id:fresh.project_id,revision:fresh.revision,agent:'claude',request_id:'native-brand-002',summary:'Parallel proposal',fields:{direction:'MCP conflict winner'}}});
+      assert.ok(!competing.isError);
+      await app.evaluate(()=>global.oporaReleaseSave());
+      await page.locator('#brand-conflict').waitFor({state:'visible'});
+      assert.equal(await page.locator('[data-field="brand.direction"]').inputValue(),'Unsaved manual proposal');
+      await page.getByRole('button',{name:'Сравнить версии →'}).click();
+      await page.getByRole('heading',{name:'Две версии проекта'}).waitFor();
+      await page.getByRole('button',{name:'Принять сохранённую версию'}).click();
+      await page.waitForFunction(()=>document.querySelector('#brand-conflict').hidden && document.querySelector('#save-status').textContent==='Сохранено');
+      assert.equal(await page.locator('[data-field="brand.direction"]').inputValue(),'MCP conflict winner');
+      await app.evaluate(({ipcMain})=>{ipcMain.removeHandler('project:save');ipcMain.handle('project:save',global.oporaSaveHandler);delete global.oporaSaveHandler;delete global.oporaReleaseSave;delete global.oporaSaveWaiting;});
+      const latestData=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+      const allData=await mcpClient.callTool({name:'opora_update_project',arguments:{project_id:latestData.project_id,revision:latestData.revision,agent:'claude',request_id:'native-project-01',summary:'Game data',fields:{goal:'Goal filled by MCP',tasks:[{id:'agent-task',title:'MCP prototype task',acceptance:'Playable prototype'}],active_task_id:'agent-task',reference_files:['ui/menu.png']}}});
+      assert.ok(!allData.isError,JSON.stringify(allData));
+      await page.waitForFunction(()=>document.querySelector('#side-active-task').textContent==='MCP prototype task');
+      await page.locator('nav [data-tab="overview"]').click();
+      assert.equal(await page.locator('[data-field="goal"]').inputValue(),'Goal filled by MCP');
+      await page.locator('nav [data-tab="agents"]').click();
     } finally {await mcpClient.close();}
     await page.getByRole('button',{name:'Обновить данные'}).click();
     await page.getByText('MCP report visible in Opora',{exact:true}).waitFor();
@@ -150,7 +187,7 @@ async function main() {
     await reopened.getByRole('heading',{name:'Изменения не сохранены'}).waitFor();
     await reopened.getByRole('button',{name:'Продолжить работу'}).click();
     await reopened.locator('[data-field="name"]').fill('Native game');
-    assert.equal((await core.loadProject(project)).state.brand.direction,'My hand-edited visual direction');
+    assert.equal((await core.loadProject(project)).state.brand.direction,'MCP conflict winner');
     console.log('PASS real Electron: brandbook review, contrast correction, task deduplication, copied advice, MCP assessment/image/report, updates and save/restore.');
   } finally {
     if(app) await app.close();

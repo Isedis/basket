@@ -90,9 +90,10 @@ if(primary)app.whenReady().then(async () => {
     lastScan = null;
     return loaded;
   });
-  ipcMain.handle('project:save', (_, state) => core.saveProject(requireProject(), state));
+  ipcMain.handle('project:save', (_, state,baseBrand,baseState) => core.saveProject(requireProject(), state,{baseBrand,baseState}));
+  ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
   ipcMain.handle('project:preview', (_, state) => core.previewSync(requireProject(), state));
-  ipcMain.handle('project:sync', (_, state) => core.syncProject(requireProject(), state));
+  ipcMain.handle('project:sync', (_, state,baseBrand,baseState) => core.syncProject(requireProject(), state,{baseBrand,baseState}));
   ipcMain.handle('brandbook:review',(_,state)=>brandReview.reviewProject(requireProject(),state));
   ipcMain.handle('brandbook:scan', async () => {
     const project = requireProject();

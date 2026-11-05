@@ -103,3 +103,80 @@ test('Invalid or conflicting client configurations are preserved without exposin
   await assert.rejects(configs.configure('codex',config),/настроен вручную/);
   assert.equal(await fs.readFile(config.codexFile,'utf8'),original);
 });
+
+test('MCP brand writes only requested fields as a draft, backs up exact prior state and returns fresh revisions',async t=>{
+  const {root,state}=await fixture(t);state.brand.status='approved';await core.saveProject(root,state);
+  const s=await service.snapshot(root);
+  const args={project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'brand-write-01',summary:'Palette and typography proposal',fields:{palette:'Текст: #FFFFFF на #000000',fonts:'Game.ttf; текст 18 px'}};
+  const result=await service.updateBrandbook(root,args);
+  assert.equal(result.brand.status,'draft');assert.equal(result.approval_required,true);assert.notEqual(result.revision,s.revision);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,result.backup),'utf8')),state);
+  const saved=(await core.loadProject(root)).state;
+  assert.deepEqual(saved.tasks,state.tasks);assert.deepEqual(saved.references,state.references);assert.equal(saved.rules,state.rules);assert.equal(saved.brand.direction,state.brand.direction);
+  assert.equal((await service.updateBrandbook(root,args)).duplicate,true);
+  await assert.rejects(service.updateBrandbook(root,{...args,fields:{palette:'different'}}),/уже использован/);
+  saved.brand.status='approved';await core.saveProject(root,saved);
+  await service.updateBrandbook(root,args);assert.equal((await core.loadProject(root)).state.brand.status,'approved','A retry must not undo manual approval');
+});
+test('MCP rejects stale, wrong-project and unsupported-field edits without changing files',async t=>{
+  const {root,state}=await fixture(t);const s=await service.snapshot(root);
+  const args={project_id:s.project_id,revision:s.revision,agent:'claude',request_id:'brand-write-02',summary:'Proposal',fields:{direction:'New direction'}};
+  for(const change of [{project_id:'0'.repeat(32)},{fields:{status:'approved'}},{fields:{}},{fields:{fonts:'x'.repeat(64001)}},{revision:undefined}])await assert.rejects(service.updateBrandbook(root,{...args,...change}));
+  assert.deepEqual((await core.loadProject(root)).state,state);
+  state.rules='Manual update';await core.saveProject(root,state);
+  await assert.rejects(service.updateBrandbook(root,args),/Контекст изменился/);
+  assert.deepEqual((await core.loadProject(root)).state,state);
+});
+test('Two simultaneous agent edits of one revision yield one commit and one stale rejection',async t=>{
+  const {root}=await fixture(t);const s=await service.snapshot(root);
+  const args={project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'parallel-brand-1',summary:'Proposal',fields:{direction:'First'}};
+  const results=await Promise.allSettled([service.updateBrandbook(root,args),service.updateBrandbook(root,{...args,request_id:'parallel-brand-2',fields:{direction:'Second'}})]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(results.find(r=>r.status==='rejected').reason.code,'STALE_CONTEXT');
+});
+test('GUI saves merge unrelated manual edits with agent fields, but refuse competing field edits and stale exports',async t=>{
+  const {root,state}=await fixture(t);const base=structuredClone(state.brand);const s=await service.snapshot(root);
+  await service.updateBrandbook(root,{project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'merge-brand-001',summary:'Proposal',fields:{palette:'#FFFFFF — текст'}});
+  state.goal='Manual goal';
+  const merged=await core.saveProject(root,state,{baseBrand:base});
+  assert.equal(merged.goal,'Manual goal');assert.equal(merged.brand.palette,'#FFFFFF — текст');
+  state.brand.palette='My competing palette';
+  await assert.rejects(core.saveProject(root,state,{baseBrand:base}),/BRAND_CONFLICT/);
+  await assert.rejects(core.syncProject(root,state,{baseBrand:base}),/предпросмотр/);
+  assert.deepEqual((await core.loadProject(root)).state,merged);
+});
+
+test('Approving unseen remote brand changes is refused until the user reviews them',async t=>{
+  const {root,state}=await fixture(t);const base=structuredClone(state.brand);const s=await service.snapshot(root);
+  await service.updateBrandbook(root,{project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'approve-race-01',summary:'Proposal',fields:{fonts:'NewFont.ttf'}});
+  state.brand.status='approved';
+  await assert.rejects(core.saveProject(root,state,{baseBrand:base}),/BRAND_CONFLICT/);
+  assert.equal((await core.loadProject(root)).state.brand.status,'draft');
+});
+
+test('Project MCP fills passport, rules, brand, task upserts and candidate images without deleting existing data',async t=>{
+ const {root,state}=await fixture(t);await fs.writeFile(path.join(root,'menu.png'),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6X7sAAAAASUVORK5CYII=','base64'));
+ const s=await service.snapshot(root);const input={project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'all-fields-001',summary:'Initial project draft',fields:{name:'New name',genre:'Roguelike',pitch:'Explore',experience:'Wonder',goal:'Prototype',pillars:'Progress',rules:'Keep existing UI',brand:{fonts:'Game.ttf 18 px'},tasks:[{id:'menu',title:'Revised menu',acceptance:'Keyboard input'},{id:'new',title:'New task',acceptance:'Runs'}],active_task_id:'new',reference_files:['menu.png']}};
+ const result=await service.updateWorkspace(root,input);assert.equal(result.state.tasks.length,2);assert.equal(result.state.brand.status,'draft');assert.equal(result.state.references[0].status,'draft');assert.equal(result.state.activeTaskId,'new');assert.equal(result.state.tasks[1].status,'active');assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,result.backup),'utf8')),state);assert.equal((await service.updateWorkspace(root,input)).duplicate,true);
+ const fresh=await service.snapshot(root);await assert.rejects(service.updateWorkspace(root,{...input,request_id:'unsafe-001',revision:fresh.revision,fields:{reference_files:['../outside.png']}}));await assert.rejects(service.updateWorkspace(root,{...input,request_id:'unsafe-002',revision:fresh.revision,fields:{tasks:[{id:'new',title:'Wrong',acceptance:'Wrong',status:'done'}]}}));assert.deepEqual((await core.loadProject(root)).state,result.state);
+});
+test('GUI preserves unrelated remote project data and task additions, but detects competing passport edits',async t=>{
+ const {root,state}=await fixture(t);const base=structuredClone(state);const s=await service.snapshot(root);
+ await service.updateWorkspace(root,{project_id:s.project_id,revision:s.revision,agent:'claude',request_id:'project-merge-01',summary:'Proposal',fields:{goal:'Remote goal',tasks:[{id:'remote-task',title:'Remote task',acceptance:'Runs'}]}});
+ state.rules='Local rules';const merged=await core.saveProject(root,state,{baseState:base});assert.equal(merged.goal,'Remote goal');assert.equal(merged.rules,'Local rules');assert.equal(merged.tasks.length,2);
+ state.goal='Competing goal';await assert.rejects(core.saveProject(root,state,{baseState:base}),/BRAND_CONFLICT/);
+});
+
+test('Context deltas reduce repeat reads, preserve changes and fall back after cache loss',async t=>{
+ const {root,state}=await fixture(t);state.rules='Long stable rules. '.repeat(500);await core.saveProject(root,state);
+ const read=service.contextReader(root);const id=(await service.snapshot(root)).project_id;
+ const full=await read(id);assert.equal(full.mode,'full');
+ const unchanged=await read(id,full.revision);assert.equal(unchanged.mode,'unchanged');assert.ok(JSON.stringify(unchanged).length<JSON.stringify(full).length/10);
+ state.goal='New goal';state.tasks.push({id:'new',title:'New task',acceptance:'Runs',status:'backlog'});await core.saveProject(root,state);
+ const delta=await read(id,full.revision);assert.equal(delta.mode,'delta');assert.equal(delta.changes.goal,'New goal');assert.equal(delta.changes.tasks.length,2);assert.equal(delta.changes.rules,undefined);
+ state.activeTaskId='new';await core.saveProject(root,state);
+ const selection=await read(id,delta.revision);assert.equal(selection.changes.activeTaskId,'new');assert.equal(selection.changes.tasks.find(t=>t.id==='new').acceptance,'Runs');
+ assert.equal((await service.contextReader(root)(id,delta.revision)).mode,'full');
+ await assert.rejects(read('0'.repeat(32),delta.revision),/другой проект/);
+ assert.equal((await read(id)).mode,'full');
+});

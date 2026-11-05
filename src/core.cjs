@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const lockfile=require('proper-lockfile');
 
 const START = '<!-- OPORA:START -->';
 const END = '<!-- OPORA:END -->';
@@ -32,7 +33,7 @@ function mergeInstructions(existing) {
   return existing.slice(0, existing.indexOf(START)) + INSTRUCTIONS + existing.slice(existing.indexOf(END) + END.length);
 }
 
-const {validateState, contextMarkdown, taskBrief} = require('../ui/context.js');
+const {validateState, contextMarkdown, taskBrief,mergeBrand,mergeProject} = require('../ui/context.js');
 
 async function readText(file) {
   try { return await fs.readFile(file, 'utf8'); } catch (err) { if (err.code === 'ENOENT') return null; throw err; }
@@ -65,7 +66,16 @@ async function loadProject(root) {
   return {root, info, state: data === null ? null : validateState(JSON.parse(data))};
 }
 
-async function saveProject(root, state) {
+async function withProjectLock(root,work) {
+  await projectInfo(root);
+  await assertSafePath(root,'.opora/project.lock');
+  await fs.mkdir(path.join(root,'.opora'),{recursive:true});
+  let release;
+  try{release=await lockfile.lock(path.join(root,'.opora/project'),{realpath:false,stale:30000,update:5000,retries:{retries:20,factor:1,minTimeout:100,maxTimeout:100}});}
+  catch(error){if(error.code==='ELOCKED')throw new Error('Проект сейчас сохраняется другим процессом Опоры. Повторите действие через несколько секунд.');throw error;}
+  try{return await work();}finally{await release();}
+}
+async function writeProject(root, state) {
   validateState(state);
   await projectInfo(root);
   await assertSafePath(root, '.opora/project.json');
@@ -75,6 +85,38 @@ async function saveProject(root, state) {
     await fs.writeFile(temp, JSON.stringify(state, null, 2) + '\n', {flag:'wx'});
     await fs.rename(temp, path.join(root, '.opora/project.json'));
   } finally { await fs.rm(temp, {force:true}); }
+  return state;
+}
+async function saveProject(root,state,{baseBrand,baseState}={}) {
+  return withProjectLock(root,async()=>{
+    const current=(await loadProject(root)).state;
+    let next=structuredClone(state);
+    if(baseState && current){
+      const result=mergeProject(baseState,next,current);
+      if(result.conflicts.length)throw new Error('BRAND_CONFLICT: Данные проекта изменены параллельно. Сравните версии в Опоре.');
+      next=result.state;
+    }
+    else if(baseBrand && current){
+      const result=mergeBrand(baseBrand,next.brand,current.brand);
+      if(result.conflicts.length)throw Object.assign(new Error('BRAND_CONFLICT: Брендбук изменён параллельно. Сравните версии в Опоре.'),{code:'BRAND_CONFLICT'});
+      next.brand=result.brand;
+    }
+    return writeProject(root,next);
+  });
+}
+async function updateProject(root,transform) {
+  return withProjectLock(root,async()=>{
+    const current=(await loadProject(root)).state;
+    const next=await transform(current);
+    if(!next)return {state:current,backup:null,changed:false};
+    validateState(next);
+    if(Buffer.byteLength(JSON.stringify(next,null,2)+'\n')>2*1024*1024)throw new Error('Настройки проекта превысят 2 МиБ. Сократите текст брендбука.');
+    const backup='.opora/backups/brandbook-'+crypto.randomUUID()+'.json';
+    await assertSafePath(root,backup);await fs.mkdir(path.dirname(path.join(root,backup)),{recursive:true});
+    await fs.writeFile(path.join(root,backup),JSON.stringify(current,null,2)+'\n',{flag:'wx'});
+    await writeProject(root,next);
+    return {state:next,backup,changed:true};
+  });
 }
 
 async function previewSync(root, state) {
@@ -92,7 +134,7 @@ async function previewSync(root, state) {
   return files;
 }
 
-async function syncProject(root, state) {
+async function syncUnlocked(root, state) {
   const files = await previewSync(root, state);
   const originals = [];
   const backupId = new Date().toISOString().replace(/[:.]/g, '-') + '-' + crypto.randomUUID().slice(0,8);
@@ -136,4 +178,13 @@ async function syncProject(root, state) {
   return {files:files.map(f => f.file), backup, syncedAt:new Date().toISOString()};
 }
 
-module.exports = {mergeInstructions, validateState, contextMarkdown, taskBrief, loadProject, saveProject, previewSync, syncProject, assertSafePath};
+async function syncProject(root,state,{baseBrand,baseState}={}) {
+  await previewSync(root,state);
+  return withProjectLock(root,async()=>{
+    const current=(await loadProject(root)).state;
+    if(baseState && current && JSON.stringify(current)!==JSON.stringify(baseState))throw new Error('Данные проекта изменились. Обновите предпросмотр перед записью.');
+    if(baseBrand && current && JSON.stringify(current.brand)!==JSON.stringify(baseBrand))throw new Error('Брендбук изменился. Обновите предпросмотр файлов перед записью.');
+    return syncUnlocked(root,state);
+  });
+}
+module.exports = {mergeInstructions, validateState, contextMarkdown, taskBrief, loadProject, saveProject, previewSync, syncProject, assertSafePath,updateProject};

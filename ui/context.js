@@ -38,7 +38,7 @@ function contextMarkdown(state) {
   const text = v => v.trim() || 'Не задано. Не считать это принятым решением.';
   return `# ${s.name}: общий контекст игры
 
-Эту памятку создаёт Opora. Меняйте решения через приложение; изменения здесь могут быть заменены при следующей синхронизации.
+Эту памятку создаёт Opora. Меняйте решения через приложение или MCP-инструменты opora_update_project / opora_update_brandbook; изменения здесь могут быть заменены при следующей синхронизации.
 Актуальность: ${s.updatedAt || 'не указана'}. Движок: Godot.
 
 ## Игра
@@ -106,5 +106,38 @@ ${contextMarkdown(state)}`;
 }
 
 
-const OporaContext = {validateState, contextMarkdown, taskBrief};
+function mergeBrand(base,local,remote) {
+  const brand={};const conflicts=[];
+  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  for(const key of new Set([...Object.keys(base),...Object.keys(local),...Object.keys(remote)])){
+    if(same(local[key],base[key]))brand[key]=remote[key];
+    else if(same(remote[key],base[key]) || same(local[key],remote[key]))brand[key]=local[key];
+    else {brand[key]=local[key];conflicts.push(key);}
+  }
+  if(local.status==='approved' && base.status!=='approved' && !same(remote,base) && !same(local,remote) && !conflicts.includes('status'))conflicts.push('status');
+  return {brand,conflicts};
+}
+function mergeProject(base,local,remote,preferRemote=false) {
+  const conflicts=[];const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  const merge=(b,l,r,key)=>{
+    if(same(l,b))return r;
+    if(same(r,b)||same(l,r))return l;
+    if(key==='updatedAt')return [l,r].filter(Boolean).sort().at(-1);
+    if(key==='brand'){
+      const result=mergeBrand(b,l,r);conflicts.push(...result.conflicts.map(k=>'brand.'+k));
+      if(preferRemote)for(const k of result.conflicts)result.brand[k]=r[k];
+      return result.brand;
+    }
+    if((key==='tasks'||key==='references') && [b,l,r].every(Array.isArray)){
+      const maps=[b,l,r].map(a=>new Map(a.map(v=>[v.id,v])));
+      return [...new Set([...maps[0].keys(),...maps[1].keys(),...maps[2].keys()])].map(id=>merge(maps[0].get(id),maps[1].get(id),maps[2].get(id),key+'.'+id)).filter(Boolean);
+    }
+    if([b,l,r].every(v=>v && typeof v==='object' && !Array.isArray(v))){
+      return Object.fromEntries([...new Set([...Object.keys(b),...Object.keys(l),...Object.keys(r)])].map(k=>[k,merge(b[k],l[k],r[k],key?key+'.'+k:k)]));
+    }
+    conflicts.push(key);return preferRemote?r:l;
+  };
+  return {state:merge(base,local,remote,''),conflicts};
+}
+const OporaContext = {validateState, contextMarkdown, taskBrief,mergeBrand,mergeProject};
 if (typeof module !== 'undefined' && module.exports) module.exports = OporaContext;

@@ -17,6 +17,11 @@ const blankState = name => ({version:1,name,genre:'',pitch:'',experience:'',goal
 let state;
 try {state = JSON.parse(localStorage.getItem('opora-demo') || 'null'); if (state) OporaContext.validateState(state);} catch {state = null;}
 state ||= demoState();
+let savedProject=structuredClone(state);
+let pendingExternalRender=false;
+let brandConflict=null;
+let saving=0;
+let remoteLoading=false;
 let root = null;
 let tab = 'overview';
 let renderedTab=null;
@@ -56,16 +61,35 @@ function status(text) {$('#save-status').textContent = text;$('#save-status').ti
 function persist() {
   clearTimeout(timer);
   timer = null;
-  const snapshot = structuredClone(state);
-  const saveRevision = revision;
   if (!root) {
-    try {localStorage.setItem('opora-demo', JSON.stringify(snapshot)); failedSave = false; status('Демо · сохранено');} catch {failedSave = true; toast('Не удалось сохранить демо в браузере.', true);}
+    try {localStorage.setItem('opora-demo', JSON.stringify(state)); failedSave = false; status('Демо · сохранено');} catch {failedSave = true; toast('Не удалось сохранить демо в браузере.', true);}
     return Promise.resolve();
   }
-  saves = saves.catch(() => {}).then(() => bridge.save(snapshot)).then(() => {
-    failedSave = false;
-    if (saveRevision === revision) status('Сохранено');
-  }).catch(error => {failedSave = true; status('Не сохранено · ошибка'); fail(error); throw error;});
+  const project=root;
+  saves = saves.catch(() => {}).then(async () => {
+    if(project!==root)return;
+    if(brandConflict)throw new Error('BRAND_CONFLICT: Сначала сравните версии брендбука.');
+    const snapshot=structuredClone(state),saveRevision=revision;
+    saving++;
+    try {
+      const result=await bridge.save(snapshot,structuredClone(savedProject.brand),structuredClone(savedProject));
+      if(project!==root)return;
+      const remote=result?.brand ? result : snapshot;
+      const merged=OporaContext.mergeProject(snapshot,state,remote);
+      if(merged.conflicts.length){setBrandConflict(remote,snapshot);throw new Error('BRAND_CONFLICT: Поле изменилось во время сохранения.');}
+      state=merged.state;savedProject=structuredClone(remote);refreshBrandFields();
+      if(saveRevision===revision && result?.updatedAt)state.updatedAt=result.updatedAt;
+      failedSave=false;if(saveRevision===revision)status('Сохранено');
+    }finally{saving--;}
+  }).catch(async error => {
+    if(project!==root)throw error;
+    failedSave=true;status('Не сохранено · ошибка');
+    if(String(error.message).includes('BRAND_CONFLICT')){
+      if(!brandConflict && bridge.projectSnapshot){const current=await bridge.projectSnapshot();if(current?.root===project)setBrandConflict(current.state);}
+      toast('Данные изменены параллельно. Нажмите «Сравнить версии».',true);
+    }else fail(error);
+    throw error;
+  });
   // Attach a rejection handler for debounced, unawaited saves as well.
   saves.catch(() => {});
   return saves;
@@ -108,7 +132,7 @@ function demoBanner() {return root?'':'<div class="demo-banner"><span><strong>Д
 function overview() {
   const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
   const queue=state.tasks.filter(t=>t.status!=='done' && t.id!==active?.id);
-  return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<button class="button small secondary" data-action="new-task">+ Задача</button>')}${demoBanner()}
+  return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<div class="stack"><button class="button small secondary" data-action="copy-project-agent">Заполнить через агента</button><button class="button small secondary" data-action="new-task">+ Задача</button></div>')}${demoBanner()}
   <div class="project-status"><button data-action="goto-brand"><span class="status-dot"></span>Стиль: ${state.brand.status==='approved'?'утверждён':'черновик'}</button><span>${state.references.filter(r=>r.status==='approved').length} эталонов</span><button data-action="goto-context">${syncedRevision===revision?'Файлы обновлены':'Контекст: есть изменения'} →</button></div>
   <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>В работе</h2><span class="badge">${active?'ВЫБРАНА':'НЕТ ЗАДАЧИ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ГОТОВО, ЕСЛИ</span><p>${escapeHtml(active.acceptance || 'Добавьте критерии готовности.')}</p></div>`:'<p class="small">Создайте задачу с понятным результатом.</p>'}<div class="stack">${active?'<button class="button" data-action="copy-brief">Скопировать запрос</button>':'<button class="button" data-action="new-task">+ Новая задача</button>'}<button class="button secondary" data-action="goto-agents">Агенты →</button><button class="text-button" data-action="goto-context">Контекст</button></div></section>
   <section class="card queue-card"><div class="card-header"><h2>Следом</h2><button class="text-button" data-action="goto-tasks">Все / ${queue.length} →</button></div>${queue.length?queue.slice(0,4).map(t=>`<div class="queue-item"><div><span class="section-label">${t.status==='active'?'В РАБОТЕ':'ОЧЕРЕДЬ'}</span><strong>${escapeHtml(t.title)}</strong></div><button class="text-button" data-action="select-task" data-id="${escapeHtml(t.id)}">В работу →</button></div>`).join(''):'<div class="empty">Очередь пуста.<br><button class="text-button" data-action="new-task">Добавить задачу →</button></div>'}</section></div>
@@ -116,7 +140,7 @@ function overview() {
 }
 
 function brand() {
-  return `${pageTitle('[03] / СТИЛЬ','Брендбук','',`<div class="stack brand-toolbar"><button class="button small secondary" data-action="scan-brand" ${scanning?'disabled':''}>${scanning?'Читаю файлы…':state.brand.analysis?'Пересобрать черновик':'Собрать из проекта'}</button><label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Утверждён</option></select></label></div>`)}${demoBanner()}
+  return `${pageTitle('[03] / СТИЛЬ','Брендбук','',`<div class="stack brand-toolbar"><button class="button small secondary" data-action="copy-brand-agent">Заполнить через агента</button><button class="button small secondary" data-action="scan-brand" ${scanning?'disabled':''}>${scanning?'Читаю файлы…':state.brand.analysis?'Пересобрать черновик':'Собрать из проекта'}</button><label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Утверждён</option></select></label></div>`)}${demoBanner()}<p id="agent-brand-note" class="compact-hint agent-brand-note" ${state.brand.agentDraft?'':'hidden'}>${state.brand.agentDraft?`Последнее изменение через MCP: ${escapeHtml(state.brand.agentDraft.agent)} / ${escapeHtml(state.brand.agentDraft.summary)}`:''}</p>
   <div class="brand-workspace"><section class="card brand-fields"><div class="card-header"><h2>Правила стиля</h2></div>${field('Направление','brand.direction','Настроение, формы, материалы',true,3)}${field('Палитра и роли','brand.palette','#FFFFFF — текст\n#151E21 — фон',true,5)}${field('Шрифты и размеры','brand.fonts','Семейство, заголовки, основной текст',true,4)}${field('Ограничения','brand.avoid','Что не использовать',true,3)}</section><aside class="brand-inspector"><div id="brand-review-panel">${brandReviewPanel()}</div></aside></div>
   <section class="card section-gap"><div class="card-header"><h2>Эталоны <span class="inline-count">/ ${state.references.length}</span></h2><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length?`<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>`:'<div class="empty">Добавьте экран или компонент, на который должен опираться агент.</div>'}<details class="technical-note"><summary>Форматы и ограничения</summary><p>PNG / JPG / WebP, до 20 МБ. Для MCP — до 8 МиБ. Новые образцы добавляются кандидатами; утверждайте их после просмотра.</p></details></section>${state.brand.analysis?`<details class="source-drawer section-gap"><summary>Источники анализа / ${state.brand.analysis.stats.textFiles} файлов</summary>${analysisSummary(state.brand.analysis)}</details>`:''}`;
 }
@@ -172,7 +196,7 @@ function tasks() {
 function context() {
   const synced=syncedRevision===revision;
   const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
-  return `${pageTitle('[05] / ПЕРЕДАЧА','Контекст','',`<span class="badge ${synced?'':'orange'}">${synced?'ФАЙЛЫ ОБНОВЛЕНЫ':'ЕСТЬ ИЗМЕНЕНИЯ'}</span>`)}${demoBanner()}<section class="handoff-bar"><div><span class="section-label">ВЫБРАННАЯ ЗАДАЧА</span><strong>${escapeHtml(active?.title || 'Задача не выбрана')}</strong></div><div class="stack"><button class="button" data-action="copy-brief">Скопировать запрос</button><button class="button secondary" data-action="preview-sync">Обновить файлы проекта</button></div></section><section class="card"><div class="card-header"><h2>Памятка для агента</h2><button class="text-button" data-action="goto-agents">Подключение →</button></div><pre id="context-preview" class="code-preview"></pre><details class="technical-note"><summary>Как передать контекст</summary><p>Подключённый MCP-агент читает сохранённые данные напрямую. Для ручной передачи скопируйте запрос в его терминал или обновите файлы проекта.</p><p><span class="file-tag">AGENTS.md</span><span class="file-tag">CLAUDE.md</span><span class="file-tag">.opora/CONTEXT.md</span></p><p>Существующие инструкции сохраняются, перед записью создаётся резервная копия. В старой сессии попросите агента перечитать контекст.</p></details></section>`;
+  return `${pageTitle('[05] / ПЕРЕДАЧА','Контекст','',`<span class="badge ${synced?'':'orange'}">${synced?'ФАЙЛЫ ОБНОВЛЕНЫ':'ЕСТЬ ИЗМЕНЕНИЯ'}</span>`)}${demoBanner()}<section class="handoff-bar"><div><span class="section-label">ВЫБРАННАЯ ЗАДАЧА</span><strong>${escapeHtml(active?.title || 'Задача не выбрана')}</strong></div><div class="stack"><button class="button" data-action="copy-brief">Скопировать запрос</button><button class="button secondary" data-action="preview-sync">Обновить файлы проекта</button></div></section><section class="card"><div class="card-header"><h2>Памятка для агента</h2><button class="text-button" data-action="goto-agents">Подключение →</button></div><pre id="context-preview" class="code-preview"></pre><details class="technical-note"><summary>Как передать контекст</summary><p>Подключённый MCP-агент читает сохранённые данные напрямую. По запросу он заполняет брендбук через opora_update_brandbook; предложения сохраняются черновиком. Для ручной передачи скопируйте запрос в его терминал или обновите файлы проекта.</p><p><span class="file-tag">AGENTS.md</span><span class="file-tag">CLAUDE.md</span><span class="file-tag">.opora/CONTEXT.md</span></p><p>Существующие инструкции сохраняются, перед записью создаётся резервная копия. В старой сессии попросите агента перечитать контекст.</p></details></section>`;
 }
 
 function agents() {
@@ -290,6 +314,7 @@ async function openProject() {
   brandAssessment=null;assessmentFor=null;reviewErrorFor=null;
   agentConnection=null;agentActivity={reports:[],unreadable:0};
   state = project.state || blankState(project.info.name);
+  savedProject=structuredClone(state);brandConflict=null;$('#brand-conflict').hidden=true;
   revision = 0; syncedRevision = -1; failedSave = false;
   tab = 'overview';
   await persist();
@@ -301,8 +326,11 @@ async function previewSync() {
   if (!root) {toast('Подключите папку игры в приложении Windows. В демо можно скопировать запрос.', true); return;}
   await persist();
   const snapshot = structuredClone(state);
+  const previewRevision=revision;
+  const previewRoot=root;
   const files = await bridge.preview(snapshot);
-  pendingSync = {state:snapshot, revision};
+  if(previewRevision!==revision || previewRoot!==root){toast('Контекст изменился. Откройте предпросмотр ещё раз.');return;}
+  pendingSync = {state:snapshot, revision:previewRevision};
   showModal(`<h2 id="modal-title">Передать общий контекст</h2><p>Будут обновлены только перечисленные файлы. Код и сцены игры не меняются. В AGENTS.md и CLAUDE.md заменяется только блок Opora; остальное сохраняется.</p>${files.map(f=>`<details><summary>${escapeHtml(f.file)} ${f.existing?'· существующие инструкции сохранятся':''}</summary><pre class="code-preview">${escapeHtml(f.content)}</pre></details>`).join('')}<p>Предыдущие версии сохранятся в <span class="file-tag">.opora/backups/</span>. Данные и эталоны Opora лежат рядом с игрой: учитывайте их при публикации репозитория.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Отмена</button><button class="button" data-action="confirm-sync">Обновить эти файлы</button></div>`);
 }
 
@@ -349,6 +377,9 @@ document.addEventListener('click', async event => {
   const action = button.dataset.action;
   try {
     if (action === 'commands') showCommands();
+    if (action === 'brand-conflict') await showBrandConflict();
+    if (action === 'brand-use-agent') await resolveBrandConflict(true);
+    if (action === 'brand-keep-mine') await resolveBrandConflict(false);
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
@@ -380,6 +411,8 @@ document.addEventListener('click', async event => {
       button.disabled=true;
       try {await persist();await bridge.configureAgent(pendingAgent);closeModal();await refreshAgents();toast('Настроено. Перезапустите сессию агента.');} finally {button.disabled=false;}
     }
+    if (action === 'copy-brand-agent') await copyBrandAgentPrompt();
+    if (action === 'copy-project-agent') await copyBrandAgentPrompt(true);
     if (action === 'copy-agent-start' && agentConnection) {
       await bridge.copy(`Работаем над игрой «${state.name}» в папке ${agentConnection.root}. Используй MCP-сервер ${agentConnection.server_name}: сначала opora_get_project, проверь папку, затем opora_get_context и брендбук. Выполни выбранную задачу. Перед отправкой отчёта используй актуальную revision. Незапущенные проверки отметь not_run. Результат отправь через opora_report_progress со статусом ready_for_review; завершение подтверждает пользователь.`);
       toast('Первый запрос скопирован. Вставьте его в новую сессию агента.');
@@ -421,7 +454,8 @@ document.addEventListener('click', async event => {
       button.disabled = true;
       try {
         const snapshot = pendingSync;
-        const result = await bridge.sync(snapshot.state);
+        if(snapshot.revision!==revision)throw new Error('Контекст изменился. Обновите предпросмотр перед записью.');
+        const result = await bridge.sync(snapshot.state,snapshot.state.brand,snapshot.state);
         syncedRevision = snapshot.revision;
         closeModal(); render(); toast(`Контекст записан. Резервная копия: ${result.backup}`);
       } finally {button.disabled = false;}
@@ -452,6 +486,7 @@ async function initialize() {
     if (!project) return;
     root = project.root;
     state = project.state || blankState(project.info.name);
+  savedProject=structuredClone(state);brandConflict=null;$('#brand-conflict').hidden=true;
     render(); status('Проект открыт · локальные данные');
     if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
   } catch(error) {fail(error);}
@@ -499,6 +534,54 @@ async function copyBrief() {
   if(bridge)await bridge.copy(text);else await navigator.clipboard.writeText(text);
   toast('Запрос скопирован.');
 }
+function refreshBrandFields() {
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    const value=el.dataset.field.split('.').reduce((value,key)=>value[key],state);
+    if(el.value===value)return;
+    const start=el.selectionStart,end=el.selectionEnd;
+    el.value=value;
+    if(document.activeElement===el && typeof start==='number')el.setSelectionRange(Math.min(start,value.length),Math.min(end,value.length));
+  });
+  const note=$('#agent-brand-note');if(note){note.hidden=!state.brand.agentDraft;note.textContent=state.brand.agentDraft?'Последнее изменение через MCP: '+state.brand.agentDraft.agent+' / '+state.brand.agentDraft.summary:'';}
+  pendingExternalRender=true;
+  if(!document.activeElement?.matches('input,textarea,select') && !$('#modal').open){render();pendingExternalRender=false;}
+  refreshChrome();if(tab==='brand'){refreshReviewPanel();queueBrandReview();}
+}
+function setBrandConflict(remote,base=savedProject) {
+  brandConflict={remote:structuredClone(remote),base:structuredClone(base)};
+  $('#brand-conflict').hidden=false;
+}
+async function refreshExternalBrand() {
+  if(document.activeElement?.matches('input,textarea,select') || !root || !bridge?.projectSnapshot || remoteLoading || saving || timer || failedSave || brandConflict || scanning || applyingBrand || $('#modal').open)return;
+  const project=root;remoteLoading=true;
+  try {
+    const current=await bridge.projectSnapshot();
+    if(root!==project || current?.root!==project || !current.state || saving || timer || $('#modal').open)return;
+    if(JSON.stringify(current.state)===JSON.stringify(savedProject))return;
+    const merged=OporaContext.mergeProject(savedProject,state,current.state);
+    if(merged.conflicts.length){setBrandConflict(current.state);return;}
+    state=merged.state;savedProject=structuredClone(current.state);revision++;
+    refreshBrandFields();if(tab==='context')updatePreview();
+    toast('Данные обновлены из Опоры.');
+  }catch(error){status('Не удалось прочитать изменения брендбука');}
+  finally{remoteLoading=false;}
+}
+setInterval(refreshExternalBrand,2000);
+async function showBrandConflict() {
+  if(!brandConflict)return;
+  const current=await bridge.projectSnapshot();if(current?.root!==root)return;
+  brandConflict.remote=current.state;
+  const values=value=>value;
+  showModal(`<h2 id="modal-title">Две версии проекта</h2><p>Правки в одном поле разошлись. Выберите предпочтение для спорных полей. Непересекающиеся правки будут объединены.</p><div class="grid-two"><section><h3>В этом окне</h3><pre class="code-preview">${escapeHtml(JSON.stringify(values(state),null,2))}</pre></section><section><h3>Сохранено в Опоре</h3><pre class="code-preview">${escapeHtml(JSON.stringify(values(brandConflict.remote),null,2))}</pre></section></div><div class="modal-actions"><button class="button secondary" data-action="close-modal">Позже</button><button class="button secondary" data-action="brand-keep-mine">Сохранить мою версию</button><button class="button" data-action="brand-use-agent">Принять сохранённую версию</button></div>`);
+}
+async function resolveBrandConflict(useRemote) {
+  if(!brandConflict)return;
+  // Keep the compared version as the baseline; a newer agent edit still conflicts.
+  const remote=brandConflict.remote;
+  state=OporaContext.mergeProject(brandConflict.base,state,remote,useRemote).state;
+  savedProject=structuredClone(remote);brandConflict=null;failedSave=false;$('#brand-conflict').hidden=true;
+  closeModal();refreshBrandFields();changed();await persist();
+}
 let commandIndex=0;
 const appCommands=[
   ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
@@ -536,3 +619,25 @@ async function executeCommand(commandId) {
   closeModal();
   try {await command.run();}catch(error){fail(error);}
 }
+
+async function copyBrandAgentPrompt(allData=false) {
+  if(!root || !bridge?.agentInfo){toast('Откройте папку игры и настройте MCP в разделе «Агенты».');return;}
+  await persist();
+  const info=await bridge.agentInfo();
+  if(allData){
+    await bridge.copy(`Заполни данные проекта «${state.name}» (${info.root}) через MCP ${info.server_name}.
+Сначала opora_get_project: проверь корень игры, затем opora_get_context, opora_get_brandbook и opora_list_tasks. Изучи доступные файлы и изображения игры, отделяя факты от предложений.
+Используй opora_update_project с актуальными project_id/revision, уникальным request_id, agent, summary и fields. Заполни name, genre, pitch, experience, goal, pillars, rules; brand.direction/palette/fonts/avoid; tasks (id, title, acceptance, backlog/active), active_task_id и reference_files (относительные пути PNG/JPG/WebP внутри игры).
+Сохраняй существующие решения и задачи, не выдумывай факты и просмотренные источники. Неопределённое обозначь как предложение или вопрос. Для изменения существующих задач используй их ID. Эталоны добавляются кандидатами, брендбук — черновиком. Завершение и утверждение оставь пользователю. Не редактируй .opora/project.json напрямую. При STALE_CONTEXT перечитай данные и учти новые правки. После записи вызови opora_review_brandbook и перечисли оставшиеся вопросы.`);
+    toast('Запрос скопирован. Вставьте его в подключённого агента.');return;
+  }
+  await bridge.copy(`Заполни брендбук игры «${state.name}» в ${info.root} через MCP ${info.server_name}.
+Сначала opora_get_project: проверь папку; затем opora_get_context и opora_get_brandbook.
+Изучи файлы игры и доступные изображения через свои инструменты и opora_get_reference. Разделяй найденные факты и предлагаемые решения; не выдумывай просмотренные файлы и утверждённые эталоны.
+Подготовь direction (направление), palette (HEX и роли цветов, явные пары текста/фона), fonts (семейства, пути и размеры для разных ролей) и avoid (ограничения). Учитывай существующие правила и объясни существенные изменения.
+Сохрани через opora_update_brandbook: актуальные project_id и revision, уникальный request_id, agent, краткий summary и fields. Перед записью перечитай контекст, если он изменился. Не редактируй .opora/project.json напрямую. Стиль и эталоны самостоятельно не утверждай.
+Вызови opora_review_brandbook и кратко перечисли оставшиеся вопросы пользователю.`);
+  toast('Запрос скопирован. Вставьте его в подключённого агента.');
+}
+
+document.addEventListener('focusout',()=>setTimeout(()=>{if(pendingExternalRender && !document.activeElement?.matches('input,textarea,select') && !$('#modal').open){render();pendingExternalRender=false;}},0));

@@ -21,13 +21,19 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,8);
+    const tools=await client.listTools();assert.equal(tools.tools.length,10);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
     const context=(await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id}})).structuredContent;
     assert.match(context.markdown,/Keyboard navigation/);
+    const cached=await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id,known_revision:context.revision}});
+    assert.equal(cached.structuredContent.mode,'unchanged');assert.equal(cached.structuredContent.markdown,undefined);
+
     const assessment=await client.callTool({name:'opora_review_brandbook',arguments:{project_id:project.project_id}});
     assert.ok(!assessment.isError);assert.ok(assessment.structuredContent.review.findings.some(f=>f.id==='contrast-unspecified'));
+    const updated=await client.callTool({name:'opora_update_brandbook',arguments:{project_id:project.project_id,revision:project.revision,agent:'codex',request_id:'smoke-brand-001',summary:'Fill written rules',fields:{direction:'Matte space station',palette:'Текст: #FFFFFF на #000000',fonts:'Game.ttf, body 18 px',avoid:'No neon'}}});
+    assert.ok(!updated.isError,JSON.stringify(updated));assert.equal(updated.structuredContent.brand.status,'draft');
+    state.brand=updated.structuredContent.brand;
     const wrong=await client.callTool({name:'opora_get_context',arguments:{project_id:'0'.repeat(32)}});assert.equal(wrong.isError,true);
     state.rules='Changed while agent was working';await saveProject(root,state);
     const args={project_id:project.project_id,revision:project.revision,agent:'codex',request_id:'mcp-report-0001',task_id:'menu',phase:'ready_for_review',summary:'Prepared for review',checks:[{name:'Godot functional test',result:'not_run'}]};
@@ -36,9 +42,20 @@ async function main() {
     const report=await client.callTool({name:'opora_report_progress',arguments:{...args,revision:refreshed.revision}});assert.ok(!report.isError);
     assert.equal((await listReports(root)).reports.length,1);
     assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');
+    const allBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+    const all=await client.callTool({name:'opora_update_project',arguments:{project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop'}],active_task_id:'new-task'}}});
+    assert.ok(!all.isError,JSON.stringify(all));assert.equal(all.structuredContent.state.activeTaskId,'new-task');assert.equal(all.structuredContent.state.tasks.length,2);
+    const second=new Client({name:'parallel-agent',version:'1.0.0'},{capabilities:{}});
+    try {
+      await second.connect(new StdioClientTransport({command,args:[entry,'--project',root],env:process.env.OPORA_MCP_EXECUTABLE?{ELECTRON_RUN_AS_NODE:'1'}:{},stderr:'pipe'}));
+      const latest=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+      const input={project_id:latest.project_id,revision:latest.revision,agent:'codex',request_id:'parallel-sdk-001',summary:'Parallel write',fields:{avoid:'First proposal'}};
+      const results=await Promise.all([client.callTool({name:'opora_update_brandbook',arguments:input}),second.callTool({name:'opora_update_brandbook',arguments:{...input,request_id:'parallel-sdk-002',fields:{avoid:'Second proposal'}}})]);
+      assert.equal(results.filter(r=>r.isError).length,1);assert.match(results.find(r=>r.isError).content[0].text,/STALE_CONTEXT/);
+    }finally{await second.close();}
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 8 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 10 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

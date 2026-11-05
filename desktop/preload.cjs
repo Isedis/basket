@@ -2,9 +2,10 @@ const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('opora', {
   openProject: () => ipcRenderer.invoke('project:open'),
   restoreProject: () => ipcRenderer.invoke('project:restore'),
-  save: state => ipcRenderer.invoke('project:save', state),
+  save: (state,baseBrand,baseState) => ipcRenderer.invoke('project:save', state,baseBrand,baseState),
   preview: state => ipcRenderer.invoke('project:preview', state),
-  sync: state => ipcRenderer.invoke('project:sync', state),
+  sync: (state,baseBrand,baseState) => ipcRenderer.invoke('project:sync', state,baseBrand,baseState),
+  projectSnapshot: () => ipcRenderer.invoke('project:snapshot'),
   scanBrandbook: () => ipcRenderer.invoke('brandbook:scan'),
   applyBrandbook: selection => ipcRenderer.invoke('brandbook:apply', selection),
   reviewBrandbook: state => ipcRenderer.invoke('brandbook:review', state),

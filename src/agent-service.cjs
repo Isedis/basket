@@ -1,7 +1,7 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const crypto=require('node:crypto');
-const {assertSafePath,validateState,contextMarkdown}=require('./core.cjs');
+const {assertSafePath,validateState,contextMarkdown,updateProject}=require('./core.cjs');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fault=(code,message)=>Object.assign(new Error(message),{code});
 
@@ -89,4 +89,86 @@ async function contextView(root,projectId) {
   if(Buffer.byteLength(markdown)>256*1024)throw fault('TOO_LARGE','Контекст больше 256 КБ. Сократите его в Опоре или читайте брендбук и задачи отдельными инструментами.');
   return {...projectView(current),markdown};
 }
-module.exports={snapshot,identity,guard,projectView,contextView,listReports,reportProgress,getReference};
+function contextReader(root) {
+  const history=new Map();
+  return async(projectId,knownRevision)=>{
+    const current=await snapshot(root);guard(current,projectId);
+    const previous=history.get(knownRevision);
+    const remember=()=>{history.set(current.revision,structuredClone(current.state));while(history.size>8)history.delete(history.keys().next().value);};
+    if(knownRevision===current.revision && previous){remember();return {...projectView(current),mode:'unchanged',unchanged:true};}
+    if(previous){
+      const changes={};const removed=[];
+      for(const key of new Set([...Object.keys(previous),...Object.keys(current.state)])){
+        if(JSON.stringify(previous[key])===JSON.stringify(current.state[key]))continue;
+        if(Object.hasOwn(current.state,key))changes[key]=current.state[key];else removed.push(key);
+      }
+      // Selecting a different task also changes its readable acceptance criteria.
+      if(Object.hasOwn(changes,'activeTaskId'))changes.tasks=current.state.tasks;
+      // Arrays are replacements, including all task/reference records; no truncation.
+      const result={...projectView(current),mode:'delta',base_revision:knownRevision,revision:current.revision,changes,removed,apply:'These fields override the corresponding sections of your retained context; remove keys in removed. Arrays contain the complete current list. Other fields remain unchanged. Omit known_revision to reread full context anytime.'};
+      if(Buffer.byteLength(JSON.stringify(result))<=256*1024){remember();return result;}
+    }
+    const markdown=contextMarkdown(current.state);
+    if(Buffer.byteLength(markdown)>256*1024)throw fault('TOO_LARGE','Контекст больше 256 КБ. Читайте брендбук и задачи отдельными инструментами.');
+    const full={...projectView(current),markdown};
+    remember();return {...full,mode:'full',reason:knownRevision?'Previous version unavailable or delta too large; full context returned.':'Initial context.'};
+  };
+}
+
+async function updateBrandbook(root,input) {
+  const keys=['direction','palette','fonts','avoid'];
+  if(!/^[a-f0-9]{32}$/.test(input.project_id) || !/^[a-f0-9]{64}$/.test(input.revision) || !input.fields || !Object.keys(input.fields).length || Object.keys(input.fields).some(k=>!keys.includes(k)) || Object.values(input.fields).some(v=>typeof v!=='string'||v.length>64000) || !['claude','codex','other'].includes(input.agent) || !/^[a-zA-Z0-9_-]{8,80}$/.test(input.request_id) || typeof input.summary!=='string'||!input.summary.trim()||input.summary.length>4000)throw fault('INVALID_PATCH','Укажите поля direction/palette/fonts/avoid, агента, request_id и краткое описание.');
+  const fields=Object.fromEntries(keys.filter(k=>Object.hasOwn(input.fields,k)).map(k=>[k,input.fields[k]]));
+  const fingerprint=hash(JSON.stringify({revision:input.revision,agent:input.agent,request_id:input.request_id,fields,summary:input.summary}));
+  let id;
+  const result=await updateProject(root,async current=>{
+    const s=await snapshot(root);guard(s,input.project_id);id=s.project_id;
+    const prior=current.brand.agentDraft;
+    if(prior?.request_id===input.request_id && prior.agent===input.agent){
+      if(prior.fingerprint!==fingerprint)throw fault('DUPLICATE_REQUEST','Этот request_id уже использован для другого брендбука.');
+      return null;
+    }
+    guard(s,input.project_id,input.revision);
+    const next=structuredClone(current);
+    next.brand={...next.brand,...fields,status:'draft',agentDraft:{agent:input.agent,request_id:input.request_id,summary:input.summary,fingerprint,base_revision:input.revision,updatedAt:new Date().toISOString()}};
+    next.updatedAt=new Date().toISOString();return next;
+  });
+  return {project_id:id,revision:hash(JSON.stringify(result.state)),brand_revision:hash(JSON.stringify({brand:result.state.brand,references:result.state.references})),brand:result.state.brand,duplicate:!result.changed,backup:result.backup,approval_required:result.state.brand.status!=='approved'};
+}
+async function updateWorkspace(root,input) {
+  const textKeys=['name','genre','pitch','experience','goal','pillars','rules'];
+  const allowed=[...textKeys,'brand','tasks','active_task_id','reference_files'];
+  const patch=input.fields;
+  if(!patch || !Object.keys(patch).length || Object.keys(patch).some(k=>!allowed.includes(k)) || !/^[a-f0-9]{32}$/.test(input.project_id) || !/^[a-f0-9]{64}$/.test(input.revision) || !['claude','codex','other'].includes(input.agent) || !/^[a-zA-Z0-9_-]{8,80}$/.test(input.request_id) || typeof input.summary!=='string' || !input.summary.trim() || input.summary.length>4000)throw fault('INVALID_PATCH','Некорректное обновление проекта.');
+  for(const key of textKeys)if(Object.hasOwn(patch,key) && (typeof patch[key]!=='string' || patch[key].length>64000 || key==='name'&&!patch[key].trim()))throw fault('INVALID_PATCH','Некорректное поле '+key);
+  if(patch.brand && (Object.keys(patch.brand).some(k=>!['direction','palette','fonts','avoid'].includes(k)) || Object.values(patch.brand).some(v=>typeof v!=='string'||v.length>64000)))throw fault('INVALID_PATCH','Некорректные поля брендбука.');
+  if(patch.tasks && (!Array.isArray(patch.tasks)||patch.tasks.length>100||patch.tasks.some(t=>!t||typeof t.title!=='string'||!t.title.trim()||t.title.length>180||typeof t.acceptance!=='string'||t.acceptance.length>12000||t.id!==undefined&&(typeof t.id!=='string'||!t.id||t.id.length>160)||t.status!==undefined&&!['backlog','active'].includes(t.status))))throw fault('INVALID_PATCH','Задачи должны содержать название и критерии; завершение подтверждает пользователь.');
+  if(patch.reference_files && (!Array.isArray(patch.reference_files)||patch.reference_files.length>20||patch.reference_files.some(f=>typeof f!=='string')))throw fault('INVALID_PATCH','Некорректный список изображений.');
+  const fingerprint=hash(JSON.stringify({revision:input.revision,agent:input.agent,fields:patch,summary:input.summary}));let projectId;
+  const result=await updateProject(root,async current=>{
+    const s=await snapshot(root);guard(s,input.project_id);projectId=s.project_id;
+    if(current.agentUpdate?.request_id===input.request_id && current.agentUpdate.agent===input.agent){if(current.agentUpdate.fingerprint!==fingerprint)throw fault('DUPLICATE_REQUEST','request_id уже использован.');return null;}
+    guard(s,input.project_id,input.revision);const next=structuredClone(current);
+    for(const key of textKeys)if(Object.hasOwn(patch,key))next[key]=patch[key];
+    if(patch.brand)next.brand={...next.brand,...patch.brand,status:'draft',agentDraft:{agent:input.agent,request_id:input.request_id,summary:input.summary,updatedAt:new Date().toISOString()}};
+    const ids=new Set();
+    for(const task of patch.tasks||[]){const id=task.id||crypto.randomUUID();if(ids.has(id))throw fault('INVALID_PATCH','Повторяющийся ID задачи.');ids.add(id);const old=next.tasks.find(t=>t.id===id);const value={...old,...task,id,status:task.status||(old?.status==='done'&&(old.title!==task.title||old.acceptance!==task.acceptance)?'backlog':old?.status||'backlog')};if(old)Object.assign(old,value);else next.tasks.push(value);}
+    if(Object.hasOwn(patch,'active_task_id')){if(patch.active_task_id!==null && (typeof patch.active_task_id!=='string'||!next.tasks.some(t=>t.id===patch.active_task_id&&t.status!=='done')))throw fault('UNKNOWN_TASK','Нельзя выбрать неизвестную или завершённую задачу.');next.activeTaskId=patch.active_task_id;if(patch.active_task_id)next.tasks.find(t=>t.id===patch.active_task_id).status='active';}
+    validateState(next);let total=0;const copies=[];
+    for(const original of patch.reference_files||[]){
+      const file=original.replace(/\\/g,'/');
+      if(file.startsWith('/')||file.includes(':')||file.split('/').some(p=>!p||p==='.'||p==='..')||!/[.](png|jpe?g|webp)$/i.test(file))throw fault('INVALID_REFERENCE','Нужен относительный путь PNG/JPG/WebP внутри проекта.');
+      await assertSafePath(s.root,file);const data=await boundedRead(path.join(s.root,file),8*1024*1024);total+=data.length;if(total>32*1024*1024)throw fault('TOO_LARGE','Изображения одного запроса превышают 32 МиБ.');
+      const ext=path.extname(file).toLowerCase();const valid=ext==='.png'?data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):['.jpg','.jpeg'].includes(ext)?data[0]===255&&data[1]===216&&data[2]===255:data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP';
+      if(!valid)throw fault('INVALID_REFERENCE','Содержимое файла не соответствует изображению.');
+      const target='.opora/references/'+hash(data)+ext;
+      if(!next.references.some(r=>r.file===target)){next.references.push({id:crypto.randomUUID(),name:path.basename(file),file:target,status:'draft',source:file});copies.push({target,data});}
+    }
+    next.agentUpdate={agent:input.agent,request_id:input.request_id,fingerprint,summary:input.summary,updatedAt:new Date().toISOString()};next.updatedAt=new Date().toISOString();validateState(next);
+    if(Buffer.byteLength(JSON.stringify(next,null,2))>2*1024*1024)throw fault('TOO_LARGE','Настройки превышают 2 МиБ.');
+    for(const {target,data} of copies){await assertSafePath(s.root,target);await fs.mkdir(path.dirname(path.join(s.root,target)),{recursive:true});try{await fs.writeFile(path.join(s.root,target),data,{flag:'wx'});}catch(error){if(error.code!=='EEXIST')throw error;if(!(await boundedRead(path.join(s.root,target),8*1024*1024)).equals(data))throw fault('REFERENCE_CONFLICT','Копия изображения отличается.');}}
+    return next;
+  });
+  return {project_id:projectId,revision:hash(JSON.stringify(result.state)),brand_revision:hash(JSON.stringify({brand:result.state.brand,references:result.state.references})),state:result.state,backup:result.backup,duplicate:!result.changed};
+}
+module.exports={snapshot,identity,guard,projectView,contextView,contextReader,listReports,reportProgress,getReference,updateBrandbook,updateWorkspace};
