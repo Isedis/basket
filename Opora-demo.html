@@ -3,16 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-iqSI/x/lwVrCGxamQcmU7ClkTFKIo9YdjtzsMCS1z7E=' 'sha256-JdO0SBi83hiNPE7ZFQCV6NZ2sxFg5e/4PxnMTGmX2cE='; style-src 'sha256-FiqD4i0+VWw+BXr5Br7NXsbayTiMANgSLdYHCLpweUI='; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-5z0g5BSYqigtFvcTeyM1SeySLq37/NbjMbtuKRYYFQI=' 'sha256-4UO6vuPCV2LhtB5KDbdwdikoty6CK29T/CIAMgT5ZQY='; style-src 'sha256-lq47WTi3S3rfxcbeF6ux/cVx/j6BCY3yFfMvpxu6Va8='; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Опора — память вашей игры</title>
   <style>:root{color-scheme:dark;--bg:#101514;--panel:#191f1d;--border:#2d3530;--text:#ecefe6;--muted:#a3afa6;--faint:#7b8a80;--accent:#d7ed9c;--orange:#e0b38d;--radius:15px;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}button,input,textarea,select{font:inherit}button,a,input,textarea,select{outline-offset:4px}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible{outline:2px solid var(--accent)}button{color:inherit}a{color:inherit}.sidebar{width:252px;position:fixed;inset:0 auto 0 0;background:#151b18;border-right:1px solid var(--border);padding:30px 20px 0;display:flex;flex-direction:column}.logo{display:flex;align-items:center;gap:9px;text-decoration:none;font-size:31px;font-weight:650;letter-spacing:-1.8px;padding:0 10px;margin-bottom:48px}.logo-mark{display:inline-flex;position:relative;align-items:center;justify-content:center;border:2px solid var(--accent);color:var(--accent);border-radius:11px;width:33px;height:33px;font-size:26px;font-weight:500;line-height:1;letter-spacing:0}.logo-mark span{position:absolute;right:0;top:-9px;background:#151b18}.version{font-size:10px;letter-spacing:0;margin-left:auto;border:1px solid var(--border);color:var(--faint);padding:3px 5px;border-radius:4px}.sidebar-label{font-size:9px;color:var(--faint);letter-spacing:1.7px;margin:0 10px 13px}.project-switch{display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:1px solid #354034;border-radius:9px;padding:12px 10px;text-align:left;margin-bottom:30px}.project-switch strong{display:block;font-size:12px;font-weight:600;max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-switch small{font-size:10px;color:var(--muted);display:block;margin-top:4px}.project-icon{font-size:22px;color:var(--accent)}.switch-arrow{margin-left:auto;color:var(--faint)}nav{display:grid;gap:5px}.nav-item{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:7px;padding:12px 11px;background:transparent;text-align:left;font-size:12px;color:var(--muted)}.nav-item>span:first-child{font-size:18px;width:20px}.nav-item:hover{background:#202822}.nav-item.active{background:#293526;color:var(--accent)}.nav-short,.count{margin-left:auto;font-size:10px;opacity:.65}.count{border:1px solid #536444;padding:1px 5px;border-radius:4px}.sidebar-bottom{margin-top:auto;padding:30px 12px}.agent-dots{display:flex;margin-bottom:15px}.agent-dots span{height:29px;width:29px;border-radius:50%;background:#3d342c;border:2px solid #151b18;display:grid;place-items:center;color:#d9b395;font-size:12px}.agent-dots span+span{margin-left:-5px;background:#2b3931;color:var(--accent)}.sidebar-bottom strong{font-weight:500;line-height:1.6;font-size:13px}.sidebar-bottom p{color:var(--faint);font-size:11px;line-height:1.7}.text-button{border:0;padding:0;background:none;color:var(--accent);font-size:11px}.offline{border-top:1px solid var(--border);padding:17px 4px;font-size:10px;color:var(--faint)}.status-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:7px}.workspace{margin-left:252px;min-height:100vh;display:flex;flex-direction:column}.topbar{height:78px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:15px;padding:0 38px}.breadcrumb{font-size:9px;color:var(--faint);letter-spacing:1.3px;white-space:nowrap}.breadcrumb span{padding:0 13px}.breadcrumb strong{font-size:11px;font-weight:500;letter-spacing:0;color:var(--muted)}.top-actions{display:flex;gap:20px;align-items:center}.save-status{font-size:10px;color:var(--faint)}.button{border:1px solid transparent;border-radius:7px;padding:12px 17px;background:var(--accent);color:#1a2411;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:12px}.button:hover{filter:brightness(1.08)}.button.secondary{border-color:#39443b;background:transparent;color:var(--text);font-weight:450}.button.small{padding:9px 12px;font-size:11px}.button.dark{background:#202a20;color:var(--accent);border-color:#3e4e35}.button.danger{color:#edaf9b;border-color:#6b4439}.button.full{width:100%}main{width:100%;max-width:1450px;margin:auto;padding:36px 38px 30px;flex:1}.eyebrow{color:var(--accent);font-size:10px;letter-spacing:1.8px;margin-bottom:10px}.page-title{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:27px}h1{font-size:30px;font-weight:500;letter-spacing:-1px;margin:0 0 9px}h2{font-size:17px;font-weight:500;letter-spacing:-.3px;margin:0}h3{font-size:13px;font-weight:550;margin:0}p{line-height:1.65}.subtitle{margin:0;color:var(--muted);font-size:12px}.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid #3e4c36;border-radius:5px;padding:5px 8px;font-size:9px;letter-spacing:.4px;color:var(--accent);white-space:nowrap}.badge.orange{background:#302820;color:#e3bc99;border-color:#584536}.badge.muted{color:var(--muted);border-color:var(--border)}.demo-banner{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px solid #414a34;border-radius:9px;background:#20271c;font-size:11px;color:#c5ceba;margin-bottom:22px}.demo-banner strong{font-weight:550}.demo-banner button{margin-left:auto;white-space:nowrap}.hero{display:grid;grid-template-columns:1fr 248px;border:1px solid #49533a;border-radius:var(--radius);overflow:hidden;background:#252d21;margin-bottom:22px}.hero-content{padding:25px 27px;position:relative}.hero .eyebrow{font-size:9px;color:#b7c49e;margin-bottom:15px}.hero h2{font-size:23px;color:#f1f3e8;line-height:1.3;margin-bottom:12px;max-width:500px}.hero p{font-size:12px;color:#b6c1ab;max-width:580px;margin:0 0 20px}.hero-meta{display:flex;gap:13px;align-items:center}.hero-art{position:relative;min-height:215px;overflow:hidden;background:repeating-radial-gradient(ellipse at 53% 50%,transparent 0 21px,#a1ba6822 22px 23px,transparent 24px 45px);display:grid;place-items:center}.orbit{width:105px;height:105px;border-radius:50%;background:radial-gradient(circle at 32% 25%,#c8d7a4 0,#829467 40%,#3a4730 70%);box-shadow:0 0 70px #b3d17415;position:relative}.orbit:before{content:'';position:absolute;inset:36px -35px;transform:rotate(-25deg);border:1px solid #c8daa36b;border-radius:50%}.orbit:after{content:'';position:absolute;width:11px;height:11px;border-radius:50%;background:var(--orange);top:-30px;right:4px}.hero-art>span{position:absolute;bottom:17px;font-size:8px;color:#b3c49e;letter-spacing:2px}.grid-two{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:23px}.card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:21px}.card-header .index{color:var(--faint);font-size:10px;margin-right:9px}.card-header h2{font-size:14px}.card p.small,.small-note{font-size:11px;color:var(--muted);line-height:1.7}.overview-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}.stat{padding:17px 18px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px}.stat-icon{color:var(--accent);font-size:21px;width:28px}.stat strong{font-size:12px;font-weight:500;display:block}.stat small{font-size:10px;color:var(--faint);display:block;margin-top:5px}.field{display:block;margin-bottom:17px}.field:last-child{margin-bottom:0}.field>span{font-size:11px;color:var(--muted);display:block;margin-bottom:8px}.field input,.field textarea,.field select{width:100%;color:var(--text);background:#111714;border:1px solid #344035;border-radius:7px;padding:11px 12px;font-size:12px;line-height:1.6;resize:vertical;min-width:0}.field input:focus,.field textarea:focus,.field select:focus{outline:1px solid #9fb779;border-color:#9fb779}.field textarea{min-height:82px}.field input::placeholder,.field textarea::placeholder{color:#68776a}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field-help{font-size:10px;color:var(--faint);margin-top:6px;display:block;line-height:1.6}.palette{display:flex;gap:7px;margin:16px 0}.swatch{flex:1;height:47px;border-radius:6px;border:1px solid #ffffff12}.swatch-0{background:#151e21}.swatch-1{background:#2b423f}.swatch-2{background:#b7cb9b}.swatch-3{background:#e7dfca}.swatch-4{background:#dba775}.mini-divider{border:0;border-top:1px solid var(--border);margin:19px 0}.hint{border-left:2px solid #a9c37b;padding:1px 0 1px 13px;font-size:11px;color:var(--muted);line-height:1.8}.hint strong{color:var(--text);font-weight:500}.rule-item{display:flex;gap:10px;font-size:12px;color:#c7d0c6;line-height:1.7;margin:13px 0}.rule-item:before{content:'↳';color:var(--accent)}.empty{padding:25px 14px;text-align:center;border:1px dashed #43503e;border-radius:10px;color:var(--muted);font-size:12px;line-height:1.8}.empty strong{display:block;color:var(--text);font-size:14px;font-weight:500;margin-bottom:5px}.section-gap{margin-top:20px}.reference-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.reference{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:#121814}.reference img{width:100%;height:155px;object-fit:contain;background:#0c110f;display:block}.reference-info{padding:11px}.reference-name{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:10px}.reference-controls{display:flex;justify-content:space-between;gap:5px}.reference-controls select{max-width:130px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:#1d271e;color:var(--text);padding:4px}.icon-button{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:2px 7px}.board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}.column{padding:15px;background:#151c18;border:1px solid var(--border);border-radius:12px;min-height:340px}.column-header{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0 18px;color:var(--muted)}.column-header span:last-child{margin-left:auto;font-size:10px}.column-dot{width:6px;height:6px;border-radius:50%;background:#83907c}.column-dot.active{background:var(--accent)}.column-dot.done{background:#86bba8}.task{border:1px solid var(--border);border-radius:9px;padding:15px;background:#1c241f;margin-bottom:12px}.task.selected{border-color:#819a58}.task-meta{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--faint);margin-bottom:12px}.task h3{line-height:1.6;font-weight:500}.task p{font-size:11px;color:var(--muted);white-space:pre-wrap;margin:11px 0 16px}.task-footer{display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid var(--border);padding-top:12px}.task-footer button{font-size:10px}.task select{width:100%;border:1px solid var(--border);border-radius:4px;padding:6px;background:#151c18;color:var(--muted);font-size:10px;margin-bottom:12px}.context-layout{display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start}.context-steps{display:grid;gap:18px;margin:20px 0}.context-step{display:flex;gap:10px;font-size:11px;line-height:1.7;color:var(--muted)}.step-number{flex-shrink:0;width:23px;height:23px;display:grid;place-items:center;border:1px solid #48543d;color:var(--accent);border-radius:50%;font-size:10px}.context-step strong{display:block;color:var(--text);font-weight:500}.code-preview{font:11px/1.9 Consolas,'Courier New',monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:600px;overflow:auto;color:#bac8b4;margin:0;background:#111713;border:1px solid var(--border);border-radius:8px;padding:20px}.context-note{font-size:11px;color:var(--orange);line-height:1.7}.file-tag{display:inline-block;font-family:Consolas,monospace;font-size:10px;border:1px solid var(--border);background:#151c18;padding:4px 6px;border-radius:4px;margin:3px 4px 3px 0;color:var(--muted)}.spaced{display:flex;align-items:center;justify-content:space-between;gap:16px}.stack{display:flex;flex-wrap:wrap;gap:9px}.brand-status{display:flex;align-items:center;gap:10px}.brand-status select{font-size:11px;background:#242d22;color:var(--accent);border:1px solid #4c5b3e;padding:8px;border-radius:6px}footer{padding:20px 38px;border-top:1px solid #232c25;display:flex;justify-content:space-between;color:var(--faint);font-size:9px;letter-spacing:.5px}dialog{color:var(--text);background:#1a221c;border:1px solid #526047;border-radius:16px;padding:28px;width:min(760px,90vw);max-height:85vh;box-shadow:0 20px 100px #0009}dialog::backdrop{background:#060a08bb;backdrop-filter:blur(5px)}dialog h2{font-size:23px;margin-bottom:12px}dialog p{font-size:12px;color:var(--muted)}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:23px}.modal-actions .danger{margin-right:auto}dialog .code-preview{max-height:40vh}details{margin:12px 0}summary{font-size:12px;cursor:pointer;color:var(--muted);padding:7px 0}.toast{position:fixed;bottom:25px;left:calc(50% + 126px);transform:translateX(-50%) translateY(20px);max-width:650px;padding:14px 20px;border:1px solid #617049;border-radius:9px;background:#283323;color:#e7efd7;font-size:12px;box-shadow:0 12px 35px #0005;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}.toast.error{border-color:#95614a;background:#382820;color:#f1c7ac}.help-list{font-size:12px;line-height:1.9;color:var(--muted);padding-left:20px}.help-list li{margin-bottom:9px}.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(min-width:1500px){main{padding-top:45px}.hero-content{padding:32px}.hero-art{min-height:245px}}@media(max-width:1150px){.sidebar{width:218px;padding-left:14px;padding-right:14px}.workspace{margin-left:218px}.topbar{padding:0 24px}main{padding:28px 24px}.top-actions{gap:10px}.save-status{max-width:150px}.hero{grid-template-columns:1fr 180px}.context-layout{grid-template-columns:230px 1fr}.reference-grid{grid-template-columns:repeat(2,1fr)}.toast{left:calc(50% + 109px)}}@media(max-width:850px){.sidebar{position:static;width:100%;padding:16px}.logo{margin-bottom:15px}.sidebar-label,.project-switch,.sidebar-bottom,.offline{display:none}nav{display:flex}.nav-item{width:auto;flex:1;padding:10px 8px;font-size:10px}.nav-short,.count{display:none}.workspace{margin-left:0}.topbar{height:auto;padding:15px 20px;flex-wrap:wrap}.grid-two,.context-layout{grid-template-columns:1fr}.overview-stats{gap:7px}.stat{padding:12px 8px}.stat-icon{display:none}.board{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.hero-art{display:none}.page-title{align-items:start}.page-title h1{font-size:26px}.toast{left:50%;width:90%}.reference-grid{grid-template-columns:repeat(2,1fr)}footer{padding:20px}.demo-banner{flex-wrap:wrap}.demo-banner button{margin-left:0}.brand-status{flex-direction:column;align-items:start}.field-row{grid-template-columns:1fr}}
+
+.scan-card{margin-bottom:20px;border-color:#53623f;background:#20291e}.scan-card .card-header{margin-bottom:0}.evidence-card{margin-bottom:20px}.token-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.color-token{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:7px;padding:10px;min-width:0}.color-chip{display:block;flex-shrink:0;width:30px;height:35px;border-radius:5px;border:1px solid #ffffff25}.color-token>div{min-width:0}.color-token strong{display:block;font-family:Consolas,monospace;font-size:11px}.color-token small{display:block;color:var(--faint);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:5px}.draft-fields{display:grid;gap:16px}.draft-option{display:block;border-top:1px solid var(--border);padding-top:15px}.draft-option>span{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:9px}.draft-option input,.scan-asset input{accent-color:var(--accent)}.draft-option .code-preview{max-height:160px}.scan-assets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.scan-asset{display:block;min-width:0;border:1px solid var(--border);border-radius:7px;padding:8px}.scan-asset img{display:block;width:100%;height:110px;object-fit:contain;background:#111713}.scan-asset span{display:block;overflow-wrap:anywhere;font-size:10px;margin-top:8px;color:var(--muted)}@media(max-width:1100px){.token-grid{grid-template-columns:repeat(2,1fr)}.scan-card .card-header{align-items:flex-start;flex-direction:column}}
+
+.update-state{padding:20px;border:1px solid var(--border);border-radius:10px;background:#121914;margin:18px 0}.update-state h3{font-size:14px}.update-state progress{display:block;width:100%;height:9px;margin-top:18px;accent-color:var(--accent)}.update-notes{white-space:pre-wrap}.evidence-card .small-note{overflow-wrap:anywhere}.evidence-card .file-tag{max-width:100%;overflow-wrap:anywhere;white-space:normal}
 </style>
   
   
 </head>
 <body>
   <aside class="sidebar">
-    <a class="logo" href="#overview" aria-label="Опора, главная"><span class="logo-mark">о<span>·</span></span>опора<span class="version">0.1</span></a>
+    <a class="logo" href="#overview" aria-label="Опора, главная"><span class="logo-mark">о<span>·</span></span>опора<span class="version">0.2</span></a>
     <div class="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
     <button class="project-switch" data-action="open"><span class="project-icon">◈</span><span><strong id="side-name">Тихая орбита</strong><small id="side-mode">Демонстрационный проект</small></span><span class="switch-arrow">→</span></button>
     <nav aria-label="Разделы проекта">
@@ -25,7 +29,7 @@
     <div class="offline"><span class="status-dot"></span>Локально · без API и подписок</div>
   </aside>
   <div class="workspace">
-    <header class="topbar"><div class="breadcrumb">МОИ ИГРЫ <span>/</span> <strong id="header-name">Тихая орбита</strong></div><div class="top-actions"><span id="save-status" class="save-status" role="status">Демо · изменения в браузере</span><button class="button small secondary" data-action="open">Подключить проект <span>→</span></button></div></header>
+    <header class="topbar"><div class="breadcrumb">МОИ ИГРЫ <span>/</span> <strong id="header-name">Тихая орбита</strong></div><div class="top-actions"><span id="save-status" class="save-status" role="status">Демо · изменения в браузере</span><button class="text-button" data-action="updates">Обновления</button><button class="button small secondary" data-action="open">Подключить проект <span>→</span></button></div></header>
     <main id="main"></main>
     <footer><span>Меньше повторений. Больше игры.</span><span id="footer-status">GODOT WORKSPACE / DEMO</span></footer>
   </div>
@@ -39,6 +43,17 @@ function validateState(state) {
   }
   if (!state.brand || !['draft', 'approved'].includes(state.brand.status)) throw new Error('Некорректный статус брендбука.');
   for (const key of ['palette', 'fonts', 'direction', 'avoid']) if (typeof state.brand[key] !== 'string') throw new Error(`Некорректное поле стиля: ${key}`);
+  if (state.brand.analysis !== undefined) {
+    const a=state.brand.analysis;
+    const bad=()=>{throw new Error('Повреждён отчёт анализа брендбука.');};
+    if(!a || a.version!==1 || typeof a.scannedAt!=='string' || !a.stats || !Array.isArray(a.warnings) || a.warnings.some(w=>typeof w!=='string'))bad();
+    for(const key of ['colors','imageColors','fonts','fontSizes','metrics','assets'])if(!Array.isArray(a[key]) || a[key].length>32)bad();
+    for(const item of [...a.colors,...a.imageColors,...a.fontSizes,...a.metrics]) {
+      if(!item || !Array.isArray(item.sources) || item.sources.some(s=>!s || typeof s.file!=='string' || !Number.isInteger(s.line) || typeof s.property!=='string'))bad();
+    }
+    if([...a.colors,...a.imageColors].some(c=>!/^#[0-9A-F]{6}(?:[0-9A-F]{2})?$/.test(c.hex)))bad();
+    if(a.fonts.some(f=>!f || typeof f.file!=='string' || !Array.isArray(f.sources)) || a.assets.some(f=>!f || typeof f.file!=='string'))bad();
+  }
   if (!Array.isArray(state.tasks) || !Array.isArray(state.references)) throw new Error('Повреждены задачи или эталоны.');
   const ids = new Set();
   for (const task of state.tasks) {
@@ -90,6 +105,13 @@ ${text(s.brand.fonts)}
 
 ### Не использовать
 ${text(s.brand.avoid)}
+
+${s.brand.analysis ? `### Основание автоматического черновика
+Сканирование файлов: ${s.brand.analysis.scannedAt}. Игра при этом не запускалась.
+Найденные объявления цветов:\n${s.brand.analysis.colors.slice(0,12).map(c=>`- ${c.hex}: ${c.sources.map(p=>p.file+':'+p.line).join(', ')}`).join('\n') || 'Не найдены; палитра может быть приблизительно извлечена из изображений.'}
+Ограничения:\n${s.brand.analysis.warnings.map(w=>'- '+w).join('\n')}
+Выбор основного стиля остаётся за пользователем. Найденные файлы не становятся эталонами автоматически.
+` : ''}
 
 ### Эталоны (пути от корня проекта)
 ${s.references.length ? s.references.map(r => `- [${r.status === 'approved' ? 'УТВЕРЖДЁН' : 'КАНДИДАТ, не эталон'}] ${r.name}: ${r.file}`).join('\n') : 'Эталоны ещё не добавлены. Не заявлять визуальное соответствие без эталонов.'}
@@ -152,6 +174,11 @@ let saves = Promise.resolve();
 let failedSave = false;
 let pendingSync = null;
 let closing = false;
+let scanning = false;
+let applyingBrand = false;
+let pendingBrand = null;
+let updateState = null;
+let updatesOpen = false;
 const bridge = window.opora;
 
 function toast(message, error = false) {
@@ -211,8 +238,14 @@ function overview() {
 }
 function brand() {
   return `${pageTitle('ВИЗУАЛЬНЫЙ ЯЗЫК','Один мир. Один стиль.','Не просто «сделай красиво», а конкретные решения и эталоны.',`<label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Брендбук: черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Брендбук: утверждён</option></select></label>`)}${demoBanner()}
+  <section class="card scan-card"><div class="card-header"><div><div class="eyebrow">ИЗ ФАЙЛОВ В ПРАВИЛА</div><h2>${scanning?'Изучаю ваш проект…':'Брендбук из вашей игры'}</h2><p class="small">Цвета, шрифты, оформление и образцы — по тому, что уже есть в проекте. Локально, без API.</p></div><button class="button small" data-action="scan-brand" ${scanning?'disabled':''}>${scanning?'Читаю файлы…':state.brand.analysis?'Пересобрать черновик':'Собрать брендбук из проекта'}</button></div><p class="small-note">Результат остаётся черновиком. При повторном анализе вы выбираете, какие поля заменить. Утверждённые образцы сохраняются.</p></section>
+  ${state.brand.analysis?analysisSummary(state.brand.analysis):''}
   <div class="grid-two"><section class="card"><div class="card-header"><h2>Направление и границы</h2><span class="badge muted">ХАРАКТЕР</span></div>${field('Как выглядит мир игры','brand.direction','Формы, материалы, настроение, плотность деталей…',true,5)}${field('Чего избегаем','brand.avoid','Что точно не подходит этой игре?',true,4)}</section><section class="card"><div class="card-header"><h2>Визуальные константы</h2></div>${field('Палитра и назначение цветов','brand.palette','#HEX — где и для чего использовать',true,5)}${field('Шрифты и размеры','brand.fonts','Название шрифта, путь к файлу, размеры заголовков и текста',true,4)}</section></div>
   <section class="card section-gap"><div class="card-header"><div><h2>Покажите, как должно быть</h2><p class="small">Утверждённый экран полезнее десятка слов про атмосферу.</p></div><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length ? `<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>` : '<div class="empty"><strong>Здесь будет визуальная точка отсчёта</strong>Добавьте меню, кнопку или набор иконок, которые уже нравятся.<br>Образец станет эталоном только после вашего утверждения.</div>'}<p class="small-note">PNG, JPG, WebP · до 20 МБ на изображение. Копии сохраняются в папке игры, чтобы агент мог их открыть. Автоматической оценки сходства пока нет.</p></section>`;
+}
+function analysisSummary(report) {
+  const colors=report.colors.length?report.colors:report.imageColors;
+  return `<section class="card evidence-card"><div class="card-header"><div><h2>Откуда взялись решения</h2><p class="small">Прочитано файлов: ${escapeHtml(report.stats.textFiles)} · тем: ${escapeHtml(report.stats.themes)} · сцен: ${escapeHtml(report.stats.scenes)}. ${report.stats.limited?'Анализ неполный.':''}</p></div><span class="badge orange">${report.colors.length?'ОБЪЯВЛЕНИЯ В ФАЙЛАХ':'ЦВЕТА ИЗОБРАЖЕНИЙ · ПРИБЛИЗИТЕЛЬНО'}</span></div>${colors.length?`<div class="token-grid">${colors.slice(0,12).map(c=>`<div class="color-token"><span class="color-chip" data-color="${escapeHtml(c.hex)}"></span><div><strong>${escapeHtml(c.hex)}</strong><small>${escapeHtml(c.sources[0]?.file)}${c.sources[0]?.line?':'+c.sources[0].line:''}</small></div></div>`).join('')}</div>`:'<p class="small-note">Цвета не найдены. Можно добавить палитру вручную или выбрать изображения.</p>'}<details><summary>Источники, шрифты и ограничения анализа</summary>${report.fonts.map(f=>`<p class="small-note">Шрифт: <span class="file-tag">res://${escapeHtml(f.file)}</span> ${f.sources.length?'Есть статическая ссылка.':'Применение не подтверждено.'}</p>`).join('')}${colors.map(c=>`<p class="small-note">${escapeHtml(c.hex)}: ${c.sources.map(s=>escapeHtml(s.file)+(s.line?':'+s.line:'')+' · '+escapeHtml(s.property)).join('; ')}</p>`).join('')}<ul class="help-list">${report.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul></details></section>`;
 }
 function taskCard(task) {
   const selected = state.activeTaskId === task.id && task.status !== 'done';
@@ -230,6 +263,7 @@ function render() {
   $('#main').innerHTML = ({overview,brand,tasks,context})[tab]();
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
+  document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
 }
 async function updatePreview() {
   const node = $('#context-preview');
@@ -244,12 +278,56 @@ async function loadImages() {
   }
 }
 function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
-function closeModal() {$('#modal').close(); pendingSync = null;}
+function closeModal() {$('#modal').close(); pendingSync = null; pendingBrand = null; updatesOpen=false;}
+
+function renderUpdates() {
+  const info=updateState;
+  const busy=['checking','downloading','installing'].includes(info.status);
+  const labels={idle:'Проверка по запросу',checking:'Проверяю GitHub…',available:'Доступна новая версия', 'up-to-date':'У вас актуальная версия',downloading:'Скачиваю и проверяю файлы…',downloaded:'Обновление скачано и проверено',installing:'Подготавливаю установку и перезапуск…',error:'Обновление не завершено'};
+  $('#modal-content').innerHTML=`<h2 id="modal-title">Обновления Опоры</h2><p>Установлена версия <strong>${escapeHtml(info.currentVersion)}</strong>${info.latestVersion?' · на GitHub: '+escapeHtml(info.latestVersion):''}</p><section class="update-state"><h3>${labels[info.status]||'Обновления'}</h3>${info.status==='downloading'?`<progress max="${Number(info.total)||1}" value="${Number(info.received)||0}" aria-label="Скачивание обновления"></progress><p>${Math.round((info.received||0)/1024/1024)} из ${Math.round((info.total||0)/1024/1024)} МБ</p>`:''}${info.error?`<p class="context-note">${escapeHtml(info.error)}</p>`:''}${info.notes?`<p class="update-notes">${escapeHtml(info.notes)}</p>`:''}</section>${!info.supported?'<p class="context-note">Установка с перезапуском доступна в готовом приложении для Windows. Здесь можно проверить версию.</p>':'<p>При установке Опора закроется и перезапустится. Папка игры и ваши данные сохранятся. Предыдущая версия приложения останется в резервной папке рядом с ним.</p>'}${info.previousInstall?.status==='failed'?`<p class="context-note">Предыдущая установка не завершилась: ${escapeHtml(info.previousInstall.error||'проверьте папку приложения')}. Резервная копия: ${escapeHtml(info.previousInstall.backup||'не указана')}.</p>`:''}<p class="small-note">Загрузка идёт из Isedis/basket на GitHub. Проверяются SHA256 частей и всего ZIP. Интернет используется только при проверке и скачивании по вашей команде.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal" ${info.status==='installing'?'disabled':''}>Закрыть</button>${info.status==='available' && info.supported?'<button class="button" data-action="download-update">Скачать обновление</button>':info.status==='downloaded' && info.supported?'<button class="button" data-action="install-update">Установить и перезапустить</button>':`<button class="button" data-action="check-updates" ${busy?'disabled':''}>${busy?'Подождите…':'Проверить обновления'}</button>`}</div>`;
+}
+async function showUpdates() {
+  if(scanning || applyingBrand){toast('Сначала дождитесь подготовки брендбука.');return;}
+  if(!bridge?.updateInfo){showModal('<h2 id="modal-title">Обновления — в приложении</h2><p>Браузерное демо не устанавливает обновления. Откройте готовое приложение Windows.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');return;}
+  updateState=await bridge.updateInfo(); updatesOpen=true;
+  if(!$('#modal').open)$('#modal').showModal();
+  renderUpdates();
+}
+bridge?.onUpdateProgress?.(info=>{updateState={...updateState,...info};if(updatesOpen && $('#modal').open)renderUpdates();});
+
+function needsBrandbook() {return !state.brand.analysis && ['direction','palette','fonts','avoid'].every(key=>!state.brand[key].trim());}
+function showBrandPreview(report) {
+  pendingBrand=report;
+  const labels={direction:'Направление и оформление',palette:'Палитра',fonts:'Шрифты и размеры',avoid:'Предлагаемые правила'};
+  showModal(`<h2 id="modal-title">Черновик из файлов проекта</h2><p>Выберите поля для обновления. Заполненные поля по умолчанию сохраняются. Изменённый брендбук получит статус «черновик».</p><div class="draft-fields">${Object.entries(labels).map(([key,label])=>`<label class="draft-option"><span><input type="checkbox" data-brand-field="${key}" ${!state.brand[key].trim()?'checked':''}> ${label}${state.brand[key].trim()?' · уже заполнено':''}</span><pre class="code-preview">${escapeHtml(report.draft[key] || 'Данные не найдены; поле будет пустым.')}</pre></label>`).join('')}</div>${report.assets.length?`<h3>Кандидаты в эталоны</h3><p>Добавленные изображения ещё не утверждены. Это файлы из проекта, не снимки запущенных экранов.</p><div class="scan-assets">${report.assets.map(asset=>`<label class="scan-asset">${asset.thumbnail?`<img src="${escapeHtml(asset.thumbnail)}" alt="${escapeHtml(asset.file)}">`:''}<span><input type="checkbox" data-brand-asset="${escapeHtml(asset.file)}" ${state.references.some(r=>r.source===asset.file)?'':'checked'}> ${escapeHtml(asset.file)}</span></label>`).join('')}</div>`:''}<ul class="help-list">${report.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul><div class="modal-actions"><button class="button secondary" data-action="close-modal">Оставить как есть</button><button class="button" data-action="apply-brand">Применить выбранное</button></div>`);
+}
+async function applyBrand(report, fields, assets) {
+  const before=revision;
+  applyingBrand=true;
+  try {
+    const next=await bridge.applyBrandbook({id:report.id,state:structuredClone(state),fields,assets});
+    if(revision!==before) {showBrandPreview(report);toast('Пока готовился черновик, данные изменились. Проверьте выбранные поля.');return;}
+    state=next; changed(); await persist();
+    closeModal(); tab='brand'; render();
+    toast('Черновик брендбука создан. Проверьте источники и выберите эталоны.');
+  } finally {applyingBrand=false;}
+}
+async function scanBrand(automatic=false) {
+  if(!root || !bridge?.scanBrandbook){toast('Подключите проект в приложении Windows. Анализ файлов в браузерном демо недоступен.',true);return;}
+  if(scanning || applyingBrand)return;
+  scanning=true; tab='brand'; render();
+  try {
+    const report=await bridge.scanBrandbook();
+    if(automatic && needsBrandbook())await applyBrand(report,['direction','palette','fonts','avoid'],report.assets.map(a=>a.file));
+    else showBrandPreview(report);
+  } finally {scanning=false;if(tab==='brand')render();}
+}
 function editTask(taskId) {
   const task = state.tasks.find(t=>t.id===taskId);
   showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><p>Опишите результат так, чтобы помощнику не пришлось додумывать за вас.</p><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
 }
 async function openProject() {
+  if(scanning || applyingBrand){toast('Дождитесь завершения работы с брендбуком.');return;}
   if (!bridge) {showModal('<h2 id="modal-title">Подключение — в приложении Windows</h2><p>Сейчас открыт браузерный демонстрационный режим. Он позволяет проверить интерфейс, но не читает папки компьютера.</p><p>Запустите Opora.exe и выберите папку, в которой лежит project.godot. Игра останется на месте; переносить её не нужно.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>'); return;}
   await persist();
   const project = await bridge.openProject();
@@ -261,6 +339,7 @@ async function openProject() {
   await persist();
   render();
   toast('Проект подключён. Инструкции агентов пока не изменены.');
+  if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
 }
 async function previewSync() {
   if (!root) {toast('Подключите папку игры в приложении Windows. В демо можно скопировать запрос.', true); return;}
@@ -313,6 +392,18 @@ document.addEventListener('click', async event => {
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'updates') await showUpdates();
+    if (action === 'check-updates') {button.disabled=true;try {updateState={...updateState,...await bridge.checkUpdates()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
+    if (action === 'download-update') {button.disabled=true;try {updateState={...updateState,...await bridge.downloadUpdate()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
+    if (action === 'install-update') {
+      button.disabled=true;
+      try {await persist();await saves;await bridge.installUpdate();} finally {button.disabled=false;}
+    }
+    if (action === 'scan-brand') await scanBrand();
+    if (action === 'apply-brand' && pendingBrand) {
+      button.disabled=true;
+      try {await applyBrand(pendingBrand,[...document.querySelectorAll('[data-brand-field]:checked')].map(e=>e.dataset.brandField),[...document.querySelectorAll('[data-brand-asset]:checked')].map(e=>e.dataset.brandAsset));} finally {button.disabled=false;}
+    }
     if (action === 'new-task') editTask();
     if (action === 'edit-task') editTask(button.dataset.id);
     if (action === 'delete-task') {
@@ -357,7 +448,10 @@ document.addEventListener('click', async event => {
   } catch(error) {fail(error);}
 });
 window.addEventListener('beforeunload', () => {if (!root) persist();});
-$('#modal').addEventListener('cancel', () => {pendingSync = null;});
+$('#modal').addEventListener('cancel', event => {
+  if(updatesOpen && updateState?.status==='installing'){event.preventDefault();return;}
+  pendingSync = null;pendingBrand=null;updatesOpen=false;
+});
 async function initialize() {
   if (!bridge?.restoreProject) return;
   try {
@@ -367,6 +461,7 @@ async function initialize() {
     root = project.root;
     state = project.state || blankState(project.info.name);
     render(); status('Проект открыт · локальные данные');
+    if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
   } catch(error) {fail(error);}
 }
 bridge?.onCloseRequested?.(async () => {

@@ -14,6 +14,9 @@ async function main() {
   await fs.writeFile(path.join(project,'CLAUDE.md'),'# Existing Claude instructions\nUse existing components.\n');
   const image = path.join(temp,'reference.png');
   await fs.writeFile(image,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6X7sAAAAASUVORK5CYII=','base64'));
+  await fs.mkdir(path.join(project,'ui'));
+  await fs.copyFile(image,path.join(project,'ui/menu.png'));
+  await fs.writeFile(path.join(project,'ui/theme.tres'),'[gd_resource type="Theme" format=3]\n[resource]\ndefault_font_size = 20\nButton/colors/font_color = Color(0.1, 0.2, 0.3, 1)\n');
   const entry = path.join(temp,'entry.cjs');
   await fs.writeFile(entry,`require('electron').app.setPath('userData', ${JSON.stringify(profile)});\nrequire(${JSON.stringify(path.join(__dirname,'../desktop/main.cjs'))});\n`);
   let app;
@@ -26,15 +29,52 @@ async function main() {
   }
   try {
     app = await launch();
+    const png=await app.evaluate(({nativeImage})=>nativeImage.createFromBitmap(Buffer.from([32,64,192,255]),{width:1,height:1}).toPNG().toString('base64'));
+    await fs.writeFile(image,Buffer.from(png,'base64'));
+    await fs.copyFile(image,path.join(project,'ui/menu.png'));
     const page=await app.firstWindow();
     const errors=[]; page.on('pageerror',error=>errors.push(error.message));
     await page.getByRole('button',{name:'Подключить проект'}).click();
-    await page.getByRole('heading',{name:'С чего начнём вашу игру?'}).waitFor();
+    await page.waitForFunction(()=>document.querySelector('[data-field="brand.palette"]')?.value.includes('#1A334D') && !document.querySelector('[data-action="scan-brand"]')?.disabled);
+    assert.match(await page.locator('[data-field="brand.fonts"]').inputValue(),/20 px/);
+    assert.equal((await core.loadProject(project)).state.brand.status,'draft');
+    assert.equal((await core.loadProject(project)).state.references[0].status,'draft');
+    assert.ok((await core.loadProject(project)).state.brand.analysis.imageColors.some(c=>c.hex==='#C04818'));
+    await page.locator('[data-tab="overview"]').click();
     await page.locator('[data-field="rules"]').fill('Не менять размер кнопок');
     await page.locator('[data-tab="brand"]').click();
     await page.getByRole('button',{name:'+ Добавить образцы'}).click();
-    await page.locator('[data-ref-status]').selectOption('approved');
+    await page.locator('[data-ref-status]').first().selectOption('approved');
     await page.waitForFunction(()=>document.querySelector('img')?.naturalWidth > 0);
+    await page.locator('[data-field="brand.direction"]').fill('My hand-edited visual direction');
+    await page.locator('[data-field="brand.status"]').selectOption('approved');
+    await page.getByRole('button',{name:'Пересобрать черновик'}).click();
+    await page.getByRole('heading',{name:'Черновик из файлов проекта'}).waitFor();
+    assert.equal(await page.locator('[data-brand-field="direction"]').isChecked(),false);
+    assert.equal(await page.locator('[data-brand-field="palette"]').isChecked(),false);
+    await page.locator('[data-brand-field="palette"]').check();
+    await page.getByRole('button',{name:'Применить выбранное'}).click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open);
+    assert.equal(await page.locator('[data-field="brand.direction"]').inputValue(),'My hand-edited visual direction');
+    assert.equal(await page.locator('[data-field="brand.status"]').inputValue(),'draft');
+    assert.equal(await page.locator('[data-ref-status]').first().inputValue(),'approved');
+    assert.equal((await core.loadProject(project)).state.references.length,2);
+    await fs.mkdir(path.join(__dirname,'../artifacts'),{recursive:true});
+    await page.screenshot({path:path.join(__dirname,'../artifacts/brandbook.png'),fullPage:true});
+    const byte=Buffer.from('x');
+    const digest=require('node:crypto').createHash('sha256').update(byte).digest('hex');
+    await app.evaluate(({session},digest)=>{
+      session.fromPartition('opora-updates').protocol.handle('https',request=>{
+        if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.2.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+      });
+    },digest);
+    await page.getByRole('button',{name:'Обновления',exact:true}).click();
+    await page.getByRole('heading',{name:'Обновления Опоры'}).waitFor();
+    await page.getByRole('button',{name:'Проверить обновления'}).click();
+    await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
+    assert.match(await page.locator('#modal-content').textContent(),/0.2.0/);
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('[data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
     await page.getByRole('button',{name:'Обновить эти файлы'}).click();
@@ -60,7 +100,8 @@ async function main() {
     await reopened.getByRole('heading',{name:'Изменения не сохранены'}).waitFor();
     await reopened.getByRole('button',{name:'Продолжить работу'}).click();
     await reopened.locator('[data-field="name"]').fill('Native game');
-    console.log('PASS real Electron: preload/IPC, Godot folder, reference image copy/read, file sync, native clipboard, save on close, restore project on restart, recover from save failure');
+    assert.equal((await core.loadProject(project)).state.brand.direction,'My hand-edited visual direction');
+    console.log('PASS real Electron: automatic brandbook, native image sampling/copy, selective regeneration, reference preservation, updates dialog and check through Electron network stack (intercepted test response), context export, clipboard, save/restore, save-failure recovery');
   } finally {
     if(app) await app.close();
     await fs.rm(temp,{recursive:true,force:true});

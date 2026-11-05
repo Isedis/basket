@@ -27,6 +27,11 @@ let saves = Promise.resolve();
 let failedSave = false;
 let pendingSync = null;
 let closing = false;
+let scanning = false;
+let applyingBrand = false;
+let pendingBrand = null;
+let updateState = null;
+let updatesOpen = false;
 const bridge = window.opora;
 
 function toast(message, error = false) {
@@ -86,8 +91,14 @@ function overview() {
 }
 function brand() {
   return `${pageTitle('ВИЗУАЛЬНЫЙ ЯЗЫК','Один мир. Один стиль.','Не просто «сделай красиво», а конкретные решения и эталоны.',`<label class="brand-status"><span class="visually-hidden">Статус брендбука</span><select data-field="brand.status"><option value="draft" ${state.brand.status==='draft'?'selected':''}>Брендбук: черновик</option><option value="approved" ${state.brand.status==='approved'?'selected':''}>Брендбук: утверждён</option></select></label>`)}${demoBanner()}
+  <section class="card scan-card"><div class="card-header"><div><div class="eyebrow">ИЗ ФАЙЛОВ В ПРАВИЛА</div><h2>${scanning?'Изучаю ваш проект…':'Брендбук из вашей игры'}</h2><p class="small">Цвета, шрифты, оформление и образцы — по тому, что уже есть в проекте. Локально, без API.</p></div><button class="button small" data-action="scan-brand" ${scanning?'disabled':''}>${scanning?'Читаю файлы…':state.brand.analysis?'Пересобрать черновик':'Собрать брендбук из проекта'}</button></div><p class="small-note">Результат остаётся черновиком. При повторном анализе вы выбираете, какие поля заменить. Утверждённые образцы сохраняются.</p></section>
+  ${state.brand.analysis?analysisSummary(state.brand.analysis):''}
   <div class="grid-two"><section class="card"><div class="card-header"><h2>Направление и границы</h2><span class="badge muted">ХАРАКТЕР</span></div>${field('Как выглядит мир игры','brand.direction','Формы, материалы, настроение, плотность деталей…',true,5)}${field('Чего избегаем','brand.avoid','Что точно не подходит этой игре?',true,4)}</section><section class="card"><div class="card-header"><h2>Визуальные константы</h2></div>${field('Палитра и назначение цветов','brand.palette','#HEX — где и для чего использовать',true,5)}${field('Шрифты и размеры','brand.fonts','Название шрифта, путь к файлу, размеры заголовков и текста',true,4)}</section></div>
   <section class="card section-gap"><div class="card-header"><div><h2>Покажите, как должно быть</h2><p class="small">Утверждённый экран полезнее десятка слов про атмосферу.</p></div><button class="button small secondary" data-action="add-reference">+ Добавить образцы</button></div>${state.references.length ? `<div class="reference-grid">${state.references.map(ref=>`<article class="reference"><img data-reference="${escapeHtml(ref.id)}" alt="${escapeHtml(ref.name)}"><div class="reference-info"><div class="reference-name" title="${escapeHtml(ref.name)}">${escapeHtml(ref.name)}</div><div class="reference-controls"><select aria-label="Статус образца ${escapeHtml(ref.name)}" data-ref-status="${escapeHtml(ref.id)}"><option value="draft" ${ref.status==='draft'?'selected':''}>Кандидат</option><option value="approved" ${ref.status==='approved'?'selected':''}>Утверждён</option></select><button class="icon-button" data-action="remove-reference" data-id="${escapeHtml(ref.id)}" aria-label="Убрать ${escapeHtml(ref.name)}">×</button></div></div></article>`).join('')}</div>` : '<div class="empty"><strong>Здесь будет визуальная точка отсчёта</strong>Добавьте меню, кнопку или набор иконок, которые уже нравятся.<br>Образец станет эталоном только после вашего утверждения.</div>'}<p class="small-note">PNG, JPG, WebP · до 20 МБ на изображение. Копии сохраняются в папке игры, чтобы агент мог их открыть. Автоматической оценки сходства пока нет.</p></section>`;
+}
+function analysisSummary(report) {
+  const colors=report.colors.length?report.colors:report.imageColors;
+  return `<section class="card evidence-card"><div class="card-header"><div><h2>Откуда взялись решения</h2><p class="small">Прочитано файлов: ${escapeHtml(report.stats.textFiles)} · тем: ${escapeHtml(report.stats.themes)} · сцен: ${escapeHtml(report.stats.scenes)}. ${report.stats.limited?'Анализ неполный.':''}</p></div><span class="badge orange">${report.colors.length?'ОБЪЯВЛЕНИЯ В ФАЙЛАХ':'ЦВЕТА ИЗОБРАЖЕНИЙ · ПРИБЛИЗИТЕЛЬНО'}</span></div>${colors.length?`<div class="token-grid">${colors.slice(0,12).map(c=>`<div class="color-token"><span class="color-chip" data-color="${escapeHtml(c.hex)}"></span><div><strong>${escapeHtml(c.hex)}</strong><small>${escapeHtml(c.sources[0]?.file)}${c.sources[0]?.line?':'+c.sources[0].line:''}</small></div></div>`).join('')}</div>`:'<p class="small-note">Цвета не найдены. Можно добавить палитру вручную или выбрать изображения.</p>'}<details><summary>Источники, шрифты и ограничения анализа</summary>${report.fonts.map(f=>`<p class="small-note">Шрифт: <span class="file-tag">res://${escapeHtml(f.file)}</span> ${f.sources.length?'Есть статическая ссылка.':'Применение не подтверждено.'}</p>`).join('')}${colors.map(c=>`<p class="small-note">${escapeHtml(c.hex)}: ${c.sources.map(s=>escapeHtml(s.file)+(s.line?':'+s.line:'')+' · '+escapeHtml(s.property)).join('; ')}</p>`).join('')}<ul class="help-list">${report.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul></details></section>`;
 }
 function taskCard(task) {
   const selected = state.activeTaskId === task.id && task.status !== 'done';
@@ -105,6 +116,7 @@ function render() {
   $('#main').innerHTML = ({overview,brand,tasks,context})[tab]();
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
+  document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
 }
 async function updatePreview() {
   const node = $('#context-preview');
@@ -119,12 +131,56 @@ async function loadImages() {
   }
 }
 function showModal(content) {$('#modal-content').innerHTML = content; $('#modal').showModal();}
-function closeModal() {$('#modal').close(); pendingSync = null;}
+function closeModal() {$('#modal').close(); pendingSync = null; pendingBrand = null; updatesOpen=false;}
+
+function renderUpdates() {
+  const info=updateState;
+  const busy=['checking','downloading','installing'].includes(info.status);
+  const labels={idle:'Проверка по запросу',checking:'Проверяю GitHub…',available:'Доступна новая версия', 'up-to-date':'У вас актуальная версия',downloading:'Скачиваю и проверяю файлы…',downloaded:'Обновление скачано и проверено',installing:'Подготавливаю установку и перезапуск…',error:'Обновление не завершено'};
+  $('#modal-content').innerHTML=`<h2 id="modal-title">Обновления Опоры</h2><p>Установлена версия <strong>${escapeHtml(info.currentVersion)}</strong>${info.latestVersion?' · на GitHub: '+escapeHtml(info.latestVersion):''}</p><section class="update-state"><h3>${labels[info.status]||'Обновления'}</h3>${info.status==='downloading'?`<progress max="${Number(info.total)||1}" value="${Number(info.received)||0}" aria-label="Скачивание обновления"></progress><p>${Math.round((info.received||0)/1024/1024)} из ${Math.round((info.total||0)/1024/1024)} МБ</p>`:''}${info.error?`<p class="context-note">${escapeHtml(info.error)}</p>`:''}${info.notes?`<p class="update-notes">${escapeHtml(info.notes)}</p>`:''}</section>${!info.supported?'<p class="context-note">Установка с перезапуском доступна в готовом приложении для Windows. Здесь можно проверить версию.</p>':'<p>При установке Опора закроется и перезапустится. Папка игры и ваши данные сохранятся. Предыдущая версия приложения останется в резервной папке рядом с ним.</p>'}${info.previousInstall?.status==='failed'?`<p class="context-note">Предыдущая установка не завершилась: ${escapeHtml(info.previousInstall.error||'проверьте папку приложения')}. Резервная копия: ${escapeHtml(info.previousInstall.backup||'не указана')}.</p>`:''}<p class="small-note">Загрузка идёт из Isedis/basket на GitHub. Проверяются SHA256 частей и всего ZIP. Интернет используется только при проверке и скачивании по вашей команде.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal" ${info.status==='installing'?'disabled':''}>Закрыть</button>${info.status==='available' && info.supported?'<button class="button" data-action="download-update">Скачать обновление</button>':info.status==='downloaded' && info.supported?'<button class="button" data-action="install-update">Установить и перезапустить</button>':`<button class="button" data-action="check-updates" ${busy?'disabled':''}>${busy?'Подождите…':'Проверить обновления'}</button>`}</div>`;
+}
+async function showUpdates() {
+  if(scanning || applyingBrand){toast('Сначала дождитесь подготовки брендбука.');return;}
+  if(!bridge?.updateInfo){showModal('<h2 id="modal-title">Обновления — в приложении</h2><p>Браузерное демо не устанавливает обновления. Откройте готовое приложение Windows.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>');return;}
+  updateState=await bridge.updateInfo(); updatesOpen=true;
+  if(!$('#modal').open)$('#modal').showModal();
+  renderUpdates();
+}
+bridge?.onUpdateProgress?.(info=>{updateState={...updateState,...info};if(updatesOpen && $('#modal').open)renderUpdates();});
+
+function needsBrandbook() {return !state.brand.analysis && ['direction','palette','fonts','avoid'].every(key=>!state.brand[key].trim());}
+function showBrandPreview(report) {
+  pendingBrand=report;
+  const labels={direction:'Направление и оформление',palette:'Палитра',fonts:'Шрифты и размеры',avoid:'Предлагаемые правила'};
+  showModal(`<h2 id="modal-title">Черновик из файлов проекта</h2><p>Выберите поля для обновления. Заполненные поля по умолчанию сохраняются. Изменённый брендбук получит статус «черновик».</p><div class="draft-fields">${Object.entries(labels).map(([key,label])=>`<label class="draft-option"><span><input type="checkbox" data-brand-field="${key}" ${!state.brand[key].trim()?'checked':''}> ${label}${state.brand[key].trim()?' · уже заполнено':''}</span><pre class="code-preview">${escapeHtml(report.draft[key] || 'Данные не найдены; поле будет пустым.')}</pre></label>`).join('')}</div>${report.assets.length?`<h3>Кандидаты в эталоны</h3><p>Добавленные изображения ещё не утверждены. Это файлы из проекта, не снимки запущенных экранов.</p><div class="scan-assets">${report.assets.map(asset=>`<label class="scan-asset">${asset.thumbnail?`<img src="${escapeHtml(asset.thumbnail)}" alt="${escapeHtml(asset.file)}">`:''}<span><input type="checkbox" data-brand-asset="${escapeHtml(asset.file)}" ${state.references.some(r=>r.source===asset.file)?'':'checked'}> ${escapeHtml(asset.file)}</span></label>`).join('')}</div>`:''}<ul class="help-list">${report.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul><div class="modal-actions"><button class="button secondary" data-action="close-modal">Оставить как есть</button><button class="button" data-action="apply-brand">Применить выбранное</button></div>`);
+}
+async function applyBrand(report, fields, assets) {
+  const before=revision;
+  applyingBrand=true;
+  try {
+    const next=await bridge.applyBrandbook({id:report.id,state:structuredClone(state),fields,assets});
+    if(revision!==before) {showBrandPreview(report);toast('Пока готовился черновик, данные изменились. Проверьте выбранные поля.');return;}
+    state=next; changed(); await persist();
+    closeModal(); tab='brand'; render();
+    toast('Черновик брендбука создан. Проверьте источники и выберите эталоны.');
+  } finally {applyingBrand=false;}
+}
+async function scanBrand(automatic=false) {
+  if(!root || !bridge?.scanBrandbook){toast('Подключите проект в приложении Windows. Анализ файлов в браузерном демо недоступен.',true);return;}
+  if(scanning || applyingBrand)return;
+  scanning=true; tab='brand'; render();
+  try {
+    const report=await bridge.scanBrandbook();
+    if(automatic && needsBrandbook())await applyBrand(report,['direction','palette','fonts','avoid'],report.assets.map(a=>a.file));
+    else showBrandPreview(report);
+  } finally {scanning=false;if(tab==='brand')render();}
+}
 function editTask(taskId) {
   const task = state.tasks.find(t=>t.id===taskId);
   showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><p>Опишите результат так, чтобы помощнику не пришлось додумывать за вас.</p><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
 }
 async function openProject() {
+  if(scanning || applyingBrand){toast('Дождитесь завершения работы с брендбуком.');return;}
   if (!bridge) {showModal('<h2 id="modal-title">Подключение — в приложении Windows</h2><p>Сейчас открыт браузерный демонстрационный режим. Он позволяет проверить интерфейс, но не читает папки компьютера.</p><p>Запустите Opora.exe и выберите папку, в которой лежит project.godot. Игра останется на месте; переносить её не нужно.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>'); return;}
   await persist();
   const project = await bridge.openProject();
@@ -136,6 +192,7 @@ async function openProject() {
   await persist();
   render();
   toast('Проект подключён. Инструкции агентов пока не изменены.');
+  if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
 }
 async function previewSync() {
   if (!root) {toast('Подключите папку игры в приложении Windows. В демо можно скопировать запрос.', true); return;}
@@ -188,6 +245,18 @@ document.addEventListener('click', async event => {
     if (action === 'open') {button.disabled = true; try {await openProject();} finally {button.disabled = false;}}
     if (action === 'goto-context') {tab='context'; render();}
     if (action === 'goto-tasks') {tab='tasks'; render();}
+    if (action === 'updates') await showUpdates();
+    if (action === 'check-updates') {button.disabled=true;try {updateState={...updateState,...await bridge.checkUpdates()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
+    if (action === 'download-update') {button.disabled=true;try {updateState={...updateState,...await bridge.downloadUpdate()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
+    if (action === 'install-update') {
+      button.disabled=true;
+      try {await persist();await saves;await bridge.installUpdate();} finally {button.disabled=false;}
+    }
+    if (action === 'scan-brand') await scanBrand();
+    if (action === 'apply-brand' && pendingBrand) {
+      button.disabled=true;
+      try {await applyBrand(pendingBrand,[...document.querySelectorAll('[data-brand-field]:checked')].map(e=>e.dataset.brandField),[...document.querySelectorAll('[data-brand-asset]:checked')].map(e=>e.dataset.brandAsset));} finally {button.disabled=false;}
+    }
     if (action === 'new-task') editTask();
     if (action === 'edit-task') editTask(button.dataset.id);
     if (action === 'delete-task') {
@@ -232,7 +301,10 @@ document.addEventListener('click', async event => {
   } catch(error) {fail(error);}
 });
 window.addEventListener('beforeunload', () => {if (!root) persist();});
-$('#modal').addEventListener('cancel', () => {pendingSync = null;});
+$('#modal').addEventListener('cancel', event => {
+  if(updatesOpen && updateState?.status==='installing'){event.preventDefault();return;}
+  pendingSync = null;pendingBrand=null;updatesOpen=false;
+});
 async function initialize() {
   if (!bridge?.restoreProject) return;
   try {
@@ -242,6 +314,7 @@ async function initialize() {
     root = project.root;
     state = project.state || blankState(project.info.name);
     render(); status('Проект открыт · локальные данные');
+    if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
   } catch(error) {fail(error);}
 }
 bridge?.onCloseRequested?.(async () => {

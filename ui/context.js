@@ -6,6 +6,17 @@ function validateState(state) {
   }
   if (!state.brand || !['draft', 'approved'].includes(state.brand.status)) throw new Error('Некорректный статус брендбука.');
   for (const key of ['palette', 'fonts', 'direction', 'avoid']) if (typeof state.brand[key] !== 'string') throw new Error(`Некорректное поле стиля: ${key}`);
+  if (state.brand.analysis !== undefined) {
+    const a=state.brand.analysis;
+    const bad=()=>{throw new Error('Повреждён отчёт анализа брендбука.');};
+    if(!a || a.version!==1 || typeof a.scannedAt!=='string' || !a.stats || !Array.isArray(a.warnings) || a.warnings.some(w=>typeof w!=='string'))bad();
+    for(const key of ['colors','imageColors','fonts','fontSizes','metrics','assets'])if(!Array.isArray(a[key]) || a[key].length>32)bad();
+    for(const item of [...a.colors,...a.imageColors,...a.fontSizes,...a.metrics]) {
+      if(!item || !Array.isArray(item.sources) || item.sources.some(s=>!s || typeof s.file!=='string' || !Number.isInteger(s.line) || typeof s.property!=='string'))bad();
+    }
+    if([...a.colors,...a.imageColors].some(c=>!/^#[0-9A-F]{6}(?:[0-9A-F]{2})?$/.test(c.hex)))bad();
+    if(a.fonts.some(f=>!f || typeof f.file!=='string' || !Array.isArray(f.sources)) || a.assets.some(f=>!f || typeof f.file!=='string'))bad();
+  }
   if (!Array.isArray(state.tasks) || !Array.isArray(state.references)) throw new Error('Повреждены задачи или эталоны.');
   const ids = new Set();
   for (const task of state.tasks) {
@@ -57,6 +68,13 @@ ${text(s.brand.fonts)}
 
 ### Не использовать
 ${text(s.brand.avoid)}
+
+${s.brand.analysis ? `### Основание автоматического черновика
+Сканирование файлов: ${s.brand.analysis.scannedAt}. Игра при этом не запускалась.
+Найденные объявления цветов:\n${s.brand.analysis.colors.slice(0,12).map(c=>`- ${c.hex}: ${c.sources.map(p=>p.file+':'+p.line).join(', ')}`).join('\n') || 'Не найдены; палитра может быть приблизительно извлечена из изображений.'}
+Ограничения:\n${s.brand.analysis.warnings.map(w=>'- '+w).join('\n')}
+Выбор основного стиля остаётся за пользователем. Найденные файлы не становятся эталонами автоматически.
+` : ''}
 
 ### Эталоны (пути от корня проекта)
 ${s.references.length ? s.references.map(r => `- [${r.status === 'approved' ? 'УТВЕРЖДЁН' : 'КАНДИДАТ, не эталон'}] ${r.name}: ${r.file}`).join('\n') : 'Эталоны ещё не добавлены. Не заявлять визуальное соответствие без эталонов.'}

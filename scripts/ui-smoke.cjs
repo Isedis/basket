@@ -53,7 +53,7 @@ async function main() {
     console.log('PASS demo: persisted edits, task creation/selection, brand status, shared context');
 
     const desktop = await browser.newContext({viewport:{width:1440,height:1000}});
-    let copied=''; let closed=false;
+    let copied=''; let closed=false; let installed=false;
     await desktop.exposeFunction('nativeCall', async (method,arg) => {
       if (method==='restoreProject') return null;
       if (method==='openProject') return core.loadProject(fixture);
@@ -62,6 +62,10 @@ async function main() {
       if (method==='sync') return core.syncProject(fixture,arg);
       if (method==='copy') {copied=arg; return true;}
       if (method==='readyToClose') {closed=true; return;}
+      if (method==='updateInfo') return {status:'idle',currentVersion:'0.2.0',supported:true};
+      if (method==='checkUpdates') return {status:'available',currentVersion:'0.2.0',latestVersion:'0.3.0',supported:true,total:100};
+      if (method==='downloadUpdate') return {status:'downloaded',currentVersion:'0.2.0',latestVersion:'0.3.0',supported:true,total:100,received:100};
+      if (method==='installUpdate') {installed=true;return {restarting:true};}
       if (method==='addReferences') {
         const ref={id:'test-image',name:'Approved menu.png',file:'.opora/references/test-image.png',status:'draft'};
         await fs.mkdir(path.join(fixture,'.opora/references'),{recursive:true});
@@ -73,8 +77,9 @@ async function main() {
     });
     await desktop.addInitScript(()=>{
       window.opora={};
-      for (const name of ['restoreProject','openProject','save','preview','sync','copy','addReferences','referenceImage','readyToClose']) window.opora[name]=arg=>window.nativeCall(name,arg);
+      for (const name of ['restoreProject','openProject','save','preview','sync','copy','addReferences','referenceImage','readyToClose','updateInfo','checkUpdates','downloadUpdate','installUpdate']) window.opora[name]=arg=>window.nativeCall(name,arg);
       window.opora.onCloseRequested=callback=>{window.testClose=callback;};
+      window.opora.onUpdateProgress=callback=>{window.emitUpdateProgress=callback;};
     });
     const app=await desktop.newPage();
     app.on('pageerror',error=>errors.push(error.message));
@@ -106,11 +111,23 @@ async function main() {
     assert.match(copied,/Тестовое описание игры/);
     await app.locator('[data-tab="overview"]').click();
     await app.locator('[data-field="goal"]').fill('Сохранить перед закрытием');
+    await app.getByRole('button',{name:'Обновления',exact:true}).click();
+    await app.getByRole('button',{name:'Проверить обновления'}).click();
+    await app.getByRole('button',{name:'Скачать обновление'}).click();
+    await app.getByRole('button',{name:'Установить и перезапустить'}).click();
+    await app.waitForTimeout(100);
+    assert.equal(installed,true);
+    assert.equal((await core.loadProject(fixture)).state.goal,'Сохранить перед закрытием');
+    await app.evaluate(()=>window.emitUpdateProgress({status:'installing',supported:true,currentVersion:'0.2.0'}));
+    await app.keyboard.press('Escape');
+    assert.equal(await app.locator('#modal').evaluate(el=>el.open),true);
+    await app.evaluate(()=>window.emitUpdateProgress({status:'downloaded',supported:true,currentVersion:'0.2.0'}));
+    await app.getByRole('button',{name:'Закрыть',exact:true}).click();
     await app.evaluate(()=>window.testClose());
     assert.equal(closed,true);
     assert.equal((await core.loadProject(fixture)).state.goal,'Сохранить перед закрытием');
     assert.deepEqual(errors,[]);
-    console.log('PASS desktop bridge: connect, native persistence, reference approval, preview, file sync, clipboard, save on close');
+    console.log('PASS desktop bridge: connect, native persistence, reference approval, preview, file sync, clipboard, updater UI flow, save before install and close');
     console.log('PASS no renderer errors. Screenshots: artifacts/overview.png, artifacts/context.png');
   } finally {
     if(browser) await browser.close();
