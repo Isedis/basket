@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "version": "0.2.0",
+  "commit": "404ac0e6a2ee40a6fe4758f4a3f27647217f6f2a",
+  "size": 158684778,
+  "sha256": "89b053bb39b76eb6e1d5cdf69dde3bee05468e5cb51408c177c4c648594a25ca",
+  "parts": [
+    {
+      "name": "Opora-Windows.zip.part01",
+      "size": 50331648,
+      "sha256": "5c6b8092bd628a9bc38af1c7fa17e4903f584b3675295385776ec948b46cef16"
+    },
+    {
+      "name": "Opora-Windows.zip.part02",
+      "size": 50331648,
+      "sha256": "7af037b25c8ecd377e62ecdf7ce166881101a8dc967c69d62cbd8a15ff418a99"
+    },
+    {
+      "name": "Opora-Windows.zip.part03",
+      "size": 50331648,
+      "sha256": "d870c74536320bded8ebf2ec49bbd439290b6b6f5499b21d92a5733bb2a7f432"
+    },
+    {
+      "name": "Opora-Windows.zip.part04",
+      "size": 7689834,
+      "sha256": "5896ea6a0e66842e2f99b0474a949ec1c619f23aff330a1e3629e382fae4122b"
+    }
+  ],
+  "notes": "Автоматический черновик брендбука по проекту Godot. Проверка, скачивание и установка следующих обновлений из программы."
+}
