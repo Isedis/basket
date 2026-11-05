@@ -55,8 +55,23 @@ function Test-OporaInstall([string]$Destination, $Manifest) {
 function Get-OporaInstalledVersion([string]$AppFolder) {
     try {
         if (!(Test-Path -LiteralPath (Join-Path $AppFolder 'resources/app.asar') -PathType Leaf)) { return $null }
-        $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $AppFolder 'Opora.exe')).ProductVersion
-        if ($version -match '^\d+\.\d+\.\d+$') { return [version]$version }
+        $stream=[IO.File]::OpenRead((Join-Path $AppFolder 'resources/app.asar'))
+        try {
+            $prefix=New-Object byte[] 16
+            if($stream.Read($prefix,0,16) -ne 16){return $null}
+            $headerSize=[BitConverter]::ToUInt32($prefix,4);$jsonSize=[BitConverter]::ToUInt32($prefix,12)
+            if($headerSize -gt 16777216 -or $jsonSize -gt $headerSize-8){return $null}
+            $bytes=New-Object byte[] $jsonSize
+            if($stream.Read($bytes,0,$jsonSize) -ne $jsonSize){return $null}
+            $index=[Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
+            $entry=$index.files.'package.json'
+            if($entry.size -gt 1048576 -or $entry.size -lt 1){return $null}
+            $stream.Position=8+$headerSize+[long]$entry.offset
+            $body=New-Object byte[] $entry.size
+            if($stream.Read($body,0,$body.Length) -ne $body.Length){return $null}
+            $pkg=[Text.Encoding]::UTF8.GetString($body) | ConvertFrom-Json
+            if($pkg.name -eq 'opora' -and $pkg.version -match '^\d+\.\d+\.\d+$'){return [version]$pkg.version}
+        } finally {$stream.Dispose()}
     } catch {}
     return $null
 }

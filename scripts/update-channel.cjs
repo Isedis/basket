@@ -10,7 +10,7 @@ if(git(['status','--porcelain']))throw new Error('Commit the tested release befo
 const release=JSON.parse(fs.readFileSync(path.join(root,'distribution/windows/manifest.json'),'utf8'));
 const committed=JSON.parse(git(['show','HEAD:distribution/windows/manifest.json']));
 if(release.sha256!==committed.sha256 || release.version!==require('../package.json').version)throw new Error('Release manifest mismatch.');
-const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,notes:'Терминальный интерфейс: плоские панели, инверсная навигация, постоянная строка состояния и текущая задача в боковой панели. Ctrl+K открывает поиск по командам: стрелки выбирают действие, Enter выполняет, Escape закрывает. С версий до 0.5.1 нужен один ручной переход на готовую сборку.'});
+const manifest=validateManifest({schemaVersion:1,version:release.version,commit:git(['rev-parse','HEAD']),size:release.size,sha256:release.sha256,parts:release.parts,appPatch:JSON.parse(fs.readFileSync(path.join(root,'distribution/app/manifest.json'),'utf8')),notes:'Малые обновления: при той же версии Electron загружается только приложение. Готовая загрузка используется повторно. Для перехода со старых версий есть отдельный Opora-small-update.zip без повторной загрузки Electron.'});
 fs.mkdirSync(path.join(root,'updates'),{recursive:true});
 fs.writeFileSync(path.join(root,'updates/latest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(`Update channel prepared: ${manifest.version}, immutable commit ${manifest.commit}`);

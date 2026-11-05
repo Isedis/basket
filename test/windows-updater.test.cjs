@@ -94,3 +94,17 @@ test('Startup acknowledgement binds to the running version, executable, job and 
   const ack=await readResult(path.join(plan.job,'launch-ack.json'));
   assert.equal(ack.pid,process.pid);assert.equal(ack.version,'0.5.1');
 });
+
+test('Application-only preparation copies verified runtime locally and rejects changed DLLs',async t=>{
+  for(const corrupt of [false,true]){
+    const f=await fixture(t);const crypto=require('node:crypto');
+    await fs.writeFile(path.join(f.directory,'engine.dll'),'stable engine');
+    const digest=crypto.createHash('sha256').update('stable engine').digest('hex');
+    const run=async(script,env,options)=>{await f.runPowerShell(script,env,options);if(env.OPORA_UPDATE_STAGE){const source=path.join(env.OPORA_UPDATE_STAGE,'Opora-win32-x64');await fs.rm(path.join(source,'Opora.exe'));await fs.writeFile(path.join(source,'runtime.json'),JSON.stringify({runtimeVersion:'45.2.3',files:[{name:'engine.dll',sha256:digest}]}));}};
+    if(corrupt)await fs.writeFile(path.join(f.directory,'engine.dll'),'changed');
+    const action=()=>prepareInstall({...f.download,kind:'app',runtimeVersion:'45.2.3'},path.join(f.directory,'Opora.exe'),{runPowerShell:run,runtimeVersion:'45.2.3'});
+    if(corrupt)await assert.rejects(action(),/Electron/);
+    else{const plan=await action();assert.equal(await fs.readFile(path.join(plan.source,'engine.dll'),'utf8'),'stable engine');assert.equal(await fs.readFile(path.join(plan.source,'Opora.exe'),'utf8'),'old executable');}
+    assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+  }
+});

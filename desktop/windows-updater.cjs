@@ -55,6 +55,21 @@ function runPowerShell(script,env,{powerShell='powershell.exe',cwd,spawnProcess=
     child.once('close',code=>{clearTimeout(timer);code===0?resolve():reject(new Error(error.slice(0,3000)||'PowerShell завершился с кодом '+code));});
   });
 }
+async function stageRuntime(source,directory,required,actual){
+  if(required!==actual)throw new Error('Версия Electron не совпадает. Нужна полная сборка.');
+  const manifest=await readJson(path.join(source,'runtime.json'));
+  if(!manifest || manifest.runtimeVersion!==actual || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length>5000)throw new Error('Некорректный список файлов Electron.');
+  const names=new Set();
+  for(const file of manifest.files){
+    if(!file || !/^[a-zA-Z0-9_./-]+$/.test(file.name) || file.name.startsWith('/') || file.name.split('/').some(p=>!p || p==='.' || p==='..') || ['Opora.exe','resources/app.asar','runtime.json'].includes(file.name) || names.has(file.name) || !/^[a-f0-9]{64}$/.test(file.sha256))throw new Error('Некорректный путь файла Electron.');
+    names.add(file.name);
+    const input=path.join(directory,file.name);
+    if((await rawFs.promises.lstat(input)).isSymbolicLink() || await hashFile(input)!==file.sha256)throw new Error('Файлы Electron отличаются от ожидаемых. Нужна полная сборка.');
+    const output=path.join(source,file.name);await fs.mkdir(path.dirname(output),{recursive:true});await rawFs.promises.copyFile(input,output);
+    if(await hashFile(output)!==file.sha256)throw new Error('Не удалось скопировать Electron.');
+  }
+  await rawFs.promises.copyFile(path.join(directory,'Opora.exe'),path.join(source,'Opora.exe'));
+}
 async function prepareInstall(download,executable,options={}) {
   const directory=path.dirname(path.resolve(executable));
   const parent=path.dirname(directory);
@@ -70,6 +85,7 @@ async function prepareInstall(download,executable,options={}) {
     const stage=path.join(job,'unpacked');
     await run(EXTRACT,{OPORA_UPDATE_ZIP:download.archive,OPORA_UPDATE_STAGE:stage},{...options,cwd:job});
     const source=path.join(stage,'Opora-win32-x64');
+    if(download.kind==='app')await stageRuntime(source,directory,download.runtimeVersion,options.runtimeVersion||process.versions.electron);
     const pkg=await readArchivePackage(path.join(source,'resources/app.asar'));
     if(pkg.name!=='opora' || pkg.version!==download.version)throw new Error('Версия приложения внутри архива не совпала с описанием. Установка отменена.');
     const hashes={};

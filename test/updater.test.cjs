@@ -77,3 +77,15 @@ test('A blocked or unavailable GitHub endpoint produces a visible failure, witho
   assert.equal(updater.info().status,'error');
   assert.deepEqual(await fs.readdir(directory),[]);
 });
+
+test('Matching Electron selects the small application package; older clients and other runtimes retain the full package',async t=>{
+  const m=manifest();m.appPatch={runtimeVersion:'45.2.3',size:m.size,sha256:m.sha256,parts:m.parts};
+  for(const runtimeVersion of ['45.2.3','44.0.0',null]){
+    const directory=await fs.mkdtemp(path.join(os.tmpdir(),'opora-light-select-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+    const urls=[];const u=new Updater({currentVersion:'0.2.0',runtimeVersion,supported:true,directory,fetch:async url=>{urls.push(url);return url.endsWith('latest.json')?new Response(JSON.stringify(m)):new Response(chunks[m.parts.findIndex(p=>url.endsWith(p.name))]);}});
+    await u.check();assert.equal(u.info().packageKind,runtimeVersion==='45.2.3'?'app':'full');await u.download();
+    assert.ok(urls[1].includes(runtimeVersion==='45.2.3'?'/distribution/app/':'/distribution/windows/'));
+    const count=urls.length;await u.download();assert.equal(urls.length,count,'Valid cached ZIP should avoid all download requests');
+  }
+  const bad=structuredClone(m);bad.appPatch.parts[0].name='../escape';assert.throws(()=>validateManifest(bad));
+});

@@ -60,3 +60,5 @@ manifest = {"version": version, "platform": "windows-x64", "size": source.stat()
 subprocess.run([sys.executable, str(root / 'scripts/prepare-launcher.py')], check=True)
 shutil.copyfile(root / "artifacts/Opora-demo.html", root / "Opora-demo.html")
 print(f"Prepared {len(parts)} parts. SHA256: {manifest['sha256']}")
+
+subprocess.run([sys.executable, str(root / 'scripts/prepare-app-update.py')], check=True)

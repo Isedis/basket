@@ -23,12 +23,16 @@ function validateManifest(m) {
     names.add(part.name);size+=part.size;
   }
   if(size!==m.size || (m.notes!==undefined && (typeof m.notes!=='string' || m.notes.length>6000)))invalid();
+  if(m.appPatch!==undefined){
+    if(!m.appPatch || !/^\d+\.\d+\.\d+$/.test(m.appPatch.runtimeVersion))invalid();
+    validateManifest({...m.appPatch,schemaVersion:1,version:m.version,commit:m.commit,appPatch:undefined});
+  }
   return m;
 }
 
 class Updater {
-  constructor({currentVersion,directory,fetch=globalThis.fetch,source=SOURCE,onProgress=()=>{},supported=false}) {
-    this.currentVersion=currentVersion;this.directory=directory;this.fetch=fetch;
+  constructor({currentVersion,directory,fetch=globalThis.fetch,source=SOURCE,onProgress=()=>{},supported=false,runtimeVersion=null}) {
+    this.runtimeVersion=runtimeVersion;this.currentVersion=currentVersion;this.directory=directory;this.fetch=fetch;
     this.source=source;this.onProgress=onProgress;this.supported=supported;
     this.manifest=null;this.downloaded=null;this.busy=false;
     this.state={status:'idle',currentVersion,supported};
@@ -45,10 +49,12 @@ class Updater {
       for await(const chunk of response.body) {
         total+=chunk.length;if(total>64*1024)throw new Error('Описание обновления слишком большое.');chunks.push(Buffer.from(chunk));
       }
-      const manifest=validateManifest(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      const full=validateManifest(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      const patch=full.appPatch?.runtimeVersion===this.runtimeVersion?full.appPatch:null;
+      const manifest=patch?{...full,...patch,kind:'app'}:{...full,kind:'full'};
       const available=compareVersions(manifest.version,this.currentVersion)>0;
       this.manifest=available?structuredClone(manifest):null;
-      this.emit({status:available?'available':'up-to-date',latestVersion:manifest.version,notes:manifest.notes||'',total:manifest.size,received:0});
+      this.emit({status:available?'available':'up-to-date',latestVersion:manifest.version,notes:manifest.notes||'',total:manifest.size,packageKind:manifest.kind,received:0});
       return this.info();
     } catch(error){this.emit({status:'error',error:error.message});throw error;} finally {this.busy=false;}
   }
@@ -58,16 +64,22 @@ class Updater {
     if(!this.manifest || compareVersions(this.manifest.version,this.currentVersion)<=0)throw new Error('Сначала проверьте наличие новой версии.');
     const m=structuredClone(this.manifest);
     this.busy=true;
-    const directory=path.join(this.directory,m.version+'-'+crypto.randomUUID());
+    const directory=path.join(this.directory,m.version+'-'+m.sha256);
     const archive=path.join(directory,'Opora-Windows.zip');
     let handle;
     this.emit({status:'downloading',latestVersion:m.version,received:0,total:m.size,error:null});
     try {
       await fs.mkdir(directory,{recursive:true});
+      try {
+        const stat=await fs.stat(archive);const hash=crypto.createHash('sha256');
+        for await(const data of createReadStream(archive))hash.update(data);
+        if(stat.size===m.size && hash.digest('hex')===m.sha256){this.downloaded={archive,directory,version:m.version,sha256:m.sha256,size:m.size,kind:m.kind,runtimeVersion:m.runtimeVersion};this.emit({status:'downloaded',received:m.size,total:m.size});return this.info();}
+      }catch{}
+      await fs.rm(archive,{force:true});
       handle=await fs.open(archive,'wx');
       const whole=crypto.createHash('sha256');let received=0,lastProgress=0;
       for(const part of m.parts) {
-        const response=await this.fetch(`${this.source}/${m.commit}/distribution/windows/${part.name}`,{redirect:'error',signal:AbortSignal.timeout(10*60*1000)});
+        const response=await this.fetch(`${this.source}/${m.commit}/distribution/${m.kind==='app'?'app':'windows'}/${part.name}`,{redirect:'error',signal:AbortSignal.timeout(10*60*1000)});
         if(!response.ok)throw new Error(`Не удалось скачать ${part.name} (HTTP ${response.status}).`);
         const hash=crypto.createHash('sha256');let partSize=0;
         for await(const chunk of response.body) {
@@ -82,7 +94,7 @@ class Updater {
       }
       if(received!==m.size || whole.digest('hex')!==m.sha256)throw new Error('Контрольная сумма ZIP не совпала. Установка отменена.');
       await handle.close();handle=null;
-      this.downloaded={archive,directory,version:m.version,sha256:m.sha256,size:m.size};
+      this.downloaded={archive,directory,version:m.version,sha256:m.sha256,size:m.size,kind:m.kind,runtimeVersion:m.runtimeVersion};
       this.emit({status:'downloaded',received:m.size,total:m.size});
       return this.info();
     } catch(error) {

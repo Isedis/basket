@@ -33,7 +33,7 @@ if(primary)app.whenReady().then(async () => {
   const proxy=process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
   let proxyError=null;
   if(proxy)try {await updateSession.setProxy({proxyRules:proxy,proxyBypassRules:'<local>'});} catch(error) {proxyError=error;}
-  const updater=new Updater({currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:(url,options)=>{if(proxyError)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
+  const updater=new Updater({runtimeVersion:process.versions.electron,currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:(url,options)=>{if(proxyError)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
   let installing=false;
   ipcMain.handle('updates:info',async ()=>{
     const previousInstall=await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'));
