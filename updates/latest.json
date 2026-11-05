@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
-  "version": "0.2.0",
-  "commit": "404ac0e6a2ee40a6fe4758f4a3f27647217f6f2a",
-  "size": 158684778,
-  "sha256": "89b053bb39b76eb6e1d5cdf69dde3bee05468e5cb51408c177c4c648594a25ca",
+  "version": "0.3.0",
+  "commit": "ede4c949c780dcda6ed5463a8f6ac72916946996",
+  "size": 161733877,
+  "sha256": "273ca757e83eb69ec11e5d1ec5caf6d1461957eaf9129c98fd143ec853df1cb7",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "5c6b8092bd628a9bc38af1c7fa17e4903f584b3675295385776ec948b46cef16"
+      "sha256": "a76b6a5435dd48b3d14aee09a64d51c04c13aadbcd245d71252efd4932b4d201"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "7af037b25c8ecd377e62ecdf7ce166881101a8dc967c69d62cbd8a15ff418a99"
+      "sha256": "817e78086ac5d7cc4b36f055a861af724bdf3b49cead0a8f9211aa977b56ddc2"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "d870c74536320bded8ebf2ec49bbd439290b6b6f5499b21d92a5733bb2a7f432"
+      "sha256": "9e5c8c40fa05671e04e762a88981a6cc20ec3027393bf199971360ff7c861955"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 7689834,
-      "sha256": "5896ea6a0e66842e2f99b0474a949ec1c619f23aff330a1e3629e382fae4122b"
+      "size": 10738933,
+      "sha256": "3db966b0446ae5790207f3f8a45c1c0d457dc53f3d915c4788f96050713081ce"
     }
   ],
-  "notes": "Автоматический черновик брендбука по проекту Godot. Проверка, скачивание и установка следующих обновлений из программы."
+  "notes": "Локальное MCP-подключение Claude Code и Codex. Контекст, брендбук, задачи и изображения напрямую; отчёты агентов, привязка к проекту и проверка версии контекста."
 }
