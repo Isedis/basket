@@ -13,25 +13,48 @@ const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
 const visualFeedback = require('../src/visual-feedback.cjs');
 const workContext = require('../src/work-context.cjs');
-const {ClaudeTerminal,resolveClaude}=require('./claude-terminal.cjs');
+const {resolveClaude}=require('./claude-terminal.cjs');
+const {TerminalClient}=require('./terminal-client.cjs');
+const installLayout=require('./install-layout.cjs');
+const nativeUpdater=require('./native-updater.cjs');
 const workReaders=new Map();
 let root = null;
 let lastScan = null;
 let win;
 let canClose = false;
+let restarting=false;
+let installation=null;
+let mcpRuntime=null;
+const startupUpdate={job:process.env.OPORA_UPDATE_JOB,token:process.env.OPORA_UPDATE_TOKEN};
 let terminal;
 let terminalStarting=false;
 let terminalClosePrompt=false;
 const requireProject = () => {if (!root) throw new Error('Сначала подключите папку проекта Godot.'); return root;};
 
+async function runDesktop(){
+if(app.isPackaged){
+  installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'installations')});
+  const active=await installLayout.active(installation);
+  if(active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&!process.env.OPORA_UPDATE_JOB){
+    const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:true,env:{...process.env}});
+    await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();app.quit();return;
+  }
+  mcpRuntime=await installLayout.stableMcp(installation);
+}
 const primary=app.requestSingleInstanceLock();
 if(!primary)app.quit();
 app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus();}});
-if(primary)app.whenReady().then(async () => {
-  win = new BrowserWindow({width:1360, height:920, minWidth:980, minHeight:720, title:'Опора — память вашей игры', backgroundColor:'#000000', autoHideMenuBar:true, webPreferences:{preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true}});
+if(primary)await app.whenReady().then(async () => {
+  win = new BrowserWindow({show:!startupUpdate.job,width:1360, height:920, minWidth:980, minHeight:720, title:'Опора — память вашей игры', backgroundColor:'#000000', autoHideMenuBar:true, webPreferences:{preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true}});
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate', event => event.preventDefault());
+  let readyTimer;
+  const workspaceReady=new Promise((resolve,reject)=>{
+    ipcMain.once('app:workspace-ready',event=>{if(event.sender===win.webContents){clearTimeout(readyTimer);resolve();}});
+    if(startupUpdate.job)readyTimer=setTimeout(()=>reject(new Error('Интерфейс новой версии не завершил запуск.')),45000);
+  });
   win.on('close', event => {
+    if(restarting)return;
     if(terminal?.active || terminalStarting){
       event.preventDefault();
       if(terminalClosePrompt)return;
@@ -61,31 +84,43 @@ if(primary)app.whenReady().then(async () => {
     return {...updater.info(),previousInstall,installDirectory:path.dirname(process.execPath)};
   });
   ipcMain.handle('updates:check',()=>updater.check());
-  ipcMain.handle('updates:diagnostics',async()=>({currentVersion:require('../package.json').version,installDirectory:path.dirname(process.execPath),...await windowsUpdater.readDiagnostics(path.join(app.getPath('userData'),'update-result.json'),{directory:path.dirname(process.execPath)})}));
+  ipcMain.handle('updates:diagnostics',async()=>({currentVersion:require('../package.json').version,installDirectory:path.dirname(process.execPath),...await nativeUpdater.readDiagnostics(path.join(app.getPath('userData'),'update-result.json'),{layout:installation})}));
   ipcMain.handle('updates:download',()=>updater.download());
   ipcMain.handle('updates:install',async ()=>{
-    if(terminal?.active || terminalStarting)throw new Error('Сначала завершите Claude Code в панели терминала, затем установите обновление.');
     if(!updater.supported)throw new Error('Установка обновлений доступна только в готовой Windows-сборке.');
     if(installing)throw new Error('Установка уже выполняется.');
     installing=true;
+    updater.emit({transaction:true});
     try {
+      if(terminalStarting)await new Promise((resolve,reject)=>{const deadline=Date.now()+20000;const tick=()=>{if(!terminalStarting)return resolve();if(Date.now()>deadline)return reject(new Error('Claude ещё запускается. Повторите обновление через несколько секунд.'));setTimeout(tick,100);};tick();});
+      await updater.check();
+      if(updater.info().status==='up-to-date'){installing=false;updater.emit({transaction:false});return {restarting:false};}
+      await updater.download();
       updater.emit({status:'installing',installPhase:'Подготовка обновления',previousInstall:null});
-      const download=await updater.verifiedDownload();
+      let download=await updater.verifiedDownload();
       const onProgress=installPhase=>updater.emit({status:'installing',installPhase});
-      const plan=await windowsUpdater.prepareInstall(download,process.execPath,{onProgress});
-      await windowsUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
-      canClose=true;
+      let plan;
+      try{plan=await nativeUpdater.prepareInstall(download,process.execPath,{onProgress,layout:installation});}
+      catch(error){
+        if(error.code!=='ENGINE_REPAIR_REQUIRED'||download.kind!=='app')throw error;
+        onProgress('Автоматическое восстановление Electron');updater.useFullPackage();await updater.download();download=await updater.verifiedDownload();
+        plan=await nativeUpdater.prepareInstall(download,process.execPath,{onProgress,layout:installation});
+      }
+      await nativeUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
+      canClose=true;restarting=true;
       setTimeout(()=>app.quit(),250);
       return {restarting:true};
-    } catch(error) {installing=false;updater.emit({status:'error',error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
+    } catch(error) {installing=false;updater.emit({status:'error',transaction:false,error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');
-  const getAgentConfig=()=>agentConfig.connection(requireProject(),{executable:process.execPath,entry:path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});
-  terminal=new ClaudeTerminal({
-    loadPty:()=>app.isPackaged?require(path.join(process.resourcesPath,'app.asar.unpacked/node_modules/node-pty')):require('node-pty'),
+  const getAgentConfig=()=>agentConfig.connection(requireProject(),{executable:mcpRuntime?.executable||process.execPath,entry:mcpRuntime?.entry||path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});
+  terminal=new TerminalClient({
+    record:path.join(app.getPath('userData'),'terminal-broker.json'),entry:path.join(__dirname,'terminal-broker.cjs'),executable:process.execPath,
+    native:app.isPackaged?path.join(process.resourcesPath,'app.asar.unpacked/node_modules/node-pty'):undefined,
     onEvent:event=>{if(!win.isDestroyed())win.webContents.send('claude:event',event);}
   });
+  await terminal.connect();if(terminal.active)root=terminal.snapshot().root;
   const terminalPreferences=path.join(app.getPath('userData'),'claude-terminal.json');
   async function claudeCommand(){
     let selected;
@@ -93,7 +128,7 @@ if(primary)app.whenReady().then(async () => {
     return resolveClaude({selected,home:app.getPath('home')});
   }
   function terminalHandle(channel,handler){ipcMain.handle(channel,(event,...args)=>{if(event.sender!==win.webContents)throw new Error('Недоступный отправитель.');return handler(...args);});}
-  terminalHandle('claude:state',()=>terminal.snapshot());
+  terminalHandle('claude:state',()=>terminal.getState());
   terminalHandle('claude:start',async(options={})=>{
     const project=requireProject();
     if(terminalStarting)throw new Error('Claude уже запускается.');
@@ -105,7 +140,7 @@ if(primary)app.whenReady().then(async () => {
       const config=await getAgentConfig();
       await agentConfig.configure('claude',config);
       if(root!==project)throw new Error('Проект сменился. Повторите запуск.');
-      return terminal.start({root:project,command,serverName:config.server_name,cols:options.cols,rows:options.rows,resume:options.resume===true});
+      return await terminal.start({root:project,command,serverName:config.server_name,cols:options.cols,rows:options.rows,resume:options.resume===true});
     }finally{terminalStarting=false;}
   });
   terminalHandle('claude:input',input=>terminal.write(input));
@@ -228,9 +263,18 @@ if(primary)app.whenReady().then(async () => {
     return `data:image/${['jpg','jpeg'].includes(ext)?'jpeg':ext};base64,${data.toString('base64')}`;
   });
   await win.loadFile(path.join(__dirname,'../ui/index.html'));
-  try {await windowsUpdater.confirmLaunch({version:require('../package.json').version});}
-  catch(error) {dialog.showErrorBox('Подтверждение обновления',error.message);}
+  if(startupUpdate.job)await workspaceReady;
+  try {await nativeUpdater.confirmLaunch({version:require('../package.json').version});if(startupUpdate.job)win.show();}
+  catch(error) {throw error;}
   finally {delete process.env.OPORA_UPDATE_JOB;delete process.env.OPORA_UPDATE_TOKEN;}
+});
+}
+runDesktop().catch(async error=>{
+  if(startupUpdate.job&&startupUpdate.token){
+    try{await fs.writeFile(path.join(startupUpdate.job,'gui-error.json'),JSON.stringify({token:startupUpdate.token,pid:process.pid,error:error.message}));}catch{}
+    app.exit(1);return;
+  }
+  dialog.showErrorBox('Запуск Опоры',error.message);app.quit();
 });
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit',()=>terminal?.dispose());

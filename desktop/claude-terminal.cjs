@@ -54,6 +54,7 @@ class ClaudeTerminal {
     if(this.active){if(this.session.root!==root)throw new Error('Claude работает в другой игре. Завершите сессию перед сменой проекта.');return this.snapshot();}
     const env={...process.env,TERM:'xterm-256color',COLORTERM:'truecolor',TERM_PROGRAM:'Opora'};
     delete env.ELECTRON_RUN_AS_NODE;
+    delete env.OPORA_UPDATE_JOB;delete env.OPORA_UPDATE_TOKEN;
     const instruction=`You are working inside Opora in the selected game directory. The project-local MCP server is ${serverName}. At the beginning of a game task call opora_get_work_context and verify its root matches the current directory. Read source files before editing. Use Opora's task, brandbook and feedback tools; do not approve the brandbook, accept visual results or finish tasks on the user's behalf. After context loss fetch the work context again. Respect Claude Code's normal permission prompts.`;
     const args=[...command.args,...(resume?['--continue']:[]),'--append-system-prompt',instruction];
     const size=this.size(cols,rows);

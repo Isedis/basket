@@ -1,0 +1,67 @@
+name: Windows updater validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [opora-update-hardening, opora]
+    paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'package*.json', '.github/workflows/windows-update.yml']
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --no-audit --no-fund
+      - name: Installer protocol unit tests
+        id: unit
+        run: node --test test/windows-updater.test.cjs
+      - name: Windows PowerShell 5.1 recovery tests
+        id: ps51
+        shell: powershell
+        run: |
+          $PSVersionTable.PSVersion
+          npm run test:installer
+      - name: Real Windows button, Claude PTY and live MCP
+        id: native
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-native.json
+        run: node scripts/native-update-smoke.cjs
+      - name: Failed new GUI restores previous version
+        id: rollback
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-rollback.json
+          OPORA_TEST_UPDATE_FAILURE: launch
+        run: node scripts/native-update-smoke.cjs
+      - name: Publish machine-readable validation result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          UNIT_RESULT: ${{ steps.unit.outcome }}
+          PS_RESULT: ${{ steps.ps51.outcome }}
+          NATIVE_RESULT: ${{ steps.native.outcome }}
+          ROLLBACK_RESULT: ${{ steps.rollback.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const read = name => { try { return JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, name))); } catch { return null; } };
+            const report = {
+              commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              checkedAt: new Date().toISOString(), platform: 'windows-latest',
+              steps: {unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT},
+              native: read('opora-native.json'), rollback: read('opora-rollback.json')
+            };
+            const branch = 'opora-windows-validation';
+            try { await github.git.getRef({...context.repo, ref: 'heads/' + branch}); }
+            catch (error) { if(error.status !== 404) throw error; await github.git.createRef({...context.repo, ref: 'refs/heads/' + branch, sha: context.sha}); }
+            let sha;
+            try { sha = (await github.repos.getContent({...context.repo, path: 'windows-update.json', ref: branch})).data.sha; } catch(error) { if(error.status !== 404) throw error; }
+            await github.repos.createOrUpdateFileContents({...context.repo, branch, path: 'windows-update.json', sha, message: 'Record Windows updater validation ' + context.sha.slice(0, 12), content: Buffer.from(JSON.stringify(report, null, 2) + '\n').toString('base64')});
