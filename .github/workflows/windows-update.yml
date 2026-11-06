@@ -6,6 +6,9 @@ on:
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
+concurrency:
+  group: windows-updater-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   windows:
     runs-on: windows-latest
@@ -22,7 +25,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Installer protocol unit tests
         id: unit
-        run: node --test test/windows-updater.test.cjs
+        run: |
+          node --test test/windows-updater.test.cjs > "$env:RUNNER_TEMP/unit.log" 2>&1
+          $code=$LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/unit.log"
+          exit $code
       - name: Windows PowerShell 5.1 recovery tests
         id: ps51
         shell: powershell
@@ -59,6 +66,7 @@ jobs:
               steps: {unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT},
               native: read('opora-native.json'), rollback: read('opora-rollback.json')
             };
+            if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';
             try { await github.git.getRef({...context.repo, ref: 'heads/' + branch}); }
             catch (error) { if(error.status !== 404) throw error; await github.git.createRef({...context.repo, ref: 'refs/heads/' + branch, sha: context.sha}); }

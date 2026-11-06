@@ -8,7 +8,7 @@ async function retry(action,{timeout=15000}={}){const deadline=Date.now()+timeou
 function alive(pid){try{process.kill(pid,0);return true;}catch(error){return error.code==='EPERM';}}
 async function hash(file){const hash=crypto.createHash('sha256');for await(const chunk of raw.createReadStream(file))hash.update(chunk);return hash.digest('hex');}
 function validate(plan,job){
-  const versions=path.join(plan.home,'.opora-versions'),relative=path.relative(versions,plan.directory);
+  const versions=path.join(plan.home,'v'),relative=path.relative(versions,plan.directory);
   if(plan.schemaVersion!==2||!/^\d+\.\d+\.\d+$/.test(plan.version)||!/^[a-f0-9]{64}$/.test(plan.token)||!Number.isSafeInteger(plan.parentPid)||plan.parentPid<1||!same(plan.job,job)||!same(path.dirname(job),plan.home)||!/^\.opora-update-[a-zA-Z0-9]+$/.test(path.basename(job))||!relative||relative.startsWith('..')||path.isAbsolute(relative)||relative.split(path.sep).length!==1||!same(plan.pointer,path.join(plan.home,'opora-active.json'))||!same(plan.source,plan.directory)||!same(plan.previous.directory,plan.previousDirectory)||plan.previous.id!==plan.installId)throw new Error('Некорректный план установки.');
 }
 async function run(job){
@@ -21,8 +21,11 @@ async function run(job){
     const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
     if(confirm){env.OPORA_UPDATE_JOB=job;env.OPORA_UPDATE_TOKEN=plan.token;}else{delete env.OPORA_UPDATE_JOB;delete env.OPORA_UPDATE_TOKEN;}
     return retry(async()=>{
-      const processChild=spawn(path.join(directory,'Opora.exe'),plan.launchArgs||[],{cwd:directory,env,stdio:'ignore',windowsHide:true,detached:false});
-      await new Promise((resolve,reject)=>{processChild.once('spawn',resolve);processChild.once('error',reject);});processChild.unref();return processChild;
+      const log=await fs.open(path.join(job,confirm?'gui-startup.log':'recovery-startup.log'),'a');
+      try{
+        const processChild=spawn(path.join(directory,'Opora.exe'),plan.launchArgs||[],{cwd:directory,env,stdio:['ignore',log.fd,log.fd],windowsHide:true,detached:false});
+        await new Promise((resolve,reject)=>{processChild.once('spawn',resolve);processChild.once('error',reject);});processChild.unref();return processChild;
+      }finally{await log.close();}
     });
   };
   try{

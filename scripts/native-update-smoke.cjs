@@ -24,6 +24,8 @@ async function main(){
     if(process.platform==='win32')await fs.rm(path.join(pty,'build'),{recursive:true,force:true});
     if(process.platform!=='win32'){
       const file=path.join(source,'desktop/main.cjs'),text=await fs.readFile(file,'utf8'),gate="process.platform==='win32' && app.isPackaged";assert.equal(text.split(gate).length,2);await fs.writeFile(file,text.replace(gate,'app.isPackaged'));
+      const updater=path.join(source,'desktop/native-updater.cjs'),code=await fs.readFile(updater,'utf8');
+      await fs.writeFile(updater,code.replace('schemaVersion:2,installId:',"schemaVersion:2,launchArgs:['--no-sandbox','--ozone-platform=headless'],installId:"));
     }
     const version=require('../package.json').version,proof=path.join(temp,'proof.json');
     const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state)return;await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
@@ -62,6 +64,7 @@ async function main(){
     assert.ok(result,result?.error||'No update result');
     if(failLaunch){assert.equal(result.status,'failed');assert.equal(result.rollback,'restored');newPid=result.recoveredPid;report.rollback=true;}
     else{
+      if(result.status!=='installed'){try{console.error(await fs.readFile(path.join(result.job,'gui-startup.log'),'utf8'));}catch{}newPid=result.recoveredPid;}
       assert.equal(result.status,'installed',JSON.stringify(result));const ack=JSON.parse(await fs.readFile(path.join(result.job,'launch-ack.json'),'utf8'));newPid=ack.pid;
       let ui;for(let n=0;n<100;n++){try{ui=JSON.parse(await fs.readFile(proof,'utf8'));break;}catch{}await pause(100);}
       assert.equal(ui?.version,version);assert.equal(ui?.terminal.id,terminal.id);assert.equal(ui?.terminal.pid,terminal.pid);assert.equal(ui?.name,'Update fixture');report.terminalSurvived=true;

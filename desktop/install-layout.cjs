@@ -8,10 +8,10 @@ async function atomic(file,value){const temp=file+'.'+crypto.randomUUID()+'.tmp'
 function contained(root,file){const relative=path.relative(root,file);return !!relative&&!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative);}
 async function location(executable,{create=false,storage}={}){
   const directory=path.dirname(path.resolve(executable));
-  const defaultHome=storage?path.join(storage,crypto.createHash('sha256').update(process.platform==='win32'?directory.toLowerCase():directory).digest('hex').slice(0,20)):path.dirname(directory);
+  const defaultHome=storage?path.join(storage,crypto.createHash('sha256').update(process.platform==='win32'?directory.toLowerCase():directory).digest('hex').slice(0,16)):path.dirname(directory);
   const marker=await read(path.join(directory,MARKER))||await read(path.join(defaultHome,'.opora-installation.json'));
   if(marker){
-    if(marker.schemaVersion!==1||!path.isAbsolute(marker.home)||!path.isAbsolute(marker.base)||!(same(directory,marker.base)||contained(path.join(marker.home,'.opora-versions'),directory))||!/^[-a-zA-Z0-9]{36}$/.test(marker.id))throw new Error('Повреждены сведения об установке Опоры.');
+    if(marker.schemaVersion!==1||!path.isAbsolute(marker.home)||!path.isAbsolute(marker.base)||!(same(directory,marker.base)||contained(path.join(marker.home,'v'),directory))||!/^[-a-zA-Z0-9]{36}$/.test(marker.id))throw new Error('Повреждены сведения об установке Опоры.');
     const base=await read(path.join(marker.home,'.opora-installation.json'));if(!base||base.id!==marker.id||!same(base.home,marker.home)||!same(base.base,marker.base))throw new Error('Не найдена основная папка этой установки Опоры.');
     return {...marker,directory,pointer:path.join(marker.home,ACTIVE)};
   }
@@ -21,7 +21,7 @@ async function location(executable,{create=false,storage}={}){
 }
 async function active(layout){
   const record=await read(layout.pointer);if(!record)return null;
-  if(record.schemaVersion!==1||record.id!==layout.id||!path.isAbsolute(record.directory)||!(same(record.directory,layout.base)||contained(path.join(layout.home,'.opora-versions'),record.directory))||!/^\d+\.\d+\.\d+$/.test(record.version))throw new Error('Повреждён указатель текущей версии Опоры.');
+  if(record.schemaVersion!==1||record.id!==layout.id||!path.isAbsolute(record.directory)||!(same(record.directory,layout.base)||contained(path.join(layout.home,'v'),record.directory))||!/^\d+\.\d+\.\d+$/.test(record.version))throw new Error('Повреждён указатель текущей версии Опоры.');
   const marker=same(record.directory,layout.base)?layout:await read(path.join(record.directory,MARKER));if(!marker||marker.id!==layout.id||!same(marker.home,layout.home))throw new Error('Текущая версия относится к другой установке.');
   if(!(await fs.stat(path.join(record.directory,'Opora.exe'))).isFile())throw new Error('Не найден запуск текущей версии Опоры.');
   return record;

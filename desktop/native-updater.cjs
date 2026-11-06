@@ -40,9 +40,9 @@ async function stageEngine(source,current,manifest,version){
 async function prepareInstall(download,executable,{storage,layout:provided,runtimeVersion=process.versions.electron,onProgress=()=>{}}={}){
   const layout=provided||await layoutApi.location(executable,{storage,create:true});
   const previous=await layoutApi.active(layout);if(!previous||!layoutApi.same(previous.directory,path.dirname(executable)))throw new Error('Запущена предыдущая копия Опоры. Откройте текущую версию.');
-  await fs.mkdir(path.join(layout.home,'.opora-versions'),{recursive:true});
+  await fs.mkdir(path.join(layout.home,'v'),{recursive:true});
   const job=await fs.mkdtemp(path.join(layout.home,'.opora-update-'));
-  const directory=path.join(layout.home,'.opora-versions',download.version+'-'+crypto.randomUUID());
+  const directory=path.join(layout.home,'v',download.version+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12));
   try{
     onProgress('Распаковка новой версии');await extract(download.archive,job);
     const source=path.join(job,'Opora-win32-x64');
@@ -57,7 +57,7 @@ async function prepareInstall(download,executable,{storage,layout:provided,runti
     const marker={schemaVersion:1,id:layout.id,home:layout.home,base:layout.base};
     await fs.writeFile(path.join(source,layoutApi.MARKER),JSON.stringify(marker));hashes[layoutApi.MARKER]=await digest(path.join(source,layoutApi.MARKER));
     await retry(()=>fs.rename(source,directory));
-    await fs.copyFile(path.join(__dirname,'install-worker.cjs'),path.join(job,'install-worker.cjs'));
+    await fs.writeFile(path.join(job,'install-worker.cjs'),await require('node:fs').promises.readFile(path.join(__dirname,'install-worker.cjs')));
     return {schemaVersion:2,installId:layout.id,home:layout.home,pointer:layout.pointer,job,directory,source:directory,previousDirectory:previous.directory,previous,version:download.version,parentPid:process.pid,token:crypto.randomBytes(32).toString('hex'),hashes};
   }catch(error){await fs.rm(directory,{recursive:true,force:true}).catch(()=>{});await fs.rm(job,{recursive:true,force:true}).catch(()=>{});throw Object.assign(new Error('Подготовка обновления остановлена: '+error.message),{code:error.code});}
 }
@@ -100,7 +100,7 @@ async function confirmLaunch({version,executable=process.execPath,job=process.en
 async function readDiagnostics(file,{layout}={}){
   const result=await layoutApi.read(file);if(!result)return {result:null};
   if(!layout||result.installId!==layout.id||!result.job||!layoutApi.same(path.dirname(result.job),layout.home)||!/^\.opora-update-[a-zA-Z0-9]+$/.test(path.basename(result.job)))return {result};
-  const logs={};for(const file of ['installer.log','stdout.log','stderr.log'])try{const bytes=await fs.readFile(path.join(result.job,file));logs[file]=bytes.subarray(-5000).toString('utf8');}catch{}
+  const logs={};for(const file of ['installer.log','stdout.log','stderr.log','gui-startup.log','recovery-startup.log'])try{const bytes=await fs.readFile(path.join(result.job,file));logs[file]=bytes.subarray(-5000).toString('utf8');}catch{}
   return {result,logs};
 }
 module.exports={prepareInstall,launchInstaller,confirmLaunch,readDiagnostics,extract,stageEngine};

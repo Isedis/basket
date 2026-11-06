@@ -33,7 +33,7 @@ const requireProject = () => {if (!root) throw new Error('Сначала под�
 
 async function runDesktop(){
 if(app.isPackaged){
-  installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'installations')});
+  installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'runtime')});
   const active=await installLayout.active(installation);
   if(active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&!process.env.OPORA_UPDATE_JOB){
     const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:true,env:{...process.env}});
