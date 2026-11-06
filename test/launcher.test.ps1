@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $repo = $env:OPORA_REPO_ROOT
 $launcherSource = [IO.File]::ReadAllText((Join-Path $repo 'scripts/windows-launcher.ps1'))
 . ([scriptblock]::Create($launcherSource))
-$sourceStart = (Get-Command Start-Opora).ScriptBlock
+$sourceStart = [scriptblock]::Create((Get-Command Start-Opora).ScriptBlock.ToString().Replace('[Diagnostics.Process]::Start($start)','Start-Process $start'))
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $script:Started = @()
 $script:FailStart = $false

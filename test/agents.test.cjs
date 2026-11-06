@@ -180,3 +180,10 @@ test('Context deltas reduce repeat reads, preserve changes and fall back after c
  await assert.rejects(read('0'.repeat(32),delta.revision),/другой проект/);
  assert.equal((await read(id)).mode,'full');
 });
+
+test('An owned previous-version connection remains configured without rewriting or interrupting it',async t=>{
+  const f=await fixture(t);await configs.configure('claude',f.config);
+  const before=await fs.readFile(f.config.claudeFile,'utf8');
+  const next=await configs.connection(f.root,{executable:f.config.spec.command,entry:'C:\\New\\.opora-runtime\\mcp\\server.cjs',codexHome:path.join(f.base,'codex')});
+  const info=await configs.status(next);assert.equal(info.claude.configured,true);assert.equal(info.claude.previousVersion,true);assert.equal(await fs.readFile(f.config.claudeFile,'utf8'),before);
+});

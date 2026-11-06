@@ -50,6 +50,7 @@ class Updater {
         total+=chunk.length;if(total>64*1024)throw new Error('Описание обновления слишком большое.');chunks.push(Buffer.from(chunk));
       }
       const full=validateManifest(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      this.fullManifest=structuredClone(full);
       const patch=full.appPatch?.runtimeVersion===this.runtimeVersion?full.appPatch:null;
       const manifest=patch?{...full,...patch,kind:'app'}:{...full,kind:'full'};
       const available=compareVersions(manifest.version,this.currentVersion)>0;
@@ -57,6 +58,11 @@ class Updater {
       this.emit({status:available?'available':'up-to-date',latestVersion:manifest.version,notes:manifest.notes||'',total:manifest.size,packageKind:manifest.kind,received:0});
       return this.info();
     } catch(error){this.emit({status:'error',error:error.message});throw error;} finally {this.busy=false;}
+  }
+  useFullPackage(){
+    if(!this.fullManifest)throw new Error('Нет описания полной сборки.');
+    this.manifest={...structuredClone(this.fullManifest),kind:'full'};
+    this.emit({status:'available',packageKind:'full',total:this.manifest.size,received:0});
   }
   async download() {
     if(!this.supported)throw new Error('Установка обновлений доступна в готовой Windows-сборке.');

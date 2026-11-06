@@ -89,3 +89,10 @@ test('Matching Electron selects the small application package; older clients and
   }
   const bad=structuredClone(m);bad.appPatch.parts[0].name='../escape';assert.throws(()=>validateManifest(bad));
 });
+
+test('A damaged local runtime can switch from the app patch to a verified full download automatically',async t=>{
+  const m=manifest();m.appPatch={runtimeVersion:'45.2.3',size:m.size,sha256:m.sha256,parts:m.parts};
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'opora-auto-repair-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  const urls=[],u=new Updater({currentVersion:'0.2.0',runtimeVersion:'45.2.3',supported:true,directory,fetch:async url=>{urls.push(url);return url.endsWith('latest.json')?new Response(JSON.stringify(m)):new Response(chunks[m.parts.findIndex(p=>url.endsWith(p.name))]);}});
+  await u.check();assert.equal(u.info().packageKind,'app');u.useFullPackage();assert.equal(u.info().packageKind,'full');await u.download();assert.ok(urls[1].includes('/distribution/windows/'));assert.equal((await u.verifiedDownload()).kind,'full');
+});

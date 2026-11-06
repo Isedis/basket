@@ -64,7 +64,9 @@ async function status(config) {
     try {
       const text=await read(client==='claude'?config.claudeFile:config.codexFile);
       const item=text===null?null:client==='claude'?JSON.parse(text).mcpServers?.[config.server_name]:toml.parse(text).mcp_servers?.[config.server_name];
-      result[client]={configured:!!item && item.command===config.spec.command && JSON.stringify(item.args)===JSON.stringify(config.spec.args) && item.env?.ELECTRON_RUN_AS_NODE==='1'};
+      const current=!!item && item.command===config.spec.command && JSON.stringify(item.args)===JSON.stringify(config.spec.args) && item.env?.ELECTRON_RUN_AS_NODE==='1';
+      const previous=!!item && item.env?.ELECTRON_RUN_AS_NODE==='1'&&Array.isArray(item.args)&&item.args.includes(config.root)&&item.args.some(a=>typeof a==='string'&&/mcp[/\\]server\.cjs$/.test(a));
+      result[client]={configured:current||previous,...(previous&&!current?{previousVersion:true}: {})};
     } catch {result[client]={configured:false,error:'Не удалось прочитать настройки клиента.'};}
   }
   return result;

@@ -94,7 +94,12 @@ function Start-Opora([string]$AppFolder) {
             return
         }
     }
-    Start-Process -FilePath (Join-Path $AppFolder 'Opora.exe') -WorkingDirectory $AppFolder | Out-Null
+    $start=New-Object Diagnostics.ProcessStartInfo
+    $start.FileName=Join-Path $AppFolder 'Opora.exe';$start.WorkingDirectory=$AppFolder
+    $start.UseShellExecute=$false;$start.CreateNoWindow=$true
+    $start.EnvironmentVariables.Remove('ELECTRON_RUN_AS_NODE')
+    $start.EnvironmentVariables['ELECTRON_NO_ATTACH_CONSOLE']='1'
+    [Diagnostics.Process]::Start($start) | Out-Null
 }
 
 function Invoke-OporaLauncher([string]$PackageRoot) {
@@ -107,6 +112,22 @@ function Invoke-OporaLauncher([string]$PackageRoot) {
     $movedNew = $false
     $phase = 'подготовка'
     try {
+        $starter=Join-Path $PackageRoot 'OPORA-START.cjs'
+        if(Test-Path -LiteralPath $starter -PathType Leaf){
+            $runtime=Join-Path $appFolder 'Opora.exe'
+            if(!(Test-Path -LiteralPath $runtime -PathType Leaf)){$runtime=Join-Path $PackageRoot 'Opora.exe'}
+            if(Test-Path -LiteralPath $runtime -PathType Leaf){
+                $start=New-Object Diagnostics.ProcessStartInfo
+                $start.FileName=$runtime;$start.Arguments='"'+$starter+'"';$start.WorkingDirectory=$PackageRoot
+                $start.UseShellExecute=$false;$start.CreateNoWindow=$true
+                $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
+                $start.EnvironmentVariables['ELECTRON_RUN_AS_NODE']='1'
+                $child=[Diagnostics.Process]::Start($start)
+                if(!$child.WaitForExit(30000)){throw 'Запуск текущей версии занял слишком много времени.'}
+                if($child.ExitCode -ne 0){throw $child.StandardError.ReadToEnd()}
+                return
+            }
+        }
         try { $lock = [IO.File]::Open((Join-Path $PackageRoot '.opora-launch.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
         catch { throw 'Не удалось начать запуск: уже открыт другой запускатель или нет доступа к этой папке. Дождитесь его завершения либо распакуйте ZIP в новую пользовательскую папку.' }
         $manifest = Read-OporaManifest (Join-Path $PackageRoot 'distribution/windows')

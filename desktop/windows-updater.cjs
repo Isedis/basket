@@ -192,4 +192,4 @@ async function confirmLaunch({version,executable=process.execPath,job=process.en
   await writeJson(path.join(job,'launch-ack.json'),{token,version,executable:path.resolve(executable),pid:process.pid});
   return true;
 }
-module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson,readDiagnostics,systemPowerShell};
+module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson,readDiagnostics,systemPowerShell,readArchivePackage,appHashes};

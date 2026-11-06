@@ -48,6 +48,7 @@ window.OporaClaudeTerminal={create({bridge,getRoot,prepare,getPrompt,onError,not
   }
   function event(packet){
     if(pending){queue.push(packet);return;}
+    if(packet.snapshot){accept(packet.snapshot);return;}
     if(!session||packet.id!==session.id||packet.seq<=sequence)return;
     sequence=packet.seq;session={...session,...packet};
     if(packet.data)term.write(packet.data);
