@@ -50,6 +50,7 @@ async function main(){
     else await fs.writeFile(shim,'#!/bin/sh\nexec '+"'"+process.execPath.replace(/'/g,"'\\''")+"' "+"'"+cli.replace(/'/g,"'\\''")+"' \"$@\"\n",{mode:0o755});
     await fs.writeFile(path.join(profile,'claude-terminal.json'),JSON.stringify({executable:shim}));
     oldApp=await _electron.launch({executablePath:path.join(base,'Opora.exe'),args:process.platform==='linux'?['--no-sandbox','--ozone-platform=headless']:[],env:{...process.env,CODEX_HOME:path.join(temp,'codex')},timeout:45000});
+    const oldPid=await oldApp.evaluate(()=>process.pid);
     const page=await oldApp.firstWindow();await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Update fixture');
     await oldApp.evaluate(({session},{manifest,archive})=>{const raw=process.getBuiltinModule('fs');session.fromPartition('opora-updates').fetch=async url=>new Response(String(url).includes('latest.json')?JSON.stringify(manifest):raw.readFileSync(archive),{status:200});},{manifest,archive});
     await page.locator('.topbar [data-action="claude-open"]').click();await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));
@@ -63,7 +64,7 @@ async function main(){
       if(!page.isClosed()){const message=await page.locator('#modal-content').innerText().catch(()=>'');if(message.includes('Обновление не завершено'))throw new Error(message);}
       await pause(100);}
     assert.ok(result,result?.error||'No update result');
-    report.oldProcess={pid:oldApp.process().pid,exitCode:oldApp.process().exitCode,pageClosed:page.isClosed()};
+    report.oldProcess={pid:oldPid,pageClosed:page.isClosed()};
     try{report.lifecycle=await fs.readFile(lifecycle,'utf8');}catch{}
     if(result.status!=='installed'){
       for(const file of ['worker-launch.json','progress.json','ready.json','plan.json'])try{const value=JSON.parse(await fs.readFile(path.join(result.job,file),'utf8'));report[file]={pid:value.pid,parentPid:value.parentPid,expectedPid:value.expectedPid,phase:value.phase,tokenMatches:file==='ready.json'?value.token===JSON.parse(await fs.readFile(path.join(result.job,'plan.json'),'utf8')).token:undefined};}catch{}
