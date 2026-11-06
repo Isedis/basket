@@ -111,3 +111,13 @@ dialog{border-radius:0;border:1px solid var(--muted);border-top-color:var(--acce
 .claude-toolbar{display:flex;align-items:center;gap:20px;min-height:43px;border-bottom:1px solid var(--border);flex-shrink:0}.claude-toolbar strong{font-size:13px}.claude-toolbar [role=status]{font-size:10px;color:var(--muted);margin-right:auto}.claude-toolbar button{font-size:11px}
 .claude-project{color:var(--muted);font-size:10px;padding:7px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}.claude-actions{display:flex;align-items:center;gap:12px;flex-shrink:0;padding-bottom:8px;flex-wrap:wrap}.claude-actions .button{font-size:10px;padding:6px 9px}.claude-actions .text-button{font-size:10px}.claude-actions>span{margin-left:auto;font-size:9px}.claude-stop{color:var(--accent)}.claude-error{color:#ff7373;font-size:11px;white-space:pre-wrap;margin:0;max-height:90px;overflow:auto;flex-shrink:0}.claude-error:empty{display:none}.claude-error:not(:empty){padding:5px 0 10px}.claude-screen{flex:1;min-height:0;overflow:hidden}.claude-screen .xterm{height:100%}.claude-screen textarea{box-shadow:none}.terminal-running{color:var(--accent)!important}
 @media(max-width:1100px){.claude-dock{left:184px}.top-actions{gap:10px}.claude-actions{gap:8px}}
+/* Decorative first-paint intro; never captures input or waits for services. */
+.launch-intro{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:#000;color:#fff0c6;pointer-events:none;visibility:hidden;animation:opora-intro-out 850ms ease forwards}
+.launch-mark{position:relative;display:flex;align-items:center;gap:18px;padding:0 0 24px;font-family:"JetBrains Mono",monospace;animation:opora-mark-in 240ms ease-out both}
+.launch-mark strong{font-size:clamp(28px,4vw,48px);font-weight:600;letter-spacing:.16em}.launch-prompt{color:#f00;font-size:28px}.launch-cursor{height:32px;width:12px;background:currentColor;animation:opora-cursor 180ms steps(1) 3}
+.launch-line{position:absolute;bottom:0;left:0;right:0;height:2px;background:#f00;transform-origin:left;animation:opora-line-in 560ms cubic-bezier(.2,.65,.3,1) both}
+@keyframes opora-intro-out{0%,76%{visibility:visible;opacity:1}100%{visibility:hidden;opacity:0}}
+@keyframes opora-mark-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes opora-line-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes opora-cursor{50%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.launch-intro{display:none;animation:none}.launch-mark,.launch-cursor,.launch-line{animation:none}}
