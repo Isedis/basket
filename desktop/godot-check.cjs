@@ -29,7 +29,7 @@ async function check(root,options={}){
   for(const file of files.slice(0,limit)){
     const name=`Импорт Godot и разбор GDScript (${checked}/${files.length})`;
     if(Date.now()-start>=timeout)return {...imported,name,result:'failed',timed_out:true,evidence:'Общий лимит времени проверки исчерпан.',scripts_checked:checked,scripts_total:files.length};
-    try{if(typeof file!=='string'||!file.endsWith('.gd'))throw new Error('Ожидался GDScript.');await require('../src/core.cjs').assertSafePath(root,file);}catch(error){return {...imported,name,result:'failed',evidence:error.message};}
+    try{if(typeof file!=='string'||!file.endsWith('.gd')||file.includes('\\')||file.includes(':')||file.startsWith('/')||file.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Ожидался GDScript.');await require('../src/core.cjs').assertSafePath(root,file);}catch(error){return {...imported,name,result:'failed',evidence:error.message};}
     const result=await runProcess(root,{...options,timeoutMs:timeout-(Date.now()-start),args:['--headless','--path',root,'--check-only','--script','res://'+file]});checked++;
     evidence=(evidence+'\n'+file+':\n'+result.evidence).slice(-4000);
     if(result.result!=='passed')return {...result,name:`Импорт Godot и разбор GDScript (${checked}/${files.length})`,evidence,scripts_checked:checked,scripts_total:files.length,duration_ms:Date.now()-start};

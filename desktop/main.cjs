@@ -13,6 +13,7 @@ const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
 const visualFeedback = require('../src/visual-feedback.cjs');
 const workContext = require('../src/work-context.cjs');
+const taskPlans=require('../src/task-plans.cjs');
 const {resolveClaude}=require('./claude-terminal.cjs');
 const {resolveGodot}=require('./godot-check.cjs');
 const {TerminalClient}=require('./terminal-client.cjs');
@@ -154,7 +155,7 @@ if(primary)await app.whenReady().then(async () => {
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');
-  const getAgentConfig=()=>agentConfig.connection(requireProject(),{executable:mcpRuntime?.executable||process.execPath,entry:mcpRuntime?.entry||path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});
+  const getAgentConfig=async()=>{const config=await agentConfig.connection(requireProject(),{executable:mcpRuntime?.executable||process.execPath,entry:mcpRuntime?.entry||path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});const engine=await godotCommand();if(engine)config.spec.env={...config.spec.env,OPORA_GODOT_EXECUTABLE:engine.file};return config;};
   terminal=new TerminalClient({
     record:path.join(app.getPath('userData'),'terminal-broker.json'),entry:path.join(__dirname,'terminal-broker.cjs'),executable:process.execPath,
     native:app.isPackaged?path.join(process.resourcesPath,'app.asar.unpacked/node_modules/node-pty'):undefined,
@@ -206,6 +207,8 @@ if(primary)await app.whenReady().then(async () => {
   async function godotCommand(){let saved;try{saved=JSON.parse(await fs.readFile(automationPreferences,'utf8')).godot;}catch{}return resolveGodot(saved).catch(()=>null);}
   terminalHandle('automation:godot',async()=>{const selected=await dialog.showOpenDialog(win,{title:'Godot для автоматической проверки проекта',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'Godot',extensions:['exe']}]}:{})});if(selected.canceled)return null;const command=await resolveGodot(selected.filePaths[0]);await fs.mkdir(path.dirname(automationPreferences),{recursive:true});await fs.writeFile(automationPreferences,JSON.stringify({godot:command.file}),{mode:0o600});return {executable:command.file};});
   async function chatCall(op,value){await chatConnection;chatHost=await chatHosts.forOperation(chatHost,modernChatHost,op);await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
+  terminalHandle('plan:get',async input=>{if(!input?.taskId)return null;return taskPlans.get(requireProject(),input.taskId,{history:input.history===true});});
+  terminalHandle('plan:pause',async input=>{const project=requireProject();if(chatBusy()&&chatState?.task_id===input.taskId)await chatCall('chat:stop',chatState.id);return taskPlans.pause(project,input.taskId);});
   terminalHandle('chat:state',async()=>{await chatConnection;return await chatHost.connect()?chatCall('chat:state'):null;});
   terminalHandle('chat:list',()=>chatCall('chat:list',{root:requireProject()}));
   terminalHandle('chat:new',()=>chatCall('chat:new',{root:requireProject()}));
@@ -213,11 +216,11 @@ if(primary)await app.whenReady().then(async () => {
   terminalHandle('chat:send',async input=>{
     if(chatBusy())throw new Error('Claude ещё работает.');chatStarting=true;try{
     const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');
-    const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);
+    const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);if(input.resumePlan){if(!input.taskId)throw new Error('Выберите задачу плана.');await taskPlans.resume(project,input.taskId);}
     let context=null;
     if(input.includeContext!==false){const packet=await workContext.reader(project)({...(input.taskId?{task_id:input.taskId}:{})});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}
     if(root!==project)throw new Error('Проект изменился. Повторите отправку.');
-    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand()});
+    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),requirePlan:input.requirePlan===true});
     }finally{chatStarting=false;}
   });
   terminalHandle('chat:answer',input=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:answer',input);});

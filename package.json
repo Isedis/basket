@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Единая память проекта Godot для Claude и Codex",
   "private": true,
   "main": "desktop/main.cjs",
@@ -10,7 +10,7 @@
     "test:ui": "node scripts/ui-smoke.cjs",
     "test:desktop": "node scripts/desktop-smoke.cjs",
     "test:mcp": "node scripts/mcp-smoke.cjs",
-    "check": "node --check desktop/main.cjs && node --check desktop/native-updater.cjs && node --check desktop/update-watchdog.cjs && node --check desktop/paint-ready.cjs && node --check desktop/archive.cjs && node --check ui/app.js && node --check desktop/claude-chat.cjs && node --check ui/claude-chat.js && node --check desktop/godot-check.cjs && node --check src/context-delivery.cjs && node --check src/work-run.cjs",
+    "check": "node --check desktop/main.cjs && node --check desktop/native-updater.cjs && node --check desktop/update-watchdog.cjs && node --check desktop/paint-ready.cjs && node --check desktop/archive.cjs && node --check ui/app.js && node --check desktop/claude-chat.cjs && node --check ui/claude-chat.js && node --check desktop/godot-check.cjs && node --check src/context-delivery.cjs && node --check src/work-run.cjs && node --check src/task-plans.cjs",
     "package:win": "node scripts/package-win.cjs",
     "test:terminal": "node scripts/terminal-smoke.cjs",
     "test:native-update": "node scripts/native-update-smoke.cjs",

@@ -3,6 +3,7 @@ window.OporaClaudeTerminal={create(options){
   const {bridge,getRoot,prepare,getPrompt,onError,notify}=options,dock=document.querySelector('#claude-dock'),el=name=>dock.querySelector(`[data-chat="${name}"]`);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let current=null,mode='chat',visible=false,loading=false,loadedRoot=null,generation=0,context=null,lastPermissions='',legacyState=null,errorMessage='';
+  let plan=null,planKey='',planBusy=false,planHistory=false,planSignature='';
   const storage={get(key,fallback){try{return localStorage.getItem(key)||fallback;}catch{return fallback;}},set(key,value){try{localStorage.setItem(key,value);}catch{}}};
   const busy=()=>['starting','working','permission','stopping'].includes(current?.status);
   const draftKey=()=>`opora:claude-draft:${getRoot()||'none'}:${current?.id||'new'}`;
@@ -12,9 +13,9 @@ window.OporaClaudeTerminal={create(options){
     const status=mode==='terminal'?(legacyState?.status==='running'?'Терминал работает':'Терминал Claude Code'):(loading?'Подготавливаю…':current?.activity||'Готов к сообщению');
     el('status').textContent=status;el('status').dataset.state=mode==='chat'?current?.status||'idle':'terminal';
     el('title').textContent=current?.title||'Новый разговор';el('project').textContent=getRoot()?.split(/[\\/]/).at(-1)||'Выберите игру';
-    for(const action of ['send','new','run-task'])dock.querySelector(`[data-chat-action="${action}"]`).disabled=loading||busy()||!getRoot()||!bridge?.chatSend;
+    for(const action of ['send','new','run-task','plan-build'])dock.querySelector(`[data-chat-action="${action}"]`).disabled=loading||busy()||!getRoot()||!bridge?.chatSend;
     dock.querySelector('[data-chat-action="stop"]').disabled=!busy()||current?.status==='stopping';
-    renderAutomation();el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
+    renderAutomation();renderPlan();el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
     dock.querySelector('[data-chat-action="task"]').disabled=loading||!getRoot();
     document.querySelectorAll('[data-action="claude-open"]').forEach(b=>b.classList.toggle('terminal-running',busy()||!!legacy?.isActive()));
   }
@@ -40,6 +41,22 @@ window.OporaClaudeTerminal={create(options){
     permissions();controls();contextLabel();if(bottom)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
     if(!busy()&&event.status)void history(false);
   }
+  const planTaskId=()=>busy()?(current?.task_id||options.getTaskId?.()):(options.getTaskId?.()||current?.task_id);
+  function renderPlan(){
+    const node=el('plan');node.hidden=!plan;if(!plan)return;
+    const signature=JSON.stringify(plan)+'|'+busy()+'|'+planHistory;if(signature===planSignature)return;planSignature=signature;
+    const opened=[...el('plan-body').querySelectorAll('details[data-plan-stage][open]')].map(n=>n.dataset.planStage);
+    const names={ready:'Готов к следующему этапу',running:'Выполняется',paused:'Приостановлен',blocked:'Нужна помощь',ready_for_review:'Результат для просмотра'};
+    el('plan-title').textContent=`План · ${plan.completed}/${plan.total} · ${plan.stale_task?'Требуется пересмотр':names[plan.status]||plan.status}`;
+    el('plan-body').innerHTML=`<p class="claude-plan-goal">${esc(plan.title)} · ${esc(plan.goal)}</p><ol>${plan.stages.map(s=>`<li class="plan-stage-${esc(s.status)}"><details data-plan-stage="${esc(s.id)}"><summary><span>${({pending:'○',running:'▶',checking:'…',blocked:'!',implemented:'✓'})[s.status]||'○'}</span> ${esc(s.title)} <small>${({pending:'ожидает',running:'в работе',checking:'проверяется',blocked:'блокер',implemented:'выполнено агентом'})[s.status]||s.status}</small></summary><p>${esc(s.result)}</p><p>Проверить: ${esc(s.verification)}</p>${s.summary?`<p>${esc(s.summary)}</p>`:''}${s.blocker?`<p class="claude-plan-blocker">${esc(s.blocker)}</p>`:''}${s.checks.map(c=>`<p>${c.result==='passed'?'[+]':c.result==='failed'?'[!]':'[—]'} ${esc(c.name)}: ${({passed:'прошло на этапе',failed:'ошибка',not_run:'не запускалось'})[c.result]}</p>`).join('')}${s.agent_checks.map(c=>`<p>Агент: ${esc(c.name)} — ${({passed:'заявлено пройденным',failed:'ошибка',not_run:'не запускалось'})[c.result]}</p>`).join('')}</details></li>`).join('')}</ol><div class="claude-plan-actions">${plan.status!=='ready_for_review'?`<button class="text-button" data-chat-action="plan-pause" ${plan.status==='paused'?'disabled':''}>Приостановить</button><button class="button small" data-chat-action="plan-resume" ${busy()||plan.stale_task||plan.parent_done?'disabled':''}>Продолжить</button>`:''}<button class="text-button" data-chat-action="plan-edit">Попросить изменить</button><button class="text-button" data-chat-action="plan-history">${planHistory?'Скрыть историю':'История плана'} (${plan.history_count})</button></div><p class="small">Этапы выполнены агентом. Принятие задачи и визуала — за вами.</p>${planHistory?`<div class="claude-plan-history">${(plan.history||[]).map(h=>`<details><summary>${esc(new Date(h.recorded_at).toLocaleString('ru-RU'))} · ${esc(h.reason||'Изменение плана')}</summary><ol>${h.plan.stages.map(s=>`<li>${esc(s.title)} — ${esc(s.result)}</li>`).join('')}</ol></details>`).join('')||'<p>План ещё не менялся.</p>'}</div>`:''}`;
+    for(const n of el('plan-body').querySelectorAll('details[data-plan-stage]'))n.open=opened.includes(n.dataset.planStage);
+  }
+  async function refreshPlan(){
+    if(planBusy||!visible||mode!=='chat'||!bridge?.planGet||!getRoot())return;
+    const root=getRoot(),taskId=planTaskId(),key=root+'|'+taskId;if(!taskId){plan=null;renderPlan();return;}
+    if(key!==planKey){plan=null;planKey=key;planHistory=false;planSignature='';}
+    planBusy=true;try{const next=await bridge.planGet({taskId,history:planHistory});if(root!==getRoot()||taskId!==planTaskId())return;const first=!plan&&next;plan=next;renderPlan();if(first)el('plan').open=true;}catch{if(root===getRoot()){plan=null;renderPlan();}}finally{planBusy=false;}
+  }
   function renderAutomation(){
     const data=current?.automation,run=data?.run,node=el('automation');node.hidden=!run&&!data?.warning;if(node.hidden)return;
     el('automation-title').textContent=run?`Сводка сохранена · файлов: ${run.changes_total}${run.limited?' · карта неполная':''}${run.checks.some(c=>c.result==='failed')?' · ошибка проверки':run.checks.some(c=>c.setup_required)?' · Godot не выбран':''}`:'Сводка требует внимания';
@@ -53,13 +70,13 @@ window.OporaClaudeTerminal={create(options){
   }
   async function openHistory(id){saveDraft();loading=true;controls();try{accept(await bridge.chatOpen(id));await history(false);}finally{loading=false;controls();}}
   async function preview(){await prepare();context=await bridge.workContext({});el('context-text').textContent=JSON.stringify({project:context.root,task:context.task,passport:context.passport,brand:context.brand,feedback:context.feedback},null,2);el('context-preview').open=true;}
-  async function send(task=false,forcedTaskId){
+  async function send(task=false,forcedTaskId,extra={}){
     if(loading||busy()||(!task&&!el('input').value.trim()))return;
     const oldDraftKey=draftKey(),draft=el('input').value;errorMessage='';loading=true;controls();saveDraft();
     try{
       let text=draft,taskId=forcedTaskId;
-      if(task){const request=await getPrompt({inline:true});taskId=request.taskId;text=request.text+(draft.trim()?'\nУточнения: '+draft:'');el('context-enabled').checked=true;}
-      await prepare();const snapshot=await bridge.chatSend({id:current?.id,text,taskId,includeContext:el('context-enabled').checked});storage.set(oldDraftKey,'');storage.set(`opora:claude-draft:${snapshot.root}:${snapshot.id}`,'');accept(snapshot);el('input').value='';await history(false);
+      if(task){const request=await getPrompt({inline:true});taskId=request.taskId;text=(extra.requirePlan?'Составь и выполни поэтапный план этой задачи через opora_task_plan. ':'')+request.text+(draft.trim()?'\nУточнения: '+draft:'');el('context-enabled').checked=true;}
+      await prepare();const snapshot=await bridge.chatSend({id:current?.id,text,taskId,includeContext:el('context-enabled').checked,...extra});storage.set(oldDraftKey,'');storage.set(`opora:claude-draft:${snapshot.root}:${snapshot.id}`,'');accept(snapshot);el('input').value='';await history(false);
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}finally{loading=false;controls();}
   }
   dock.addEventListener('click',async event=>{
@@ -73,6 +90,11 @@ window.OporaClaudeTerminal={create(options){
       if(d.chatId){await openHistory(d.chatId);return;}
       if(d.chatAction==='send'){await send();return;}
       if(d.chatAction==='run-task'){await send(true);return;}
+      if(d.chatAction==='plan-build'){await send(true,undefined,{requirePlan:true});await refreshPlan();return;}
+      if(d.chatAction==='plan-pause'){await bridge.planPause({taskId:plan.task_id});await refreshPlan();return;}
+      if(d.chatAction==='plan-resume'){el('context-enabled').checked=true;el('input').value='Продолжи план задачи «'+plan.title+'» с первого незавершённого этапа. Сохрани выполненные части и проверь актуальные исходники.'+(el('input').value.trim()?'\nУточнения: '+el('input').value:'');await send(false,plan.task_id,{resumePlan:true,requirePlan:true});await refreshPlan();return;}
+      if(d.chatAction==='plan-edit'){await bridge.planPause({taskId:plan.task_id});await refreshPlan();el('input').value='Измени только план задачи «'+plan.title+'» через opora_task_plan, сохрани прежнюю версию и объясни изменения. Файлы игры пока не меняй. Мои уточнения: ';el('input').focus();return;}
+      if(d.chatAction==='plan-history'){planHistory=!planHistory;await refreshPlan();return;}
       if(d.chatAction==='fix-check'){if(busy()||loading)return;el('input').value='Исправь ошибки автоматической проверки Godot из предыдущего ответа, сохрани критерии и принятые решения. Прочитай актуальные исходники перед исправлением.'+(el('input').value.trim()?'\nУточнения: '+el('input').value:'');await send(false,current?.automation?.run?.task_id);return;}
       if(d.chatAction==='godot'){if(await bridge.godotSelect())notify('Godot выбран. Следующие изменения будут проверяться автоматически.');return;}
       if(d.chatAction==='review'){hide();await options.onReview?.();return;}
@@ -94,6 +116,7 @@ window.OporaClaudeTerminal={create(options){
   const font=dock.querySelector('[data-dock="font"]');font.value=storage.get('opora:claude-font','14');function fontSize(){const size=[12,14,16,18].includes(Number(font.value))?Number(font.value):14;dock.style.setProperty('--chat-font',size+'px');legacy.setFontSize(size);storage.set('opora:claude-font',size);}font.addEventListener('change',fontSize);fontSize();
   dock.classList.toggle('history-hidden',storage.get('opora:claude-history-hidden','0')==='1');window.addEventListener('resize',()=>height(storage.get('opora:claude-height',460),false));
   bridge?.onChatEvent?.(update);bridge?.chatState?.().then(snapshot=>{if(snapshot){accept(snapshot);if(busy()){setMode('chat');show();}}}).catch(onError);
+  setInterval(()=>{if(!document.hidden)void refreshPlan();},1500);
   empty();controls();
-  return {async runTask(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();await send(true);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;if(!busy()&&current?.root!==root){current=null;el('messages').replaceChildren();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
+  return {async runTask(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();await send(true);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);await refreshPlan();el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;plan=null;planKey='';planSignature='';renderPlan();if(!busy()&&current?.root!==root){current=null;el('messages').replaceChildren();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
 }};

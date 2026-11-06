@@ -50,10 +50,10 @@ let reviewBusy = false;
 let reviewTimer = null;
 let reviewErrorFor = null;
 const bridge = window.opora;
-const claudeTerminal=window.OporaClaudeTerminal.create({bridge,getRoot:()=>root,prepare:async()=>{await persist();await saves;},onError:fail,notify:toast,onReview:async()=>{tab='agents';render();await refreshAgents();},getPrompt:async({inline=false}={})=>{
+const claudeTerminal=window.OporaClaudeTerminal.create({bridge,getRoot:()=>root,getTaskId:()=>state.activeTaskId,prepare:async()=>{await persist();await saves;},onError:fail,notify:toast,onReview:async()=>{tab='agents';render();await refreshAgents();},getPrompt:async({inline=false}={})=>{
   await persist();await saves;
   const packet=await bridge.workContext({});
-  if(inline){if(!packet.task||packet.task.status==='done')throw new Error('Выбери задачу в разделе «Задачи».');return {taskId:packet.task.id,text:`Выполни выбранную задачу «${packet.task.title}». Соблюдай критерии, правила и брендбук из приложенного контекста. Прочитай исходники и связанные изображения. Проведи доступные проверки; явно укажи, что не проверялось. Опора сохранит сводку автоматически. Не принимай результат и не завершай задачу за пользователя.`};}
+  if(inline){if(!packet.task||packet.task.status==='done')throw new Error('Выбери задачу в разделе «Задачи».');return {taskId:packet.task.id,text:`Выполни выбранную задачу «${packet.task.title}». Оцени объём: если есть несколько самостоятельных результатов или подсистем, создай внутренние этапы через opora_task_plan до правок; простую задачу выполни сразу. Если план уже существует, продолжи незавершённый этап, сохрани выполненные части. Соблюдай критерии, правила и брендбук из приложенного контекста. Прочитай исходники и связанные изображения. Проведи доступные проверки; явно укажи, что не проверялось. Опора сохранит сводку автоматически. Не принимай результат и не завершай задачу за пользователя.`};}
   return `Работаем над игрой «${packet.passport.name.text}» в ${packet.root}. Вызови opora_get_work_context${packet.task?` с task_id=${packet.task.id}`:''}, проверь путь и действующие решения. ${packet.task?`Выполни выбранную задачу «${packet.task.title}», соблюдая критерии и брендбук.`:'Помоги выбрать следующий шаг; пока не меняй файлы.'} Перед правками прочитай исходники. Не утверждай стиль и не принимай результат за пользователя. В конце запиши отчёт через MCP Опоры.`;
 }});
 const projectMapView=window.OporaProjectMap.create({getRoot:()=>root,bridge,notify:toast,onError:fail});

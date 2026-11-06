@@ -21,7 +21,7 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,16);
+    const tools=await client.listTools();assert.equal(tools.tools.length,17);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
     const packet=(await client.callTool({name:'opora_get_work_context',arguments:{}})).structuredContent;
@@ -91,9 +91,15 @@ async function main() {
     const compactBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     const compactWrite=await client.callTool({name:'opora_update_project',arguments:{project_id:project.project_id,revision:compactBefore.revision,agent:'codex',request_id:'compact-write-001',summary:'Compact receipt',fields:{goal:'Next iteration'}}});
     assert.ok(!compactWrite.isError);assert.equal(compactWrite.structuredContent.state,undefined);assert.ok(compactWrite.structuredContent.changed_fields.includes('goal'));
+    const planCall=async args=>{const r=await client.callTool({name:'opora_task_plan',arguments:{project_id:project.project_id,task_id:'new-task',...args}});assert.ok(!r.isError,JSON.stringify(r));return r.structuredContent.plan;};
+    let plan=await planCall({action:'set',stages:[{id:'data',title:'Data',result:'Data ready',verification:'Read data'},{id:'ui',title:'UI',result:'UI ready',verification:'View UI',depends_on:['data']}]});assert.equal(plan.total,3);
+    const ordering=await client.callTool({name:'opora_task_plan',arguments:{project_id:project.project_id,task_id:'new-task',action:'start',stage_id:'ui',plan_revision:plan.revision}});assert.equal(ordering.isError,true);
+    plan=await planCall({action:'start',stage_id:'data',plan_revision:plan.revision});plan=await planCall({action:'finish',stage_id:'data',plan_revision:plan.revision,summary:'Data implemented',agent:'codex',checks:[{name:'Manual view',result:'not_run'}]});assert.equal(plan.completed,1);assert.equal(plan.stages[0].status,'implemented');assert.equal(plan.stages[0].agent_checks[0].self_reported,true);
+    const planned=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'new-task'}})).structuredContent;assert.equal(planned.task_plan.completed,1);
+    plan=await planCall({action:'pause',plan_revision:plan.revision});assert.equal(plan.status,'paused');
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 16 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 17 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

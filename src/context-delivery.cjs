@@ -2,7 +2,7 @@ const crypto=require('node:crypto');
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 // Cache only section fingerprints. The canonical values remain in Opora and the CLI session.
 function prepare(packet,previous){
-  const fields=Object.fromEntries(['passport','brand','task','feedback','references','references_total','warnings'].map(k=>[k,packet[k]??null]));
+  const fields=Object.fromEntries(['passport','brand','task','task_plan','feedback','references','references_total','warnings'].map(k=>[k,packet[k]??null]));
   const hashes=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,hash(v)]));
   const cache={project_id:packet.project_id,root:packet.root,task_id:packet.task?.id||null,hashes};
   const identity={project_id:packet.project_id,root:packet.root,revision:packet.revision,work_revision:packet.work_revision,versions:packet.versions};
