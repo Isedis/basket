@@ -1,7 +1,7 @@
 {
-  "commit": "33f6d8115945e331d819dfa00a436204d1bad448",
-  "run": "https://github.com/Isedis/basket/actions/runs/42159486727",
-  "checkedAt": "2026-11-06T03:59:00.328Z",
+  "commit": "bf8624085600d281a1b34b2ea47e197046856636",
+  "run": "https://github.com/Isedis/basket/actions/runs/42160080474",
+  "checkedAt": "2026-11-06T04:04:44.016Z",
   "platform": "windows-latest",
   "steps": {
     "unit": "success",
@@ -12,7 +12,7 @@
   "native": {
     "platform": "win32",
     "version": "0.12.0",
-    "error": "{\"status\":\"waiting\",\"phase\":\"Проверка SHA256: .opora-location.json\",\"version\":\"0.12.0\",\"installId\":\"91a9b5b8-62b7-4e27-af57-9f0c44048d78\",\"home\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\profile\\\\runtime\\\\9adc74ec7b0c89cb\",\"directory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\profile\\\\runtime\\\\9adc74ec7b0c89cb\\\\v\\\\0.12.0-ab291d2abc86\",\"previousDirectory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\original app игра [1] & '\",\"backup\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\original app игра [1] & '\",\"job\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\profile\\\\runtime\\\\9adc74ec7b0c89cb\\\\.opora-update-5EGsY2\",\"log\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-pnB0pq\\\\profile\\\\runtime\\\\9adc74ec7b0c89cb\\\\.opora-update-5EGsY2\\\\installer.log\",\"recordedAt\":\"2026-11-06T03:57:32.309Z\"}\n+ actual - expected\n\n+ 'waiting'\n- 'installed'\n"
+    "error": "Cannot read properties of undefined (reading '_object')"
   },
   "rollback": null
 }
