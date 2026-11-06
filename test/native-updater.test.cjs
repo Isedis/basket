@@ -38,6 +38,15 @@ test('Preparation installs beside the running version, verifies application SHA 
   assert.equal(migration.previousDirectory,current);assert.equal((await layout.read(migration.pointer)).directory,current);
   await fs.writeFile(path.join(manual,'new-app.asar'),'damaged');
   await assert.rejects(updater.prepareInstall({kind:'app',version:'0.13.0',runtimeVersion:'45.2.3',payload:manual},path.join(current,'Opora.exe'),{storage,runtimeVersion:'45.2.3'}),/Контрольная сумма/);
+  // After a completed update, the original launcher and active version differ.
+  await layout.atomic(plan.pointer,{schemaVersion:1,id:plan.installId,directory:plan.directory,version:'0.13.0'});
+  const download={kind:'app',version:'0.13.0',runtimeVersion:'45.2.3',archive};
+  const options={storage,runtimeVersion:'45.2.3'};
+  await assert.rejects(updater.prepareInstall(download,path.join(current,'Opora.exe'),options),/Запущена предыдущая копия/);
+  const repaired=await updater.prepareInstall(download,path.join(plan.directory,'Opora.exe'),options);
+  assert.equal(repaired.previousDirectory,plan.directory);
+  assert.equal((await layout.read(plan.pointer)).directory,plan.directory);
+  assert.equal(await fs.readFile(path.join(current,'Opora.exe'),'utf8'),'engine');
 });
 test('Temporary sharing violations are retried; permanent I/O failures are returned immediately',async()=>{
   let calls=0;assert.equal(await retry(async()=>{calls++;if(calls<3)throw Object.assign(new Error('locked'),{code:'EACCES'});return 'ready';}), 'ready');assert.equal(calls,3);

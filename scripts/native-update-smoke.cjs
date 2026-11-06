@@ -9,9 +9,10 @@ async function main(){
   const temp=await fs.mkdtemp(path.join(os.tmpdir(),'opora-update-'));
   const repair=process.env.OPORA_TEST_UPDATE_MODE==='repair';
   const migration=repair||process.env.OPORA_TEST_UPDATE_MODE==='migration';
+  const managed=migration&&(repair||process.env.OPORA_TEST_MANAGED==='1');
   if(migration)assert.equal(process.platform,'win32');
   const base=path.join(temp,"original app игра [1] & % ! '"),source=path.join(temp,'app-source'),candidate=path.join(temp,'payload/Opora-win32-x64'),profile=migration?path.join(temp,'appdata/opora'):path.join(temp,'profile'),game=path.join(temp,'game'),bin=path.join(temp,'bin');
-  let oldApp,oldPid,newPid,client,brokerPid,migrationChild,migrationOutput='';let report={platform:process.platform,version:require('../package.json').version,mode:migration?'migration':'button'};
+  let oldApp,oldPid,newPid,client,brokerPid,migrationChild,migrationOutput='';let report={platform:process.platform,version:require('../package.json').version,mode:repair?'repair':migration?'migration':'button',managed};
   const failLaunch=process.env.OPORA_TEST_UPDATE_FAILURE==='launch';
   try{
     await Promise.all([fs.mkdir(source),fs.mkdir(profile,{recursive:true}),fs.mkdir(game),fs.mkdir(bin),fs.mkdir(path.join(candidate,'resources'),{recursive:true})]);
@@ -52,7 +53,17 @@ async function main(){
     if(process.platform==='win32'){await fs.writeFile(shim,'official npm shim fixture');await fs.copyFile(process.execPath,path.join(bin,'node.exe'));}
     else await fs.writeFile(shim,'#!/bin/sh\nexec '+"'"+process.execPath.replace(/'/g,"'\\''")+"' "+"'"+cli.replace(/'/g,"'\\''")+"' \"$@\"\n",{mode:0o755});
     await fs.writeFile(path.join(profile,'claude-terminal.json'),JSON.stringify({executable:shim}));
-    oldApp=await _electron.launch({executablePath:path.join(base,'Opora.exe'),args:process.platform==='linux'?['--no-sandbox','--ozone-platform=headless']:[],env:{...process.env,CODEX_HOME:path.join(temp,'codex')},timeout:45000});
+    let activeDirectory=base;
+    if(managed){
+      const layoutApi=require('../desktop/install-layout.cjs');
+      const installation=await layoutApi.location(path.join(base,'Opora.exe'),{create:true,storage:path.join(profile,'runtime')});
+      activeDirectory=path.join(installation.home,'v',pkg.version+'-existing');
+      await fs.cp(base,activeDirectory,{recursive:true});
+      await layoutApi.atomic(path.join(activeDirectory,layoutApi.MARKER),{schemaVersion:1,id:installation.id,home:installation.home,base});
+      await layoutApi.atomic(installation.pointer,{schemaVersion:1,id:installation.id,directory:activeDirectory,version:pkg.version});
+      assert.notEqual(activeDirectory,base);report.startedFromManagedVersion=true;
+    }
+    oldApp=await _electron.launch({executablePath:path.join(activeDirectory,'Opora.exe'),args:process.platform==='linux'?['--no-sandbox','--ozone-platform=headless']:[],env:{...process.env,CODEX_HOME:path.join(temp,'codex')},timeout:45000});
     oldPid=await oldApp.evaluate(()=>process.pid);
     const page=await oldApp.firstWindow();await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Update fixture');
     await oldApp.evaluate(({session},{manifest,archive})=>{const raw=process.getBuiltinModule('fs');session.fromPartition('opora-updates').fetch=async url=>new Response(String(url).includes('latest.json')?JSON.stringify(manifest):raw.readFileSync(archive),{status:200});},{manifest,archive});
@@ -61,7 +72,7 @@ async function main(){
     else{await page.locator('.topbar [data-action="claude-open"]').click();await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));terminal=await page.evaluate(()=>window.opora.claudeState());brokerPid=JSON.parse(await fs.readFile(path.join(profile,'terminal-broker.json'),'utf8')).pid;}
     if(process.platform==='win32'){
       const control=await require('../desktop/migrate.cjs').compileControl(temp);
-      const query=await exec(control,[path.join(base,'Opora.exe'),'query','1'],{windowsHide:true});
+      const query=await exec(control,[path.join(activeDirectory,'Opora.exe'),'query','1'],{windowsHide:true});
       report.legacyController=query.stdout.trim();assert.ok(query.stdout.includes((migration?'GUI:':'PROTECTED:')+oldPid),'Unexpected migration query: '+query.stdout);
     }
     const config=JSON.parse(await fs.readFile(path.join(game,'.mcp.json'),'utf8')).mcpServers;const spec=Object.values(config)[0];
@@ -74,7 +85,8 @@ async function main(){
       const cmdFile=path.join(base,repair?'REPAIR-OPORA.cmd':'UPDATE-OPORA.cmd');await fs.writeFile(cmdFile,(repair?cmd.replace('"%OPORA_PACKAGE_ROOT%"\n','"%OPORA_PACKAGE_ROOT%" --repair\n'):cmd).replace(/\n/g,'\r\n'));
       if(repair)await oldApp.evaluate(async({BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0];win.removeAllListeners('close');win.on('close',event=>event.preventDefault());await win.loadURL('about:blank');});
       // An old installation has no private version registry yet.
-      await fs.rm(path.join(profile,'runtime'),{recursive:true,force:true});
+      if(!managed)await fs.rm(path.join(profile,'runtime'),{recursive:true,force:true});
+      else report.cmdUsesOriginalRuntime=true;
       migrationChild=require('node:child_process').spawn(process.env.ComSpec||'cmd.exe',['/d','/s','/c','""%OPORA_MIGRATION_CMD%""'],{windowsVerbatimArguments:true,windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,APPDATA:path.dirname(profile),OPORA_MIGRATION_CMD:cmdFile}});
       migrationChild.stdout.on('data',chunk=>{migrationOutput+=chunk;});migrationChild.stderr.on('data',chunk=>{migrationOutput+=chunk;});
     }else{await page.locator('[data-action="updates"]').click();await page.locator('[data-action="install-update"]').click();}
@@ -93,6 +105,7 @@ async function main(){
     else{
       if(result.status!=='installed'){try{report.startupLog=(await fs.readFile(path.join(result.job,'gui-startup.log'),'utf8')).slice(-5000);console.error(report.startupLog);}catch{}newPid=result.recoveredPid;}
       assert.equal(result.status,'installed',JSON.stringify(result));const ack=JSON.parse(await fs.readFile(path.join(result.job,'launch-ack.json'),'utf8'));newPid=ack.pid;
+      if(managed){assert.equal(result.previousDirectory,activeDirectory);report.previousManagedVersionPreserved=true;}
       let ui;for(let n=0;n<100;n++){try{ui=JSON.parse(await fs.readFile(proof,'utf8'));break;}catch{}await pause(100);}
       assert.equal(ui?.version,version);if(!migration){assert.equal(ui?.terminal.id,terminal.id);assert.equal(ui?.terminal.pid,terminal.pid);report.terminalSurvived=true;}assert.equal(ui?.name,'Update fixture');
       assert.notEqual(result.directory,base);assert.ok((await fs.stat(path.join(base,'Opora.exe'))).isFile());
