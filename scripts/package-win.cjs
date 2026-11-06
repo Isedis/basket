@@ -4,7 +4,7 @@ async function main(){
   const {packager}=await import('@electron/packager');
   const root=path.join(__dirname,'..');
   await packager({dir:root,name:'Opora',platform:'win32',arch:'x64',out:path.join(root,'release'),electronVersion:require('../package.json').devDependencies.electron,overwrite:true,prune:true,
-    asar:{unpackDir:'node_modules/node-pty'},
+    asar:{unpackDir:path.join('node_modules','node-pty')},
     ignore:[/^\/release/,/^\/artifacts/,/^\/test/,/^\/docs/,/^\/scripts/,/^\/distribution/,/^\/updates/,/^\/Opora-App/,/^\/Opora-demo.html/,/^\/START-OPORA.cmd/,/^\/package-lock.json/,/^\/.git/],
     afterPrune:[async({buildPath})=>{
       const module=path.join(buildPath,'node_modules/node-pty');

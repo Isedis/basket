@@ -31,12 +31,12 @@ async function main(){
     const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state)return;await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
     const pkg={...require('../package.json'),main:'test-entry.cjs'};await fs.writeFile(path.join(source,'test-entry.cjs'),bootstrap);
     pkg.version=version;await fs.writeFile(path.join(source,'package.json'),JSON.stringify(pkg));
-    await asar.createPackageWithOptions(source,path.join(candidate,'resources/app.asar'),{unpackDir:'node_modules/node-pty'});
+    await asar.createPackageWithOptions(source,path.join(candidate,'resources/app.asar'),{unpackDir:path.join('node_modules','node-pty')});
     await fs.cp(path.dirname(require('electron')),base,{recursive:true});
     const electronName=process.platform==='win32'?'electron.exe':'electron';await fs.rename(path.join(base,electronName),path.join(base,'Opora.exe'));
     pkg.version=process.env.OPORA_UPDATE_FROM||'0.11.1';await fs.writeFile(path.join(source,'package.json'),JSON.stringify(pkg));
-    await asar.createPackageWithOptions(source,path.join(base,'resources/app.asar'),{unpackDir:'node_modules/node-pty'});
-    const runtime={version,runtimeVersion:require('../package.json').devDependencies.electron,files:[],appFiles:[]};
+    await asar.createPackageWithOptions(source,path.join(base,'resources/app.asar'),{unpackDir:path.join('node_modules','node-pty')});
+    const runtime={version,runtimeVersion:require('../package.json').devDependencies.electron,appSha256:hash(await fs.readFile(path.join(candidate,'resources/app.asar'))),files:[],appFiles:[]};
     for(const file of await fs.readdir(base,{recursive:true}))if(file!=='Opora.exe'&&!file.startsWith('resources'+path.sep+'app.asar')&&(await fs.lstat(path.join(base,file))).isFile())runtime.files.push({name:file.split(path.sep).join('/'),sha256:hash(await fs.readFile(path.join(base,file)))});
     for(const file of await fs.readdir(path.join(candidate,'resources/app.asar.unpacked'),{recursive:true}))if((await fs.lstat(path.join(candidate,'resources/app.asar.unpacked',file))).isFile())runtime.appFiles.push({name:'resources/app.asar.unpacked/'+file.split(path.sep).join('/'),sha256:hash(await fs.readFile(path.join(candidate,'resources/app.asar.unpacked',file)))});
     await fs.writeFile(path.join(candidate,'runtime.json'),JSON.stringify(runtime));const archive=path.join(temp,'update.zip');
@@ -64,7 +64,7 @@ async function main(){
     assert.ok(result,result?.error||'No update result');
     if(failLaunch){assert.equal(result.status,'failed');assert.equal(result.rollback,'restored');newPid=result.recoveredPid;report.rollback=true;}
     else{
-      if(result.status!=='installed'){try{console.error(await fs.readFile(path.join(result.job,'gui-startup.log'),'utf8'));}catch{}newPid=result.recoveredPid;}
+      if(result.status!=='installed'){try{report.startupLog=(await fs.readFile(path.join(result.job,'gui-startup.log'),'utf8')).slice(-5000);console.error(report.startupLog);}catch{}newPid=result.recoveredPid;}
       assert.equal(result.status,'installed',JSON.stringify(result));const ack=JSON.parse(await fs.readFile(path.join(result.job,'launch-ack.json'),'utf8'));newPid=ack.pid;
       let ui;for(let n=0;n<100;n++){try{ui=JSON.parse(await fs.readFile(proof,'utf8'));break;}catch{}await pause(100);}
       assert.equal(ui?.version,version);assert.equal(ui?.terminal.id,terminal.id);assert.equal(ui?.terminal.pid,terminal.pid);assert.equal(ui?.name,'Update fixture');report.terminalSurvived=true;

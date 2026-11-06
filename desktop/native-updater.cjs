@@ -48,7 +48,9 @@ async function prepareInstall(download,executable,{storage,layout:provided,runti
     const source=path.join(job,'Opora-win32-x64');
     if(download.kind==='app'){
       if(download.runtimeVersion!==runtimeVersion)throw new Error('Для этой версии нужен другой Electron.');
-      onProgress('Проверка и подключение установленного Electron');await stageEngine(source,previous.directory,JSON.parse(await fs.readFile(path.join(source,'runtime.json'),'utf8')),runtimeVersion);
+      const manifest=JSON.parse(await fs.readFile(path.join(source,'runtime.json'),'utf8'));
+      if(!/^[a-f0-9]{64}$/.test(manifest.appSha256)||await digest(path.join(source,'resources/app.asar'))!==manifest.appSha256)throw new Error('Контрольная сумма приложения не совпала.');
+      onProgress('Проверка и подключение установленного Electron');await stageEngine(source,previous.directory,manifest,runtimeVersion);
     }
     const pkg=await legacy.readArchivePackage(path.join(source,'resources/app.asar'));
     if(pkg.name!=='opora'||pkg.version!==download.version)throw new Error('Версия внутри архива не совпала.');

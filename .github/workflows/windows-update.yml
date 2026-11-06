@@ -68,8 +68,8 @@ jobs:
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';
-            try { await github.git.getRef({...context.repo, ref: 'heads/' + branch}); }
-            catch (error) { if(error.status !== 404) throw error; await github.git.createRef({...context.repo, ref: 'refs/heads/' + branch, sha: context.sha}); }
+            try { await github.rest.git.getRef({...context.repo, ref: 'heads/' + branch}); }
+            catch (error) { if(error.status !== 404) throw error; await github.rest.git.createRef({...context.repo, ref: 'refs/heads/' + branch, sha: context.sha}); }
             let sha;
-            try { sha = (await github.repos.getContent({...context.repo, path: 'windows-update.json', ref: branch})).data.sha; } catch(error) { if(error.status !== 404) throw error; }
-            await github.repos.createOrUpdateFileContents({...context.repo, branch, path: 'windows-update.json', sha, message: 'Record Windows updater validation ' + context.sha.slice(0, 12), content: Buffer.from(JSON.stringify(report, null, 2) + '\n').toString('base64')});
+            try { sha = (await github.rest.repos.getContent({...context.repo, path: 'windows-update.json', ref: branch})).data.sha; } catch(error) { if(error.status !== 404) throw error; }
+            await github.rest.repos.createOrUpdateFileContents({...context.repo, branch, path: 'windows-update.json', sha, message: 'Record Windows updater validation ' + context.sha.slice(0, 12), content: Buffer.from(JSON.stringify(report, null, 2) + '\n').toString('base64')});
