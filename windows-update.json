@@ -1,96 +1,24 @@
 {
-  "commit": "47d90e9992898a549346a75fa17e61aff069078c",
-  "run": "https://github.com/Isedis/basket/actions/runs/42166434007",
-  "checkedAt": "2026-11-06T05:08:26.382Z",
+  "commit": "98a49b4f45def9e3ee6af1f3cfdccff6e24a612c",
+  "run": "https://github.com/Isedis/basket/actions/runs/42170490832",
+  "checkedAt": "2026-11-06T05:48:16.157Z",
   "platform": "windows-latest",
   "steps": {
-    "unit": "success",
-    "powershell51": "success",
-    "native": "success",
-    "rollback": "success",
-    "migration": "success"
+    "startup": "failure",
+    "repair": "skipped",
+    "unit": "skipped",
+    "powershell51": "skipped",
+    "native": "skipped",
+    "rollback": "skipped",
+    "migration": "skipped"
   },
-  "native": {
+  "startup": {
     "platform": "win32",
-    "version": "0.12.0",
-    "mode": "button",
-    "legacyController": "PROTECTED:4536",
-    "oldProcess": {
-      "pid": 4536,
-      "pageClosed": true,
-      "inspectorDetached": false
-    },
-    "lifecycle": "4536 quit\n",
-    "terminalSurvived": true,
-    "hardlinkedRuntime": true,
-    "localRuntimeReused": true,
-    "mcpSurvived": true,
-    "dataPreserved": true
+    "cases": [],
+    "error": "page.waitForFunction: Timeout 12000ms exceeded.\n    at main (D:\\a\\basket\\basket\\scripts\\startup-smoke.cjs:33:18)"
   },
-  "rollback": {
-    "platform": "win32",
-    "version": "0.12.0",
-    "mode": "button",
-    "legacyController": "PROTECTED:7684",
-    "oldProcess": {
-      "pid": 7684,
-      "pageClosed": true,
-      "inspectorDetached": false
-    },
-    "lifecycle": "7684 quit\n",
-    "worker-launch.json": {
-      "parentPid": 7684,
-      "expectedPid": 1056
-    },
-    "progress.json": {
-      "pid": 1056,
-      "phase": "Проверка запуска новой версии"
-    },
-    "ready.json": {
-      "pid": 1056,
-      "tokenMatches": true
-    },
-    "plan.json": {
-      "parentPid": 7684,
-      "version": "0.12.0"
-    },
-    "parent-handoff.json": {
-      "pid": 7684,
-      "saved": true,
-      "released": true,
-      "tokenMatches": true
-    },
-    "gui-process.json": {
-      "pid": 4192,
-      "exitCode": 19
-    },
-    "new-start.json": {
-      "pid": 4192,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-SwsUXj\\profile\\runtime\\e85dc8465e8ba14b\\v\\0.12.0-f97bd7769be7\\Opora.exe",
-      "version": "0.12.0",
-      "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-SwsUXj\\profile\\runtime\\e85dc8465e8ba14b\\v\\0.12.0-f97bd7769be7\\Opora.exe"
-      ]
-    },
-    "rollback": true,
-    "mcpSurvived": true,
-    "dataPreserved": true
-  },
-  "migration": {
-    "platform": "win32",
-    "version": "0.12.0",
-    "mode": "migration",
-    "legacyController": "GUI:6952",
-    "oldProcess": {
-      "pid": 6952,
-      "pageClosed": true,
-      "inspectorDetached": true
-    },
-    "lifecycle": "6952 window-all-closed\n6952 before-quit\n6952 will-quit\n6952 quit\n",
-    "hardlinkedRuntime": true,
-    "localRuntimeReused": true,
-    "startLauncherWorks": true,
-    "mcpSurvived": true,
-    "dataPreserved": true
-  }
+  "repair": null,
+  "native": null,
+  "rollback": null,
+  "migration": null
 }
