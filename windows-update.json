@@ -1,7 +1,7 @@
 {
-  "commit": "cac3314218ed06f2a528ff26638df9fd8d9bcd00",
-  "run": "https://github.com/Isedis/basket/actions/runs/42172306741",
-  "checkedAt": "2026-11-06T06:08:37.809Z",
+  "commit": "a28981fbb8e169ba5ad9a197bc040019050d8573",
+  "run": "https://github.com/Isedis/basket/actions/runs/42172682089",
+  "checkedAt": "2026-11-06T06:12:36.020Z",
   "platform": "windows-latest",
   "steps": {
     "startup": "success",
@@ -18,26 +18,26 @@
     "cases": [
       {
         "scenario": "clean",
-        "visibleMs": 1893,
+        "visibleMs": 1436,
         "version": "0.12.2",
         "notesPreserved": true
       },
       {
         "scenario": "invalid-broker",
-        "visibleMs": 776,
+        "visibleMs": 616,
         "version": "0.12.2",
         "notesPreserved": true
       },
       {
         "scenario": "silent-broker",
-        "visibleMs": 368,
+        "visibleMs": 557,
         "version": "0.12.2",
         "notesPreserved": true
       }
     ],
     "current": {
       "scenario": "silent-broker",
-      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-LdOvPX\\silent-broker\\opora"
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-meiScB\\silent-broker\\opora"
     },
     "failureScreenWorks": true
   },
@@ -47,10 +47,10 @@
     "mode": "repair",
     "managed": true,
     "startedFromManagedVersion": true,
-    "legacyController": "GUI:4228",
+    "legacyController": "GUI:3916",
     "cmdUsesOriginalRuntime": true,
     "oldProcess": {
-      "pid": 4228,
+      "pid": 3916,
       "pageClosed": true,
       "inspectorDetached": false
     },
@@ -67,14 +67,14 @@
     "mode": "migration",
     "managed": true,
     "startedFromManagedVersion": true,
-    "legacyController": "GUI:5548",
+    "legacyController": "GUI:6176",
     "cmdUsesOriginalRuntime": true,
     "oldProcess": {
-      "pid": 5548,
+      "pid": 6176,
       "pageClosed": true,
       "inspectorDetached": true
     },
-    "lifecycle": "5548 window-all-closed\n5548 before-quit\n5548 will-quit\n5548 quit\n",
+    "lifecycle": "6176 window-all-closed\n6176 before-quit\n6176 will-quit\n6176 quit\n",
     "previousManagedVersionPreserved": true,
     "hardlinkedRuntime": false,
     "localRuntimeReused": true,
@@ -87,13 +87,13 @@
     "version": "0.12.2",
     "mode": "button",
     "managed": false,
-    "legacyController": "PROTECTED:5324",
+    "legacyController": "PROTECTED:2376",
     "oldProcess": {
-      "pid": 5324,
+      "pid": 2376,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "5324 quit\n",
+    "lifecycle": "2376 quit\n",
     "terminalSurvived": true,
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
@@ -105,45 +105,45 @@
     "version": "0.12.2",
     "mode": "button",
     "managed": false,
-    "legacyController": "PROTECTED:1540",
+    "legacyController": "PROTECTED:3640",
     "oldProcess": {
-      "pid": 1540,
+      "pid": 3640,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "1540 quit\n",
+    "lifecycle": "3640 quit\n",
     "worker-launch.json": {
-      "parentPid": 1540,
-      "expectedPid": 4936
+      "parentPid": 3640,
+      "expectedPid": 2768
     },
     "progress.json": {
-      "pid": 4936,
+      "pid": 2768,
       "phase": "Проверка запуска новой версии"
     },
     "ready.json": {
-      "pid": 4936,
+      "pid": 2768,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 1540,
+      "parentPid": 3640,
       "version": "0.12.2"
     },
     "parent-handoff.json": {
-      "pid": 1540,
+      "pid": 3640,
       "saved": true,
       "released": true,
       "tokenMatches": true
     },
     "gui-process.json": {
-      "pid": 9316,
+      "pid": 7696,
       "exitCode": 19
     },
     "new-start.json": {
-      "pid": 9316,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-jtgioT\\profile\\runtime\\f9f04ec8865bbd8c\\v\\0.12.2-8c5f39021d3e\\Opora.exe",
+      "pid": 7696,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-6Iv8mq\\profile\\runtime\\8e4f8e8a57c01a58\\v\\0.12.2-6af4e7cdf6e8\\Opora.exe",
       "version": "0.12.2",
       "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-jtgioT\\profile\\runtime\\f9f04ec8865bbd8c\\v\\0.12.2-8c5f39021d3e\\Opora.exe"
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-6Iv8mq\\profile\\runtime\\8e4f8e8a57c01a58\\v\\0.12.2-6af4e7cdf6e8\\Opora.exe"
       ]
     },
     "rollback": true,
@@ -155,13 +155,13 @@
     "version": "0.12.2",
     "mode": "migration",
     "managed": false,
-    "legacyController": "GUI:2172",
+    "legacyController": "GUI:5840",
     "oldProcess": {
-      "pid": 2172,
+      "pid": 5840,
       "pageClosed": true,
       "inspectorDetached": true
     },
-    "lifecycle": "2172 window-all-closed\n2172 before-quit\n2172 will-quit\n2172 quit\n",
+    "lifecycle": "5840 window-all-closed\n5840 before-quit\n5840 will-quit\n5840 quit\n",
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
     "startLauncherWorks": true,
