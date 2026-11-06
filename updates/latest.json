@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.10.1",
-  "commit": "7f99c75245999fa067d690cce21ebc191b2553b4",
-  "size": 161446446,
-  "sha256": "24b46103552d906274b293f020737ea00b935bf3ee181369b2b5f0c1f0f3f9dc",
+  "version": "0.11.0",
+  "commit": "932ea470a00e0ac36023a67c84b607d27ade80b8",
+  "size": 162934350,
+  "sha256": "a463526bab14cf678f8e5921b733b26be63289077d72dbc96ae1365151ce2f35",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "f219dbc3dd5dc8523ecaed45eff106d5cb9342b9d8501a3412690e02c7415b39"
+      "sha256": "bd0aacff35ea5225bc2995513af01ef96793954391023bcc9c0dc81126f38336"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "721dd971fd002894c1b96ec816ca2207acf1afcbd7eebe6ac0d62c093a4f6754"
+      "sha256": "35695a24ce3b500eb978e7d55eccf02863ce404b0368d8bf0a438f07af297c69"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "87bb71b68dfdf08e200155bfcebd5c84f4381df17005c928aecab9d3644392db"
+      "sha256": "8941b642098201789c03b9ce05a66aa2a549ac49895bf9cdb77f298988f35d58"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 10451502,
-      "sha256": "49114e7f096610e02e2c3e99d1bbdf7bf1e258ce4330fbc09e15a3c2ab301698"
+      "size": 11939406,
+      "sha256": "06bdb5e54936419d56b07eb4f0e787137d35db1b86c55723fb856a7687214ee7"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 3329418,
-    "sha256": "7f2bc727f37f86958f2b2319cc10e65033624f939278be662ebf2c8759b780dd",
+    "size": 4817618,
+    "sha256": "0c64fe341700bb3d43afb2e80720b230686be45ab05bcb5dd13bf79ae55be171",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 3329418,
-        "sha256": "7f2bc727f37f86958f2b2319cc10e65033624f939278be662ebf2c8759b780dd"
+        "size": 4817618,
+        "sha256": "0c64fe341700bb3d43afb2e80720b230686be45ab05bcb5dd13bf79ae55be171"
       }
     ]
   },
-  "notes": "Исправлено ожидание готовности установщика: больше времени для проверки Electron на медленном диске, отображение этапов, диагностика запуска и ожидание предыдущего helper. Старое подтверждение другой версии больше не показывается как успех. Для 0.9.0 с ошибкой готовности используйте свежий малый пакет UPDATE-OPORA.cmd из GitHub."
+  "notes": "Claude Code внутри Опоры: интерактивный терминал в папке выбранной игры, проектный MCP, новая сессия и продолжение последней, вставка текущей задачи. Панель сохраняет сессию при навигации. Используется установленный Claude и его обычная авторизация/разрешения. Терминал включён в малое обновление без повторной загрузки Electron."
 }
