@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.8.0",
-  "commit": "a4dd315dfaa97eb44534c1b915b373ff11afc3f4",
-  "size": 161409500,
-  "sha256": "fa6b7cadf38005f41d9dcbc26bcd995cddbcfb1f5fa402de485d40a56ece3a47",
+  "version": "0.9.0",
+  "commit": "8ab312c4e12bb45f11df337b3369e98aa8ba7672",
+  "size": 161424846,
+  "sha256": "ac840b4dbbb8615b6147ff1e68687e2ed93cbe1088cb0d30412ca352396c0fc7",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "9eaa8d65a5eaf26b42eb8e5511c4cec7125b60f68ef828410f9bc86655d46071"
+      "sha256": "09aa6ed89dc0c3c7394b52218b4c52bbc3f7bfa4fad983fd2fb9cc3d4833fc5f"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "208b684e10c6e56d01d81bd83f1c7d006914dcd59ee31af3a6829a92f83de156"
+      "sha256": "ade604cd33f92cf0ba578a922c6380d1de4c953cdde183d94c1111f7be4b81dd"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "e20f114ed23f436f8a1cfcf256615a5d03cfadce4bbaaf8f29b739c1e4efd8d1"
+      "sha256": "34d360d4f5ef139b3d7834feb50bd11aec4ac4f7fe393e914d31341992be6806"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 10414556,
-      "sha256": "a64ec60d27d0557b2af96f1089e269029797b4a21d87ac1dda1bece5d525399d"
+      "size": 10429902,
+      "sha256": "0fbe893454edaa47a5cb4b45b54a3dba81e40c50e3a7e436387eb76006975a18"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 3297099,
-    "sha256": "1a0056a698cb848796b31a8e867d051f7cdce94ced72f1771224f8f5ea0df55e",
+    "size": 3310967,
+    "sha256": "f69f45a0b233290d2c3100e4d383d2ffe7764ac717f638a3003b42948388f1d0",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 3297099,
-        "sha256": "1a0056a698cb848796b31a8e867d051f7cdce94ced72f1771224f8f5ea0df55e"
+        "size": 3310967,
+        "sha256": "f69f45a0b233290d2c3100e4d383d2ffe7764ac717f638a3003b42948388f1d0"
       }
     ]
   },
-  "notes": "Карта проекта Godot: сцены, скрипты, ресурсы и направленные связи с номерами строк. Поиск, фильтры, главная сцена, отсутствующие файлы и копирование фрагмента агенту. MCP opora_get_project_map возвращает ту же карту; неизменённые файлы повторно не разбираются. После обновления перезапустите MCP-сессию."
+  "notes": "Замечания на снимках: области мышью, комментарии «исправить» и «сохранить», задачи и история решений. Сравнение оригинала с результатами агента, принятие и возврат пользователем. Снимки из файла и буфера. Три новых MCP-инструмента для чтения замечаний, просмотра изображений и отправки результатов. После обновления перезапустите MCP-сессию."
 }
