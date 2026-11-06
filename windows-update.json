@@ -1,24 +1,133 @@
 {
-  "commit": "98a49b4f45def9e3ee6af1f3cfdccff6e24a612c",
-  "run": "https://github.com/Isedis/basket/actions/runs/42170490832",
-  "checkedAt": "2026-11-06T05:48:16.157Z",
+  "commit": "a19f3d2cce0647bdfb363fd2894025c40b4073d9",
+  "run": "https://github.com/Isedis/basket/actions/runs/42170701076",
+  "checkedAt": "2026-11-06T05:53:12.667Z",
   "platform": "windows-latest",
   "steps": {
-    "startup": "failure",
-    "repair": "skipped",
-    "unit": "skipped",
-    "powershell51": "skipped",
-    "native": "skipped",
-    "rollback": "skipped",
-    "migration": "skipped"
+    "startup": "success",
+    "repair": "failure",
+    "unit": "success",
+    "powershell51": "success",
+    "native": "success",
+    "rollback": "success",
+    "migration": "success"
   },
   "startup": {
     "platform": "win32",
-    "cases": [],
-    "error": "page.waitForFunction: Timeout 12000ms exceeded.\n    at main (D:\\a\\basket\\basket\\scripts\\startup-smoke.cjs:33:18)"
+    "cases": [
+      {
+        "scenario": "clean",
+        "visibleMs": 987,
+        "version": "0.12.1",
+        "notesPreserved": true
+      },
+      {
+        "scenario": "invalid-broker",
+        "visibleMs": 508,
+        "version": "0.12.1",
+        "notesPreserved": true
+      },
+      {
+        "scenario": "silent-broker",
+        "visibleMs": 487,
+        "version": "0.12.1",
+        "notesPreserved": true
+      }
+    ],
+    "current": {
+      "scenario": "silent-broker",
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-C3G9GB\\silent-broker\\opora"
+    },
+    "failureScreenWorks": true
   },
-  "repair": null,
-  "native": null,
-  "rollback": null,
-  "migration": null
+  "repair": {
+    "platform": "win32",
+    "version": "0.12.1",
+    "mode": "migration",
+    "legacyController": "GUI:7108",
+    "error": "Распаковка новой версии\nПроверка и подключение установленного Electron\nДождусь сохранения Опоры. Текущую сессию Claude прерывать не нужно.\n"
+  },
+  "native": {
+    "platform": "win32",
+    "version": "0.12.1",
+    "mode": "button",
+    "legacyController": "PROTECTED:2836",
+    "oldProcess": {
+      "pid": 2836,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "lifecycle": "2836 quit\n",
+    "terminalSurvived": true,
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "rollback": {
+    "platform": "win32",
+    "version": "0.12.1",
+    "mode": "button",
+    "legacyController": "PROTECTED:6352",
+    "oldProcess": {
+      "pid": 6352,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "lifecycle": "6352 quit\n",
+    "worker-launch.json": {
+      "parentPid": 6352,
+      "expectedPid": 9764
+    },
+    "progress.json": {
+      "pid": 9764,
+      "phase": "Проверка запуска новой версии"
+    },
+    "ready.json": {
+      "pid": 9764,
+      "tokenMatches": true
+    },
+    "plan.json": {
+      "parentPid": 6352,
+      "version": "0.12.1"
+    },
+    "parent-handoff.json": {
+      "pid": 6352,
+      "saved": true,
+      "released": true,
+      "tokenMatches": true
+    },
+    "gui-process.json": {
+      "pid": 5560,
+      "exitCode": 19
+    },
+    "new-start.json": {
+      "pid": 5560,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-m5gWrZ\\profile\\runtime\\16b6f643d61e32bd\\v\\0.12.1-55304b2671fc\\Opora.exe",
+      "version": "0.12.1",
+      "argv": [
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-m5gWrZ\\profile\\runtime\\16b6f643d61e32bd\\v\\0.12.1-55304b2671fc\\Opora.exe"
+      ]
+    },
+    "rollback": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "migration": {
+    "platform": "win32",
+    "version": "0.12.1",
+    "mode": "migration",
+    "legacyController": "GUI:6280",
+    "oldProcess": {
+      "pid": 6280,
+      "pageClosed": true,
+      "inspectorDetached": true
+    },
+    "lifecycle": "6280 window-all-closed\n6280 before-quit\n6280 will-quit\n6280 quit\n",
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "startLauncherWorks": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  }
 }
