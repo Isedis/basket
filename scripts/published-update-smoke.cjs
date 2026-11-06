@@ -38,8 +38,9 @@ async function main(){
     report.startupLog=await fs.readFile(path.join(profile,'startup.log'),'utf8').catch(()=>'');
     report.notesPreserved=(await core.loadProject(game)).state.rules==='Preserve notes';
     const shot=process.env.OPORA_SCREENSHOT;
-    if(shot)await exec('powershell.exe',['-NoProfile','-Command',`Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$r=[Windows.Forms.Screen]::PrimaryScreen.Bounds;$b=New-Object Drawing.Bitmap($r.Width,$r.Height);$g=[Drawing.Graphics]::FromImage($b);$g.CopyFromScreen($r.Location,[Drawing.Point]::Empty,$r.Size);$b.Save($env:OPORA_SCREENSHOT);$g.Dispose();$b.Dispose()`]);
+    if(shot){await pause(5000);const capture=await exec('powershell.exe',['-NoProfile','-Command',`Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$r=[Windows.Forms.Screen]::PrimaryScreen.Bounds;$b=New-Object Drawing.Bitmap($r.Width,$r.Height);$g=[Drawing.Graphics]::FromImage($b);$g.CopyFromScreen($r.Location,[Drawing.Point]::Empty,$r.Size);$b.Save($env:OPORA_SCREENSHOT);$colors=New-Object 'System.Collections.Generic.HashSet[int]';for($x=100;$x -lt 900;$x+=10){for($y=100;$y -lt 600;$y+=10){[void]$colors.Add($b.GetPixel($x,$y).ToArgb())}};$colors.Count;$g.Dispose();$b.Dispose()`]);report.visibleColors=Number(capture.stdout.trim());}
     assert.equal(result?.status,'installed',report.modal||JSON.stringify(result));assert.equal(result.version,'0.13.1');assert.equal(report.notesPreserved,true);
+    assert.ok(report.visibleColors>5,'New GUI is visually blank despite a successful startup ACK');
     console.log('PASS published update '+JSON.stringify(report));
   }catch(error){report.error=error.stack;throw error;}
   finally{
