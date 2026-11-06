@@ -95,6 +95,8 @@ async function main() {
     assert.equal(await page.locator('.map-file-list [data-map-file]').count(),2);
     await page.locator('.map-detail [data-map-file="characters/player.tscn"]').focus();
     assert.ok(await page.locator('.map-graph .map-wire.active').count()>0);
+    assert.equal(await page.locator('.map-graph .map-connection.active').count(),1);
+    assert.ok(await page.locator('.map-graph .map-connection:not(.active)').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).visibility==='hidden')));
     await page.locator('.map-detail [data-map-file="characters/player.tscn"]').click();
     await page.locator('.map-focus-heading h2').filter({hasText:'characters/player.tscn'}).waitFor();
     assert.equal(await page.locator('.map-file-list [data-map-file]').count(),3);
