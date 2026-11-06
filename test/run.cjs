@@ -17,3 +17,5 @@ require('./automation.test.cjs');
 require('./godot-check.test.cjs');
 require('./chat-hosts.test.cjs');
 require('./task-plans.test.cjs');
+
+require('./chat-events.test.cjs');

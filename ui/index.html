@@ -10,6 +10,10 @@
   <script defer src="vendor/xterm.js"></script>
   <script defer src="vendor/addon-fit.js"></script>
   <script defer src="claude-terminal.js"></script>
+  <script defer src="vendor/marked.js"></script>
+  <script defer src="vendor/purify.js"></script>
+  <script defer src="vendor/prism.js"></script>
+  <script defer src="chat-markdown.js"></script>
   <script defer src="claude-chat.js"></script>
   <script defer src="context.js"></script>
   <script defer src="brand-review.js"></script>
@@ -20,7 +24,7 @@
 <body>
   <div class="launch-intro" aria-hidden="true"><div class="launch-mark"><span class="launch-prompt">&gt;_</span><strong>ОПОРА</strong><span class="launch-cursor"></span><i class="launch-line"></i></div></div>
   <aside class="sidebar">
-    <button class="logo" data-tab="overview" aria-label="Открыть рабочий стол"><span class="studio-name">Isidacorp</span><span class="product-name">ОПОРА <span class="version">/ 0.18.1</span></span></button>
+    <button class="logo" data-tab="overview" aria-label="Открыть рабочий стол"><span class="studio-name">Isidacorp</span><span class="product-name">ОПОРА <span class="version">/ 0.19.0</span></span></button>
     <div class="sidebar-label">ПРОЕКТ / GODOT</div>
     <button class="project-switch" data-action="open"><span class="project-icon">[ ]</span><span><strong id="side-name">Тихая орбита</strong><small id="side-mode">Демо</small></span><span class="switch-arrow">/</span></button>
     <nav aria-label="Разделы проекта">
@@ -43,13 +47,13 @@
       <div class="claude-resizer" data-dock="resize" role="separator" aria-label="Высота панели Claude" aria-orientation="horizontal" tabindex="0" aria-valuemin="380" aria-valuemax="900" aria-valuenow="460"></div>
       <div class="claude-workbar"><strong>&gt;_ CLAUDE</strong><div class="claude-mode-tabs"><button data-dock="chat" aria-pressed="true">Чат</button><button data-dock="terminal" aria-pressed="false">Терминал</button></div><span class="claude-live-status" data-chat="status" role="status">Готов к сообщению</span><label class="claude-font-control">Текст <select data-dock="font" aria-label="Размер текста Claude"><option>12</option><option selected>14</option><option>16</option><option>18</option></select></label><button class="text-button" data-dock="expand">Развернуть</button><button class="text-button" data-dock="hide" aria-label="Скрыть Claude">Скрыть ×</button></div>
       <div class="claude-chat-pane" data-chat="pane">
-        <aside class="claude-history"><div class="claude-history-heading"><strong>Разговоры</strong><button class="text-button" data-chat-action="new">+ Новый</button></div><div data-chat="history" class="claude-history-list"></div></aside>
-        <div class="claude-conversation"><div class="claude-conversation-heading"><button class="text-button" data-chat-action="history">☰</button><strong data-chat="title">Новый разговор</strong><span data-chat="project"></span></div>
+        <nav class="claude-history" aria-label="Разговоры Claude"><div data-chat="history" class="claude-history-list" role="tablist"></div><button class="text-button" data-chat-action="new" aria-label="Новый разговор">+ Новый</button></nav>
+        <div class="claude-conversation"><div class="claude-conversation-heading"><strong data-chat="title">Новый разговор</strong><span data-chat="project"></span></div>
           <details class="claude-plan" data-chat="plan" hidden><summary data-chat="plan-title">План задачи</summary><div data-chat="plan-body"></div></details><div class="claude-messages" data-chat="messages" role="log" aria-label="Сообщения Claude"></div>
           <details class="claude-auto-result" data-chat="automation" hidden><summary data-chat="automation-title"></summary><div data-chat="automation-body"></div></details><div class="claude-permissions" data-chat="permissions"></div><p class="claude-chat-error" data-chat="error" role="alert"></p>
           <div class="claude-context-bar"><label><input type="checkbox" data-chat="context-enabled" checked> Контекст Опоры</label><span data-chat="context-label">Задача · правила · брендбук · замечания</span><button class="text-button" data-chat-action="context">Посмотреть</button><button class="text-button" data-chat-action="run-task">Выполнить задачу →</button><button class="text-button" data-chat-action="plan-build">Поэтапно</button><button class="text-button" data-chat-action="task">Вставить</button></div>
           <details class="claude-context-preview" data-chat="context-preview"><summary>Контекст перед отправкой</summary><pre data-chat="context-text"></pre></details>
-          <div class="claude-composer"><textarea data-chat="input" aria-label="Сообщение Claude" placeholder="Что сделать в игре?" maxlength="32000" rows="2"></textarea><div class="claude-send-actions"><span>Enter — отправить · Shift+Enter — новая строка</span><button class="text-button" data-chat-action="select">Указать Claude</button><button class="button small secondary" data-chat-action="stop" disabled>Остановить</button><button class="button small" data-chat-action="send">Отправить →</button></div></div>
+          <div class="claude-composer"><textarea data-chat="input" aria-label="Сообщение Claude" placeholder="Что сделать в игре?" maxlength="32000" rows="1"></textarea><div class="claude-send-actions"><span>↵ отправить · ⇧↵ новая строка</span><button class="text-button" data-chat-action="select">Указать Claude</button><button class="button small secondary" data-chat-action="stop" disabled>Остановить</button><button class="button small" data-chat-action="send">Отправить →</button></div></div>
         </div>
       </div>
       <div class="claude-legacy" data-chat="legacy" hidden>
@@ -61,7 +65,7 @@
       </div>
     </section>
   </div>
-  <footer class="terminal-statusbar"><span class="terminal-session">ОПОРА / 0.18.1</span><span id="footer-status">[DEMO]</span><span id="terminal-brand">СТИЛЬ: ЧЕРНОВИК</span><span class="terminal-keys">^1…7 разделы <span aria-hidden="true">|</span> ^N задача <span aria-hidden="true">|</span> ^K команды</span><span id="save-status" class="save-status" role="status">Демо</span></footer>
+  <footer class="terminal-statusbar"><span class="terminal-session">ОПОРА / 0.19.0</span><span id="footer-status">[DEMO]</span><span id="terminal-brand">СТИЛЬ: ЧЕРНОВИК</span><span class="terminal-keys">^1…7 разделы <span aria-hidden="true">|</span> ^N задача <span aria-hidden="true">|</span> ^K команды</span><span id="save-status" class="save-status" role="status">Демо</span></footer>
   <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
