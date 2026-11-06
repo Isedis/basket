@@ -36,3 +36,8 @@ test('Observed engine errors reach the next request for the same task and never 
  await chat.send(args);await wait(()=>!chat.active);assert.equal(chat.current.activity,'Проверка нашла ошибки');await chat.send(args);await wait(()=>!chat.active);assert.match(prompts[1],/AUTOCHECKERROR/);
  await chat.send({...args,context:{packet:{...p,task:{id:'other'}}}});await wait(()=>!chat.active);assert.ok(!prompts[2].includes('AUTOCHECKERROR'));
 });
+test('Project context accepts aliases of the same directory and still rejects another physical project',async t=>{
+ const parent=await fs.mkdtemp(path.join(os.tmpdir(),'opora-root-alias-'));t.after(()=>fs.rm(parent,{recursive:true,force:true}));const root=path.join(parent,'physical'),alias=path.join(parent,'alias'),other=path.join(parent,'other');await fs.mkdir(root);await fs.mkdir(other);await fs.symlink(root,alias,process.platform==='win32'?'junction':'dir');let calls=0;
+ const sdk={query(){calls++;return(async function*(){yield{type:'result',is_error:false,result:'Done'};})();}},chat=new ClaudeChat({directory:path.join(parent,'chats'),loadSdk:async()=>sdk,observer:{begin:async()=>null}}),args={root:alias,text:'Work',command:{file:'unused',args:[]},context:{packet:packet(await fs.realpath(root))}};
+ await chat.send(args);await wait(()=>!chat.active);assert.equal(calls,1);await assert.rejects(chat.send({...args,context:{packet:packet(other)}}),/другой игре/);assert.equal(calls,1);
+});

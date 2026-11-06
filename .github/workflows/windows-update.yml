@@ -57,7 +57,11 @@ jobs:
           exit $code
       - name: Claude chat SDK, permissions, resizing and resume
         id: chat
-        run: npm run test:chat
+        run: |
+          npm run test:chat > "$env:RUNNER_TEMP/chat.log" 2>&1
+          $code=$LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/chat.log"
+          exit $code
       - name: Real Windows button, Claude PTY and live MCP
         id: native
         env:
@@ -93,6 +97,7 @@ jobs:
               release:read('opora-release.json'),oldbase:read('opora-oldbase.json'),portable:read('opora-portable.json'),startup:read('opora-startup.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
+            if(process.env.CHAT_RESULT === 'failure') { try { report.chatLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'chat.log'),'utf8').slice(-12000); } catch {} }
             const branch = 'opora-windows-validation';
             try { await github.rest.git.getRef({...context.repo, ref: 'heads/' + branch}); }
             catch (error) { if(error.status !== 404) throw error; await github.rest.git.createRef({...context.repo, ref: 'refs/heads/' + branch, sha: context.sha}); }
