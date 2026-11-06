@@ -9,3 +9,4 @@ require('./visual-feedback.test.cjs');
 require('./efficiency.test.cjs');
 require('./claude-terminal.test.cjs');
 require('./native-updater.test.cjs');
+require('./profile.test.cjs');

@@ -2,7 +2,7 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora]
+    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora]
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
@@ -30,6 +30,11 @@ jobs:
         env:
           OPORA_REPORT: ${{ runner.temp }}/opora-startup.json
         run: node scripts/startup-smoke.cjs
+      - name: Direct EXE launch beside a stuck legacy installation
+        id: portable
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-portable.json
+        run: node scripts/portable-smoke.cjs
       - name: Installer protocol unit tests
         id: unit
         run: |
@@ -87,6 +92,7 @@ jobs:
           STARTUP_RESULT: ${{ steps.startup.outcome }}
           REPAIR_RESULT: ${{ steps.repair.outcome }}
           MANAGED_RESULT: ${{ steps.managed.outcome }}
+          PORTABLE_RESULT: ${{ steps.portable.outcome }}
         with:
           script: |
             const fs = require('fs');
@@ -95,8 +101,8 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,managed:process.env.MANAGED_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
-              startup:read('opora-startup.json'),repair:read('opora-repair.json'),managed:read('opora-managed.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
+              steps: {portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,managed:process.env.MANAGED_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              portable:read('opora-portable.json'),startup:read('opora-startup.json'),repair:read('opora-repair.json'),managed:read('opora-managed.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';
@@ -105,3 +111,28 @@ jobs:
             let sha;
             try { sha = (await github.rest.repos.getContent({...context.repo, path: 'windows-update.json', ref: branch})).data.sha; } catch(error) { if(error.status !== 404) throw error; }
             await github.rest.repos.createOrUpdateFileContents({...context.repo, branch, path: 'windows-update.json', sha, message: 'Record Windows updater validation ' + context.sha.slice(0, 12), content: Buffer.from(JSON.stringify(report, null, 2) + '\n').toString('base64')});
+      - name: Publish the tested ready-to-run ZIP on GitHub Releases
+        if: success() && (github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),path=require('path'),crypto=require('crypto');
+            const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
+            if(manifest.version!=='0.13.0')return;
+            const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
+            const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
+            if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');
+            const tag='v'+manifest.version;let release;
+            try{release=(await github.rest.repos.getReleaseByTag({...context.repo,tag})).data;}
+            catch(error){if(error.status!==404)throw error;release=(await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Опора '+manifest.version,draft:true,body:'Готовое приложение для Windows 10/11 x64. Скачайте Opora-Windows.zip, распакуйте и откройте Opora.exe. Папку старой Опоры заменять не нужно. Существующие пометки и брендбук остаются в папке игры.'})).data;}
+            const assets=(await github.rest.repos.listReleaseAssets({...context.repo,release_id:release.id})).data;
+            const existing=assets.find(a=>a.name==='Opora-Windows.zip');
+            if(existing){
+              if(existing.digest!=='sha256:'+hash)throw new Error('A different portable ZIP already exists for this version');
+            }else await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.id,name:'Opora-Windows.zip',headers:{'content-type':'application/zip','content-length':zip.length},data:zip});
+            if(!assets.some(a=>a.name==='Opora-Windows.zip.sha256')){
+              const checksum=Buffer.from(hash+'  Opora-Windows.zip\n');
+              await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.id,name:'Opora-Windows.zip.sha256',headers:{'content-type':'text/plain','content-length':checksum.length},data:checksum});
+            }
+            await github.rest.repos.updateRelease({...context.repo,release_id:release.id,draft:false,make_latest:'true'});
+            core.info('Ready-to-run download: '+release.html_url+'/../download/'+tag+'/Opora-Windows.zip');
