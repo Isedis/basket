@@ -41,5 +41,10 @@ class TerminalClient{
   async resize(value){await this.connect();return this.rpc('resize',value);}
   async stop(value){if(!await this.connect())return this.state;this.state=await this.rpc('stop',value);return this.state;}
   dispose(){this.disposed=true;this.socket?.end();}
+  async detach(){
+    this.disposed=true;if(!this.socket||this.socket.destroyed)return;
+    const socket=this.socket;
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Терминал ещё передаёт ввод. Повторите обновление.')),3000);socket.end(()=>{clearTimeout(timer);resolve();});});
+  }
 }
 module.exports={TerminalClient};

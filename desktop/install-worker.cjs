@@ -44,7 +44,12 @@ async function run(job){
     await state('waiting');await cancelled();await progress('Установщик готов. Перезапуск окна Опоры');
     await write(path.join(job,'ready.json'),{token:plan.token,pid:process.pid});
     const parentDeadline=Date.now()+90000;
-    while(alive(plan.parentPid)){await cancelled();if(Date.now()>parentDeadline)throw new Error('Окно Опоры не завершило сохранение.');await pause(100);}
+    while(alive(plan.parentPid)){
+      await cancelled();
+      const handoff=await json(path.join(job,'parent-handoff.json'));
+      if(handoff?.token===plan.token&&handoff.pid===plan.parentPid&&handoff.saved===true){await pause(250);break;}
+      if(Date.now()>parentDeadline)throw new Error('Окно Опоры не завершило сохранение.');await pause(100);
+    }
     parentClosed=true;await cancelled();await progress('Включение новой версии');
     await write(plan.pointer,{schemaVersion:1,id:plan.installId,directory:plan.directory,version:plan.version});switched=true;
     await state('restarting');child=await launch(plan.directory,true);await progress('Проверка запуска новой версии');
