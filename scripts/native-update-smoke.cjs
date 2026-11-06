@@ -70,7 +70,7 @@ async function main(){
     if(migration){
       const payload=path.join(base,'opora-update');await fs.mkdir(payload);await fs.copyFile(path.join(candidate,'resources/app.asar'),path.join(payload,'new-app.asar'));await fs.copyFile(path.join(candidate,'runtime.json'),path.join(payload,'runtime.json'));
       await fs.cp(path.join(candidate,'resources/app.asar.unpacked'),path.join(payload,'resources/app.asar.unpacked'),{recursive:true});
-      const cmd=(await exec('python',['-c',"import ast,sys; t=ast.parse(open(sys.argv[1],encoding='utf8').read()); print(next(ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and any(isinstance(v,ast.Name) and v.id=='cmd' for v in n.targets)),end='')",path.join(repo,'scripts/prepare-app-update.py')])).stdout;
+      const cmd=(await exec('python',['-c',"import ast,sys; t=ast.parse(open(sys.argv[1],encoding='utf8').read()); print(next(ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and any(isinstance(v,ast.Name) and v.id=='cmd' for v in n.targets)),end='')",path.join(repo,'scripts/prepare-app-update.py')])).stdout.replace(/\r\n/g,'\n');
       const cmdFile=path.join(base,repair?'REPAIR-OPORA.cmd':'UPDATE-OPORA.cmd');await fs.writeFile(cmdFile,(repair?cmd.replace('"%OPORA_PACKAGE_ROOT%"\n','"%OPORA_PACKAGE_ROOT%" --repair\n'):cmd).replace(/\n/g,'\r\n'));
       if(repair)await oldApp.evaluate(async({BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0];win.removeAllListeners('close');win.on('close',event=>event.preventDefault());await win.loadURL('about:blank');});
       // An old installation has no private version registry yet.

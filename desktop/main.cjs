@@ -56,7 +56,7 @@ if(primary)await app.whenReady().then(async () => {
   win.webContents.on('will-navigate', event => event.preventDefault());
   let rendererLoaded=false;
   startup.watch(win,app);
-  win.webContents.on('did-finish-load',()=>{rendererLoaded=true;});
+  win.webContents.on('did-finish-load',()=>{rendererLoaded=win.webContents.getURL().endsWith('/index.html');});
   let readyTimer;
   const workspaceReady=new Promise((resolve,reject)=>{
     ipcMain.once('app:workspace-ready',event=>{if(event.sender===win.webContents){startup.log('workspace-ready');clearTimeout(readyTimer);resolve();}});
