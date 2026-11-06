@@ -85,3 +85,35 @@
 @media(max-width:800px){.claude-messages{padding:18px 10px}.claude-message{padding:18px 12px 10px}.claude-message.is-user{padding:14px 12px}.chat-live{padding:0 10px}.chat-live-trigger{padding:8px 12px;gap:8px}.chat-live strong{max-width:60%}.claude-permissions.has-questions{padding:8px}.question-heading{padding:12px 16px}.question-body{padding:16px}.question-tabs{padding-left:16px}.question-footer{padding:10px 16px;gap:10px}.question-progress{display:none}.question-footer>[data-chat-deny]{margin-right:auto}.question-title{font-size:15px}}
 @media(max-height:720px){.question-heading{padding-top:12px;padding-bottom:12px}.question-body{padding-top:14px;padding-bottom:14px}.question-footer{padding-top:10px;padding-bottom:10px}}
 @media(prefers-reduced-motion:reduce){.chat-live i{animation:none}.question-choice{transition:none}}
+/* Quiet decorative details: a small studio mark, connected steps and a terminal answer. */
+.claude-question-window{animation:question-window-enter 200ms cubic-bezier(.2,.7,.3,1) both}
+@keyframes question-window-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.question-mark{position:relative;border-color:#66784c55;background:#b9cc9206}
+.question-mark:after{content:'';position:absolute;width:4px;height:4px;left:12px;top:12px;background:#bfce9f;transform:rotate(45deg)}
+.question-mark-ray{position:absolute;left:13px;top:11px;width:2px;height:6px;background:#bfce9f;transform-origin:1px 3px;transform:rotate(calc(var(--ray) * 45deg)) translateY(-8px)}
+.question-tabs{gap:22px;padding-top:14px;padding-bottom:2px;align-items:center}
+.question-tab{position:relative;display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0;max-width:190px;padding:3px 0;border:0;background:transparent;color:#859474}
+.question-tab:not(:last-child):after{content:'';position:absolute;right:-17px;width:12px;height:1px;top:50%;background:#3b482f}
+.question-step-marker{display:grid;place-items:center;width:24px;height:24px;flex-shrink:0;border:1px solid #425135;border-radius:50%;font-size:9px;font-variant-numeric:tabular-nums;transition:background 140ms,border-color 140ms,color 140ms}
+.question-step-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.question-tab[aria-current=step]{background:transparent;border:0;color:#d8e5c1}
+.question-tab[aria-current=step] .question-step-marker{border-color:#a2b481;background:#becf9914;box-shadow:0 0 0 3px #becf9906}
+.question-tab.is-answered:not([aria-current=step]){border:0;color:#a8bb8d}
+.question-tab.is-answered .question-step-marker{color:#c5d7a6;border-color:#6d8550;background:#adc98a0b}
+.question-tab:focus-visible{outline:1px solid #97ad7b;outline-offset:4px}
+.question-choice{position:relative;grid-template-columns:16px minmax(0,1fr) 18px;transition:background 140ms,border-color 140ms}
+.question-choice:before{content:'';position:absolute;left:-1px;top:10px;bottom:10px;width:3px;background:#b8cb99;opacity:0;transition:opacity 140ms}
+.question-choice:has(input:checked){background:#bfce9f13;border-color:#81966b}
+.question-choice:has(input:checked):before{opacity:1}
+.question-choice-check{color:#c8dcaa;font-size:14px;line-height:1.5;text-align:right;opacity:0;transform:scale(.85);transition:opacity 140ms,transform 140ms}
+.question-choice:has(input:checked) .question-choice-check{opacity:1;transform:scale(1)}
+.question-terminal{display:grid;grid-template-columns:32px minmax(0,1fr);background:#080b07;border:1px solid #35412b;transition:border-color 160ms,box-shadow 160ms}
+.question-input-prefix{padding:12px 0 0 12px;font-size:11px;color:#7e9169;user-select:none}
+.question-terminal textarea{border:0;background:transparent;padding-left:8px}
+.question-terminal:focus-within{border-color:#697d52;box-shadow:inset 0 -1px #b6cc8e55}
+.question-terminal:focus-within .question-input-prefix{color:#c5d6a6}
+/* A fixed, bounded sheet keeps the footer steady while only the active question scrolls. */
+.claude-question-window{height:min(560px,100%)}
+.question-body{flex:1;overscroll-behavior:contain}
+@media(max-width:800px){.question-step-label{max-width:110px}.question-tabs{gap:20px}}
+@media(prefers-reduced-motion:reduce){.claude-question-window{animation:none}.question-choice,.question-choice:before,.question-choice-check,.question-step-marker,.question-terminal{transition:none}}
