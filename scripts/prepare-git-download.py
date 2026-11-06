@@ -58,7 +58,6 @@ with source.open("rb") as stream:
         number += 1
 manifest = {"version": version, "platform": "windows-x64", "size": source.stat().st_size, "sha256": archive_hash.hexdigest(), "parts": parts}
 (target / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-subprocess.run([sys.executable, str(root / 'scripts/prepare-launcher.py')], check=True)
 shutil.copyfile(root / "artifacts/Opora-demo.html", root / "Opora-demo.html")
 print(f"Prepared {len(parts)} parts. SHA256: {manifest['sha256']}")
 

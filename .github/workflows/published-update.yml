@@ -1,8 +1,6 @@
 name: Published release update investigation
 on:
   workflow_dispatch:
-  push:
-    branches: [opora-real-release-update]
 permissions:
   contents: write
 jobs:

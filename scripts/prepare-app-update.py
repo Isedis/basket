@@ -22,25 +22,4 @@ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
  z.writestr('Opora-win32-x64/runtime.json',json.dumps(meta))
 patch=dict(runtimeVersion=runtime,size=archive.stat().st_size,sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),parts=[dict(name=archive.name,size=archive.stat().st_size,sha256=hashlib.sha256(archive.read_bytes()).hexdigest())])
 (target/'manifest.json').write_text(json.dumps(patch,indent=2)+'\n')
-subprocess.run([sys.executable,str(root/'scripts/prepare-launcher.py')],check=True)
-cmd='''@echo off
-setlocal EnableExtensions DisableDelayedExpansion
-set "OPORA_PACKAGE_ROOT=%~dp0."
-set "OPORA_EXE=%OPORA_PACKAGE_ROOT%\\Opora-App\\Opora-win32-x64\\Opora.exe"
-if not exist "%OPORA_EXE%" set "OPORA_EXE=%OPORA_PACKAGE_ROOT%\\Opora.exe"
-if not exist "%OPORA_EXE%" (
- echo Put the complete update ZIP beside START-OPORA.cmd or Opora.exe.
- pause
- exit /b 1
-)
-set "ELECTRON_RUN_AS_NODE=1"
-"%OPORA_EXE%" "%OPORA_PACKAGE_ROOT%\\opora-update\\new-app.asar\\desktop\\migrate.cjs" "%OPORA_PACKAGE_ROOT%"
-if errorlevel 1 pause
-'''
-with zipfile.ZipFile(root/'distribution/Opora-small-update.zip','w',zipfile.ZIP_DEFLATED) as z:
- z.write(app/'resources/app.asar','opora-update/new-app.asar')
- for file in app_files:z.write(app/file['name'],'opora-update/'+file['name'])
- z.writestr('opora-update/runtime.json',json.dumps(meta))
- z.writestr('UPDATE-OPORA.cmd',cmd.replace('\n','\r\n'))
- z.writestr('REPAIR-OPORA.cmd',cmd.replace('"%OPORA_PACKAGE_ROOT%"\n','"%OPORA_PACKAGE_ROOT%" --repair\n').replace('\n','\r\n'))
-print(f'App update: {patch["size"]} bytes; migration ZIP: {(root/"distribution/Opora-small-update.zip").stat().st_size} bytes')
+print(f'App update: {patch["size"]} bytes')

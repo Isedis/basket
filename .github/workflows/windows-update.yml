@@ -2,7 +2,7 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora]
+    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora-real-release-update, opora]
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
@@ -35,19 +35,26 @@ jobs:
         env:
           OPORA_REPORT: ${{ runner.temp }}/opora-portable.json
         run: node scripts/portable-smoke.cjs
+      - name: Visible native relaunch of the actual release EXE
+        id: release
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-release.json
+          OPORA_SCREENSHOT: ${{ runner.temp }}/opora-release.png
+        run: node scripts/release-update-smoke.cjs
+      - name: Transition from published 0.13 without a blank window
+        id: oldbase
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-oldbase.json
+          OPORA_SCREENSHOT: ${{ runner.temp }}/opora-oldbase.png
+          OPORA_TEST_OLD_BASE: '1'
+        run: node scripts/release-update-smoke.cjs
       - name: Installer protocol unit tests
         id: unit
         run: |
-          node --test test/windows-updater.test.cjs test/native-updater.test.cjs > "$env:RUNNER_TEMP/unit.log" 2>&1
+          npm test > "$env:RUNNER_TEMP/unit.log" 2>&1
           $code=$LASTEXITCODE
           Get-Content "$env:RUNNER_TEMP/unit.log"
           exit $code
-      - name: Windows PowerShell 5.1 recovery tests
-        id: ps51
-        shell: powershell
-        run: |
-          $PSVersionTable.PSVersion
-          npm run test:installer
       - name: Real Windows button, Claude PTY and live MCP
         id: native
         env:
@@ -59,39 +66,16 @@ jobs:
           OPORA_REPORT: ${{ runner.temp }}/opora-rollback.json
           OPORA_TEST_UPDATE_FAILURE: launch
         run: node scripts/native-update-smoke.cjs
-      - name: Automatic migration without closing MCP terminals
-        id: migration
-        env:
-          OPORA_REPORT: ${{ runner.temp }}/opora-migration.json
-          OPORA_TEST_UPDATE_MODE: migration
-        run: node scripts/native-update-smoke.cjs
-      - name: Repair an unresponsive gray GUI without stopping MCP
-        id: repair
-        env:
-          OPORA_REPORT: ${{ runner.temp }}/opora-repair.json
-          OPORA_TEST_UPDATE_MODE: repair
-          OPORA_UPDATE_FROM: 0.12.0
-        run: node scripts/native-update-smoke.cjs
-      - name: Update an already managed installation using the original CMD
-        id: managed
-        env:
-          OPORA_REPORT: ${{ runner.temp }}/opora-managed.json
-          OPORA_TEST_UPDATE_MODE: migration
-          OPORA_TEST_MANAGED: '1'
-          OPORA_UPDATE_FROM: 0.12.1
-        run: node scripts/native-update-smoke.cjs
       - name: Publish machine-readable validation result
         if: always()
         uses: actions/github-script@v7
         env:
+          RELEASE_RESULT: ${{ steps.release.outcome }}
+          OLDBASE_RESULT: ${{ steps.oldbase.outcome }}
           UNIT_RESULT: ${{ steps.unit.outcome }}
-          PS_RESULT: ${{ steps.ps51.outcome }}
           NATIVE_RESULT: ${{ steps.native.outcome }}
           ROLLBACK_RESULT: ${{ steps.rollback.outcome }}
-          MIGRATION_RESULT: ${{ steps.migration.outcome }}
           STARTUP_RESULT: ${{ steps.startup.outcome }}
-          REPAIR_RESULT: ${{ steps.repair.outcome }}
-          MANAGED_RESULT: ${{ steps.managed.outcome }}
           PORTABLE_RESULT: ${{ steps.portable.outcome }}
         with:
           script: |
@@ -101,8 +85,8 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,managed:process.env.MANAGED_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
-              portable:read('opora-portable.json'),startup:read('opora-startup.json'),repair:read('opora-repair.json'),managed:read('opora-managed.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
+              steps: {release:process.env.RELEASE_RESULT,oldbase:process.env.OLDBASE_RESULT,portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              release:read('opora-release.json'),oldbase:read('opora-oldbase.json'),portable:read('opora-portable.json'),startup:read('opora-startup.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';
@@ -111,14 +95,19 @@ jobs:
             let sha;
             try { sha = (await github.rest.repos.getContent({...context.repo, path: 'windows-update.json', ref: branch})).data.sha; } catch(error) { if(error.status !== 404) throw error; }
             await github.rest.repos.createOrUpdateFileContents({...context.repo, branch, path: 'windows-update.json', sha, message: 'Record Windows updater validation ' + context.sha.slice(0, 12), content: Buffer.from(JSON.stringify(report, null, 2) + '\n').toString('base64')});
+            for(const name of ['opora-release.png','opora-oldbase.png']){
+              const file=path.join(process.env.RUNNER_TEMP,name);if(!fs.existsSync(file))continue;let sha;
+              try{sha=(await github.rest.repos.getContent({...context.repo,path:name,ref:branch})).data.sha;}catch{}
+              await github.rest.repos.createOrUpdateFileContents({...context.repo,branch,path:name,sha,message:'Record rendered update window',content:fs.readFileSync(file).toString('base64')});
+            }
       - name: Publish the tested ready-to-run ZIP on GitHub Releases
-        if: success() && (github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
+        if: success() && (github.ref == 'refs/heads/opora-real-release-update' || github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
         uses: actions/github-script@v7
         with:
           script: |
             const fs=require('fs'),path=require('path'),crypto=require('crypto');
             const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
-            if(!/^0\.13\.\d+$/.test(manifest.version))return;
+            if(!/^0\.14\.\d+$/.test(manifest.version))return;
             const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
             const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
             if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');
