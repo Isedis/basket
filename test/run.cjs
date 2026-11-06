@@ -10,3 +10,5 @@ require('./claude-terminal.test.cjs');
 require('./native-updater.test.cjs');
 require('./profile.test.cjs');
 require('./gui-instance.test.cjs');
+
+require('./claude-chat.test.cjs');

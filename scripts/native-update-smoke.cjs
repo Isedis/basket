@@ -18,7 +18,7 @@ async function main(){
     await fs.writeFile(path.join(profile,'preferences.json'),JSON.stringify({lastProject:game}));
     for(const dir of ['desktop','src','ui','mcp'])await fs.cp(path.join(repo,dir),path.join(source,dir),{recursive:true});
     const lock=require('../package-lock.json');
-    for(const [relative,info] of Object.entries(lock.packages))if(relative.startsWith('node_modules/')&&!info.dev&&!info.devOptional){await fs.mkdir(path.dirname(path.join(source,relative)),{recursive:true});await fs.cp(path.join(repo,relative),path.join(source,relative),{recursive:true});}
+    for(const [relative,info] of Object.entries(lock.packages))if(relative.startsWith('node_modules/')&&!info.dev&&!info.devOptional&&!relative.startsWith('node_modules/@anthropic-ai/claude-agent-sdk-')){await fs.mkdir(path.dirname(path.join(source,relative)),{recursive:true});await fs.cp(path.join(repo,relative),path.join(source,relative),{recursive:true}).catch(error=>{if(!info.optional||error.code!=='ENOENT')throw error;});}
     const pty=path.join(source,'node_modules/node-pty');
     for(const name of await fs.readdir(pty))if(!['lib','prebuilds','build','package.json','LICENSE'].includes(name))await fs.rm(path.join(pty,name),{recursive:true,force:true});
     for(const name of await fs.readdir(path.join(pty,'prebuilds')))if(name!==process.platform+'-'+process.arch)await fs.rm(path.join(pty,'prebuilds',name),{recursive:true,force:true});
@@ -56,7 +56,7 @@ async function main(){
     const page=await oldApp.firstWindow();await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Update fixture');
     await oldApp.evaluate(({session},{manifest,archive})=>{const raw=process.getBuiltinModule('fs');session.fromPartition('opora-updates').fetch=async url=>new Response(String(url).includes('latest.json')?JSON.stringify(manifest):raw.readFileSync(archive),{status:200});},{manifest,archive});
     let terminal;
-await page.locator('.topbar [data-action="claude-open"]').click();await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));terminal=await page.evaluate(()=>window.opora.claudeState());brokerPid=JSON.parse(await fs.readFile(path.join(profile,'terminal-broker.json'),'utf8')).pid;
+await page.locator('.topbar [data-action="claude-open"]').click();await page.locator('[data-dock="terminal"]').click();await page.locator('[data-terminal="start"]').click();await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));terminal=await page.evaluate(()=>window.opora.claudeState());brokerPid=JSON.parse(await fs.readFile(path.join(profile,'terminal-broker.json'),'utf8')).pid;
     const config=JSON.parse(await fs.readFile(path.join(game,'.mcp.json'),'utf8')).mcpServers;const spec=Object.values(config)[0];
     client=new Client({name:'update-live-client',version:'1.0.0'},{capabilities:{}});await client.connect(new StdioClientTransport({command:spec.command,args:spec.args,env:spec.env,stderr:'pipe'}));
     await client.callTool({name:'opora_get_work_context',arguments:{}});

@@ -1,7 +1,7 @@
 const net=require('node:net'),fs=require('node:fs/promises'),{spawn}=require('node:child_process');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 class TerminalClient{
-  constructor({record,entry,executable,native,onEvent=()=>{}}){Object.assign(this,{record,entry,executable,native,onEvent});this.state=null;this.socket=null;this.requests=new Map();this.id=0;this.connecting=null;this.disposed=false;}
+  constructor({record,entry,executable,native,onEvent=()=>{},onChatEvent=()=>{}}){Object.assign(this,{record,entry,executable,native,onEvent,onChatEvent});this.state=null;this.socket=null;this.requests=new Map();this.id=0;this.connecting=null;this.disposed=false;}
   get active(){return !!this.state&&this.state.status!=='exited';}
   snapshot(){return this.state;}
   async connect({start=false}={}){
@@ -28,7 +28,8 @@ class TerminalClient{
     await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{socket.destroy();reject(new Error('Локальный терминал не отвечает.'));},3000);socket.once('error',error=>{clearTimeout(timer);reject(error);});socket.once('connect',()=>{clearTimeout(timer);resolve();});});
     this.socket=socket;this.disposed=false;let buffer='';
     socket.on('error',()=>{});socket.on('data',chunk=>{buffer+=chunk.toString('utf8');if(buffer.length>8*1024*1024){socket.destroy();return;}let end;while((end=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);let packet;try{packet=JSON.parse(line);}catch{socket.destroy();return;}
-      if(packet.event){if(this.state?.id!==packet.event.id)this.state={...packet.event,output:''};else this.state={...this.state,...packet.event};if(packet.event.data)this.state.output=(this.state.output+packet.event.data).slice(-1024*1024);this.onEvent(packet.event);}
+      if(packet.chatEvent){this.onChatEvent(packet.chatEvent);}
+      else if(packet.event){if(this.state?.id!==packet.event.id)this.state={...packet.event,output:''};else this.state={...this.state,...packet.event};if(packet.event.data)this.state.output=(this.state.output+packet.event.data).slice(-1024*1024);this.onEvent(packet.event);}
       else{const pending=this.requests.get(packet.id);if(pending){this.requests.delete(packet.id);clearTimeout(pending.timer);packet.error?pending.reject(new Error(packet.error)):pending.resolve(packet.result);}}
     }});
     let authenticated=false;
