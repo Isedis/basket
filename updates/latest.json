@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.10.0",
-  "commit": "bcac4f58cadfe1996b98689bac02c4212f441daa",
-  "size": 161443203,
-  "sha256": "7cce6839f32b9e61633c35c9ee633e7fce8fca2fcd0fc6583ef6db87f9dc111b",
+  "version": "0.10.1",
+  "commit": "7f99c75245999fa067d690cce21ebc191b2553b4",
+  "size": 161446446,
+  "sha256": "24b46103552d906274b293f020737ea00b935bf3ee181369b2b5f0c1f0f3f9dc",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "11f1b7ee1ea63cca2b6f6b7440867aa5b5612c033a46b3bb2ede08571aa99602"
+      "sha256": "f219dbc3dd5dc8523ecaed45eff106d5cb9342b9d8501a3412690e02c7415b39"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "4d81f0d41a9f60acac4728d07a59d2f4db2a078c59ecbc44ca8e4d8aaa3d7b47"
+      "sha256": "721dd971fd002894c1b96ec816ca2207acf1afcbd7eebe6ac0d62c093a4f6754"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "f27dcc380284ced10152122d14ac2e59078a5c16cdf492271aa0f3b4c98eeaaf"
+      "sha256": "87bb71b68dfdf08e200155bfcebd5c84f4381df17005c928aecab9d3644392db"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 10448259,
-      "sha256": "55c777731b534ced24afe5094e9cddc2dc1a353638c50118c33bf817dfbddb2f"
+      "size": 10451502,
+      "sha256": "49114e7f096610e02e2c3e99d1bbdf7bf1e258ce4330fbc09e15a3c2ab301698"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 3326935,
-    "sha256": "bcad2717cf61512eaafaf6b896dcb6cf24184562998d3be96deaed254fc50c6a",
+    "size": 3329418,
+    "sha256": "7f2bc727f37f86958f2b2319cc10e65033624f939278be662ebf2c8759b780dd",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 3326935,
-        "sha256": "bcad2717cf61512eaafaf6b896dcb6cf24184562998d3be96deaed254fc50c6a"
+        "size": 3329418,
+        "sha256": "7f2bc727f37f86958f2b2319cc10e65033624f939278be662ebf2c8759b780dd"
       }
     ]
   },
-  "notes": "Исправления аудита и единый контекст задачи через opora_get_work_context. Меньшие ответы, страницы длинных полей/символов, корректное утверждение брендбука, Windows-пути. Связанные замечания, области действия и замена решений; архив старых попыток без потери истории. Результаты и отчёты привязаны к версии кода. После обновления перезапустите MCP-сессию."
+  "notes": "Исправлено ожидание готовности установщика: больше времени для проверки Electron на медленном диске, отображение этапов, диагностика запуска и ожидание предыдущего helper. Старое подтверждение другой версии больше не показывается как успех. Для 0.9.0 с ошибкой готовности используйте свежий малый пакет UPDATE-OPORA.cmd из GitHub."
 }
