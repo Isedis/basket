@@ -12,3 +12,7 @@ require('./profile.test.cjs');
 require('./gui-instance.test.cjs');
 
 require('./claude-chat.test.cjs');
+
+require('./automation.test.cjs');
+require('./godot-check.test.cjs');
+require('./chat-hosts.test.cjs');

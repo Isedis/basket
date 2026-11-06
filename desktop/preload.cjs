@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld('opora', {
   startupInfo:()=>ipcRenderer.invoke('startup:info'),
   startupCopy:()=>ipcRenderer.invoke('startup:copy'),
   startupRetry:()=>ipcRenderer.send('startup:retry'),
+  godotSelect:()=>ipcRenderer.invoke('automation:godot'),
   chatState:()=>ipcRenderer.invoke('chat:state'),
   chatList:()=>ipcRenderer.invoke('chat:list'),
   chatNew:()=>ipcRenderer.invoke('chat:new'),

@@ -180,3 +180,4 @@ dialog{border-radius:0;border:1px solid var(--muted);border-top-color:var(--acce
 @media(max-width:780px){.claude-history{width:160px;min-width:140px}.claude-workbar>strong,.claude-font-control,.claude-conversation-heading>span{display:none}.claude-context-bar{flex-wrap:wrap;gap:8px}.claude-send-actions{gap:6px}.claude-send-actions .button{font-size:11px;padding:8px}.claude-workbar .text-button{font-size:10px}}
 
 .claude-dock.expanded .claude-composer textarea{max-height:180px}
+.claude-auto-result{font-size:11px;border-top:1px solid var(--border);padding:0 18px;max-height:30%;min-height:0;overflow:auto;flex-shrink:1;background:#10120f}.claude-auto-result[hidden]{display:none}.claude-auto-result p{color:var(--muted);margin:6px 0;line-height:1.5}.claude-auto-result ul{padding-left:18px;overflow-wrap:anywhere;margin:8px 0}.claude-auto-result .text-button{font-size:11px}

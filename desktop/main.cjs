@@ -14,6 +14,7 @@ const projectMap = require('../src/project-map.cjs');
 const visualFeedback = require('../src/visual-feedback.cjs');
 const workContext = require('../src/work-context.cjs');
 const {resolveClaude}=require('./claude-terminal.cjs');
+const {resolveGodot}=require('./godot-check.cjs');
 const {TerminalClient}=require('./terminal-client.cjs');
 const installLayout=require('./install-layout.cjs');
 const nativeUpdater=require('./native-updater.cjs');
@@ -42,7 +43,8 @@ const startupUpdate={job:updateArg('job')||process.env.OPORA_UPDATE_JOB,token:up
 if(startupUpdate.job){process.env.OPORA_UPDATE_JOB=startupUpdate.job;process.env.OPORA_UPDATE_TOKEN=startupUpdate.token;}
 let terminal;
 let chatStarting=false;
-let chatHost;let chatState=null;
+let chatHost,modernChatHost;let legacyChatHosts=[];let chatState=null;
+const chatHosts=require('./chat-hosts.cjs');
 const chatBusy=()=>chatStarting||['starting','working','permission','stopping'].includes(chatState?.status);
 let terminalStarting=false;
 let terminalClosePrompt=false;
@@ -141,7 +143,7 @@ if(primary)await app.whenReady().then(async () => {
       installPlan=plan;
       await nativeUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
       canClose=true;restarting=true;
-      await terminal.detach();await chatHost?.detach();
+      await terminal.detach();await chatHost?.detach();if(modernChatHost!==chatHost)await modernChatHost?.detach();for(const previous of legacyChatHosts)if(previous!==chatHost)await previous.detach();
       await instance.release();releasedForUpdate=true;
       await nativeUpdater.commitAndRelaunch(plan,app);
       // The renderer saved before this transaction and the PTY host is separate.
@@ -159,8 +161,9 @@ if(primary)await app.whenReady().then(async () => {
     onEvent:event=>{if(!win.isDestroyed())win.webContents.send('claude:event',event);}
   });
   // An unavailable optional broker must never prevent the interface from loading.
-  chatHost=new TerminalClient({record:path.join(app.getPath('userData'),'chat-broker.json'),entry:path.join(__dirname,'terminal-broker.cjs'),executable:process.execPath,onChatEvent:event=>{chatState={...chatState,...event};if(!win.isDestroyed())win.webContents.send('chat:event',event);}});
-  const chatConnection=chatHost.connect().then(connected=>connected?chatHost.rpc('chat:state'):null).then(state=>{chatState=state;}).catch(error=>startup.log('chat-unavailable',error.message));
+  const makeChatHost=record=>{const client=new TerminalClient({record:path.join(app.getPath('userData'),record),entry:path.join(__dirname,'terminal-broker.cjs'),executable:process.execPath,onChatEvent:event=>{if(chatHost!==client)return;chatState={...chatState,...event};if(!win.isDestroyed())win.webContents.send('chat:event',event);}});return client;};
+  const chatRecord='chat-broker-'+app.getVersion()+'.json';modernChatHost=makeChatHost(chatRecord);chatHost=modernChatHost;
+  const chatConnection=fs.readdir(app.getPath('userData')).catch(()=>[]).then(names=>{legacyChatHosts=names.filter(name=>/^chat-broker(?:-v2|-\d+\.\d+\.\d+)?\.json$/.test(name)&&name!==chatRecord).sort((a,b)=>b.localeCompare(a,undefined,{numeric:true})).slice(0,30).map(makeChatHost);return chatHosts.restore(modernChatHost,legacyChatHosts);}).then(result=>{chatHost=result.host;chatState=result.state;}).catch(error=>startup.log('chat-unavailable',error.message));
   const terminalConnection=terminal.connect().catch(error=>{startup.log('terminal-unavailable',error.message);return false;});
   const terminalPreferences=path.join(app.getPath('userData'),'claude-terminal.json');
   async function claudeCommand(){
@@ -199,7 +202,10 @@ if(primary)await app.whenReady().then(async () => {
     return {executable:command.display};
   });
   terminalHandle('claude:clipboard',()=>clipboard.readText());
-  async function chatCall(op,value){await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
+  const automationPreferences=path.join(app.getPath('userData'),'automation.json');
+  async function godotCommand(){let saved;try{saved=JSON.parse(await fs.readFile(automationPreferences,'utf8')).godot;}catch{}return resolveGodot(saved).catch(()=>null);}
+  terminalHandle('automation:godot',async()=>{const selected=await dialog.showOpenDialog(win,{title:'Godot для автоматической проверки проекта',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'Godot',extensions:['exe']}]}:{})});if(selected.canceled)return null;const command=await resolveGodot(selected.filePaths[0]);await fs.mkdir(path.dirname(automationPreferences),{recursive:true});await fs.writeFile(automationPreferences,JSON.stringify({godot:command.file}),{mode:0o600});return {executable:command.file};});
+  async function chatCall(op,value){await chatConnection;chatHost=await chatHosts.forOperation(chatHost,modernChatHost,op);await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
   terminalHandle('chat:state',async()=>{await chatConnection;return await chatHost.connect()?chatCall('chat:state'):null;});
   terminalHandle('chat:list',()=>chatCall('chat:list',{root:requireProject()}));
   terminalHandle('chat:new',()=>chatCall('chat:new',{root:requireProject()}));
@@ -209,9 +215,9 @@ if(primary)await app.whenReady().then(async () => {
     const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');
     const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);
     let context=null;
-    if(input.includeContext!==false){const packet=await workContext.reader(project)({});const compact={project_id:packet.project_id,root:packet.root,work_revision:packet.work_revision,task:packet.task,passport:packet.passport,brand:packet.brand,feedback:packet.feedback};context={summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision},text:'Контекст Опоры. Полные и актуальные данные прочитай через opora_get_work_context, затем прочитай исходники. Поля с truncated требуют дополнительного чтения.\n'+JSON.stringify(compact)};}
+    if(input.includeContext!==false){const packet=await workContext.reader(project)({...(input.taskId?{task_id:input.taskId}:{})});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}
     if(root!==project)throw new Error('Проект изменился. Повторите отправку.');
-    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec});
+    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand()});
     }finally{chatStarting=false;}
   });
   terminalHandle('chat:answer',input=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:answer',input);});
@@ -346,4 +352,4 @@ runDesktop().catch(async error=>{
   dialog.showErrorBox('Запуск Опоры',error.message+'\nЖурнал: '+startup.filename());app.exit(1);
 });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit',()=>{terminal?.dispose();chatHost?.dispose();void instance.release();});
+app.on('will-quit',()=>{terminal?.dispose();chatHost?.dispose();modernChatHost?.dispose();legacyChatHosts.forEach(host=>host.dispose());void instance.release();});
