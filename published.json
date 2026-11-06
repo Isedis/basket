@@ -3,22 +3,23 @@
   "to": "0.13.1",
   "realPublishedArtifacts": true,
   "profile": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop",
+  "beforeVisibleColors": 92,
   "result": {
     "status": "installed",
     "phase": "Проверка запуска новой версии",
     "version": "0.13.1",
-    "installId": "1d5ae538-8e15-4bc6-a3ee-0f81bbdfc604",
-    "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd",
-    "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\v\\0.13.1-15aab8390d7d",
-    "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-LQh2we\\Opora-win32-x64",
-    "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-LQh2we\\Opora-win32-x64",
-    "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\.opora-update-OTZVgv",
-    "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\.opora-update-OTZVgv\\installer.log",
-    "recordedAt": "2026-11-06T06:45:27.678Z"
+    "installId": "7d27fbd4-6854-4962-a407-787441ddb939",
+    "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f",
+    "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\v\\0.13.1-f1a6817499f8",
+    "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-nCOZuX\\Opora-win32-x64",
+    "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-nCOZuX\\Opora-win32-x64",
+    "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\.opora-update-HMjLNU",
+    "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\.opora-update-HMjLNU\\installer.log",
+    "recordedAt": "2026-11-06T06:46:09.576Z"
   },
   "plan": {
-    "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\v\\0.13.1-15aab8390d7d",
-    "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-LQh2we\\Opora-win32-x64",
+    "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\v\\0.13.1-f1a6817499f8",
+    "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-published-nCOZuX\\Opora-win32-x64",
     "hashes": [
       "resources/app.asar.unpacked/node_modules/node-pty/LICENSE",
       "resources/app.asar.unpacked/node_modules/node-pty/README.md",
@@ -49,18 +50,18 @@
     ]
   },
   "gui-process.json": {
-    "pid": 8332,
-    "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\v\\0.13.1-15aab8390d7d\\Opora.exe"
+    "pid": 808,
+    "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\v\\0.13.1-f1a6817499f8\\Opora.exe"
   },
   "launch-ack.json": {
     "version": "0.13.1",
-    "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\fd48e7c389cdeecd\\v\\0.13.1-15aab8390d7d\\Opora.exe",
-    "pid": 8332
+    "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\53f6f0942471c72f\\v\\0.13.1-f1a6817499f8\\Opora.exe",
+    "pid": 808
   },
   "gui-startup.log": "\r\n",
   "installer.log": "Проверка подготовленной версии\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/LICENSE\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/README.md\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/conpty_console_list_agent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/eventEmitter2.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/index.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/interfaces.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/shared/conout.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/terminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/types.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/unixTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/utils.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsConoutConnection.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsPtyAgent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/worker/conoutSocketWorker.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/package.json\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/conpty.dll\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty_console_list.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/pty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty.dll\nПроверка SHA256: Opora.exe\nПроверка SHA256: resources/app.asar\nПроверка SHA256: .opora-location.json\nУстановщик готов. Перезапуск окна Опоры\nВключение новой версии\nПроверка запуска новой версии\n",
-  "startupLog": "2026-11-06T06:45:24.218Z launch {\"version\":\"0.13.0\",\"platform\":\"win32\",\"arch\":\"x64\",\"electron\":\"45.2.3\",\"executable\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-published-LQh2we\\\\Opora-win32-x64\\\\Opora.exe\",\"softwareRendering\":true}\n2026-11-06T06:45:24.351Z loading-interface \n2026-11-06T06:45:24.540Z interface-loaded \n2026-11-06T06:45:24.548Z workspace-ready \n2026-11-06T06:45:27.278Z launch {\"version\":\"0.13.1\",\"platform\":\"win32\",\"arch\":\"x64\",\"electron\":\"45.2.3\",\"executable\":\"C:\\\\Users\\\\runneradmin\\\\AppData\\\\Roaming\\\\opora-desktop\\\\runtime\\\\fd48e7c389cdeecd\\\\v\\\\0.13.1-15aab8390d7d\\\\Opora.exe\",\"softwareRendering\":true}\n2026-11-06T06:45:27.346Z loading-interface \n2026-11-06T06:45:27.580Z interface-loaded \n2026-11-06T06:45:27.588Z workspace-ready \n",
+  "startupLog": "2026-11-06T06:45:58.746Z launch {\"version\":\"0.13.0\",\"platform\":\"win32\",\"arch\":\"x64\",\"electron\":\"45.2.3\",\"executable\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-published-nCOZuX\\\\Opora-win32-x64\\\\Opora.exe\",\"softwareRendering\":true}\n2026-11-06T06:45:58.930Z loading-interface \n2026-11-06T06:45:59.725Z interface-loaded \n2026-11-06T06:45:59.738Z workspace-ready \n2026-11-06T06:46:09.018Z launch {\"version\":\"0.13.1\",\"platform\":\"win32\",\"arch\":\"x64\",\"electron\":\"45.2.3\",\"executable\":\"C:\\\\Users\\\\runneradmin\\\\AppData\\\\Roaming\\\\opora-desktop\\\\runtime\\\\53f6f0942471c72f\\\\v\\\\0.13.1-f1a6817499f8\\\\Opora.exe\",\"softwareRendering\":true}\n2026-11-06T06:46:09.095Z loading-interface \n2026-11-06T06:46:09.409Z interface-loaded \n2026-11-06T06:46:09.418Z workspace-ready \n",
   "notesPreserved": true,
   "visibleColors": 1,
-  "error": "AssertionError [ERR_ASSERTION]: New GUI is visually blank despite a successful startup ACK\n    at main (D:\\a\\basket\\basket\\scripts\\published-update-smoke.cjs:43:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  "error": "AssertionError [ERR_ASSERTION]: New GUI is visually blank despite a successful startup ACK\n    at main (D:\\a\\basket\\basket\\scripts\\published-update-smoke.cjs:44:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
 }
