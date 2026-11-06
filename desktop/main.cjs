@@ -29,6 +29,7 @@ const startupUpdate={job:process.env.OPORA_UPDATE_JOB,token:process.env.OPORA_UP
 let terminal;
 let terminalStarting=false;
 let terminalClosePrompt=false;
+let externalHandoff=false;
 const requireProject = () => {if (!root) throw new Error('Сначала подключите папку проекта Godot.'); return root;};
 
 async function runDesktop(){
@@ -55,6 +56,10 @@ if(primary)await app.whenReady().then(async () => {
   });
   win.on('close', event => {
     if(restarting)return;
+    try{
+      const handoff=require('node:fs').existsSync(path.join(app.getPath('userData'),'update-handoff.json'))?JSON.parse(require('node:fs').readFileSync(path.join(app.getPath('userData'),'update-handoff.json'),'utf8')):null;
+      if(handoff?.pid===process.pid&&handoff.expires>Date.now()){process.kill(handoff.requesterPid,0);externalHandoff=true;event.preventDefault();win.webContents.send('app:flush');return;}
+    }catch{}
     if(terminal?.active || terminalStarting){
       event.preventDefault();
       if(terminalClosePrompt)return;
@@ -71,7 +76,7 @@ if(primary)await app.whenReady().then(async () => {
     if (!canClose) {event.preventDefault(); win.webContents.send('app:flush');}
   });
   ipcMain.on('app:ready-to-close', event => {
-    if (event.sender === win.webContents) {canClose = true; win.close();}
+    if (event.sender === win.webContents) {canClose = true;if(externalHandoff)restarting=true;win.close();}
   });
   const updateSession=session.fromPartition('opora-updates');
   const proxy=process.env.HTTPS_PROXY || process.env.HTTP_PROXY;

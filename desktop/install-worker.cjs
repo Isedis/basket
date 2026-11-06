@@ -24,7 +24,9 @@ async function run(job){
       const log=await fs.open(path.join(job,confirm?'gui-startup.log':'recovery-startup.log'),'a');
       try{
         const processChild=spawn(path.join(directory,'Opora.exe'),plan.launchArgs||[],{cwd:directory,env,stdio:['ignore',log.fd,log.fd],windowsHide:true,detached:false});
-        await new Promise((resolve,reject)=>{processChild.once('spawn',resolve);processChild.once('error',reject);});processChild.unref();return processChild;
+        await new Promise((resolve,reject)=>{processChild.once('spawn',resolve);processChild.once('error',reject);});
+        if(confirm){await write(path.join(job,'gui-process.json'),{pid:processChild.pid,executable:path.join(directory,'Opora.exe')});processChild.once('exit',(code,signal)=>{write(path.join(job,'gui-process.json'),{pid:processChild.pid,exitCode:code,signal}).catch(()=>{});});}
+        processChild.unref();return processChild;
       }finally{await log.close();}
     });
   };
@@ -50,7 +52,7 @@ async function run(job){
     while(Date.now()<launchDeadline){
       const ack=await json(path.join(job,'launch-ack.json'));
       if(ack?.token===plan.token&&ack.pid===child.pid&&ack.version===plan.version&&same(ack.executable,path.join(plan.directory,'Opora.exe'))&&alive(child.pid)){await state('installed');return;}
-      if(!alive(child.pid)){const failure=await json(path.join(job,'gui-error.json'));throw new Error(failure?.token===plan.token&&failure.pid===child.pid?'Ошибка новой версии: '+failure.error:'Новая версия завершилась до подтверждения запуска.');}await pause(150);
+      if(child.exitCode!==null||!alive(child.pid)){const failure=await json(path.join(job,'gui-error.json'));throw new Error(failure?.token===plan.token&&failure.pid===child.pid?'Ошибка новой версии: '+failure.error:'Новая версия завершилась до подтверждения запуска.');}await pause(150);
     }
     // The candidate window stays hidden until the renderer acknowledges startup.
     // Only this worker's unconfirmed GUI is terminated; PTY/MCP hosts are separate.

@@ -44,7 +44,15 @@ async function prepareInstall(download,executable,{storage,layout:provided,runti
   const job=await fs.mkdtemp(path.join(layout.home,'.opora-update-'));
   const directory=path.join(layout.home,'v',download.version+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12));
   try{
-    onProgress('Распаковка новой версии');await extract(download.archive,job);
+    onProgress('Распаковка новой версии');
+    if(download.payload){
+      const meta=JSON.parse(await fs.readFile(path.join(download.payload,'runtime.json'),'utf8'));
+      await legacy.appHashes(download.payload);
+      const dest=path.join(job,'Opora-win32-x64');await fs.mkdir(path.join(dest,'resources'),{recursive:true});
+      await fs.copyFile(path.join(download.payload,'new-app.asar'),path.join(dest,'resources/app.asar'));
+      for(const file of meta.appFiles||[]){const output=path.join(dest,file.name);await fs.mkdir(path.dirname(output),{recursive:true});await fs.copyFile(path.join(download.payload,file.name),output);}
+      await fs.writeFile(path.join(dest,'runtime.json'),JSON.stringify(meta));
+    }else await extract(download.archive,job);
     const source=path.join(job,'Opora-win32-x64');
     if(download.kind==='app'){
       if(download.runtimeVersion!==runtimeVersion)throw new Error('Для этой версии нужен другой Electron.');
