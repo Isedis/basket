@@ -19,14 +19,15 @@ async function main(){
         await fs.writeFile(path.join(profile,'terminal-broker.json'),JSON.stringify({schemaVersion:1,pid:process.pid,port:server.address().port,token:'a'.repeat(64)}));
       }
       const executable=process.env.OPORA_EXECUTABLE||(process.platform==='win32'?path.resolve('release/Opora-win32-x64/Opora.exe'):require('electron'));
-      let args=[];
+      let args=['--user-data-dir='+profile];
       if(process.platform!=='win32'){
         const entry=path.join(appdata,'entry.cjs');await fs.writeFile(entry,`require('electron').app.setPath('userData',${JSON.stringify(profile)});require(${JSON.stringify(path.resolve('desktop/main.cjs'))});`);
-        args=[entry,'--no-sandbox','--ozone-platform=headless'];
+        args=[entry,'--no-sandbox','--ozone-platform=headless','--user-data-dir='+profile];
       }
       const started=Date.now();
       application=await _electron.launch({executablePath:executable,args,env:{...process.env,APPDATA:appdata},timeout:20000});
       pid=await application.evaluate(()=>process.pid);
+      report.current={scenario,profile:await application.evaluate(({app})=>app.getPath('userData'))};
       const page=await application.firstWindow();
       await page.locator('nav [data-tab="brand"]').waitFor({timeout:12000});
       const visibleMs=Date.now()-started;
@@ -44,9 +45,9 @@ async function main(){
         await page.waitForURL(/startup\.html$/);
         await page.getByRole('button',{name:'Скопировать диагностику'}).click();
         assert.match(await application.evaluate(({clipboard})=>clipboard.readText()),/Не удалось загрузить интерфейс/);
-        const closed=application.waitForEvent('close');
-        await application.evaluate(({BrowserWindow})=>{BrowserWindow.getAllWindows()[0].close();});
-        await closed;pid=null;application=null;report.failureScreenWorks=true;
+        const closed=page.waitForEvent('close');
+        await application.evaluate(({BrowserWindow})=>{BrowserWindow.getAllWindows()[0].close();}).catch(()=>{});
+        await closed;report.failureScreenWorks=true;
       }
       // Only terminate our fixture GUI, never a user process or a process tree.
       if(pid)process.kill(pid,'SIGKILL');pid=null;application=null;
@@ -54,7 +55,7 @@ async function main(){
       if(server){await new Promise(resolve=>server.close(resolve));server=null;}
     }
     console.log('PASS startup '+JSON.stringify(report));
-  }catch(error){report.error=error.stack;throw error;}
+  }catch(error){report.error=error.stack;try{report.log=await fs.readFile(path.join(report.current.profile,'startup.log'),'utf8');}catch{}throw error;}
   finally{
     if(process.env.OPORA_REPORT)await fs.writeFile(process.env.OPORA_REPORT,JSON.stringify(report,null,2));
     if(pid)try{process.kill(pid,'SIGKILL');}catch{}
