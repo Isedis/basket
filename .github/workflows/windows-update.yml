@@ -2,8 +2,8 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora]
-    paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'package*.json', '.github/workflows/windows-update.yml']
+    branches: [opora-update-hardening, opora-startup-repair, opora]
+    paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
 concurrency:
@@ -23,6 +23,13 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --no-audit --no-fund
+      - name: Extract exact published Windows artifact
+        run: python -c "import pathlib,zipfile,io; r=pathlib.Path('distribution/windows'); data=b''.join(p.read_bytes() for p in sorted(r.glob('*.part*'))); zipfile.ZipFile(io.BytesIO(data)).extractall('release')"
+      - name: Production binary startup with retained and broken settings
+        id: startup
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-startup.json
+        run: node scripts/startup-smoke.cjs
       - name: Installer protocol unit tests
         id: unit
         run: |
@@ -53,6 +60,13 @@ jobs:
           OPORA_REPORT: ${{ runner.temp }}/opora-migration.json
           OPORA_TEST_UPDATE_MODE: migration
         run: node scripts/native-update-smoke.cjs
+      - name: Repair an unresponsive gray GUI without stopping MCP
+        id: repair
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-repair.json
+          OPORA_TEST_UPDATE_MODE: repair
+          OPORA_UPDATE_FROM: 0.12.0
+        run: node scripts/native-update-smoke.cjs
       - name: Publish machine-readable validation result
         if: always()
         uses: actions/github-script@v7
@@ -62,6 +76,8 @@ jobs:
           NATIVE_RESULT: ${{ steps.native.outcome }}
           ROLLBACK_RESULT: ${{ steps.rollback.outcome }}
           MIGRATION_RESULT: ${{ steps.migration.outcome }}
+          STARTUP_RESULT: ${{ steps.startup.outcome }}
+          REPAIR_RESULT: ${{ steps.repair.outcome }}
         with:
           script: |
             const fs = require('fs');
@@ -70,8 +86,8 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
-              native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
+              steps: {startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              startup:read('opora-startup.json'),repair:read('opora-repair.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';

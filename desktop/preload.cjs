@@ -1,5 +1,8 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('opora', {
+  startupInfo:()=>ipcRenderer.invoke('startup:info'),
+  startupCopy:()=>ipcRenderer.invoke('startup:copy'),
+  startupRetry:()=>ipcRenderer.send('startup:retry'),
   workspaceReady:()=>ipcRenderer.send('app:workspace-ready'),
   claudeState:()=>ipcRenderer.invoke('claude:state'),
   claudeStart:options=>ipcRenderer.invoke('claude:start',options),

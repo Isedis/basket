@@ -42,4 +42,5 @@ with zipfile.ZipFile(root/'distribution/Opora-small-update.zip','w',zipfile.ZIP_
  for file in app_files:z.write(app/file['name'],'opora-update/'+file['name'])
  z.writestr('opora-update/runtime.json',json.dumps(meta))
  z.writestr('UPDATE-OPORA.cmd',cmd.replace('\n','\r\n'))
+ z.writestr('REPAIR-OPORA.cmd',cmd.replace('"%OPORA_PACKAGE_ROOT%"\n','"%OPORA_PACKAGE_ROOT%" --repair\n').replace('\n','\r\n'))
 print(f'App update: {patch["size"]} bytes; migration ZIP: {(root/"distribution/Opora-small-update.zip").stat().st_size} bytes')
