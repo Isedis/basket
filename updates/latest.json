@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "version": "0.19.0",
-  "commit": "5ab9a8215abae20bb975914e1da3a248f2d70d89",
-  "size": 164562345,
-  "sha256": "2b6ff57bbb14d756de87392b1a6c4ff3dc14a5b3f52bf0a1cbad5214fa689871",
+  "version": "0.19.1",
+  "commit": "b78c0e4b5a93d1155fd432cb59b0e1def3cb533c",
+  "size": 164567296,
+  "sha256": "6ced91fa6acfe6bf114f00d274621acec985a99fd581b0c17005b4f15a0bdcc4",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "6ba9d49eda341ae516e2139eec85fbeb6e779fcc85a069edc7f7ef495075bf57"
+      "sha256": "b2e02808485e9b977df8bd14afa127d094bba275533b78f032de3ebd886d9e75"
     },
     {
       "name": "Opora-Windows.zip.part02",
@@ -18,25 +18,25 @@
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "90640612d2caf3c39327119ce6d152e6fae8e1f6fa23017157926df333b666a2"
+      "sha256": "e66bfa2c3fbc67a08de52eb5c942b10872af1e735aa8085fbede830e43a35fae"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 13567401,
-      "sha256": "42f51ca830c29ed187cd459e1d3969dcec6700cad1c9cc54abf9a1c063a508cc"
+      "size": 13572352,
+      "sha256": "f266ad5a75ad6232a6b8835aee43819bab9470956bcb3bbb3c3f0a1496e39527"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 6444050,
-    "sha256": "9af6df5d799a4e410c9c75bd4a38edb73df6ee07ac5033b9eac7af153518a0f0",
+    "size": 6449007,
+    "sha256": "02a40ac3de854621db86f14ae298d39e6604a23380f4f5594507d5c0489aadd2",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 6444050,
-        "sha256": "9af6df5d799a4e410c9c75bd4a38edb73df6ee07ac5033b9eac7af153518a0f0"
+        "size": 6449007,
+        "sha256": "02a40ac3de854621db86f14ae298d39e6604a23380f4f5594507d5c0489aadd2"
       }
     ]
   },
-  "notes": "Новый чат Claude: потоковый текст, индикатор работы с временем и журнал реальных действий. Вкладки разговоров сверху, Markdown с подсветкой GDScript и копированием кода, планы и проверки внутри переписки. Компактный терминальный ввод и спокойное оформление. История, разрешения и продолжение разговоров сохранены."
+  "notes": "Чат стал читабельнее: ограничена ширина строк, усилена иерархия заголовков и увеличены отступы. Компактная строка текущего действия с файлом и временем всегда видна над вводом; нажмите её для журнала. Вопросы Claude открываются отдельной панелью с карточками вариантов, своим ответом и навигацией. Черновики ответов сохраняются при перезагрузке окна."
 }
