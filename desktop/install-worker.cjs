@@ -19,11 +19,12 @@ async function run(job){
   const cancelled=async()=>{if(await json(path.join(job,'cancel.json')))throw new Error('Установка отменена.');try{await fs.access(path.join(job,'cancel'));throw new Error('Установка отменена.');}catch(error){if(error.code!=='ENOENT')throw error;}};
   const launch=async(directory,confirm)=>{
     const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+    env.ELECTRON_NO_ATTACH_CONSOLE='1';
     if(confirm){env.OPORA_UPDATE_JOB=job;env.OPORA_UPDATE_TOKEN=plan.token;}else{delete env.OPORA_UPDATE_JOB;delete env.OPORA_UPDATE_TOKEN;}
     return retry(async()=>{
       const log=await fs.open(path.join(job,confirm?'gui-startup.log':'recovery-startup.log'),'a');
       try{
-        const processChild=spawn(path.join(directory,'Opora.exe'),plan.launchArgs||[],{cwd:directory,env,stdio:['ignore',log.fd,log.fd],windowsHide:true,detached:false});
+        const processChild=spawn(path.join(directory,'Opora.exe'),plan.launchArgs||[],{cwd:directory,env,stdio:['ignore',log.fd,log.fd],windowsHide:true,detached:true});
         await new Promise((resolve,reject)=>{processChild.once('spawn',resolve);processChild.once('error',reject);});
         if(confirm){await write(path.join(job,'gui-process.json'),{pid:processChild.pid,executable:path.join(directory,'Opora.exe')});processChild.once('exit',(code,signal)=>{write(path.join(job,'gui-process.json'),{pid:processChild.pid,exitCode:code,signal}).catch(()=>{});});}
         processChild.unref();return processChild;

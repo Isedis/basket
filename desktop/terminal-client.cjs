@@ -15,7 +15,7 @@ class TerminalClient{
     if(info&&!alive(info)){await fs.rm(this.record,{force:true});info=null;}
     if(!info&&start){
       await fs.mkdir(require('node:path').dirname(this.record),{recursive:true});
-      const child=spawn(this.executable,[this.entry,this.record,...(this.native?[this.native]:[])],{cwd:require('node:path').dirname(this.record),env:{...process.env,ELECTRON_RUN_AS_NODE:'1'},stdio:'ignore',detached:false,windowsHide:true});
+      const child=spawn(this.executable,[this.entry,this.record,...(this.native?[this.native]:[])],{cwd:require('node:path').dirname(this.record),env:{...process.env,ELECTRON_RUN_AS_NODE:'1',ELECTRON_NO_ATTACH_CONSOLE:'1'},stdio:'ignore',detached:true,windowsHide:true});
       await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();
       const deadline=Date.now()+15000;
       while(Date.now()<deadline){try{info=JSON.parse(await fs.readFile(this.record,'utf8'));if(alive(info))break;}catch{}await pause(50);}

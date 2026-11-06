@@ -77,7 +77,7 @@ async function launchInstaller(plan,resultFile,{spawnProcess=spawn,onProgress=()
   const out=await fs.open(path.join(plan.job,'stdout.log'),'wx'),err=await fs.open(path.join(plan.job,'stderr.log'),'wx');
   let child,exited=false,code=null;
   try{
-    child=spawnProcess(path.join(plan.directory,'Opora.exe'),[path.join(plan.job,'install-worker.cjs')],{cwd:plan.job,env:{...process.env,ELECTRON_RUN_AS_NODE:'1'},stdio:['ignore',out.fd,err.fd],detached:false,windowsHide:true});
+    child=spawnProcess(path.join(plan.directory,'Opora.exe'),[path.join(plan.job,'install-worker.cjs')],{cwd:plan.job,env:{...process.env,ELECTRON_RUN_AS_NODE:'1',ELECTRON_NO_ATTACH_CONSOLE:'1'},stdio:['ignore',out.fd,err.fd],detached:true,windowsHide:true});
     child.on('error',()=>{});child.once('exit',value=>{exited=true;code=value;});
     await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
     await layoutApi.atomic(path.join(plan.job,'worker-launch.json'),{parentPid:process.pid,expectedPid:child.pid,mode:'electron-node'});

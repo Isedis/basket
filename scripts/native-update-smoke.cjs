@@ -85,7 +85,7 @@ async function main(){
     report.oldProcess={pid:oldPid,pageClosed:page.isClosed(),inspectorDetached};
     try{report.lifecycle=await fs.readFile(lifecycle,'utf8');}catch{}
     if(result.status!=='installed'){
-      for(const file of ['worker-launch.json','progress.json','ready.json','plan.json','gui-process.json','gui-error.json','new-start.json','launch-ack.json'])try{const value=JSON.parse(await fs.readFile(path.join(result.job,file),'utf8'));report[file]={pid:value.pid,parentPid:value.parentPid,expectedPid:value.expectedPid,phase:value.phase,exitCode:value.exitCode,executable:value.executable,error:value.error,version:value.version,argv:value.argv,tokenMatches:file==='ready.json'?value.token===JSON.parse(await fs.readFile(path.join(result.job,'plan.json'),'utf8')).token:undefined};}catch{}
+      for(const file of ['worker-launch.json','progress.json','ready.json','plan.json','parent-handoff.json','gui-process.json','gui-error.json','new-start.json','launch-ack.json'])try{const value=JSON.parse(await fs.readFile(path.join(result.job,file),'utf8'));report[file]={pid:value.pid,parentPid:value.parentPid,expectedPid:value.expectedPid,phase:value.phase,exitCode:value.exitCode,executable:value.executable,error:value.error,version:value.version,argv:value.argv,saved:value.saved,released:value.released,tokenMatches:['ready.json','parent-handoff.json'].includes(file)?value.token===JSON.parse(await fs.readFile(path.join(result.job,'plan.json'),'utf8')).token:undefined};}catch{}
     }
     if(failLaunch){assert.equal(result.status,'failed');assert.equal(result.rollback,'restored');newPid=result.recoveredPid;report.rollback=true;}
     else{
