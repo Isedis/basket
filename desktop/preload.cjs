@@ -1,5 +1,13 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('opora', {
+  claudeState:()=>ipcRenderer.invoke('claude:state'),
+  claudeStart:options=>ipcRenderer.invoke('claude:start',options),
+  claudeInput:input=>ipcRenderer.invoke('claude:input',input),
+  claudeResize:input=>ipcRenderer.invoke('claude:resize',input),
+  claudeStop:id=>ipcRenderer.invoke('claude:stop',id),
+  claudeSelect:()=>ipcRenderer.invoke('claude:select'),
+  claudeClipboard:()=>ipcRenderer.invoke('claude:clipboard'),
+  onClaudeEvent:callback=>{const listener=(_,event)=>callback(event);ipcRenderer.on('claude:event',listener);return ()=>ipcRenderer.removeListener('claude:event',listener);},
   openProject: () => ipcRenderer.invoke('project:open'),
   restoreProject: () => ipcRenderer.invoke('project:restore'),
   save: (state,baseBrand,baseState,approvedBrand) => ipcRenderer.invoke('project:save', state,baseBrand,baseState,approvedBrand),

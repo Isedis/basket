@@ -136,3 +136,27 @@ test('Application-only preparation copies verified runtime locally and rejects c
     assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
   }
 });
+
+
+test('Small updates deliver and verify native application files without reading them from the old runtime',async t=>{
+  const crypto=require('node:crypto');
+  for(const bad of ['none','tamper','escape']){
+    const f=await fixture(t);
+    await fs.writeFile(path.join(f.directory,'engine.dll'),'engine');
+    const digest=data=>crypto.createHash('sha256').update(data).digest('hex');
+    const native='resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node';
+    const run=async(script,env,options)=>{
+      await f.runPowerShell(script,env,options);
+      if(env.OPORA_UPDATE_STAGE){
+        const source=path.join(env.OPORA_UPDATE_STAGE,'Opora-win32-x64');
+        await fs.mkdir(path.dirname(path.join(source,native)),{recursive:true});
+        await fs.writeFile(path.join(source,native),bad==='tamper'?'broken':'native');
+        await fs.writeFile(path.join(source,'runtime.json'),JSON.stringify({runtimeVersion:'45.2.3',files:[{name:'engine.dll',sha256:digest('engine')}],appFiles:[{name:bad==='escape'?'resources/app.asar.unpacked/../../outside':native,sha256:digest('native')}]}));
+      }
+    };
+    const action=()=>prepareInstall({...f.download,kind:'app',runtimeVersion:'45.2.3'},path.join(f.directory,'Opora.exe'),{runPowerShell:run,runtimeVersion:'45.2.3'});
+    if(bad==='none'){const plan=await action();assert.equal(plan.hashes[native],digest('native'));assert.equal(await fs.readFile(path.join(plan.source,native),'utf8'),'native');}
+    else await assert.rejects(action(),/файл|путь/);
+    await assert.rejects(fs.access(path.join(f.directory,native)));
+  }
+});

@@ -25,10 +25,17 @@ try {
  foreach($file in $meta.files){$output=Join-Path $source $file.name;[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output)) | Out-Null;[IO.File]::Copy((Join-Path $directory $file.name),$output);if((Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash -ne $file.sha256){throw 'Ошибка копирования Electron.'}}
  [IO.File]::Copy((Join-Path $directory 'Opora.exe'),(Join-Path $source 'Opora.exe'))
  [IO.File]::Copy((Join-Path $package 'new-app.asar'),(Join-Path $source 'resources/app.asar'))
+ foreach($file in $meta.appFiles){
+  if($file.name -notmatch '^resources/app\.asar\.unpacked/[a-zA-Z0-9_./-]+$' -or $file.name.Split('/') -contains '..' -or $file.name.Split('/') -contains '.' -or $file.name.Split('/') -contains '' -or $file.sha256 -notmatch '^[a-f0-9]{64}$'){throw 'Некорректный файл приложения.'}
+  $inputFile=Join-Path $package $file.name
+  if((Get-FileHash -LiteralPath $inputFile -Algorithm SHA256).Hash -ne $file.sha256){throw 'Повреждён файл приложения.'}
+  $output=Join-Path $source $file.name;[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output)) | Out-Null;[IO.File]::Copy($inputFile,$output)
+ }
  # Refresh the portable launcher too: it must read the ASAR's actual version.
  $portable=Split-Path (Split-Path $directory -Parent) -Parent
  if(Test-Path -LiteralPath (Join-Path $portable 'START-OPORA.cmd')){[IO.File]::Copy((Join-Path $package 'NEW-START-OPORA.cmd'),(Join-Path $portable 'START-OPORA.cmd'),$true)}
  $hashes=@{};foreach($file in @('Opora.exe','resources/app.asar')){$hashes[$file]=(Get-FileHash -LiteralPath (Join-Path $source $file) -Algorithm SHA256).Hash.ToLowerInvariant()}
+ foreach($file in $meta.appFiles){$hashes[$file.name]=$file.sha256}
  if(Get-Process -Id 2147483647 -ErrorAction SilentlyContinue){throw 'Не удалось подготовить запуск.'}
  $result=Join-Path $env:APPDATA 'opora/update-result.json';[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($result)) | Out-Null
  $plan=@{schemaVersion=1;job=$job;source=$source;directory=$directory;backup=($directory+'.opora-backup-'+[guid]::NewGuid());version=$meta.version;parentPid=2147483647;token=([guid]::NewGuid().ToString('N')+[guid]::NewGuid().ToString('N'));hashes=$hashes;resultFile=$result}

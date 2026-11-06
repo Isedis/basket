@@ -152,7 +152,27 @@ try {
         Assert-Old $plan
         Assert-That ($script:MoveCount -eq 0) 'Cancelled install moved files'
     }
-    Assert-That ($script:count -eq 13) 'Not all installer scenarios executed'
+    Check 'native terminal files survive the directory replacement' {
+        $plan=New-Plan 'native-ok'
+        $relative='resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node'
+        $file=Join-Path $plan.source $relative;[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file)) | Out-Null
+        [IO.File]::WriteAllText($file,'native addon')
+        $plan.hashes | Add-Member -NotePropertyName $relative -NotePropertyValue ((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())
+        Assert-That (Invoke-OporaUpdate $plan) 'Native update failed'
+        Assert-That ([IO.File]::ReadAllText((Join-Path $plan.directory $relative)) -eq 'native addon') 'Native addon missing'
+    }
+    Check 'changed native terminal files are rejected before readiness' {
+        $plan=New-Plan 'native-bad'
+        $relative='resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node'
+        $file=Join-Path $plan.source $relative;[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file)) | Out-Null
+        [IO.File]::WriteAllText($file,'native addon')
+        $plan.hashes | Add-Member -NotePropertyName $relative -NotePropertyValue ((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())
+        [IO.File]::WriteAllText($file,'tampered')
+        Assert-That (!(Invoke-OporaUpdate $plan)) 'Tampered native update accepted'
+        Assert-That (!(Test-Path -LiteralPath (Join-Path $plan.job 'ready.json'))) 'Quit authorized for a tampered addon'
+        Assert-Old $plan
+    }
+    Assert-That ($script:count -eq 15) 'Not all installer scenarios executed'
     Write-Host ('PASS '+$script:count+' installer scenarios; Windows process discovery, GUI creation and acknowledgement are simulated.')
 } finally {
     Set-Location -LiteralPath $originalLocation;[Environment]::CurrentDirectory=$originalCwd

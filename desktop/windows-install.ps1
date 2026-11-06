@@ -62,7 +62,9 @@ function Invoke-OporaUpdate($Plan,[int]$ParentTimeoutSeconds=90,[int]$ChildrenTi
                 Start-Sleep -Milliseconds 250
             }
         }
-        foreach ($relative in @('Opora.exe','resources/app.asar')) {
+        $checkFiles=@('Opora.exe','resources/app.asar')+@($Plan.hashes.PSObject.Properties.Name | Where-Object { $_ -ne 'Opora.exe' -and $_ -ne 'resources/app.asar' })
+        foreach ($relative in $checkFiles) {
+            if ($relative -ne 'Opora.exe' -and $relative -ne 'resources/app.asar' -and ($relative -notmatch '^resources/app\.asar\.unpacked/[a-zA-Z0-9_./-]+$' -or $relative.Split('/') -contains '..' -or $relative.Split('/') -contains '.' -or $relative.Split('/') -contains '')) { throw 'Некорректный путь файла приложения.' }
             if (Test-Path -LiteralPath (Join-Path $Plan.job 'cancel')) { throw 'Приложение отменило установку.' }
             $phase='Проверка SHA256: '+$relative
             Write-UpdateProgress $Plan $phase

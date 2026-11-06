@@ -13,11 +13,15 @@ const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
 const visualFeedback = require('../src/visual-feedback.cjs');
 const workContext = require('../src/work-context.cjs');
+const {ClaudeTerminal,resolveClaude}=require('./claude-terminal.cjs');
 const workReaders=new Map();
 let root = null;
 let lastScan = null;
 let win;
 let canClose = false;
+let terminal;
+let terminalStarting=false;
+let terminalClosePrompt=false;
 const requireProject = () => {if (!root) throw new Error('Сначала подключите папку проекта Godot.'); return root;};
 
 const primary=app.requestSingleInstanceLock();
@@ -28,6 +32,19 @@ if(primary)app.whenReady().then(async () => {
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.on('close', event => {
+    if(terminal?.active || terminalStarting){
+      event.preventDefault();
+      if(terminalClosePrompt)return;
+      terminalClosePrompt=true;
+      (async()=>{
+        try {
+          if(terminalStarting)throw new Error('Claude запускается. Дождитесь запуска перед закрытием.');
+          const answer=await dialog.showMessageBox(win,{type:'question',title:'Claude Code работает',message:'Завершить Claude Code и закрыть Опору?',detail:'Текущая операция агента будет прервана. История разговора сохраняется самим Claude Code.',buttons:['Вернуться','Завершить и закрыть'],defaultId:0,cancelId:0});
+          if(answer.response===1){await terminal.stop(terminal.snapshot().id);win.close();}
+        }catch(error){dialog.showErrorBox('Claude Code',error.message);}
+        finally{terminalClosePrompt=false;}
+      })();return;
+    }
     if (!canClose) {event.preventDefault(); win.webContents.send('app:flush');}
   });
   ipcMain.on('app:ready-to-close', event => {
@@ -47,6 +64,7 @@ if(primary)app.whenReady().then(async () => {
   ipcMain.handle('updates:diagnostics',async()=>({currentVersion:require('../package.json').version,installDirectory:path.dirname(process.execPath),...await windowsUpdater.readDiagnostics(path.join(app.getPath('userData'),'update-result.json'),{directory:path.dirname(process.execPath)})}));
   ipcMain.handle('updates:download',()=>updater.download());
   ipcMain.handle('updates:install',async ()=>{
+    if(terminal?.active || terminalStarting)throw new Error('Сначала завершите Claude Code в панели терминала, затем установите обновление.');
     if(!updater.supported)throw new Error('Установка обновлений доступна только в готовой Windows-сборке.');
     if(installing)throw new Error('Установка уже выполняется.');
     installing=true;
@@ -64,6 +82,45 @@ if(primary)app.whenReady().then(async () => {
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');
   const getAgentConfig=()=>agentConfig.connection(requireProject(),{executable:process.execPath,entry:path.join(__dirname,'../mcp/server.cjs'),codexHome:process.env.CODEX_HOME||path.join(app.getPath('home'),'.codex')});
+  terminal=new ClaudeTerminal({
+    loadPty:()=>app.isPackaged?require(path.join(process.resourcesPath,'app.asar.unpacked/node_modules/node-pty')):require('node-pty'),
+    onEvent:event=>{if(!win.isDestroyed())win.webContents.send('claude:event',event);}
+  });
+  const terminalPreferences=path.join(app.getPath('userData'),'claude-terminal.json');
+  async function claudeCommand(){
+    let selected;
+    try{selected=JSON.parse(await fs.readFile(terminalPreferences,'utf8')).executable;}catch(error){if(error.code!=='ENOENT')throw new Error('Не удалось прочитать путь Claude Code. Выберите исполняемый файл заново.');}
+    return resolveClaude({selected,home:app.getPath('home')});
+  }
+  function terminalHandle(channel,handler){ipcMain.handle(channel,(event,...args)=>{if(event.sender!==win.webContents)throw new Error('Недоступный отправитель.');return handler(...args);});}
+  terminalHandle('claude:state',()=>terminal.snapshot());
+  terminalHandle('claude:start',async(options={})=>{
+    const project=requireProject();
+    if(terminalStarting)throw new Error('Claude уже запускается.');
+    if(terminal.active)return terminal.snapshot();
+    if(installing)throw new Error('Дождитесь завершения обновления.');
+    terminalStarting=true;
+    try{
+      const command=await claudeCommand();
+      const config=await getAgentConfig();
+      await agentConfig.configure('claude',config);
+      if(root!==project)throw new Error('Проект сменился. Повторите запуск.');
+      return terminal.start({root:project,command,serverName:config.server_name,cols:options.cols,rows:options.rows,resume:options.resume===true});
+    }finally{terminalStarting=false;}
+  });
+  terminalHandle('claude:input',input=>terminal.write(input));
+  terminalHandle('claude:resize',input=>terminal.resize(input));
+  terminalHandle('claude:stop',id=>terminal.stop(id));
+  terminalHandle('claude:select',async()=>{
+    if(terminal.active || terminalStarting)throw new Error('Завершите текущую сессию перед выбором Claude Code.');
+    const selected=await dialog.showOpenDialog(win,{title:'Выберите Claude Code',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'Claude Code',extensions:['exe','cmd']}]}:{})});
+    if(selected.canceled)return null;
+    const command=await resolveClaude({selected:selected.filePaths[0],home:app.getPath('home')});
+    await fs.mkdir(path.dirname(terminalPreferences),{recursive:true});
+    await fs.writeFile(terminalPreferences,JSON.stringify({executable:command.display}),{mode:0o600});
+    return {executable:command.display};
+  });
+  terminalHandle('claude:clipboard',()=>clipboard.readText());
   ipcMain.handle('agents:info',async ()=>{
     const config=await getAgentConfig();
     return {...config,status:await agentConfig.status(config)};
@@ -76,6 +133,7 @@ if(primary)app.whenReady().then(async () => {
   ipcMain.handle('agents:disconnect',async(_,client)=>{const config=await getAgentConfig();const result=await agentConfig.disconnect(client,config);return {...result,status:await agentConfig.status(config)};});
   ipcMain.handle('agents:reports',()=>agentService.listReports(requireProject()));
   ipcMain.handle('project:restore', async () => {
+    if(terminal?.active || terminalStarting)return core.loadProject(requireProject());
     try {
       const settings = JSON.parse(await fs.readFile(preferences, 'utf8'));
       const loaded = await core.loadProject(settings.lastProject);
@@ -88,6 +146,7 @@ if(primary)app.whenReady().then(async () => {
   });
 
   ipcMain.handle('project:open', async () => {
+    if(terminal?.active || terminalStarting)throw new Error('Завершите Claude Code в панели терминала перед сменой проекта.');
     const selected = await dialog.showOpenDialog(win, {title:'Выберите папку с project.godot', properties:['openDirectory']});
     if (selected.canceled) return null;
     const loaded = await core.loadProject(selected.filePaths[0]);
@@ -174,3 +233,4 @@ if(primary)app.whenReady().then(async () => {
   finally {delete process.env.OPORA_UPDATE_JOB;delete process.env.OPORA_UPDATE_TOKEN;}
 });
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit',()=>terminal?.dispose());

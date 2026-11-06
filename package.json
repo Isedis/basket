@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Единая память проекта Godot для Claude и Codex",
   "private": true,
   "main": "desktop/main.cjs",
@@ -13,17 +13,21 @@
     "test:launcher": "node scripts/launcher-smoke.cjs",
     "test:installer": "node scripts/installer-smoke.cjs",
     "test:restart": "node scripts/update-restart-smoke.cjs",
-    "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/image-analysis.cjs && node --check desktop/windows-updater.cjs && node --check src/core.cjs && node --check src/work-context.cjs && node --check src/source-snapshot.cjs && node --check src/visual-feedback.cjs && node --check ui/visual-feedback.js && node --check src/project-map.cjs && node --check ui/project-map.js && node --check src/brandbook.cjs && node --check src/updater.cjs && node --check ui/context.js && node --check ui/app.js && node --check src/agent-service.cjs && node --check src/agent-config.cjs && node --check mcp/server.cjs && node --check ui/brand-review.js && node --check src/brand-review.cjs",
-    "package:win": "electron-packager . Opora --platform=win32 --arch=x64 --out=release --electron-version=45.2.3 --overwrite --prune=true --ignore=^/release --ignore=^/artifacts --ignore=^/test --ignore=^/docs --ignore=^/scripts --ignore=^/distribution --ignore=^/updates --ignore=^/Opora-App --ignore=^/Opora-demo.html --ignore=^/START-OPORA.cmd --ignore=^/package-lock.json --ignore=^/.git"
+    "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/image-analysis.cjs && node --check desktop/windows-updater.cjs && node --check src/core.cjs && node --check src/work-context.cjs && node --check src/source-snapshot.cjs && node --check src/visual-feedback.cjs && node --check ui/visual-feedback.js && node --check src/project-map.cjs && node --check ui/project-map.js && node --check src/brandbook.cjs && node --check src/updater.cjs && node --check ui/context.js && node --check ui/app.js && node --check src/agent-service.cjs && node --check src/agent-config.cjs && node --check mcp/server.cjs && node --check ui/brand-review.js && node --check src/brand-review.cjs && node --check desktop/claude-terminal.cjs && node --check ui/claude-terminal.js && node --check scripts/package-win.cjs",
+    "package:win": "node scripts/package-win.cjs",
+    "test:terminal": "node scripts/terminal-smoke.cjs"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "@modelcontextprotocol/client": "2.4.0",
     "electron": "45.2.3",
-    "playwright-core": "1.64.1"
+    "playwright-core": "1.64.1",
+    "@xterm/xterm": "6.0.0",
+    "@xterm/addon-fit": "0.11.0"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
+    "node-pty": "1.1.0",
     "proper-lockfile": "4.1.2",
     "smol-toml": "1.9.1",
     "zod": "4.6.7"

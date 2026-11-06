@@ -79,6 +79,21 @@ async function stageRuntime(source,directory,required,actual){
   }
   await rawFs.promises.copyFile(path.join(directory,'Opora.exe'),path.join(source,'Opora.exe'));
 }
+async function appHashes(source){
+  const manifest=await readJson(path.join(source,'runtime.json'));
+  const hashes={};
+  if(!manifest?.appFiles)return hashes;
+  if(!Array.isArray(manifest.appFiles)||manifest.appFiles.length>2000)throw new Error('Некорректный список файлов приложения.');
+  for(const file of manifest.appFiles){
+    if(!file||!/^resources\/app\.asar\.unpacked\/[a-zA-Z0-9_./-]+$/.test(file.name)||file.name.split('/').some(p=>!p||p==='.'||p==='..')||hashes[file.name]||!/^[a-f0-9]{64}$/.test(file.sha256))throw new Error('Некорректный путь файла приложения.');
+    const target=path.join(source,file.name);
+    // Reject redirected parent directories as well as redirected files.
+    let parent=source;for(const part of file.name.split('/')){parent=path.join(parent,part);if((await rawFs.promises.lstat(parent)).isSymbolicLink())throw new Error('Недопустимая ссылка в обновлении.');}
+    if(!(await rawFs.promises.stat(target)).isFile()||await hashFile(target)!==file.sha256)throw new Error('Повреждён файл приложения: '+file.name);
+    hashes[file.name]=file.sha256;
+  }
+  return hashes;
+}
 async function prepareInstall(download,executable,options={}) {
   const directory=path.dirname(path.resolve(executable));
   const parent=path.dirname(directory);
@@ -99,7 +114,7 @@ async function prepareInstall(download,executable,options={}) {
     if(download.kind==='app'){options.onProgress?.('Проверка и копирование установленного Electron');await stageRuntime(source,directory,download.runtimeVersion,options.runtimeVersion||process.versions.electron);}
     const pkg=await readArchivePackage(path.join(source,'resources/app.asar'));
     if(pkg.name!=='opora' || pkg.version!==download.version)throw new Error('Версия приложения внутри архива не совпала с описанием. Установка отменена.');
-    const hashes={};
+    const hashes=await appHashes(source);
     for(const file of ['Opora.exe','resources/app.asar']){if(!(await rawFs.promises.stat(path.join(source,file))).isFile())throw new Error('В обновлении не найден '+file);hashes[file]=await hashFile(path.join(source,file));}
     return {schemaVersion:1,job,script,source,directory,version:download.version,backup:directory+'.opora-backup-'+crypto.randomUUID(),parentPid:process.pid,token:crypto.randomBytes(32).toString('hex'),hashes};
   } catch(error) {
