@@ -50,6 +50,10 @@ let reviewTimer = null;
 let reviewErrorFor = null;
 const bridge = window.opora;
 const projectMapView=window.OporaProjectMap.create({getRoot:()=>root,bridge,notify:toast,onError:fail});
+const visualFeedbackView=window.OporaVisualFeedback.create({getRoot:()=>root,bridge,notify:toast,onError:fail,createTask:(shot,note)=>{
+  if(state.tasks.some(t=>t.feedbackNoteId===note.id&&t.status!=='done')){toast('Задача для этого замечания уже есть.');return;}
+  state.tasks.push({id:id(),title:(note.kind==='keep'?'Сохранить: ':'Исправить: ')+note.text.slice(0,140),acceptance:`${note.text}\nСнимок: «${shot.title}».\n${note.scene?'Сцена/файл: '+note.scene+'\n':''}Сохранить понравившиеся решения. Приложить результат для сравнения в разделе «Замечания». Получить подтверждение пользователя.`,status:'backlog',feedbackNoteId:note.id,feedbackShotId:shot.id});changed();toast('Замечание добавлено в задачи.');
+}});
 
 function toast(message, error = false) {
   clearTimeout(toastTimer);
@@ -107,7 +111,7 @@ function changed() {
 function refreshChrome() {
   $('#side-name').textContent = state.name;
   $('#header-name').textContent = state.name;
-  $('#header-route').textContent=({overview:'/desk',tasks:'/tasks',brand:'/brand',agents:'/agents',context:'/context',map:'/map'})[tab];
+  $('#header-route').textContent=({overview:'/desk',tasks:'/tasks',brand:'/brand',agents:'/agents',context:'/context',map:'/map',feedback:'/feedback'})[tab];
   $('#side-mode').textContent = root ? 'Godot / локально' : 'Демо';
   $('#header-name').title = root || 'Демонстрационный проект';
   $('#task-count').textContent = state.tasks.filter(t => t.status !== 'done').length;
@@ -236,8 +240,9 @@ function configureAgent(client) {
 function render() {
   const routeChanged=renderedTab!==tab || renderedRoot!==root;
   refreshChrome();
-  $('#main').innerHTML = tab==='map'?'<div id="project-map-view"></div>':({overview,brand,tasks,context,agents})[tab]();
+  $('#main').innerHTML = tab==='feedback'?'<div id="visual-feedback-view"></div>':tab==='map'?'<div id="project-map-view"></div>':({overview,brand,tasks,context,agents})[tab]();
   if(tab==='map')projectMapView.mount($('#project-map-view'));
+  if(tab==='feedback')visualFeedbackView.mount($('#visual-feedback-view'));
   if(routeChanged)$('#main').scrollTop=0;
   renderedTab=tab;renderedRoot=root;
   if (tab === 'context') updatePreview();
@@ -310,6 +315,7 @@ async function openProject() {
   if(scanning || applyingBrand){toast('Дождитесь завершения работы с брендбуком.');return;}
   if (!bridge) {showModal('<h2 id="modal-title">Подключение — в приложении Windows</h2><p>Сейчас открыт браузерный демонстрационный режим. Он позволяет проверить интерфейс, но не читает папки компьютера.</p><p>Запустите Opora.exe и выберите папку, в которой лежит project.godot. Игра останется на месте; переносить её не нужно.</p><div class="modal-actions"><button class="button" data-action="close-modal">Понятно</button></div>'); return;}
   await persist();
+  await visualFeedbackView.whenIdle();
   const project = await bridge.openProject();
   if (!project) return;
   root = project.root;
@@ -428,7 +434,7 @@ document.addEventListener('click', async event => {
     if (action === 'download-update') {button.disabled=true;try {updateState={...updateState,...await bridge.downloadUpdate()};if(updatesOpen)renderUpdates();} finally {button.disabled=false;}}
     if (action === 'install-update') {
       button.disabled=true;
-      try {await persist();await saves;await bridge.installUpdate();} finally {button.disabled=false;}
+      try {await visualFeedbackView.whenIdle();await persist();await saves;await bridge.installUpdate();} finally {button.disabled=false;}
     }
     if (action === 'scan-brand') await scanBrand();
     if (action === 'apply-brand' && pendingBrand) {
@@ -496,7 +502,7 @@ async function initialize() {
 bridge?.onCloseRequested?.(async () => {
   if (closing) return;
   closing = true;
-  try {await persist(); await saves; bridge.readyToClose();} catch {
+  try {await visualFeedbackView.whenIdle(); await persist(); await saves; bridge.readyToClose();} catch {
     closing = false;
     showModal('<h2 id="modal-title">Изменения не сохранены</h2><p>Проверьте название игры и доступ к её папке. Можно вернуться к работе или закрыть приложение, потеряв последние несохранённые изменения.</p><div class="modal-actions"><button class="button secondary" data-action="discard-close">Закрыть без сохранения</button><button class="button" data-action="close-modal">Продолжить работу</button></div>');
   }
@@ -522,8 +528,8 @@ document.addEventListener('keydown',async event=>{
   }
   try {
     if(modifier && event.code==='KeyK'){event.preventDefault();showCommands();}
-    else if(modifier && /^[1-6]$/.test(event.key)) {
-      event.preventDefault();tab=['overview','tasks','brand','agents','context','map'][Number(event.key)-1];render();if(tab==='agents')await refreshAgents();
+    else if(modifier && /^[1-7]$/.test(event.key)) {
+      event.preventDefault();tab=['overview','tasks','brand','agents','context','map','feedback'][Number(event.key)-1];render();if(tab==='agents')await refreshAgents();
     } else if(modifier && event.code==='KeyN') {event.preventDefault();tab='tasks';render();editTask();}
     else if(modifier && event.code==='KeyS') {event.preventDefault();await persist();}
     else if(modifier && event.key==='Enter' && tab==='context') {event.preventDefault();document.querySelector('[data-action="copy-brief"]')?.click();}
@@ -586,7 +592,7 @@ async function resolveBrandConflict(useRemote) {
 }
 let commandIndex=0;
 const appCommands=[
-  ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка'],['map','Карта проекта','map files сцены скрипты связи']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
+  ...[['overview','Рабочий стол','desk overview проект'],['tasks','Задачи','tasks очередь'],['brand','Брендбук','brand style стиль'],['agents','Агенты','agents mcp claude codex'],['context','Контекст','context памятка'],['map','Карта проекта','map files сцены скрипты связи'],['feedback','Замечания на снимках','feedback screenshots снимки замечания проверка']].map(([target,label,aliases],i)=>({id:target,label,aliases,hint:'Раздел',key:`Ctrl ${i+1}`,run:async()=>{tab=target;render();$('#main').scrollTop=0;if(tab==='agents')await refreshAgents();}})),
   {id:'new-task',label:'Новая задача',aliases:'new task создать добавить',hint:'Задачи',key:'Ctrl N',run:()=>{tab='tasks';render();editTask();}},
   {id:'copy',label:'Скопировать запрос',aliases:'copy brief копировать контекст',hint:'Для агента',key:'',run:copyBrief},
   {id:'review',label:'Проверить брендбук',aliases:'review audit разбор оценка',hint:'Стиль',key:'',run:async()=>{tab='brand';render();await reviewBrand(true);}},

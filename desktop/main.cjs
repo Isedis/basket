@@ -1,4 +1,4 @@
-const {app, BrowserWindow, dialog, ipcMain, clipboard, session} = require('electron');
+const {app, BrowserWindow, dialog, ipcMain, clipboard, session, nativeImage} = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -11,6 +11,7 @@ const windowsUpdater = require('./windows-updater.cjs');
 const agentConfig = require('../src/agent-config.cjs');
 const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
+const visualFeedback = require('../src/visual-feedback.cjs');
 let root = null;
 let lastScan = null;
 let win;
@@ -94,6 +95,27 @@ if(primary)app.whenReady().then(async () => {
   ipcMain.handle('project:save', (_, state,baseBrand,baseState) => core.saveProject(requireProject(), state,{baseBrand,baseState}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
   ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));
+  ipcMain.handle('feedback:read',()=>visualFeedback.read(requireProject()));
+  ipcMain.handle('feedback:note',(_,input)=>visualFeedback.addNote(requireProject(),input));
+  ipcMain.handle('feedback:decide',(_,input)=>visualFeedback.decide(requireProject(),input));
+  ipcMain.handle('feedback:image',async(_,input)=>{const result=await visualFeedback.image(requireProject(),input);return 'data:image/png;base64,'+result.data.toString('base64');});
+  async function saveFeedbackImage(project,image,title,input){
+    if(project!==root)throw new Error('Проект сменился. Повторите добавление снимка.');
+    const size=image.getSize();if(image.isEmpty()||!size.width||!size.height||size.width*size.height>16_000_000)throw new Error('Нужен снимок до 16 миллионов пикселей.');
+    const data=image.toPNG();visualFeedback.pngInfo(data);
+    if(input.shot_id)return visualFeedback.submitResult(project,{revision:input.revision,shot_id:input.shot_id,note_ids:[input.note_id],summary:input.summary||'Результат добавлен пользователем',agent:'user',request_id:crypto.randomUUID(),data});
+    return visualFeedback.addShot(project,{revision:input.revision,title,data});
+  }
+  ipcMain.handle('feedback:import',async(_,input={})=>{
+    const project=requireProject();const selected=await dialog.showOpenDialog(win,{title:input.shot_id?'Добавить результат':'Добавить снимок игры',properties:['openFile'],filters:[{name:'Изображения',extensions:['png','jpg','jpeg','webp']}]});
+    if(selected.canceled)return null;const data=await visualFeedback.boundedRead(selected.filePaths[0],8*1024*1024);if(data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))visualFeedback.pngInfo(data);
+    return saveFeedbackImage(project,nativeImage.createFromBuffer(data),path.basename(selected.filePaths[0]).slice(0,180),input);
+  });
+  ipcMain.handle('feedback:clipboard',async(_,input={})=>{
+    const project=requireProject();const items=await clipboard.read();
+    for(const item of items){const type=item.types.find(t=>t==='image/png')||item.types.find(t=>['image/jpeg','image/webp'].includes(t));if(!type)continue;const blob=await item.getType(type);if(blob.size>8*1024*1024)throw new Error('Снимок из буфера должен быть меньше 8 МиБ.');const data=Buffer.from(await blob.arrayBuffer());if(type==='image/png')visualFeedback.pngInfo(data);return saveFeedbackImage(project,nativeImage.createFromBuffer(data),'Снимок из буфера обмена',input);}
+    throw new Error('В буфере нет изображения. Сделайте снимок через Win+Shift+S или выберите файл.');
+  });
   ipcMain.handle('project:preview', (_, state) => core.previewSync(requireProject(), state));
   ipcMain.handle('project:sync', (_, state,baseBrand,baseState) => core.syncProject(requireProject(), state,{baseBrand,baseState}));
   ipcMain.handle('brandbook:review',(_,state)=>brandReview.reviewProject(requireProject(),state));
@@ -108,7 +130,7 @@ if(primary)app.whenReady().then(async () => {
     if(!lastScan || lastScan.root !== requireProject() || lastScan.report.id !== selection.id)throw new Error('Результат анализа устарел. Повторите анализ.');
     return brandbook.applyDraft(root,selection.state,lastScan.report,selection);
   });
-  ipcMain.handle('clipboard:copy', (_, text) => {if (typeof text !== 'string' || text.length > 2_000_000) throw new Error('Слишком большой текст.'); clipboard.writeText(text); return true;});
+  ipcMain.handle('clipboard:copy', async (_, text) => {if (typeof text !== 'string' || text.length > 2_000_000) throw new Error('Слишком большой текст.'); await clipboard.writeText(text); return true;});
   ipcMain.handle('reference:add', async () => {
     const project = requireProject();
     const selected = await dialog.showOpenDialog(win, {title:'Добавить визуальные образцы', properties:['openFile','multiSelections'], filters:[{name:'Изображения', extensions:['png','jpg','jpeg','webp']}]});

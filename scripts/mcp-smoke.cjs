@@ -21,9 +21,24 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,11);
+    const tools=await client.listTools();assert.equal(tools.tools.length,14);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
+    const feedback=require('../src/visual-feedback.cjs');
+    const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6X7sAAAAASUVORK5CYII=','base64');
+    const shot=await feedback.addShot(root,{revision:(await feedback.read(root)).feedback_revision,title:'Menu screenshot',data:png});
+    const added=await feedback.addNote(root,{revision:shot.feedback_revision,shot_id:shot.shot_id,text:'Increase button text',rect:{x:.1,y:.1,w:.6,h:.4},kind:'fix'});
+    const visual=(await client.callTool({name:'opora_list_feedback',arguments:{project_id:project.project_id,shot_id:shot.shot_id}})).structuredContent;
+    assert.equal(visual.shot.notes[0].text,'Increase button text');
+    const visualImage=await client.callTool({name:'opora_get_feedback_image',arguments:{project_id:project.project_id,shot_id:shot.shot_id,note_id:added.note_id}});
+    assert.ok(visualImage.content.some(c=>c.type==='image'));
+    await fs.writeFile(path.join(root,'result.png'),png);
+    const visualInput={project_id:project.project_id,feedback_revision:visual.feedback_revision,shot_id:shot.shot_id,note_ids:[added.note_id],image_file:'result.png',summary:'Updated button',agent:'codex',request_id:'visual-smoke-001'};
+    const submitted=await client.callTool({name:'opora_submit_feedback_result',arguments:visualInput});assert.ok(!submitted.isError,JSON.stringify(submitted));
+    assert.equal((await feedback.read(root)).store.shots[0].notes[0].status,'ready');
+    assert.equal((await client.callTool({name:'opora_submit_feedback_result',arguments:visualInput})).structuredContent.duplicate,true);
+    assert.equal((await client.callTool({name:'opora_list_feedback',arguments:{project_id:'0'.repeat(32)}})).isError,true);
+    assert.equal((await client.callTool({name:'opora_submit_feedback_result',arguments:{...visualInput,image_file:'../outside.png'}})).isError,true);
     await fs.writeFile(path.join(root,'menu.tscn'),'[gd_scene format=3]\n[ext_resource type="Script" path="res://menu.gd" id="1"]\n');
     await fs.writeFile(path.join(root,'menu.gd'),'extends Control\nfunc open_menu():\n  pass\n');
     const map=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,kind:'scene'}})).structuredContent;
@@ -63,7 +78,7 @@ async function main() {
     }finally{await second.close();}
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 11 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 14 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

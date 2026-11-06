@@ -40,6 +40,8 @@ function contextMarkdown(state) {
 
 Эту памятку создаёт Opora. Меняйте решения через приложение или MCP-инструменты opora_update_project / opora_update_brandbook; изменения здесь могут быть заменены при следующей синхронизации.
 Актуальность: ${s.updatedAt || 'не указана'}. Движок: Godot.
+Для правок интерфейса прочитай opora_list_feedback и нужные снимки через opora_get_feedback_image.
+Без MCP проверь существующий .opora/visual-feedback.json. Решения «сохранить» учитывай в следующих задачах; результат принимает пользователь.
 
 ## Игра
 Жанр: ${text(s.genre)}
@@ -83,7 +85,7 @@ ${s.references.length ? s.references.map(r => `- [${r.status === 'approved' ? '�
 ${text(s.rules)}
 
 ## Выбранная задача
-${active ? `${active.title}\n\nКритерии готовности:\n${text(active.acceptance)}` : 'Нет выбранной незавершённой задачи. Уточнить конкретный запрос пользователя.'}
+${active ? `${active.title}\n\nКритерии готовности:\n${text(active.acceptance)}${active.feedbackNoteId?`\n\nСвязанное замечание: shot_id=${active.feedbackShotId}, note_id=${active.feedbackNoteId}. Прочитай снимок и решения через MCP.`:''}` : 'Нет выбранной незавершённой задачи. Уточнить конкретный запрос пользователя.'}
 
 ## Остальные задачи
 ${s.tasks.filter(t => t.id !== active?.id).map(t => `- [${({backlog:'в очереди', active:'в работе', done:'готово'})[t.status]}] ${t.title}`).join('\n') || 'Нет.'}

@@ -5,3 +5,4 @@ require('./windows-updater.test.cjs');
 require('./agents.test.cjs');
 require('./brand-review.test.cjs');
 require('./project-map.test.cjs');
+require('./visual-feedback.test.cjs');

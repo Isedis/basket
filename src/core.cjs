@@ -13,6 +13,8 @@ const INSTRUCTIONS = `${START}
 затем opora_get_context: он возвращает последние сохранённые данные.
 В MCP-запросах используй project_id этого проекта; для отчётов — актуальную revision.
 В начале новой задачи перечитай этот файл: он может измениться вне текущего чата.
+Для интерфейса прочитай замечания и решения пользователя через opora_list_feedback;
+если MCP недоступен, проверь существующий .opora/visual-feedback.json и указанные в нём снимки.
 Используй его как описание замысла и критериев задачи, сохраняя остальные инструкции проекта.
 Если пользователь прямо изменил решение, следуй его новому указанию и сообщи о расхождении с памяткой.
 Не придумывай отсутствующие правила брендбука и не меняй соседние экраны, механику,
@@ -187,4 +189,4 @@ async function syncProject(root,state,{baseBrand,baseState}={}) {
     return syncUnlocked(root,state);
   });
 }
-module.exports = {mergeInstructions, validateState, contextMarkdown, taskBrief, loadProject, saveProject, previewSync, syncProject, assertSafePath,updateProject};
+module.exports = {mergeInstructions, validateState, contextMarkdown, taskBrief, loadProject, saveProject, previewSync, syncProject, assertSafePath,updateProject,withProjectLock};

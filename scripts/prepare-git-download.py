@@ -33,15 +33,16 @@ for font in ['JetBrainsMono-Regular.ttf', 'JetBrainsMono-SemiBold.ttf']:
 context = (root / 'ui/context.js').read_text()
 review = (root / 'ui/brand-review.js').read_text()
 project_map = (root / 'ui/project-map.js').read_text()
+feedback = (root / 'ui/visual-feedback.js').read_text()
 app = (root / 'ui/app.js').read_text()
 def csp_hash(text):
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'"
-html=html.replace("script-src 'self'", 'script-src ' + csp_hash(context) + ' ' + csp_hash(review) + ' ' + csp_hash(project_map) + ' ' + csp_hash(app)).replace("style-src 'self'", 'style-src ' + csp_hash(css))
+html=html.replace("script-src 'self'", 'script-src ' + csp_hash(context) + ' ' + csp_hash(review) + ' ' + csp_hash(project_map) + ' ' + csp_hash(feedback) + ' ' + csp_hash(app)).replace("style-src 'self'", 'style-src ' + csp_hash(css))
 html=html.replace("font-src 'self'", "font-src 'self' data:")
 html=html.replace('<link rel="stylesheet" href="style.css">','<style>'+css+'</style>')
 html=html.replace('  <script defer src="context.js"></script>','').replace('  <script defer src="app.js"></script>','')
-html=html.replace('  <script defer src="brand-review.js"></script>','').replace('  <script defer src="project-map.js"></script>','')
-html=html.replace('</body>','<script>'+context+'</script><script>'+review+'</script><script>'+project_map+'</script><script>'+app+'</script></body>')
+html=html.replace('  <script defer src="brand-review.js"></script>','').replace('  <script defer src="project-map.js"></script>','').replace('  <script defer src="visual-feedback.js"></script>','')
+html=html.replace('</body>','<script>'+context+'</script><script>'+review+'</script><script>'+project_map+'</script><script>'+feedback+'</script><script>'+app+'</script></body>')
 (root / 'artifacts').mkdir(exist_ok=True)
 (root / 'artifacts/Opora-demo.html').write_text(html)
 target = root / "distribution/windows"
