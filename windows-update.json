@@ -1,18 +1,14 @@
 {
-  "commit": "bf8624085600d281a1b34b2ea47e197046856636",
-  "run": "https://github.com/Isedis/basket/actions/runs/42160080474",
-  "checkedAt": "2026-11-06T04:04:44.016Z",
+  "commit": "f9166147a596063134081b0cc6281138023f5d8c",
+  "run": "https://github.com/Isedis/basket/actions/runs/42160844347",
+  "checkedAt": "2026-11-06T04:11:12.526Z",
   "platform": "windows-latest",
   "steps": {
     "unit": "success",
     "powershell51": "success",
-    "native": "failure",
+    "native": "cancelled",
     "rollback": "skipped"
   },
-  "native": {
-    "platform": "win32",
-    "version": "0.12.0",
-    "error": "Cannot read properties of undefined (reading '_object')"
-  },
+  "native": null,
   "rollback": null
 }
