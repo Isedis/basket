@@ -1,11 +1,12 @@
 {
-  "commit": "a0908e0252c20f64365b385e007aa46545b6e9f1",
-  "run": "https://github.com/Isedis/basket/actions/runs/42171487187",
-  "checkedAt": "2026-11-06T06:00:18.801Z",
+  "commit": "cac3314218ed06f2a528ff26638df9fd8d9bcd00",
+  "run": "https://github.com/Isedis/basket/actions/runs/42172306741",
+  "checkedAt": "2026-11-06T06:08:37.809Z",
   "platform": "windows-latest",
   "steps": {
     "startup": "success",
     "repair": "success",
+    "managed": "success",
     "unit": "success",
     "powershell51": "success",
     "native": "success",
@@ -17,40 +18,65 @@
     "cases": [
       {
         "scenario": "clean",
-        "visibleMs": 1024,
-        "version": "0.12.1",
+        "visibleMs": 1893,
+        "version": "0.12.2",
         "notesPreserved": true
       },
       {
         "scenario": "invalid-broker",
-        "visibleMs": 539,
-        "version": "0.12.1",
+        "visibleMs": 776,
+        "version": "0.12.2",
         "notesPreserved": true
       },
       {
         "scenario": "silent-broker",
-        "visibleMs": 498,
-        "version": "0.12.1",
+        "visibleMs": 368,
+        "version": "0.12.2",
         "notesPreserved": true
       }
     ],
     "current": {
       "scenario": "silent-broker",
-      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-Hft7kQ\\silent-broker\\opora"
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-LdOvPX\\silent-broker\\opora"
     },
     "failureScreenWorks": true
   },
   "repair": {
     "platform": "win32",
-    "version": "0.12.1",
-    "mode": "migration",
-    "legacyController": "GUI:4204",
+    "version": "0.12.2",
+    "mode": "repair",
+    "managed": true,
+    "startedFromManagedVersion": true,
+    "legacyController": "GUI:4228",
+    "cmdUsesOriginalRuntime": true,
     "oldProcess": {
-      "pid": 4204,
+      "pid": 4228,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "hardlinkedRuntime": true,
+    "previousManagedVersionPreserved": true,
+    "hardlinkedRuntime": false,
+    "localRuntimeReused": true,
+    "startLauncherWorks": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "managed": {
+    "platform": "win32",
+    "version": "0.12.2",
+    "mode": "migration",
+    "managed": true,
+    "startedFromManagedVersion": true,
+    "legacyController": "GUI:5548",
+    "cmdUsesOriginalRuntime": true,
+    "oldProcess": {
+      "pid": 5548,
+      "pageClosed": true,
+      "inspectorDetached": true
+    },
+    "lifecycle": "5548 window-all-closed\n5548 before-quit\n5548 will-quit\n5548 quit\n",
+    "previousManagedVersionPreserved": true,
+    "hardlinkedRuntime": false,
     "localRuntimeReused": true,
     "startLauncherWorks": true,
     "mcpSurvived": true,
@@ -58,15 +84,16 @@
   },
   "native": {
     "platform": "win32",
-    "version": "0.12.1",
+    "version": "0.12.2",
     "mode": "button",
-    "legacyController": "PROTECTED:6564",
+    "managed": false,
+    "legacyController": "PROTECTED:5324",
     "oldProcess": {
-      "pid": 6564,
+      "pid": 5324,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "6564 quit\n",
+    "lifecycle": "5324 quit\n",
     "terminalSurvived": true,
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
@@ -75,47 +102,48 @@
   },
   "rollback": {
     "platform": "win32",
-    "version": "0.12.1",
+    "version": "0.12.2",
     "mode": "button",
-    "legacyController": "PROTECTED:976",
+    "managed": false,
+    "legacyController": "PROTECTED:1540",
     "oldProcess": {
-      "pid": 976,
+      "pid": 1540,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "976 quit\n",
+    "lifecycle": "1540 quit\n",
     "worker-launch.json": {
-      "parentPid": 976,
-      "expectedPid": 8016
+      "parentPid": 1540,
+      "expectedPid": 4936
     },
     "progress.json": {
-      "pid": 8016,
+      "pid": 4936,
       "phase": "Проверка запуска новой версии"
     },
     "ready.json": {
-      "pid": 8016,
+      "pid": 4936,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 976,
-      "version": "0.12.1"
+      "parentPid": 1540,
+      "version": "0.12.2"
     },
     "parent-handoff.json": {
-      "pid": 976,
+      "pid": 1540,
       "saved": true,
       "released": true,
       "tokenMatches": true
     },
     "gui-process.json": {
-      "pid": 1080,
+      "pid": 9316,
       "exitCode": 19
     },
     "new-start.json": {
-      "pid": 1080,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-4f2ZJM\\profile\\runtime\\17f6f11e0db95bfc\\v\\0.12.1-a0c6cb255931\\Opora.exe",
-      "version": "0.12.1",
+      "pid": 9316,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-jtgioT\\profile\\runtime\\f9f04ec8865bbd8c\\v\\0.12.2-8c5f39021d3e\\Opora.exe",
+      "version": "0.12.2",
       "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-4f2ZJM\\profile\\runtime\\17f6f11e0db95bfc\\v\\0.12.1-a0c6cb255931\\Opora.exe"
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-jtgioT\\profile\\runtime\\f9f04ec8865bbd8c\\v\\0.12.2-8c5f39021d3e\\Opora.exe"
       ]
     },
     "rollback": true,
@@ -124,15 +152,16 @@
   },
   "migration": {
     "platform": "win32",
-    "version": "0.12.1",
+    "version": "0.12.2",
     "mode": "migration",
-    "legacyController": "GUI:1312",
+    "managed": false,
+    "legacyController": "GUI:2172",
     "oldProcess": {
-      "pid": 1312,
+      "pid": 2172,
       "pageClosed": true,
       "inspectorDetached": true
     },
-    "lifecycle": "1312 window-all-closed\n1312 before-quit\n1312 will-quit\n1312 quit\n",
+    "lifecycle": "2172 window-all-closed\n2172 before-quit\n2172 will-quit\n2172 quit\n",
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
     "startLauncherWorks": true,
