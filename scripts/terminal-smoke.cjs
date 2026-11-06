@@ -34,8 +34,8 @@ let input='';process.stdin.on('data',data=>{for(const char of data.toString()){
     const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.waitForFunction(()=>document.querySelector('#header-name').textContent==='Terminal fixture');
     await app.evaluate(async({clipboard})=>{await clipboard.writeText('clipboard preserved');});
-    await page.locator('.topbar [data-action="claude-open"]').click();
-    await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));
+    await page.locator('.topbar [data-action="claude-open"]').click();await page.locator('[data-dock="terminal"]').click();
+    await page.locator('[data-terminal="start"]').click();await page.waitForFunction(()=>document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));
     const launched=JSON.parse((await fs.readFile(log,'utf8')).trim());
     assert.equal(launched.cwd,project);assert.deepEqual(launched.tty,[true,true]);assert.ok(launched.argv.includes('--append-system-prompt'));assert.match(launched.argv.at(-1),/opora_get_work_context/);assert.ok(!launched.argv.some(a=>a.includes('skip-permissions')));
     assert.ok(Object.keys(JSON.parse(await fs.readFile(path.join(project,'.mcp.json'),'utf8')).mcpServers).some(k=>k.startsWith('opora-')));
@@ -49,15 +49,15 @@ let input='';process.stdin.on('data',data=>{for(const char of data.toString()){
     await page.waitForFunction(()=>document.querySelector('.xterm-screen').textContent.includes('CTRL_K_RECEIVED')&&document.querySelector('.xterm-screen').textContent.includes('INTERRUPTED'));
     assert.equal(await page.locator('#modal').evaluate(e=>e.open),false);
     const session=await page.evaluate(()=>window.opora.claudeState());
-    const switchError=await page.evaluate(()=>window.opora.openProject().catch(e=>e.message));assert.match(switchError,/Завершите/);
-    await page.locator('[data-terminal="hide"]').click();await page.locator('nav [data-tab="brand"]').click();
+    const switchError=await page.evaluate(()=>window.opora.openProject().catch(e=>e.message));assert.match(switchError,/Завершите|Остановите/);
+    await page.locator('[data-dock="hide"]').click();await page.locator('nav [data-tab="brand"]').click();
     await page.locator('[data-field="brand.direction"]').fill('Persistent session style');
     await page.locator('.topbar [data-action="claude-open"]').click();
     assert.equal((await page.evaluate(()=>window.opora.claudeState())).id,session.id);assert.equal((await fs.readFile(log,'utf8')).trim().split('\n').length,1);
     await page.reload();
     await page.waitForFunction(()=>document.querySelector('#header-name').textContent==='Terminal fixture'&&document.querySelector('.xterm-screen')?.textContent.includes('CLAUDE_FIXTURE_READY'));
     assert.equal((await page.evaluate(()=>window.opora.claudeState())).id,session.id);
-    await page.locator('[data-terminal="expand"]').click();
+    await page.locator('[data-dock="expand"]').click();
     await page.locator('[data-terminal="prompt"]').click();
     await page.waitForFunction(()=>document.querySelector('.xterm-screen').textContent.includes('Выполни выбранную задачу'));
     assert.ok(!(await page.locator('.xterm-screen').textContent()).includes('RECEIVED:Работаем'));
@@ -79,6 +79,6 @@ let input='';process.stdin.on('data',data=>{for(const char of data.toString()){
     await closed;app=null;
     assert.deepEqual(errors,[]);
     console.log('PASS Electron PTY: TTY, Unicode, permission input, hotkeys, MCP config, clipboard isolation, persistent dock, task insertion, stop and resume.');
-  }finally{if(app)await app.close();await fs.rm(temp,{recursive:true,force:true});}
+  }finally{if(app){await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1});}).catch(()=>{});await app.close();}await fs.rm(temp,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

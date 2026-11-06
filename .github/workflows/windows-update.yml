@@ -2,7 +2,7 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora-real-release-update, opora-project-map, opora-map-polish, opora-map-connections, opora]
+    branches: [opora-claude-chat, opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora-real-release-update, opora-project-map, opora-map-polish, opora-map-connections, opora]
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
@@ -55,6 +55,9 @@ jobs:
           $code=$LASTEXITCODE
           Get-Content "$env:RUNNER_TEMP/unit.log"
           exit $code
+      - name: Claude chat SDK, permissions, resizing and resume
+        id: chat
+        run: npm run test:chat
       - name: Real Windows button, Claude PTY and live MCP
         id: native
         env:
@@ -72,6 +75,7 @@ jobs:
         env:
           RELEASE_RESULT: ${{ steps.release.outcome }}
           OLDBASE_RESULT: ${{ steps.oldbase.outcome }}
+          CHAT_RESULT: ${{ steps.chat.outcome }}
           UNIT_RESULT: ${{ steps.unit.outcome }}
           NATIVE_RESULT: ${{ steps.native.outcome }}
           ROLLBACK_RESULT: ${{ steps.rollback.outcome }}
@@ -85,7 +89,7 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {release:process.env.RELEASE_RESULT,oldbase:process.env.OLDBASE_RESULT,portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              steps: {chat:process.env.CHAT_RESULT,release:process.env.RELEASE_RESULT,oldbase:process.env.OLDBASE_RESULT,portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
               release:read('opora-release.json'),oldbase:read('opora-oldbase.json'),portable:read('opora-portable.json'),startup:read('opora-startup.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
@@ -101,13 +105,13 @@ jobs:
               await github.rest.repos.createOrUpdateFileContents({...context.repo,branch,path:name,sha,message:'Record rendered update window',content:fs.readFileSync(file).toString('base64')});
             }
       - name: Publish the tested ready-to-run ZIP on GitHub Releases
-        if: success() && (github.ref == 'refs/heads/opora-map-connections' || github.ref == 'refs/heads/opora-map-polish' || github.ref == 'refs/heads/opora-project-map' || github.ref == 'refs/heads/opora-real-release-update' || github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
+        if: success() && (github.ref == 'refs/heads/opora-claude-chat' || github.ref == 'refs/heads/opora-map-connections' || github.ref == 'refs/heads/opora-map-polish' || github.ref == 'refs/heads/opora-project-map' || github.ref == 'refs/heads/opora-real-release-update' || github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
         uses: actions/github-script@v7
         with:
           script: |
             const fs=require('fs'),path=require('path'),crypto=require('crypto');
             const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
-            if(!/^0\.(14|15)\.\d+$/.test(manifest.version))return;
+            if(!/^0\.(14|15|16)\.\d+$/.test(manifest.version))return;
             const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
             const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
             if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');

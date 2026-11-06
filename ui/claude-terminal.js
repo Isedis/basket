@@ -1,10 +1,11 @@
 /* Persistent dock: never mounted inside the project's rerendered #main. */
-window.OporaClaudeTerminal={create({bridge,getRoot,prepare,getPrompt,onError,notify}){
+window.OporaClaudeLegacy={create({bridge,getRoot,prepare,getPrompt,onError,notify,onShow,onState}){
   const dock=document.querySelector('#claude-dock');
-  let term,fit,session=null,busy=false,pending=false,queue=[],sequence=-1,visible=false;
+  let term,fit,session=null,busy=false,pending=false,queue=[],sequence=-1,visible=false,fontSize=14;
   const element=name=>dock.querySelector(`[data-terminal="${name}"]`);
   const active=()=>session && session.status!=='exited';
   function controls(){
+    onState?.(session);
     element('status').textContent=busy?'Запуск…':session?session.status==='running'?'ПРОЦЕСС РАБОТАЕТ':session.status==='stopping'?'ЗАВЕРШЕНИЕ…':`ЗАВЕРШЁН / ${session.exitCode}`:'НЕ ЗАПУЩЕН';
     element('root').textContent=session?.root||getRoot()||'Выберите проект';
     for(const name of ['start','resume','select'])element(name).disabled=busy||!!active();
@@ -15,7 +16,7 @@ window.OporaClaudeTerminal={create({bridge,getRoot,prepare,getPrompt,onError,not
   function resize(){if(!term||!visible)return;try{fit.fit();if(active())bridge.claudeResize({id:session.id,cols:term.cols,rows:term.rows}).catch(()=>{});}catch{}}
   function ensure(){
     if(term)return;
-    term=new Terminal({fontFamily:'"JetBrains Mono", monospace',fontSize:13,lineHeight:1.2,cursorBlink:true,scrollback:5000,allowProposedApi:false,theme:{background:'#000000',foreground:'#fff1c7',cursor:'#fff1c7',selectionBackground:'#454536',black:'#11130f',red:'#ff4545',green:'#b7cb9b',yellow:'#f1d590',blue:'#8caac7',magenta:'#c7a0c5',cyan:'#9bbfbc',white:'#fff1c7',brightBlack:'#888d7f',brightRed:'#ff7373',brightGreen:'#d8e9bc',brightYellow:'#ffe7ae',brightBlue:'#b3d2ef',brightMagenta:'#e4bee2',brightCyan:'#bbdedb',brightWhite:'#ffffff'}});
+    term=new Terminal({fontFamily:'"JetBrains Mono", monospace',fontSize,lineHeight:1.2,cursorBlink:true,scrollback:5000,allowProposedApi:false,theme:{background:'#000000',foreground:'#fff1c7',cursor:'#fff1c7',selectionBackground:'#454536',black:'#11130f',red:'#ff4545',green:'#b7cb9b',yellow:'#f1d590',blue:'#8caac7',magenta:'#c7a0c5',cyan:'#9bbfbc',white:'#fff1c7',brightBlack:'#888d7f',brightRed:'#ff7373',brightGreen:'#d8e9bc',brightYellow:'#ffe7ae',brightBlue:'#b3d2ef',brightMagenta:'#e4bee2',brightCyan:'#bbdedb',brightWhite:'#ffffff'}});
     fit=new FitAddon.FitAddon();term.loadAddon(fit);term.open(element('screen'));
     // Terminal output cannot change the system clipboard via OSC 52.
     term.parser.registerOscHandler(52,()=>true);
@@ -37,7 +38,7 @@ window.OporaClaudeTerminal={create({bridge,getRoot,prepare,getPrompt,onError,not
     new ResizeObserver(resize).observe(element('screen'));
     document.fonts.ready.then(resize);
   }
-  function show(){visible=true;dock.hidden=false;document.body.classList.add('with-terminal');ensure();controls();requestAnimationFrame(()=>{resize();term.focus();});}
+  function show(){onShow?.();visible=true;dock.hidden=false;document.body.classList.add('with-terminal');ensure();controls();requestAnimationFrame(()=>{resize();term.focus();});}
   function hide(){visible=false;dock.hidden=true;document.body.classList.remove('with-terminal');}
   function accept(snapshot){
     if(!snapshot){controls();return;}
@@ -91,5 +92,5 @@ window.OporaClaudeTerminal={create({bridge,getRoot,prepare,getPrompt,onError,not
     pending=true;
     bridge.claudeState().then(snapshot=>{if(snapshot){show();accept(snapshot);}pending=false;for(const packet of queue)event(packet);queue=[];}).catch(error=>{pending=false;onError(error);});
   }
-  return {async open(){if(!bridge?.claudeStart){notify('Встроенный Claude доступен в приложении Опора.',true);return;}await start();}};
+  return {isActive:active,show,hide,resize,setFontSize(value){fontSize=value;if(term){term.options.fontSize=value;resize();}},async open(){if(!bridge?.claudeStart){notify('Встроенный Claude доступен в приложении Опора.',true);return;}await start();}};
 }};

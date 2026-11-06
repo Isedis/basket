@@ -41,6 +41,9 @@ const updateArg=name=>process.argv.find(value=>value.startsWith('--opora-update-
 const startupUpdate={job:updateArg('job')||process.env.OPORA_UPDATE_JOB,token:updateArg('token')||process.env.OPORA_UPDATE_TOKEN};
 if(startupUpdate.job){process.env.OPORA_UPDATE_JOB=startupUpdate.job;process.env.OPORA_UPDATE_TOKEN=startupUpdate.token;}
 let terminal;
+let chatStarting=false;
+let chatHost;let chatState=null;
+const chatBusy=()=>chatStarting||['starting','working','permission','stopping'].includes(chatState?.status);
 let terminalStarting=false;
 let terminalClosePrompt=false;
 let externalHandoff=false;
@@ -121,7 +124,7 @@ if(primary)await app.whenReady().then(async () => {
     let installPlan;
     let releasedForUpdate=false;
     try {
-      if(terminalStarting)await new Promise((resolve,reject)=>{const deadline=Date.now()+20000;const tick=()=>{if(!terminalStarting)return resolve();if(Date.now()>deadline)return reject(new Error('Claude ещё запускается. Повторите обновление через несколько секунд.'));setTimeout(tick,100);};tick();});
+      if(terminalStarting||chatStarting)await new Promise((resolve,reject)=>{const deadline=Date.now()+20000;const tick=()=>{if(!terminalStarting&&!chatStarting)return resolve();if(Date.now()>deadline)return reject(new Error('Claude ещё запускается. Повторите обновление через несколько секунд.'));setTimeout(tick,100);};tick();});
       await updater.check();
       if(updater.info().status==='up-to-date'){installing=false;updater.emit({transaction:false});return {restarting:false};}
       await updater.download();
@@ -138,7 +141,7 @@ if(primary)await app.whenReady().then(async () => {
       installPlan=plan;
       await nativeUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
       canClose=true;restarting=true;
-      await terminal.detach();
+      await terminal.detach();await chatHost?.detach();
       await instance.release();releasedForUpdate=true;
       await nativeUpdater.commitAndRelaunch(plan,app);
       // The renderer saved before this transaction and the PTY host is separate.
@@ -156,6 +159,8 @@ if(primary)await app.whenReady().then(async () => {
     onEvent:event=>{if(!win.isDestroyed())win.webContents.send('claude:event',event);}
   });
   // An unavailable optional broker must never prevent the interface from loading.
+  chatHost=new TerminalClient({record:path.join(app.getPath('userData'),'chat-broker.json'),entry:path.join(__dirname,'terminal-broker.cjs'),executable:process.execPath,onChatEvent:event=>{chatState={...chatState,...event};if(!win.isDestroyed())win.webContents.send('chat:event',event);}});
+  const chatConnection=chatHost.connect().then(connected=>connected?chatHost.rpc('chat:state'):null).then(state=>{chatState=state;}).catch(error=>startup.log('chat-unavailable',error.message));
   const terminalConnection=terminal.connect().catch(error=>{startup.log('terminal-unavailable',error.message);return false;});
   const terminalPreferences=path.join(app.getPath('userData'),'claude-terminal.json');
   async function claudeCommand(){
@@ -169,6 +174,7 @@ if(primary)await app.whenReady().then(async () => {
     await terminalConnection;
     const project=requireProject();
     if(terminalStarting)throw new Error('Claude уже запускается.');
+    if(chatBusy())throw new Error('Claude работает в чате. Сначала остановите его или дождитесь ответа.');
     if(terminal.active)return terminal.snapshot();
     if(installing)throw new Error('Дождитесь завершения обновления.');
     terminalStarting=true;
@@ -193,6 +199,24 @@ if(primary)await app.whenReady().then(async () => {
     return {executable:command.display};
   });
   terminalHandle('claude:clipboard',()=>clipboard.readText());
+  async function chatCall(op,value){await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
+  terminalHandle('chat:state',async()=>{await chatConnection;return await chatHost.connect()?chatCall('chat:state'):null;});
+  terminalHandle('chat:list',()=>chatCall('chat:list',{root:requireProject()}));
+  terminalHandle('chat:new',()=>chatCall('chat:new',{root:requireProject()}));
+  terminalHandle('chat:open',id=>chatCall('chat:open',{root:requireProject(),id}));
+  terminalHandle('chat:send',async input=>{
+    if(chatBusy())throw new Error('Claude ещё работает.');chatStarting=true;try{
+    const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');
+    const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);
+    let context=null;
+    if(input.includeContext!==false){const packet=await workContext.reader(project)({});const compact={project_id:packet.project_id,root:packet.root,work_revision:packet.work_revision,task:packet.task,passport:packet.passport,brand:packet.brand,feedback:packet.feedback};context={summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision},text:'Контекст Опоры. Полные и актуальные данные прочитай через opora_get_work_context, затем прочитай исходники. Поля с truncated требуют дополнительного чтения.\n'+JSON.stringify(compact)};}
+    if(root!==project)throw new Error('Проект изменился. Повторите отправку.');
+    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec});
+    }finally{chatStarting=false;}
+  });
+  terminalHandle('chat:answer',input=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:answer',input);});
+  terminalHandle('chat:stop',id=>{if(chatState?.root!==requireProject())throw new Error('Разговор в другой игре.');return chatCall('chat:stop',{id});});
+
   ipcMain.handle('agents:info',async ()=>{
     const config=await getAgentConfig();
     return {...config,status:await agentConfig.status(config)};
@@ -205,9 +229,10 @@ if(primary)await app.whenReady().then(async () => {
   ipcMain.handle('agents:disconnect',async(_,client)=>{const config=await getAgentConfig();const result=await agentConfig.disconnect(client,config);return {...result,status:await agentConfig.status(config)};});
   ipcMain.handle('agents:reports',()=>agentService.listReports(requireProject()));
   ipcMain.handle('project:restore', async () => {
-    await terminalConnection;
+    await Promise.all([terminalConnection,chatConnection]);
+    if(chatBusy()&&!root)root=chatState.root;
     if(terminal.active&&!root)root=terminal.snapshot().root;
-    if(terminal?.active || terminalStarting)return core.loadProject(requireProject());
+    if(terminal?.active || terminalStarting||chatBusy())return core.loadProject(requireProject());
     try {
       const settings = JSON.parse(await fs.readFile(preferences, 'utf8'));
       const loaded = await core.loadProject(settings.lastProject);
@@ -221,7 +246,7 @@ if(primary)await app.whenReady().then(async () => {
 
   ipcMain.handle('project:open', async () => {
     await terminalConnection;
-    if(terminal?.active || terminalStarting)throw new Error('Завершите Claude Code в панели терминала перед сменой проекта.');
+    if(terminal?.active || terminalStarting||chatBusy())throw new Error('Остановите Claude или дождитесь ответа перед сменой проекта.');
     const selected = await dialog.showOpenDialog(win, {title:'Выберите папку с project.godot', properties:['openDirectory']});
     if (selected.canceled) return null;
     const loaded = await core.loadProject(selected.filePaths[0]);
@@ -321,4 +346,4 @@ runDesktop().catch(async error=>{
   dialog.showErrorBox('Запуск Опоры',error.message+'\nЖурнал: '+startup.filename());app.exit(1);
 });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit',()=>{terminal?.dispose();void instance.release();});
+app.on('will-quit',()=>{terminal?.dispose();chatHost?.dispose();void instance.release();});

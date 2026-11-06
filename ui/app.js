@@ -257,6 +257,7 @@ function configureAgent(client) {
 function render() {
   const routeChanged=renderedTab!==tab || renderedRoot!==root;
   refreshChrome();
+  claudeTerminal.projectChanged();
   $('#main').innerHTML = tab==='feedback'?'<div id="visual-feedback-view"></div>':tab==='map'?'<div id="project-map-view"></div>':({overview,brand,tasks,context,agents})[tab]();
   if(tab==='map')projectMapView.mount($('#project-map-view'));
   if(tab==='feedback')visualFeedbackView.mount($('#visual-feedback-view'));

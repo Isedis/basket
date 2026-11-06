@@ -1,7 +1,7 @@
 {
   "name": "opora",
-  "version": "0.15.2",
-  "description": "\u0415\u0434\u0438\u043d\u0430\u044f \u043f\u0430\u043c\u044f\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442\u0430 Godot \u0434\u043b\u044f Claude \u0438 Codex",
+  "version": "0.16.1",
+  "description": "Единая память проекта Godot для Claude и Codex",
   "private": true,
   "main": "desktop/main.cjs",
   "scripts": {
@@ -10,10 +10,11 @@
     "test:ui": "node scripts/ui-smoke.cjs",
     "test:desktop": "node scripts/desktop-smoke.cjs",
     "test:mcp": "node scripts/mcp-smoke.cjs",
-    "check": "node --check desktop/main.cjs && node --check desktop/native-updater.cjs && node --check desktop/update-watchdog.cjs && node --check desktop/paint-ready.cjs && node --check desktop/archive.cjs && node --check ui/app.js",
+    "check": "node --check desktop/main.cjs && node --check desktop/native-updater.cjs && node --check desktop/update-watchdog.cjs && node --check desktop/paint-ready.cjs && node --check desktop/archive.cjs && node --check ui/app.js && node --check desktop/claude-chat.cjs && node --check ui/claude-chat.js",
     "package:win": "node scripts/package-win.cjs",
     "test:terminal": "node scripts/terminal-smoke.cjs",
-    "test:native-update": "node scripts/native-update-smoke.cjs"
+    "test:native-update": "node scripts/native-update-smoke.cjs",
+    "test:chat": "node scripts/chat-smoke.cjs"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
@@ -24,6 +25,7 @@
     "playwright-core": "1.64.1"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.318",
     "@modelcontextprotocol/server": "2.4.0",
     "node-pty": "1.1.0",
     "proper-lockfile": "4.1.2",
