@@ -1,16 +1,16 @@
 {
-  "commit": "a0340fdcd41ec6106f8d786b138a759d1a58f599",
-  "run": "https://github.com/Isedis/basket/actions/runs/42178265773",
-  "checkedAt": "2026-11-06T07:04:08.303Z",
+  "commit": "77c54f6a244396288a7e8c4a42120d09a91b34d3",
+  "run": "https://github.com/Isedis/basket/actions/runs/42187512034",
+  "checkedAt": "2026-11-06T08:27:50.682Z",
   "platform": "windows-latest",
   "steps": {
     "release": "success",
     "oldbase": "success",
     "portable": "success",
     "startup": "success",
-    "unit": "failure",
-    "native": "skipped",
-    "rollback": "skipped"
+    "unit": "success",
+    "native": "success",
+    "rollback": "success"
   },
   "release": {
     "nativeRelaunch": true,
@@ -18,23 +18,23 @@
       "status": "installed",
       "phase": "Проверка видимого интерфейса",
       "version": "0.14.1",
-      "installId": "d4dafbcc-732e-4074-9863-a1b637460fcd",
+      "installId": "683193be-799f-4391-adb4-9ce163fbaf3f",
       "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0",
-      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-a75238f6fe09",
+      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-67107e6365bd",
       "previousDirectory": "D:\\a\\basket\\basket\\release\\Opora-win32-x64",
       "backup": "D:\\a\\basket\\basket\\release\\Opora-win32-x64",
-      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-X7FlfD",
-      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-X7FlfD\\installer.log",
-      "recordedAt": "2026-11-06T07:03:44.885Z"
+      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-enFmW6",
+      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-enFmW6\\installer.log",
+      "recordedAt": "2026-11-06T08:26:02.571Z"
     },
     "gui-process.json": {
-      "pid": 8324,
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-a75238f6fe09\\Opora.exe"
+      "pid": 9080,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-67107e6365bd\\Opora.exe"
     },
     "launch-ack.json": {
       "version": "0.14.1",
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-a75238f6fe09\\Opora.exe",
-      "pid": 8324,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.14.1-67107e6365bd\\Opora.exe",
+      "pid": 9080,
       "painted": true
     },
     "installer.log": "Готово к штатному перезапуску Electron\nПроверка видимого интерфейса\n",
@@ -50,23 +50,23 @@
       "status": "installed",
       "phase": "Проверка запуска новой версии",
       "version": "0.14.0",
-      "installId": "56fc43ce-1f67-485b-b41c-24d6945eef70",
-      "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3",
-      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3\\v\\0.14.0-0413fb7530c6",
-      "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-0yCciS\\old\\Opora-win32-x64",
-      "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-0yCciS\\old\\Opora-win32-x64",
-      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3\\.opora-update-IilndT",
-      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3\\.opora-update-IilndT\\installer.log",
-      "recordedAt": "2026-11-06T07:04:02.034Z"
+      "installId": "b6ab097b-5e72-4aad-96e8-cd3f8e68f340",
+      "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627",
+      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627\\v\\0.14.0-11e461aa83bb",
+      "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-Bg63gI\\old\\Opora-win32-x64",
+      "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-Bg63gI\\old\\Opora-win32-x64",
+      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627\\.opora-update-hOMhfe",
+      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627\\.opora-update-hOMhfe\\installer.log",
+      "recordedAt": "2026-11-06T08:26:23.633Z"
     },
     "gui-process.json": {
-      "pid": 4588,
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3\\v\\0.14.0-0413fb7530c6\\Opora.exe"
+      "pid": 9556,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627\\v\\0.14.0-11e461aa83bb\\Opora.exe"
     },
     "launch-ack.json": {
       "version": "0.14.0",
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\6a58287de5c2bea3\\v\\0.14.0-0413fb7530c6\\Opora.exe",
-      "pid": 4588,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\54d1119e06a90627\\v\\0.14.0-11e461aa83bb\\Opora.exe",
+      "pid": 9556,
       "painted": true
     },
     "installer.log": "Проверка подготовленной версии\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/LICENSE\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/README.md\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/conpty_console_list_agent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/eventEmitter2.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/index.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/interfaces.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/shared/conout.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/terminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/types.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/unixTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/utils.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsConoutConnection.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsPtyAgent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/worker/conoutSocketWorker.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/package.json\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/conpty.dll\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty_console_list.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/pty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty.dll\nПроверка SHA256: Opora.exe\nПроверка SHA256: resources/app.asar\nПроверка SHA256: .opora-location.json\nУстановщик готов. Перезапуск окна Опоры\nВключение новой версии\nПроверка запуска новой версии\n",
@@ -88,31 +88,91 @@
     "cases": [
       {
         "scenario": "clean",
-        "visibleMs": 900,
+        "visibleMs": 1574,
         "version": "0.14.0",
         "notesPreserved": true
       },
       {
         "scenario": "invalid-broker",
-        "visibleMs": 421,
+        "visibleMs": 517,
         "version": "0.14.0",
         "notesPreserved": true
       },
       {
         "scenario": "silent-broker",
-        "visibleMs": 431,
+        "visibleMs": 481,
         "version": "0.14.0",
         "notesPreserved": true
       }
     ],
     "current": {
       "scenario": "silent-broker",
-      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-2nUsKZ\\silent-broker\\opora"
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-xxSRXv\\silent-broker\\opora"
     },
     "failureScreenWorks": true
   },
-  "native": null,
-  "rollback": null,
-  "migration": null,
-  "unitLog": "uces honest missing-data findings, without invented colors or fonts (6.6662ms)\r\n✔ Updater compares semantic versions numerically and rejects unsupported versions (0.3465ms)\r\n✔ Update manifests reject traversal, duplicate parts, wrong totals and unpinned commits (0.6884ms)\r\n✔ Update download uses immutable GitHub paths, streams exact bytes and verifies final archive (26.601ms)\r\n✔ A changed download is removed, cannot be installed and preserves unrelated files (5.039ms)\r\n✔ An archive changed after successful download fails the install preflight (5.7577ms)\r\n✔ The updater never downloads an equal or older version, nor installs in development mode (3.3423ms)\r\n✔ A blocked or unavailable GitHub endpoint produces a visible failure, without staging files (1.1321ms)\r\n✔ Matching Electron selects the small application package; older clients and other runtimes retain the full package (24.4184ms)\r\n✔ A damaged local runtime can switch from the app patch to a verified full download automatically (4.7314ms)\r\n✔ MCP snapshot binds to a physical project and changes revision when the user edits context (75.979ms)\r\n✔ Agent reports are separate, idempotent, scoped and cannot approve tasks or brand rules (37.7368ms)\r\n✔ MCP image reads are limited to registered references of the current revision (17.0822ms)\r\n✔ Reports near tool field limits remain readable and idempotent with multibyte text (21.6302ms)\r\n✔ Claude project configuration preserves other servers and backs up exact original content (15.3532ms)\r\n✔ Codex configuration preserves comments, unrelated values, and updates only its managed block (22.9459ms)\r\n✔ Invalid or conflicting client configurations are preserved without exposing their content (11.015ms)\r\n✔ MCP brand writes only requested fields as a draft, backs up exact prior state and returns fresh revisions (37.1679ms)\r\n✔ MCP rejects stale, wrong-project and unsupported-field edits without changing files (22.7305ms)\r\n✔ Two simultaneous agent edits of one revision yield one commit and one stale rejection (119.844ms)\r\n✔ GUI saves merge unrelated manual edits with agent fields, but refuse competing field edits and stale exports (33.2578ms)\r\n✔ Approving unseen remote brand changes is refused until the user reviews them (21.466ms)\r\n✔ Project MCP fills passport, rules, brand, task upserts and candidate images without deleting existing data (28.2703ms)\r\n✔ GUI preserves unrelated remote project data and task additions, but detects competing passport edits (23.3186ms)\r\n✔ Context deltas reduce repeat reads, preserve changes and fall back after cache loss (33.9189ms)\r\n✔ An owned previous-version connection remains configured without rewriting or interrupting it (11.9404ms)\r\n✔ Contrast uses sRGB luminance and handles alpha/invalid colors without invented ratios (0.7502ms)\r\n✔ Complete written rules pass all 9 checks only with available approved reference evidence (11.5154ms)\r\n✔ Low contrast produces actionable numeric evidence and prefers a passing existing palette color (0.8833ms)\r\n✔ The reviewer never treats arbitrary palette combinations as actual UI text pairs (0.2603ms)\r\n✔ Generated placeholder descriptions and source-only colors/fonts do not count as established decisions (0.373ms)\r\n✔ Malformed colors, same color for text/background and transparent pairs are handled separately (0.4332ms)\r\n✔ A deliberate single-size pixel font is not rejected solely for being small (0.3107ms)\r\n✔ Large-text contrast uses 3:1 only when the user explicitly declares large text (0.2334ms)\r\n✔ Explicitly inactive text is not falsely flagged as a regular-text contrast error (0.2507ms)\r\n✔ File-aware review finds missing and symlinked references without changing the project (8.3215ms)\r\n✔ Godot map resolves main UID, scenes, autoload, relative inheritance and source lines without comment/docstring edges (16.941ms)\r\n✔ Map reuses unchanged parse results and reflects changed/deleted files independently of Opora state (26.4305ms)\r\n✔ Map filters, pagination and reference direction are explicit; unsafe and unknown focus paths are rejected (14.9652ms)\r\n✔ Map skips symlinks and reports bounded, incomplete scans without claiming excluded targets are missing (16.9517ms)\r\n✔ Local class inheritance does not mutate cached references across repeated scans (32.1166ms)\r\n✔ Screenshot notes retain normalized regions, deduplicate exact feedback and leave project source unchanged (28.3011ms)\r\n✔ Agent result becomes ready; user accepts or returns it with a retained decision history (50.9649ms)\r\n✔ Feedback writes reject stale revisions and concurrent notes cannot silently overwrite one another (120.3916ms)\r\n✔ Feedback validates rectangles, images, paths and result note IDs before writing (16.1787ms)\r\n✔ Screenshot copies detect corruption and project image reads refuse symlinks (20.7778ms)\r\n✔ Accepted keep feedback is preserved as an explicit user preference (24.3978ms)\r\n✔ A newer result cannot be accepted through an older comparison; backups preserve previous decisions (31.2494ms)\r\n✔ All project write paths reject oversized settings without losing the previous state (27.5644ms)\r\n✔ Brand approval is tied to content and explicit reapproval cannot approve different fields (24.4179ms)\r\n✔ Large array deltas fall back to smaller readable context while long fields remain readable (41.1793ms)\r\n✔ Map resolves global class construction and paginates symbols without claiming the first page is complete (12.3344ms)\r\n✔ Windows relative separators are normalized while traversal and absolute paths are still rejected (10.9131ms)\r\n✔ Per-note tokens allow unrelated feedback writes and still reject changed target notes (35.3563ms)\r\n✔ More than 30 results archive without losing old PNGs, decisions or exact-retry receipts (367.094ms)\r\n✔ Scoped user decisions can explicitly replace old accepted preferences without deleting history (39.5826ms)\r\n✔ Work packet links a task to notes and source versions, refreshes after code edits and reports status differences (44.3498ms)\r\n✔ Reports track source changes separately from context changes and remain explicitly self-reported (17.5327ms)\r\n✔ Disconnecting this game preserves unrelated MCP servers and creates a restorable backup (27.7457ms)\r\n✖ Claude lookup ignores relative PATH entries and passes selected paths without a shell (3.8835ms)\r\n✔ The npm Windows shim is resolved to Node and cli.js without executing cmd.exe (6.1457ms)\r\n✔ Native ZIP extraction rejects traversal, Windows device names, ADS and case-colliding paths (234.2746ms)\r\n✔ Runtime reuse verifies files and signals automatic repair while preserving the running copy (8.3898ms)\r\n✔ Preparation installs beside the running version, verifies application SHA and leaves activation unchanged (127.1972ms)\r\n✔ Temporary sharing violations are retried; permanent I/O failures are returned immediately (225.4947ms)\r\n✔ Fresh portable profile imports saved project, excluding legacy locks, runtime pointers and broker state (9.0936ms)\r\n✔ Invalid old preferences do not prevent a clean launch; custom profiles stay isolated (2.2776ms)\r\n✔ A structurally valid live Claude broker remains available after profile migration (2.7116ms)\r\n✔ New GUI coordination focuses its owner and releases ownership for native relaunch (64.8187ms)\r\nℹ tests 82\r\nℹ suites 0\r\nℹ pass 81\r\nℹ fail 1\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 2595.689\r\n\r\n✖ failing tests:\r\n\r\ntest at test\\claude-terminal.test.cjs:7:1\r\n✖ Claude lookup ignores relative PATH entries and passes selected paths without a shell (3.8835ms)\r\n  Error: Claude Code не найден. Установите его обычным способом или укажите claude.exe. Для npm-установки выберите claude.cmd; Node.js должен быть в PATH.\r\n      at resolveClaude (D:\\a\\basket\\basket\\desktop\\claude-terminal.cjs:36:9)\r\n      at async TestContext.<anonymous> (D:\\a\\basket\\basket\\test\\claude-terminal.test.cjs:11:17)\r\n      at async Test.run (node:internal/test_runner/test:1409:7)\r\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)\r\n"
+  "native": {
+    "platform": "win32",
+    "version": "0.14.0",
+    "mode": "button",
+    "oldProcess": {
+      "pid": 3616,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "lifecycle": "3616 quit\n",
+    "terminalSurvived": true,
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "rollback": {
+    "platform": "win32",
+    "version": "0.14.0",
+    "mode": "button",
+    "oldProcess": {
+      "pid": 9748,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "lifecycle": "9748 quit\n",
+    "worker-launch.json": {
+      "parentPid": 9748,
+      "expectedPid": 8428
+    },
+    "progress.json": {
+      "pid": 8428,
+      "phase": "Проверка видимого интерфейса"
+    },
+    "ready.json": {
+      "pid": 8428,
+      "tokenMatches": true
+    },
+    "plan.json": {
+      "parentPid": 9748,
+      "version": "0.14.0"
+    },
+    "parent-handoff.json": {
+      "pid": 9748,
+      "saved": true,
+      "released": true,
+      "tokenMatches": true
+    },
+    "new-start.json": {
+      "pid": 6548,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-x4QXnJ\\profile\\runtime\\30e27adf0a3c0aa3\\v\\0.14.0-50592b5ca53c\\Opora.exe",
+      "version": "0.14.0",
+      "argv": [
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-x4QXnJ\\profile\\runtime\\30e27adf0a3c0aa3\\v\\0.14.0-50592b5ca53c\\Opora.exe",
+        "--user-data-dir=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-x4QXnJ\\profile",
+        "--opora-update-job=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-x4QXnJ\\profile\\runtime\\30e27adf0a3c0aa3\\.opora-update-1kLYH5",
+        "--opora-update-token=[redacted]"
+      ]
+    },
+    "rollback": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "migration": null
 }
