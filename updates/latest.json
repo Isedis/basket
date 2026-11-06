@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.9.0",
-  "commit": "8ab312c4e12bb45f11df337b3369e98aa8ba7672",
-  "size": 161424846,
-  "sha256": "ac840b4dbbb8615b6147ff1e68687e2ed93cbe1088cb0d30412ca352396c0fc7",
+  "version": "0.10.0",
+  "commit": "bcac4f58cadfe1996b98689bac02c4212f441daa",
+  "size": 161443203,
+  "sha256": "7cce6839f32b9e61633c35c9ee633e7fce8fca2fcd0fc6583ef6db87f9dc111b",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "09aa6ed89dc0c3c7394b52218b4c52bbc3f7bfa4fad983fd2fb9cc3d4833fc5f"
+      "sha256": "11f1b7ee1ea63cca2b6f6b7440867aa5b5612c033a46b3bb2ede08571aa99602"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "ade604cd33f92cf0ba578a922c6380d1de4c953cdde183d94c1111f7be4b81dd"
+      "sha256": "4d81f0d41a9f60acac4728d07a59d2f4db2a078c59ecbc44ca8e4d8aaa3d7b47"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "34d360d4f5ef139b3d7834feb50bd11aec4ac4f7fe393e914d31341992be6806"
+      "sha256": "f27dcc380284ced10152122d14ac2e59078a5c16cdf492271aa0f3b4c98eeaaf"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 10429902,
-      "sha256": "0fbe893454edaa47a5cb4b45b54a3dba81e40c50e3a7e436387eb76006975a18"
+      "size": 10448259,
+      "sha256": "55c777731b534ced24afe5094e9cddc2dc1a353638c50118c33bf817dfbddb2f"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 3310967,
-    "sha256": "f69f45a0b233290d2c3100e4d383d2ffe7764ac717f638a3003b42948388f1d0",
+    "size": 3326935,
+    "sha256": "bcad2717cf61512eaafaf6b896dcb6cf24184562998d3be96deaed254fc50c6a",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 3310967,
-        "sha256": "f69f45a0b233290d2c3100e4d383d2ffe7764ac717f638a3003b42948388f1d0"
+        "size": 3326935,
+        "sha256": "bcad2717cf61512eaafaf6b896dcb6cf24184562998d3be96deaed254fc50c6a"
       }
     ]
   },
-  "notes": "Замечания на снимках: области мышью, комментарии «исправить» и «сохранить», задачи и история решений. Сравнение оригинала с результатами агента, принятие и возврат пользователем. Снимки из файла и буфера. Три новых MCP-инструмента для чтения замечаний, просмотра изображений и отправки результатов. После обновления перезапустите MCP-сессию."
+  "notes": "Исправления аудита и единый контекст задачи через opora_get_work_context. Меньшие ответы, страницы длинных полей/символов, корректное утверждение брендбука, Windows-пути. Связанные замечания, области действия и замена решений; архив старых попыток без потери истории. Результаты и отчёты привязаны к версии кода. После обновления перезапустите MCP-сессию."
 }
