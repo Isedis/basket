@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "version": "0.12.1",
-  "commit": "1fce30598276b56d118cdf22d620937fbf8e68dc",
-  "size": 162990070,
-  "sha256": "4bdf1263768117f16d4b6878ee8c2118b673d4f4de47f29c82e8cff88e29a0f3",
+  "version": "0.12.2",
+  "commit": "f0ac83aa1ba10992fce2f6b452b6246274c56cf9",
+  "size": 162990131,
+  "sha256": "24b7e9cc01899fd13308305942f77e181bef1dd066ef666727d92ae18b87483e",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "2cbe6c0088a27c78d5a963d704e2959e102d945517d4ec24f209bd85b37243be"
+      "sha256": "ce566d97bf6d859bccf5c525504c73bb3b14eee20bda2d3c1ddd30e31ed986ab"
     },
     {
       "name": "Opora-Windows.zip.part02",
@@ -18,25 +18,25 @@
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "75a23b6d0050efef3a40e6246660bf17a7c745a5a64016d34bf69e527d9d9a90"
+      "sha256": "cffa8de7691413851e3d589ca934d2718a898e7ead336af8b8b9bcf589e51205"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 11995126,
-      "sha256": "a343766849cf10b868b5e10fde0320f846009b3bbbfdeb10521a21cea4960e3a"
+      "size": 11995187,
+      "sha256": "8ac4dc175769563b3a6f54a8eabae823955cfe8381c574dfe6c36bf7c99ccac9"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 4870885,
-    "sha256": "3635dbd54adbf67be438b6b2d2053c140694b540171d11871cd8a906c33edb61",
+    "size": 4870940,
+    "sha256": "915d35c72ad20e89198eae736fff92e071d7f0b99d8cf2de0ceb8e39635bf50f",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 4870885,
-        "sha256": "3635dbd54adbf67be438b6b2d2053c140694b540171d11871cd8a906c33edb61"
+        "size": 4870940,
+        "sha256": "915d35c72ad20e89198eae736fff92e071d7f0b99d8cf2de0ceb8e39635bf50f"
       }
     ]
   },
-  "notes": "Исправлен запуск с повреждённым или зависшим подключением Claude. Интерфейс больше не ждёт терминал; в Windows включена программная отрисовка. При сбое — экран диагностики и журнал startup.log. Для восстановления пустого окна распакуйте малый ZIP рядом с START-OPORA.cmd и запустите REPAIR-OPORA.cmd. Пометки игры сохраняются."
+  "notes": "Исправлен восстановитель после предыдущих обновлений: UPDATE-OPORA.cmd и REPAIR-OPORA.cmd используют текущую версию из реестра установки, даже когда запущены через исходный Opora.exe. Устранена ошибка «Запущена предыдущая копия Опоры». Для зависшего окна распакуйте новый малый ZIP в прежнюю папку и запустите REPAIR-OPORA.cmd. Пометки и брендбук сохраняются."
 }
