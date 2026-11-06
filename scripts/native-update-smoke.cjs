@@ -10,7 +10,7 @@ async function main(){
   const migration=process.env.OPORA_TEST_UPDATE_MODE==='migration';
   if(migration)assert.equal(process.platform,'win32');
   const base=path.join(temp,"original app игра [1] & % ! '"),source=path.join(temp,'app-source'),candidate=path.join(temp,'payload/Opora-win32-x64'),profile=migration?path.join(temp,'appdata/opora'):path.join(temp,'profile'),game=path.join(temp,'game'),bin=path.join(temp,'bin');
-  let oldApp,newPid,client,brokerPid,migrationChild,migrationOutput='';let report={platform:process.platform,version:require('../package.json').version,mode:migration?'migration':'button'};
+  let oldApp,oldPid,newPid,client,brokerPid,migrationChild,migrationOutput='';let report={platform:process.platform,version:require('../package.json').version,mode:migration?'migration':'button'};
   const failLaunch=process.env.OPORA_TEST_UPDATE_FAILURE==='launch';
   try{
     await Promise.all([fs.mkdir(source),fs.mkdir(profile,{recursive:true}),fs.mkdir(game),fs.mkdir(bin),fs.mkdir(path.join(candidate,'resources'),{recursive:true})]);
@@ -31,7 +31,7 @@ async function main(){
     }
     const version=require('../package.json').version,proof=path.join(temp,'proof.json');
     const lifecycle=path.join(temp,'lifecycle.log');
-    const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});for(const event of ['before-quit','will-quit','quit','window-all-closed'])app.on(event,()=>require('node:fs').appendFileSync(${JSON.stringify(lifecycle)},process.pid+' '+event+'\\n'));${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;if(updateJob)require('node:fs').writeFileSync(require('node:path').join(updateJob,'new-start.json'),JSON.stringify({pid:process.pid,executable:process.execPath,argv:process.argv,version:require('./package.json').version}));${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state&&${!migration})return;if(state)await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
+    const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});for(const event of ['before-quit','will-quit','quit','window-all-closed'])app.on(event,()=>require('node:fs').appendFileSync(${JSON.stringify(lifecycle)},process.pid+' '+event+'\\n'));app.on('will-quit',()=>{try{process.getBuiltinModule('inspector').close();}catch{}});${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;if(updateJob)require('node:fs').writeFileSync(require('node:path').join(updateJob,'new-start.json'),JSON.stringify({pid:process.pid,executable:process.execPath,argv:process.argv,version:require('./package.json').version}));${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state&&${!migration})return;if(state)await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
     const pkg={...require('../package.json'),main:'test-entry.cjs'};await fs.writeFile(path.join(source,'test-entry.cjs'),bootstrap);
     pkg.version=version;await fs.writeFile(path.join(source,'package.json'),JSON.stringify(pkg));
     await asar.createPackageWithOptions(source,path.join(candidate,'resources/app.asar'),{unpackDir:path.join('node_modules','node-pty')});
@@ -52,7 +52,7 @@ async function main(){
     else await fs.writeFile(shim,'#!/bin/sh\nexec '+"'"+process.execPath.replace(/'/g,"'\\''")+"' "+"'"+cli.replace(/'/g,"'\\''")+"' \"$@\"\n",{mode:0o755});
     await fs.writeFile(path.join(profile,'claude-terminal.json'),JSON.stringify({executable:shim}));
     oldApp=await _electron.launch({executablePath:path.join(base,'Opora.exe'),args:process.platform==='linux'?['--no-sandbox','--ozone-platform=headless']:[],env:{...process.env,CODEX_HOME:path.join(temp,'codex')},timeout:45000});
-    const oldPid=await oldApp.evaluate(()=>process.pid);
+    oldPid=await oldApp.evaluate(()=>process.pid);
     const page=await oldApp.firstWindow();await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Update fixture');
     await oldApp.evaluate(({session},{manifest,archive})=>{const raw=process.getBuiltinModule('fs');session.fromPartition('opora-updates').fetch=async url=>new Response(String(url).includes('latest.json')?JSON.stringify(manifest):raw.readFileSync(archive),{status:200});},{manifest,archive});
     let terminal;
@@ -78,10 +78,7 @@ async function main(){
     }else{await page.locator('[data-action="updates"]').click();await page.locator('[data-action="install-update"]').click();}
     const deadline=Date.now()+90000;let result,inspectorDetached=false;
     while(Date.now()<deadline){try{result=JSON.parse(await fs.readFile(path.join(profile,'update-result.json'),'utf8'));}catch{}if(result?.status==='installed'||result?.status==='failed'||result?.status==='needs_attention')break;
-      // Node's inspector can keep a quitting Windows Electron alive. Detach it
-      // only after the application itself has entered will-quit; never initiate
-      // a premature close that would mask a missing updater handoff.
-      if(oldApp&&!inspectorDetached){let events='';try{events=await fs.readFile(lifecycle,'utf8');}catch{}if(events.includes(oldPid+' will-quit')){inspectorDetached=true;await oldApp.close().catch(()=>{});oldApp=null;}}
+      try{inspectorDetached=(await fs.readFile(lifecycle,'utf8')).includes(oldPid+' will-quit');}catch{}
       if(!page.isClosed()){const message=await page.locator('#modal-content').innerText().catch(()=>'');if(message.includes('Обновление не завершено'))throw new Error(message);}
       await pause(100);}
     assert.ok(result,result?.error||migrationOutput||'No update result');
@@ -109,7 +106,7 @@ async function main(){
   finally{
     if(process.env.OPORA_REPORT)await fs.writeFile(process.env.OPORA_REPORT,JSON.stringify(report,null,2));
     if(client)await client.close().catch(()=>{});
-    if(oldApp)await oldApp.close().catch(()=>{});
+    if(oldPid)try{process.kill(oldPid,'SIGKILL');}catch{}
     if(newPid)try{process.kill(newPid);}catch{}
     if(brokerPid)try{process.kill(brokerPid);}catch{}
     if(migrationChild)try{migrationChild.kill();}catch{}
