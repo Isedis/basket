@@ -2,7 +2,7 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora-startup-repair, opora]
+    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora]
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
@@ -67,6 +67,14 @@ jobs:
           OPORA_TEST_UPDATE_MODE: repair
           OPORA_UPDATE_FROM: 0.12.0
         run: node scripts/native-update-smoke.cjs
+      - name: Update an already managed installation using the original CMD
+        id: managed
+        env:
+          OPORA_REPORT: ${{ runner.temp }}/opora-managed.json
+          OPORA_TEST_UPDATE_MODE: migration
+          OPORA_TEST_MANAGED: '1'
+          OPORA_UPDATE_FROM: 0.12.1
+        run: node scripts/native-update-smoke.cjs
       - name: Publish machine-readable validation result
         if: always()
         uses: actions/github-script@v7
@@ -78,6 +86,7 @@ jobs:
           MIGRATION_RESULT: ${{ steps.migration.outcome }}
           STARTUP_RESULT: ${{ steps.startup.outcome }}
           REPAIR_RESULT: ${{ steps.repair.outcome }}
+          MANAGED_RESULT: ${{ steps.managed.outcome }}
         with:
           script: |
             const fs = require('fs');
@@ -86,8 +95,8 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
-              startup:read('opora-startup.json'),repair:read('opora-repair.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
+              steps: {startup:process.env.STARTUP_RESULT,repair:process.env.REPAIR_RESULT,managed:process.env.MANAGED_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              startup:read('opora-startup.json'),repair:read('opora-repair.json'),managed:read('opora-managed.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             const branch = 'opora-windows-validation';

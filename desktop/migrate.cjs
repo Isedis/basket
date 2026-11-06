@@ -20,7 +20,10 @@ async function main(){
   if(compareVersions(pkg.version,version)>0||(pkg.version===version&&!repair)){console.log('Установлена версия '+pkg.version+'.');const env={...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true,detached:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();return;}
   await layoutApi.atomic(layout.pointer,{...current,version:pkg.version});
   const onProgress=text=>console.log(text);
-  const plan=await updater.prepareInstall({kind:'app',version,runtimeVersion:process.versions.electron,payload:path.join(packageRoot,'opora-update')},initial,{layout,runtimeVersion:process.versions.electron,onProgress});
+  // The CMD intentionally uses the original runtime, which is always available.
+  // Installation must be prepared against the active version, not that launcher.
+  const activeExecutable=path.join(current.directory,'Opora.exe');
+  const plan=await updater.prepareInstall({kind:'app',version,runtimeVersion:process.versions.electron,payload:path.join(packageRoot,'opora-update')},activeExecutable,{layout,runtimeVersion:process.versions.electron,onProgress});
   let control;try{control=await compileControl(plan.job);}catch(error){console.log('Обновление подготовлено. Дождусь обычного закрытия Опоры. '+error.message);}
   const protect=compareVersions(pkg.version,'0.12.0')<0;let waiting=false,closeRequestedAt=0;
   while(true){
