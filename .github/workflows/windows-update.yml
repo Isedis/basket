@@ -2,7 +2,7 @@ name: Windows updater validation
 on:
   workflow_dispatch:
   push:
-    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora-real-release-update, opora]
+    branches: [opora-update-hardening, opora-startup-repair, opora-managed-repair, opora-portable, opora-startup-animation, opora-real-release-update, opora-project-map, opora]
     paths: ['desktop/**', 'src/**', 'ui/**', 'mcp/**', 'scripts/**', 'test/**', 'distribution/**', 'package*.json', '.github/workflows/windows-update.yml']
 permissions:
   contents: write
@@ -101,13 +101,13 @@ jobs:
               await github.rest.repos.createOrUpdateFileContents({...context.repo,branch,path:name,sha,message:'Record rendered update window',content:fs.readFileSync(file).toString('base64')});
             }
       - name: Publish the tested ready-to-run ZIP on GitHub Releases
-        if: success() && (github.ref == 'refs/heads/opora-real-release-update' || github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
+        if: success() && (github.ref == 'refs/heads/opora-project-map' || github.ref == 'refs/heads/opora-real-release-update' || github.ref == 'refs/heads/opora-startup-animation' || github.ref == 'refs/heads/opora-portable' || github.ref == 'refs/heads/opora')
         uses: actions/github-script@v7
         with:
           script: |
             const fs=require('fs'),path=require('path'),crypto=require('crypto');
             const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
-            if(!/^0\.14\.\d+$/.test(manifest.version))return;
+            if(!/^0\.(14|15)\.\d+$/.test(manifest.version))return;
             const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
             const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
             if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');

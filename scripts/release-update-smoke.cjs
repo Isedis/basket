@@ -7,7 +7,7 @@ async function main(){
   const report={nativeRelaunch:true};let oldPid,newPid;
   try{
     let base=path.resolve('release/Opora-win32-x64');
-    const old=process.env.OPORA_TEST_OLD_BASE==='1',version=old?'0.13.0':require('../package.json').version,next=old?'0.14.0':'0.14.1';
+    const old=process.env.OPORA_TEST_OLD_BASE==='1',version=old?'0.13.0':require('../package.json').version,next=old?require('../package.json').version:require('../package.json').version.split('.').map((v,i)=>i===2?Number(v)+1:v).join('.');
     if(old){const r=await fetch('https://github.com/Isedis/basket/releases/download/v0.13.0/Opora-Windows.zip');assert.equal(r.status,200);const zip=path.join(temp,'old.zip');await fs.writeFile(zip,Buffer.from(await r.arrayBuffer()));await exec('python',['-c','import zipfile,sys;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])',zip,path.join(temp,'old')]);base=path.join(temp,'old/Opora-win32-x64');}
     await fs.mkdir(game);await fs.mkdir(profile,{recursive:true});await fs.mkdir(path.join(stage,'resources'),{recursive:true});
     await fs.writeFile(path.join(game,'project.godot'),'config_version=5\n[application]\nconfig/name="Release game"\n');
