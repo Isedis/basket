@@ -50,6 +50,10 @@ async function main() {
     await fs.writeFile(path.join(root,'menu.gd'),'extends Control\nfunc open_menu():\n  pass\n');
     const map=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,kind:'scene'}})).structuredContent;
     assert.equal(map.files[0].file,'menu.tscn');assert.equal(map.total,1);
+    const groups=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,view:'systems'}})).structuredContent;
+    assert.ok(groups.systems.some(g=>g.id===map.files[0].system_id));
+    const groupFiles=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,system:map.files[0].system_id}})).structuredContent;
+    assert.ok(groupFiles.files.some(n=>n.file==='menu.tscn'));
     const focused=(await client.callTool({name:'opora_get_project_map',arguments:{project_id:project.project_id,file:'menu.gd'}})).structuredContent;
     assert.equal(focused.incoming[0].from,'menu.tscn');assert.equal(focused.selected.functions[0].name,'open_menu');
     const wrongMap=await client.callTool({name:'opora_get_project_map',arguments:{project_id:'0'.repeat(32)}});assert.equal(wrongMap.isError,true);

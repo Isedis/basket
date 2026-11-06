@@ -85,6 +85,18 @@ async function main() {
     assert.match(await page.locator('#context-preview').textContent(),/УТВЕРЖДЁН пользователем/);
     await page.screenshot({path:path.join(__dirname,'../artifacts/context.png'),fullPage:true});
     await page.keyboard.press('Control+6');
+    await page.locator('[data-map-system="combat"]').waitFor();
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.launch-intro')).visibility==='hidden');
+    await page.screenshot({path:path.join(__dirname,'../artifacts/project-systems-wide.png'),fullPage:true});
+    await page.locator('[data-map-system="combat"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'combat/arena.tscn'}).waitFor();
+    assert.equal(await page.locator('.map-file-list [data-map-file]').count(),2);
+    await page.locator('.map-detail [data-map-file="characters/player.tscn"]').click();
+    await page.locator('.map-focus-heading h2').filter({hasText:'characters/player.tscn'}).waitFor();
+    assert.equal(await page.locator('.map-file-list [data-map-file]').count(),3);
+    await page.locator('[data-map-action="systems"]').click();
+    await page.locator('[data-map-system="interface"]').waitFor();
+    await page.locator('[data-map-action="main"]').click();
     await page.locator('.map-focus-heading h2').filter({hasText:'scenes/main_menu.tscn'}).waitFor();
     assert.equal(await page.locator('.map-detail [data-map-file="scripts/main_menu.gd"]').count(),1);
     await page.locator('.map-detail [data-map-file="scripts/main_menu.gd"]').click();

@@ -2,6 +2,7 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const {systemOf,overview}=require('./map-systems.cjs');
 const {assertSafePath}=require('./core.cjs');
 const SKIP=new Set(['node_modules','vendor','build','dist','release','distribution']);
 const TEXT=new Set(['.godot','.tscn','.tres','.gd','.cs','.gdshader','.shader','.glsl','.uid']);
@@ -120,10 +121,12 @@ class ProjectMap {
   }
 }
 function projectView(map,options={}){
-  const {file,query='',kind='all',offset=0,limit=60,symbol_offset=0,symbol_limit=32,symbol_query=''}=options;
+  const {file,query='',kind='all',offset=0,limit=60,symbol_offset=0,symbol_limit=32,symbol_query='',view='files',system=null}=options;
+  if(!['files','systems'].includes(view)||(system!==null&&(typeof system!=='string'||system.length>2048)))throw new Error('Некорректная группа карты.');
   if(!Number.isInteger(symbol_offset)||symbol_offset<0||!Number.isInteger(symbol_limit)||symbol_limit<1||symbol_limit>100||typeof symbol_query!=='string'||symbol_query.length>200)throw new Error('Некорректная страница символов.');
   if(!Number.isInteger(offset)||offset<0||!Number.isInteger(limit)||limit<1||limit>100||typeof query!=='string'||query.length>200||!['all','scene','script','resource','shader','asset','project','other','unlinked'].includes(kind))throw new Error('Некорректный фильтр карты.');
   const base={map_revision:map.map_revision,indexed_at:map.indexed_at,main:map.main,summary:map.summary,warnings:map.warnings,limits:map.limits,offset,limit,evidence:'Static references found in files, not proof of runtime use. No incoming links does not mean unused. Dynamic loading, generated paths and binary scene contents may be unknown.'};
+  if(view==='systems')return {...base,...overview(map,{offset,limit,query})};
   if(file){
     safeFile(file);const selected=map.nodes.find(n=>n.file===file);const incoming=map.edges.filter(e=>e.to===file),outgoing=map.edges.filter(e=>e.from===file);
     if(!selected&&!incoming.length)throw new Error('Файл не найден в текущей карте. Обновите карту или проверьте путь.');
@@ -133,10 +136,10 @@ function projectView(map,options={}){
     return {...base,selected:{...node,functions:functions.slice(symbol_offset,symbol_offset+symbol_limit),signals:signals.slice(symbol_offset,symbol_offset+symbol_limit)},symbol_page:{offset:symbol_offset,limit:symbol_limit,functions_total:node.functions_total||0,signals_total:node.signals_total||0,available:Math.max(functions.length,signals.length),has_more:symbol_offset+symbol_limit<Math.max(functions.length,signals.length),query:symbol_query},incoming:incoming.slice(offset,offset+limit).map(e=>enrich(e,'in')),outgoing:outgoing.slice(offset,offset+limit).map(e=>enrich(e,'out')),incoming_total:incoming.length,outgoing_total:outgoing.length,unresolved:map.unresolved.filter(r=>r.file===file)};
   }
   const terms=query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
-  const matches=map.nodes.filter(n=>(kind==='all'||(kind==='unlinked'?!n.incoming:n.kind===kind))&&terms.every(term=>(n.file+' '+(n.class_name||'')).toLocaleLowerCase().includes(term)));
-  return {...base,total:matches.length,files:matches.slice(offset,offset+limit).map(compactNode),query,kind};
+  const matches=map.nodes.filter(n=>(!system||systemOf(n).id===system)&&(kind==='all'||(kind==='unlinked'?!n.incoming:n.kind===kind))&&terms.every(term=>(n.file+' '+(n.class_name||'')).toLocaleLowerCase().includes(term)));
+  return {...base,total:matches.length,files:matches.slice(offset,offset+limit).map(compactNode),query,kind,system};
 }
-function compactNode({fingerprint,functions,signals,...node}){return node;}
+function compactNode({fingerprint,functions,signals,...node}){const group=systemOf(node);return {...node,system_id:group.id,system_label:group.label};}
 const scanners=new Map();
 async function scanProjectMap(root){const real=await fs.realpath(root);if(!scanners.has(real)){if(scanners.size>=3)scanners.delete(scanners.keys().next().value);scanners.set(real,new ProjectMap(real));}return scanners.get(real).scan();}
 async function getProjectMap(root,options={}){return projectView(await scanProjectMap(root),options);}
