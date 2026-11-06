@@ -88,9 +88,13 @@ async function main() {
     await page.locator('[data-map-system="combat"]').waitFor();
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('.launch-intro')).visibility==='hidden');
     await page.screenshot({path:path.join(__dirname,'../artifacts/project-systems-wide.png'),fullPage:true});
+    await page.locator('[data-map-system="combat"]').focus();
+    assert.ok(await page.locator('.map-system-board .map-wire.active').count()>0);
     await page.locator('[data-map-system="combat"]').click();
     await page.locator('.map-focus-heading h2').filter({hasText:'combat/arena.tscn'}).waitFor();
     assert.equal(await page.locator('.map-file-list [data-map-file]').count(),2);
+    await page.locator('.map-detail [data-map-file="characters/player.tscn"]').focus();
+    assert.ok(await page.locator('.map-graph .map-wire.active').count()>0);
     await page.locator('.map-detail [data-map-file="characters/player.tscn"]').click();
     await page.locator('.map-focus-heading h2').filter({hasText:'characters/player.tscn'}).waitFor();
     assert.equal(await page.locator('.map-file-list [data-map-file]').count(),3);
