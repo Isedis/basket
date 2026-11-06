@@ -6,8 +6,8 @@ const core = require('../src/core.cjs');
 const brandbook = require('../src/brandbook.cjs');
 const brandReview = require('../src/brand-review.cjs');
 const {readImage} = require('./image-analysis.cjs');
-const {Updater} = require('../src/updater.cjs');
-const windowsUpdater = require('./windows-updater.cjs');
+const {Updater,compareVersions} = require('../src/updater.cjs');
+
 const agentConfig = require('../src/agent-config.cjs');
 const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
@@ -24,6 +24,7 @@ if(process.platform==='win32')app.disableHardwareAcceleration();
 let profileError;
 let profileWarnings=[];
 try{profileWarnings=require('./profile.cjs').configure(app).warnings;}catch(error){profileError=error;}
+if(app.isPackaged){try{const cache=path.join(app.getPath('userData'),'chromium-v3');require('node:fs').mkdirSync(cache,{recursive:true});app.setPath('sessionData',cache);}catch(error){profileError=error;}}
 startup.begin(app);
 for(const warning of profileWarnings)startup.log('preferences-not-imported',warning);
 const workReaders=new Map();
@@ -33,8 +34,12 @@ let win;
 let canClose = false;
 let restarting=false;
 let installation=null;
+let reactivateBase=false;
+const instance=new (require('./gui-instance.cjs').GuiInstance)(app.getPath('userData'),()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
 let mcpRuntime=null;
-const startupUpdate={job:process.env.OPORA_UPDATE_JOB,token:process.env.OPORA_UPDATE_TOKEN};
+const updateArg=name=>process.argv.find(value=>value.startsWith('--opora-update-'+name+'='))?.split('=').slice(1).join('=');
+const startupUpdate={job:updateArg('job')||process.env.OPORA_UPDATE_JOB,token:updateArg('token')||process.env.OPORA_UPDATE_TOKEN};
+if(startupUpdate.job){process.env.OPORA_UPDATE_JOB=startupUpdate.job;process.env.OPORA_UPDATE_TOKEN=startupUpdate.token;}
 let terminal;
 let terminalStarting=false;
 let terminalClosePrompt=false;
@@ -43,20 +48,23 @@ const requireProject = () => {if (!root) throw new Error('Сначала под�
 
 async function runDesktop(){
 if(profileError)throw profileError;
+if(startupUpdate.job)await installLayout.atomic(path.join(startupUpdate.job,'gui-process.json'),{token:startupUpdate.token,pid:process.pid,executable:process.execPath});
 if(app.isPackaged){
   installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'runtime')});
   const active=await installLayout.active(installation);
-  if(active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&!process.env.OPORA_UPDATE_JOB){
-    const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:true,detached:true,env:{...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'}});
+  if(active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&!process.env.OPORA_UPDATE_JOB&&compareVersions(active.version,require('../package.json').version)>0){
+    const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:false,detached:true,env:{...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'}});
     await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();app.quit();return;
   }
+  reactivateBase=active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&installLayout.same(installation.base,path.dirname(process.execPath))&&!startupUpdate.job;
   mcpRuntime=await installLayout.stableMcp(installation);
 }
-const primary=app.requestSingleInstanceLock();
+const primary=await instance.acquire();
+if(primary&&reactivateBase)await installLayout.atomic(installation.pointer,{schemaVersion:1,id:installation.id,directory:installation.base,version:require('../package.json').version});
 if(!primary)app.quit();
-app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus();}});
+
 if(primary)await app.whenReady().then(async () => {
-  win = new BrowserWindow({show:!startupUpdate.job,width:1360, height:920, minWidth:980, minHeight:720, title:'Опора — память вашей игры', backgroundColor:'#000000', autoHideMenuBar:true, webPreferences:{preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true}});
+  win = new BrowserWindow({show:true,width:1360, height:920, minWidth:980, minHeight:720, title:'Опора — память вашей игры', backgroundColor:'#000000', autoHideMenuBar:true, webPreferences:{preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true}});
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate', event => event.preventDefault());
   let rendererLoaded=false;
@@ -99,7 +107,7 @@ if(primary)await app.whenReady().then(async () => {
   const updater=new Updater({runtimeVersion:process.versions.electron,currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:async(url,options)=>{const error=await proxyReady;if(error)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
   let installing=false;
   ipcMain.handle('updates:info',async ()=>{
-    const previousInstall=await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'));
+    const previousInstall=await installLayout.read(path.join(app.getPath('userData'),'update-result.json'));
     return {...updater.info(),previousInstall,installDirectory:path.dirname(process.execPath)};
   });
   ipcMain.handle('updates:check',()=>updater.check());
@@ -131,13 +139,13 @@ if(primary)await app.whenReady().then(async () => {
       await nativeUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
       canClose=true;restarting=true;
       await terminal.detach();
-      app.releaseSingleInstanceLock();releasedForUpdate=true;
-      await installLayout.atomic(path.join(plan.job,'parent-handoff.json'),{token:plan.token,pid:process.pid,saved:true,released:true});
+      await instance.release();releasedForUpdate=true;
+      await nativeUpdater.commitAndRelaunch(plan,app);
       // The renderer saved before this transaction and the PTY host is separate.
       // Exit the GUI directly; no close dialog or lingering inspector can block it.
       setTimeout(()=>app.exit(0),25);
       return {restarting:true};
-    } catch(error) {installing=false;restarting=false;canClose=false;if(releasedForUpdate)app.requestSingleInstanceLock();if(installPlan)await fs.writeFile(path.join(installPlan.job,'cancel'),'cancelled').catch(()=>{});await terminal.connect().catch(()=>{});updater.emit({status:'error',transaction:false,error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
+    } catch(error) {installing=false;restarting=false;canClose=false;if(releasedForUpdate)await instance.acquire();if(installPlan)await fs.writeFile(path.join(installPlan.job,'cancel'),'cancelled').catch(()=>{});await terminal.connect().catch(()=>{});updater.emit({status:'error',transaction:false,error:error.message,previousInstall:await installLayout.read(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');
@@ -297,7 +305,8 @@ if(primary)await app.whenReady().then(async () => {
   startup.log('loading-interface');
   await win.loadFile(path.join(__dirname,'../ui/index.html'));
   if(startupUpdate.job)await workspaceReady;
-  try {await nativeUpdater.confirmLaunch({version:require('../package.json').version});if(startupUpdate.job)win.show();}
+  try {if(startupUpdate.job){win.hide();win.show();await require('./paint-ready.cjs').verify(win);}
+    await nativeUpdater.confirmLaunch({version:require('../package.json').version});if(startupUpdate.job)win.show();}
   catch(error) {throw error;}
   finally {delete process.env.OPORA_UPDATE_JOB;delete process.env.OPORA_UPDATE_TOKEN;}
 });
@@ -312,4 +321,4 @@ runDesktop().catch(async error=>{
   dialog.showErrorBox('Запуск Опоры',error.message+'\nЖурнал: '+startup.filename());app.exit(1);
 });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit',()=>terminal?.dispose());
+app.on('will-quit',()=>{terminal?.dispose();void instance.release();});

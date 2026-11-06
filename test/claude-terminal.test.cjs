@@ -6,11 +6,11 @@ const path=require('node:path');
 const {resolveClaude}=require('../desktop/claude-terminal.cjs');
 test('Claude lookup ignores relative PATH entries and passes selected paths without a shell',async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'opora CLI & игра-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
-  const bin=path.join(root,'bin');await fs.mkdir(bin);const cli=path.join(bin,'claude');await fs.writeFile(cli,'fixture',{mode:0o755});
-  await assert.rejects(resolveClaude({home:root,env:{PATH:'.:bin'},platform:'linux'}),/не найден/);
-  const command=await resolveClaude({home:root,env:{PATH:'.:'+bin},platform:'linux'});
+  const bin=path.join(root,'bin');await fs.mkdir(bin);const cli=path.join(bin,process.platform==='win32'?'claude.exe':'claude');await fs.writeFile(cli,'fixture',{mode:0o755});
+  await assert.rejects(resolveClaude({home:root,env:{PATH:'.'+path.delimiter+'bin'},platform:process.platform}),/не найден/);
+  const command=await resolveClaude({home:root,env:{PATH:'.'+path.delimiter+bin},platform:process.platform});
   assert.equal(command.file,cli);assert.deepEqual(command.args,[]);
-  await assert.rejects(resolveClaude({selected:'./claude',home:root,env:{PATH:bin},platform:'linux'}),/недоступен/);
+  await assert.rejects(resolveClaude({selected:'./claude',home:root,env:{PATH:bin},platform:process.platform}),/недоступен/);
 });
 test('The npm Windows shim is resolved to Node and cli.js without executing cmd.exe',async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),"opora npm & ' "));t.after(()=>fs.rm(root,{recursive:true,force:true}));

@@ -2,8 +2,8 @@ const path=require('node:path'),crypto=require('node:crypto'),{spawn}=require('n
 let raw=require('node:fs');try{raw=require('original-fs');}catch{}const fs=raw.promises;
 const yauzl=require('yauzl');
 const layoutApi=require('./install-layout.cjs');
-const legacy=require('./windows-updater.cjs');
-const {retry}=require('./install-worker.cjs');
+const legacy=require('./archive.cjs');
+const {retry}=require('./update-watchdog.cjs');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function digest(file){const hash=crypto.createHash('sha256');for await(const data of raw.createReadStream(file))hash.update(data);return hash.digest('hex');}
 function extract(archive,destination){return new Promise((resolve,reject)=>{
@@ -67,8 +67,8 @@ async function prepareInstall(download,executable,{storage,layout:provided,runti
     const marker={schemaVersion:1,id:layout.id,home:layout.home,base:layout.base};
     await fs.writeFile(path.join(source,layoutApi.MARKER),JSON.stringify(marker));hashes[layoutApi.MARKER]=await digest(path.join(source,layoutApi.MARKER));
     await retry(()=>fs.rename(source,directory));
-    await fs.writeFile(path.join(job,'install-worker.cjs'),await require('node:fs').promises.readFile(path.join(__dirname,'install-worker.cjs')));
-    return {schemaVersion:2,installId:layout.id,home:layout.home,pointer:layout.pointer,job,directory,source:directory,previousDirectory:previous.directory,previous,version:download.version,parentPid:process.pid,token:crypto.randomBytes(32).toString('hex'),hashes};
+    await fs.writeFile(path.join(job,'update-watchdog.cjs'),await require('node:fs').promises.readFile(path.join(__dirname,'update-watchdog.cjs')));
+    return {schemaVersion:3,installId:layout.id,home:layout.home,base:layout.base,pointer:layout.pointer,job,directory,source:directory,previousDirectory:previous.directory,previous,version:download.version,parentPid:process.pid,token:crypto.randomBytes(32).toString('hex'),hashes};
   }catch(error){await fs.rm(directory,{recursive:true,force:true}).catch(()=>{});await fs.rm(job,{recursive:true,force:true}).catch(()=>{});throw Object.assign(new Error('Подготовка обновления остановлена: '+error.message),{code:error.code});}
 }
 async function launchInstaller(plan,resultFile,{spawnProcess=spawn,onProgress=()=>{},timeout=180000}={}){
@@ -77,7 +77,7 @@ async function launchInstaller(plan,resultFile,{spawnProcess=spawn,onProgress=()
   const out=await fs.open(path.join(plan.job,'stdout.log'),'wx'),err=await fs.open(path.join(plan.job,'stderr.log'),'wx');
   let child,exited=false,code=null;
   try{
-    child=spawnProcess(path.join(plan.directory,'Opora.exe'),[path.join(plan.job,'install-worker.cjs')],{cwd:plan.job,env:{...process.env,ELECTRON_RUN_AS_NODE:'1',ELECTRON_NO_ATTACH_CONSOLE:'1'},stdio:['ignore',out.fd,err.fd],detached:true,windowsHide:true});
+    child=spawnProcess(path.join(plan.directory,'Opora.exe'),[path.join(plan.job,'update-watchdog.cjs')],{cwd:plan.job,env:{...process.env,ELECTRON_RUN_AS_NODE:'1',ELECTRON_NO_ATTACH_CONSOLE:'1'},stdio:['ignore',out.fd,err.fd],detached:true,windowsHide:true});
     child.on('error',()=>{});child.once('exit',value=>{exited=true;code=value;});
     await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
     await layoutApi.atomic(path.join(plan.job,'worker-launch.json'),{parentPid:process.pid,expectedPid:child.pid,mode:'electron-node'});
@@ -100,13 +100,25 @@ async function launchInstaller(plan,resultFile,{spawnProcess=spawn,onProgress=()
     throw new Error('Обновление не началось. Опора остаётся открытой. '+(result?.error||error.message));
   }finally{await out.close();await err.close();child?.unref();}
 }
+async function commitAndRelaunch(plan,app){
+  const current=await layoutApi.active({id:plan.installId,home:plan.home,base:plan.base,pointer:plan.pointer});
+  if(!current||!layoutApi.same(current.directory,plan.previousDirectory))throw new Error('Установка уже изменилась.');
+  await layoutApi.atomic(plan.pointer,{schemaVersion:1,id:plan.installId,directory:plan.directory,version:plan.version});
+  try{
+    app.relaunch({execPath:path.join(plan.directory,'Opora.exe'),args:[...(plan.launchArgs||[]),'--user-data-dir='+app.getPath('userData'),'--opora-update-job='+plan.job,'--opora-update-token='+plan.token]});
+    await layoutApi.atomic(path.join(plan.job,'parent-handoff.json'),{token:plan.token,pid:process.pid,saved:true,released:true,nativeRelaunch:true});
+  }catch(error){await layoutApi.atomic(plan.pointer,plan.previous);throw error;}
+}
 async function confirmLaunch({version,executable=process.execPath,job=process.env.OPORA_UPDATE_JOB,token=process.env.OPORA_UPDATE_TOKEN}={}){
   if(!job||!token)return false;
   const plan=await layoutApi.read(path.join(job,'plan.json'));
-  if(plan?.schemaVersion!==2)return legacy.confirmLaunch({version,executable,job,token});
-  require('./install-worker.cjs').validate(plan,job);
+  // Read-only acknowledgement for the one-time upgrade from an installed 0.13.
+  // The old installer itself is not included or executed by this application.
+  if(plan?.schemaVersion===2){
+    if(!layoutApi.same(plan.job,job)||!layoutApi.same(path.dirname(job),plan.home)||!layoutApi.contained(path.join(plan.home,'v'),plan.directory))throw new Error('Неверный план перехода.');
+  }else require('./update-watchdog.cjs').validate(plan,job);
   if(plan.token!==token||plan.version!==version||!layoutApi.same(path.dirname(executable),plan.directory))throw new Error('Не удалось подтвердить новую версию.');
-  await layoutApi.atomic(path.join(job,'launch-ack.json'),{token,version,executable,pid:process.pid});return true;
+  await layoutApi.atomic(path.join(job,'launch-ack.json'),{token,version,executable,pid:process.pid,painted:true});return true;
 }
 async function readDiagnostics(file,{layout}={}){
   const result=await layoutApi.read(file);if(!result)return {result:null};
@@ -114,4 +126,4 @@ async function readDiagnostics(file,{layout}={}){
   const logs={};for(const file of ['installer.log','stdout.log','stderr.log','gui-startup.log','recovery-startup.log'])try{const bytes=await fs.readFile(path.join(result.job,file));logs[file]=bytes.subarray(-5000).toString('utf8');}catch{}
   return {result,logs};
 }
-module.exports={prepareInstall,launchInstaller,confirmLaunch,readDiagnostics,extract,stageEngine};
+module.exports={commitAndRelaunch,prepareInstall,launchInstaller,confirmLaunch,readDiagnostics,extract,stageEngine};

@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "\u0415\u0434\u0438\u043d\u0430\u044f \u043f\u0430\u043c\u044f\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442\u0430 Godot \u0434\u043b\u044f Claude \u0438 Codex",
   "private": true,
   "main": "desktop/main.cjs",
@@ -10,10 +10,7 @@
     "test:ui": "node scripts/ui-smoke.cjs",
     "test:desktop": "node scripts/desktop-smoke.cjs",
     "test:mcp": "node scripts/mcp-smoke.cjs",
-    "test:launcher": "node scripts/launcher-smoke.cjs",
-    "test:installer": "node scripts/installer-smoke.cjs",
-    "test:restart": "node scripts/update-restart-smoke.cjs",
-    "check": "node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/image-analysis.cjs && node --check desktop/windows-updater.cjs && node --check src/core.cjs && node --check src/work-context.cjs && node --check src/source-snapshot.cjs && node --check src/visual-feedback.cjs && node --check ui/visual-feedback.js && node --check src/project-map.cjs && node --check ui/project-map.js && node --check src/brandbook.cjs && node --check src/updater.cjs && node --check ui/context.js && node --check ui/app.js && node --check src/agent-service.cjs && node --check src/agent-config.cjs && node --check mcp/server.cjs && node --check ui/brand-review.js && node --check src/brand-review.cjs && node --check desktop/claude-terminal.cjs && node --check ui/claude-terminal.js && node --check scripts/package-win.cjs && node --check desktop/native-updater.cjs && node --check desktop/install-layout.cjs && node --check desktop/install-worker.cjs && node --check desktop/terminal-client.cjs && node --check desktop/terminal-broker.cjs && node --check desktop/migrate.cjs",
+    "check": "node --check desktop/main.cjs && node --check desktop/native-updater.cjs && node --check desktop/update-watchdog.cjs && node --check desktop/paint-ready.cjs && node --check desktop/archive.cjs && node --check ui/app.js",
     "package:win": "node scripts/package-win.cjs",
     "test:terminal": "node scripts/terminal-smoke.cjs",
     "test:native-update": "node scripts/native-update-smoke.cjs"

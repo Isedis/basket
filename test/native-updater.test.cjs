@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const {execFile}=require('node:child_process'),exec=require('node:util').promisify(execFile),asar=require('@electron/asar');
-const updater=require('../desktop/native-updater.cjs'),layout=require('../desktop/install-layout.cjs'),{retry}=require('../desktop/install-worker.cjs');
+const updater=require('../desktop/native-updater.cjs'),layout=require('../desktop/install-layout.cjs'),{retry}=require('../desktop/update-watchdog.cjs');
 const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
 async function fixture(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'opora-native-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
 async function zipEntries(root,entries){const archive=path.join(root,'archive.zip');await exec('python',['-c',"import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1],'w'); [(z.writestr(e[0],e[1])) for e in json.loads(sys.argv[2])]; z.close()",archive,JSON.stringify(entries)]);return archive;}
@@ -30,7 +30,7 @@ test('Preparation installs beside the running version, verifies application SHA 
   await fs.writeFile(path.join(payload,'runtime.json'),JSON.stringify(meta));
   const archive=path.join(root,'update.zip');await exec('python',['-c',"import pathlib,zipfile,sys; r=pathlib.Path(sys.argv[1]); z=zipfile.ZipFile(sys.argv[2],'w'); [z.write(p,p.relative_to(r.parent)) for p in r.rglob('*') if p.is_file()]; z.close()",payload,archive]);
   const plan=await updater.prepareInstall({kind:'app',version:'0.13.0',runtimeVersion:'45.2.3',archive},path.join(current,'Opora.exe'),{storage,runtimeVersion:'45.2.3'});
-  assert.equal(plan.schemaVersion,2);assert.notEqual(plan.directory,current);assert.equal(plan.previousDirectory,current);assert.equal((await layout.read(plan.pointer)).directory,current);
+  assert.equal(plan.schemaVersion,3);assert.notEqual(plan.directory,current);assert.equal(plan.previousDirectory,current);assert.equal((await layout.read(plan.pointer)).directory,current);
   assert.equal(await fs.readFile(path.join(plan.directory,'Opora.exe'),'utf8'),'engine');assert.equal(await fs.readFile(path.join(current,'engine.dll'),'utf8'),'verified');
   assert.equal(JSON.parse(await fs.readFile(path.join(plan.directory,layout.MARKER),'utf8')).id,plan.installId);
   const manual=path.join(root,'manual');await fs.mkdir(manual);await fs.copyFile(path.join(payload,'resources/app.asar'),path.join(manual,'new-app.asar'));await fs.copyFile(path.join(payload,'runtime.json'),path.join(manual,'runtime.json'));
@@ -47,6 +47,8 @@ test('Preparation installs beside the running version, verifies application SHA 
   assert.equal(repaired.previousDirectory,plan.directory);
   assert.equal((await layout.read(plan.pointer)).directory,plan.directory);
   assert.equal(await fs.readFile(path.join(current,'Opora.exe'),'utf8'),'engine');
+  await assert.rejects(updater.commitAndRelaunch(repaired,{getPath:()=>root,relaunch:()=>{throw new Error('Native relaunch failed');}}),/Native relaunch failed/);
+  assert.equal((await layout.read(plan.pointer)).directory,plan.directory);
 });
 test('Temporary sharing violations are retried; permanent I/O failures are returned immediately',async()=>{
   let calls=0;assert.equal(await retry(async()=>{calls++;if(calls<3)throw Object.assign(new Error('locked'),{code:'EACCES'});return 'ready';}), 'ready');assert.equal(calls,3);
