@@ -1,44 +1,95 @@
 {
-  "commit": "5b24790bc49b90a2100e7c26b4bf1e726b6e0f06",
-  "run": "https://github.com/Isedis/basket/actions/runs/42163571449",
-  "checkedAt": "2026-11-06T04:39:38.761Z",
+  "commit": "6ce218f6cc5453d25f3935548dc3b11ec20e1241",
+  "run": "https://github.com/Isedis/basket/actions/runs/42164319181",
+  "checkedAt": "2026-11-06T04:46:18.613Z",
   "platform": "windows-latest",
   "steps": {
     "unit": "success",
     "powershell51": "success",
-    "native": "failure",
-    "rollback": "skipped",
-    "migration": "skipped"
+    "native": "success",
+    "rollback": "success",
+    "migration": "success"
   },
   "native": {
     "platform": "win32",
     "version": "0.12.0",
     "mode": "button",
-    "legacyController": "PROTECTED:10136",
+    "legacyController": "PROTECTED:3172",
     "oldProcess": {
-      "pid": 10136,
+      "pid": 3172,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "10136 quit\n",
+    "lifecycle": "3172 quit\n",
+    "terminalSurvived": true,
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  },
+  "rollback": {
+    "platform": "win32",
+    "version": "0.12.0",
+    "mode": "button",
+    "legacyController": "PROTECTED:5800",
+    "oldProcess": {
+      "pid": 5800,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "lifecycle": "5800 quit\n",
     "worker-launch.json": {
-      "parentPid": 10136,
-      "expectedPid": 3440
+      "parentPid": 5800,
+      "expectedPid": 5044
     },
     "progress.json": {
-      "pid": 3440,
-      "phase": "Установщик готов. Перезапуск окна Опоры"
+      "pid": 5044,
+      "phase": "Проверка запуска новой версии"
     },
     "ready.json": {
-      "pid": 3440,
+      "pid": 5044,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 10136,
+      "parentPid": 5800,
       "version": "0.12.0"
     },
-    "error": "{\"status\":\"waiting\",\"phase\":\"Проверка SHA256: .opora-location.json\",\"version\":\"0.12.0\",\"installId\":\"57157cd4-c2c9-406f-bb71-2a339391a1b7\",\"home\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\",\"directory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\v\\\\0.12.0-758097c53682\",\"previousDirectory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\original app игра [1] & % ! '\",\"backup\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\original app игра [1] & % ! '\",\"job\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\.opora-update-FMTbHe\",\"log\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\.opora-update-FMTbHe\\\\installer.log\",\"recordedAt\":\"2026-11-06T04:38:10.504Z\"}\n+ actual - expected\n\n+ 'waiting'\n- 'installed'\n"
+    "parent-handoff.json": {
+      "pid": 5800,
+      "saved": true,
+      "released": true,
+      "tokenMatches": true
+    },
+    "gui-process.json": {
+      "pid": 5948,
+      "exitCode": 19
+    },
+    "new-start.json": {
+      "pid": 5948,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-13EKxy\\profile\\runtime\\8bb52a124937988a\\v\\0.12.0-cfaac7313698\\Opora.exe",
+      "version": "0.12.0",
+      "argv": [
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-13EKxy\\profile\\runtime\\8bb52a124937988a\\v\\0.12.0-cfaac7313698\\Opora.exe"
+      ]
+    },
+    "rollback": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
   },
-  "rollback": null,
-  "migration": null
+  "migration": {
+    "platform": "win32",
+    "version": "0.12.0",
+    "mode": "migration",
+    "legacyController": "GUI:7228",
+    "oldProcess": {
+      "pid": 7228,
+      "pageClosed": true,
+      "inspectorDetached": true
+    },
+    "lifecycle": "7228 window-all-closed\n7228 before-quit\n7228 will-quit\n7228 quit\n",
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
+  }
 }
