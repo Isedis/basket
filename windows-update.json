@@ -1,11 +1,11 @@
 {
-  "commit": "a19f3d2cce0647bdfb363fd2894025c40b4073d9",
-  "run": "https://github.com/Isedis/basket/actions/runs/42170701076",
-  "checkedAt": "2026-11-06T05:53:12.667Z",
+  "commit": "39c8123ac0a120ae4575f4f5cd83ed6c8c952c8b",
+  "run": "https://github.com/Isedis/basket/actions/runs/42171143853",
+  "checkedAt": "2026-11-06T05:56:18.558Z",
   "platform": "windows-latest",
   "steps": {
     "startup": "success",
-    "repair": "failure",
+    "repair": "success",
     "unit": "success",
     "powershell51": "success",
     "native": "success",
@@ -17,26 +17,26 @@
     "cases": [
       {
         "scenario": "clean",
-        "visibleMs": 987,
+        "visibleMs": 1754,
         "version": "0.12.1",
         "notesPreserved": true
       },
       {
         "scenario": "invalid-broker",
-        "visibleMs": 508,
+        "visibleMs": 502,
         "version": "0.12.1",
         "notesPreserved": true
       },
       {
         "scenario": "silent-broker",
-        "visibleMs": 487,
+        "visibleMs": 394,
         "version": "0.12.1",
         "notesPreserved": true
       }
     ],
     "current": {
       "scenario": "silent-broker",
-      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-C3G9GB\\silent-broker\\opora"
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-FHai0w\\silent-broker\\opora"
     },
     "failureScreenWorks": true
   },
@@ -44,20 +44,29 @@
     "platform": "win32",
     "version": "0.12.1",
     "mode": "migration",
-    "legacyController": "GUI:7108",
-    "error": "Распаковка новой версии\nПроверка и подключение установленного Electron\nДождусь сохранения Опоры. Текущую сессию Claude прерывать не нужно.\n"
+    "legacyController": "GUI:3796",
+    "oldProcess": {
+      "pid": 3796,
+      "pageClosed": true,
+      "inspectorDetached": false
+    },
+    "hardlinkedRuntime": true,
+    "localRuntimeReused": true,
+    "startLauncherWorks": true,
+    "mcpSurvived": true,
+    "dataPreserved": true
   },
   "native": {
     "platform": "win32",
     "version": "0.12.1",
     "mode": "button",
-    "legacyController": "PROTECTED:2836",
+    "legacyController": "PROTECTED:1232",
     "oldProcess": {
-      "pid": 2836,
+      "pid": 1232,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "2836 quit\n",
+    "lifecycle": "1232 quit\n",
     "terminalSurvived": true,
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
@@ -68,45 +77,45 @@
     "platform": "win32",
     "version": "0.12.1",
     "mode": "button",
-    "legacyController": "PROTECTED:6352",
+    "legacyController": "PROTECTED:9256",
     "oldProcess": {
-      "pid": 6352,
+      "pid": 9256,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "6352 quit\n",
+    "lifecycle": "9256 quit\n",
     "worker-launch.json": {
-      "parentPid": 6352,
-      "expectedPid": 9764
+      "parentPid": 9256,
+      "expectedPid": 7480
     },
     "progress.json": {
-      "pid": 9764,
+      "pid": 7480,
       "phase": "Проверка запуска новой версии"
     },
     "ready.json": {
-      "pid": 9764,
+      "pid": 7480,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 6352,
+      "parentPid": 9256,
       "version": "0.12.1"
     },
     "parent-handoff.json": {
-      "pid": 6352,
+      "pid": 9256,
       "saved": true,
       "released": true,
       "tokenMatches": true
     },
     "gui-process.json": {
-      "pid": 5560,
+      "pid": 3548,
       "exitCode": 19
     },
     "new-start.json": {
-      "pid": 5560,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-m5gWrZ\\profile\\runtime\\16b6f643d61e32bd\\v\\0.12.1-55304b2671fc\\Opora.exe",
+      "pid": 3548,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-P8BFLE\\profile\\runtime\\759f0615cdfc28d7\\v\\0.12.1-6a03203c5267\\Opora.exe",
       "version": "0.12.1",
       "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-m5gWrZ\\profile\\runtime\\16b6f643d61e32bd\\v\\0.12.1-55304b2671fc\\Opora.exe"
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-P8BFLE\\profile\\runtime\\759f0615cdfc28d7\\v\\0.12.1-6a03203c5267\\Opora.exe"
       ]
     },
     "rollback": true,
@@ -117,13 +126,13 @@
     "platform": "win32",
     "version": "0.12.1",
     "mode": "migration",
-    "legacyController": "GUI:6280",
+    "legacyController": "GUI:8148",
     "oldProcess": {
-      "pid": 6280,
+      "pid": 8148,
       "pageClosed": true,
       "inspectorDetached": true
     },
-    "lifecycle": "6280 window-all-closed\n6280 before-quit\n6280 will-quit\n6280 quit\n",
+    "lifecycle": "8148 window-all-closed\n8148 before-quit\n8148 will-quit\n8148 quit\n",
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
     "startLauncherWorks": true,
