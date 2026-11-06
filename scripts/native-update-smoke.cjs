@@ -28,7 +28,8 @@ async function main(){
       await fs.writeFile(updater,code.replace('schemaVersion:2,installId:',"schemaVersion:2,launchArgs:['--no-sandbox','--ozone-platform=headless'],installId:"));
     }
     const version=require('../package.json').version,proof=path.join(temp,'proof.json');
-    const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state)return;await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
+    const lifecycle=path.join(temp,'lifecycle.log');
+    const bootstrap=`const {app,BrowserWindow}=require('electron');app.setPath('userData',${JSON.stringify(profile)});for(const event of ['before-quit','will-quit','quit','window-all-closed'])app.on(event,()=>require('node:fs').appendFileSync(${JSON.stringify(lifecycle)},process.pid+' '+event+'\\n'));${process.platform==='linux'?"app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('ozone-platform','headless');":''}\nconst updateJob=process.env.OPORA_UPDATE_JOB;${failLaunch?'if(updateJob)process.exit(19);':''}\nrequire('./desktop/main.cjs');\nif(updateJob){const timer=setInterval(async()=>{try{const win=BrowserWindow.getAllWindows()[0];if(!win)return;const name=await win.webContents.executeJavaScript('document.querySelector("#header-name")?.textContent');if(name!=='Update fixture')return;const state=await win.webContents.executeJavaScript('window.opora.claudeState()');if(!state)return;await win.webContents.executeJavaScript('window.opora.claudeInput('+JSON.stringify({id:state.id,data:'after\\r'})+')');require('node:fs').writeFileSync(${JSON.stringify(proof)},JSON.stringify({pid:process.pid,name,version:require('./package.json').version,terminal:state}));clearInterval(timer);}catch{}},200);}`;
     const pkg={...require('../package.json'),main:'test-entry.cjs'};await fs.writeFile(path.join(source,'test-entry.cjs'),bootstrap);
     pkg.version=version;await fs.writeFile(path.join(source,'package.json'),JSON.stringify(pkg));
     await asar.createPackageWithOptions(source,path.join(candidate,'resources/app.asar'),{unpackDir:path.join('node_modules','node-pty')});
@@ -62,6 +63,11 @@ async function main(){
       if(!page.isClosed()){const message=await page.locator('#modal-content').innerText().catch(()=>'');if(message.includes('Обновление не завершено'))throw new Error(message);}
       await pause(100);}
     assert.ok(result,result?.error||'No update result');
+    report.oldProcess={pid:oldApp.process().pid,exitCode:oldApp.process().exitCode,pageClosed:page.isClosed()};
+    try{report.lifecycle=await fs.readFile(lifecycle,'utf8');}catch{}
+    if(result.status!=='installed'){
+      for(const file of ['worker-launch.json','progress.json','ready.json','plan.json'])try{const value=JSON.parse(await fs.readFile(path.join(result.job,file),'utf8'));report[file]={pid:value.pid,parentPid:value.parentPid,expectedPid:value.expectedPid,phase:value.phase,tokenMatches:file==='ready.json'?value.token===JSON.parse(await fs.readFile(path.join(result.job,'plan.json'),'utf8')).token:undefined};}catch{}
+    }
     if(failLaunch){assert.equal(result.status,'failed');assert.equal(result.rollback,'restored');newPid=result.recoveredPid;report.rollback=true;}
     else{
       if(result.status!=='installed'){try{report.startupLog=(await fs.readFile(path.join(result.job,'gui-startup.log'),'utf8')).slice(-5000);console.error(report.startupLog);}catch{}newPid=result.recoveredPid;}

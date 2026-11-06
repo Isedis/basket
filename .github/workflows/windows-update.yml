@@ -26,7 +26,7 @@ jobs:
       - name: Installer protocol unit tests
         id: unit
         run: |
-          node --test test/windows-updater.test.cjs > "$env:RUNNER_TEMP/unit.log" 2>&1
+          node --test test/windows-updater.test.cjs test/native-updater.test.cjs > "$env:RUNNER_TEMP/unit.log" 2>&1
           $code=$LASTEXITCODE
           Get-Content "$env:RUNNER_TEMP/unit.log"
           exit $code

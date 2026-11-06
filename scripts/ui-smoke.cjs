@@ -163,9 +163,7 @@ async function main() {
     await app.waitForFunction(()=>document.querySelector('#toast').textContent==='Диагностика скопирована.');
     assert.equal(JSON.parse(copied).installDirectory,'C:/Games/Opora');
     assert.equal(JSON.parse(copied).previousInstall.error,'TEST: replacement blocked');
-    await app.getByRole('button',{name:'Проверить обновления'}).click();
-    await app.getByRole('button',{name:'Скачать обновление'}).click();
-    await app.getByRole('button',{name:'Установить и перезапустить'}).click();
+    await app.getByRole('button',{name:'Проверить и обновить'}).click();
     await app.waitForTimeout(100);
     assert.equal(installed,true);
     assert.equal((await core.loadProject(fixture)).state.goal,'Сохранить перед закрытием');
