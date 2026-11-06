@@ -1,7 +1,7 @@
 {
-  "commit": "ca9ffd0e3929c7b548ac5e7be6e146a5597201d2",
-  "run": "https://github.com/Isedis/basket/actions/runs/42163248873",
-  "checkedAt": "2026-11-06T04:36:28.100Z",
+  "commit": "5b24790bc49b90a2100e7c26b4bf1e726b6e0f06",
+  "run": "https://github.com/Isedis/basket/actions/runs/42163571449",
+  "checkedAt": "2026-11-06T04:39:38.761Z",
   "platform": "windows-latest",
   "steps": {
     "unit": "success",
@@ -14,35 +14,30 @@
     "platform": "win32",
     "version": "0.12.0",
     "mode": "button",
-    "legacyController": "PROTECTED:6600",
+    "legacyController": "PROTECTED:10136",
     "oldProcess": {
-      "pid": 6600,
+      "pid": 10136,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "6600 quit\n",
+    "lifecycle": "10136 quit\n",
     "worker-launch.json": {
-      "parentPid": 6600,
-      "expectedPid": 6456
+      "parentPid": 10136,
+      "expectedPid": 3440
     },
     "progress.json": {
-      "pid": 6456,
-      "phase": "Проверка запуска новой версии"
+      "pid": 3440,
+      "phase": "Установщик готов. Перезапуск окна Опоры"
     },
     "ready.json": {
-      "pid": 6456,
+      "pid": 3440,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 6600,
+      "parentPid": 10136,
       "version": "0.12.0"
     },
-    "gui-process.json": {
-      "pid": 5704,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-JvCEub\\profile\\runtime\\061d1c30ec0cc159\\v\\0.12.0-4369a98b46a2\\Opora.exe"
-    },
-    "startupLog": "\r\n",
-    "error": "{\"status\":\"restarting\",\"phase\":\"Включение новой версии\",\"version\":\"0.12.0\",\"installId\":\"35d71ff5-30dc-4db1-bd34-6b14c15600c4\",\"home\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\profile\\\\runtime\\\\061d1c30ec0cc159\",\"directory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\profile\\\\runtime\\\\061d1c30ec0cc159\\\\v\\\\0.12.0-4369a98b46a2\",\"previousDirectory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\original app игра [1] & % ! '\",\"backup\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\original app игра [1] & % ! '\",\"job\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\profile\\\\runtime\\\\061d1c30ec0cc159\\\\.opora-update-iwvuVq\",\"log\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-JvCEub\\\\profile\\\\runtime\\\\061d1c30ec0cc159\\\\.opora-update-iwvuVq\\\\installer.log\",\"recordedAt\":\"2026-11-06T04:35:00.407Z\"}\n+ actual - expected\n\n+ 'restarting'\n- 'installed'\n"
+    "error": "{\"status\":\"waiting\",\"phase\":\"Проверка SHA256: .opora-location.json\",\"version\":\"0.12.0\",\"installId\":\"57157cd4-c2c9-406f-bb71-2a339391a1b7\",\"home\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\",\"directory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\v\\\\0.12.0-758097c53682\",\"previousDirectory\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\original app игра [1] & % ! '\",\"backup\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\original app игра [1] & % ! '\",\"job\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\.opora-update-FMTbHe\",\"log\":\"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora-update-cV0Pfs\\\\profile\\\\runtime\\\\f4836aa814b0a347\\\\.opora-update-FMTbHe\\\\installer.log\",\"recordedAt\":\"2026-11-06T04:38:10.504Z\"}\n+ actual - expected\n\n+ 'waiting'\n- 'installed'\n"
   },
   "rollback": null,
   "migration": null
