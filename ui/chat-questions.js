@@ -1,0 +1,30 @@
+/* Local question drafts never grant tool permissions or send answers automatically. */
+window.OporaChatQuestions=(()=>{
+  function element(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;}
+  function create(request,{key}){
+    const questions=request.input.questions||[],section=element('section','claude-question-window');section.dataset.permission=request.requestId;section.setAttribute('role','dialog');section.setAttribute('aria-label','Вопросы Claude');
+    let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch{}
+    let step=Math.max(0,Math.min(questions.length-1,Number(saved.step)||0));const fields=[],tabs=[];
+    const header=element('header','question-heading'),mark=element('span','question-mark','?');mark.setAttribute('aria-hidden','true');const heading=element('div');heading.append(element('small','','CLAUDE / УТОЧНЕНИЕ'),element('strong','','Нужно ваше решение'));const counter=element('span','question-counter');header.append(mark,heading,counter);section.append(header);
+    const nav=element('nav','question-tabs');nav.setAttribute('aria-label','Вопросы');if(questions.length<2)nav.hidden=true;
+    questions.forEach((q,i)=>{const tab=element('button','question-tab',String(i+1).padStart(2,'0'));tab.type='button';tab.title=q.question;tab.setAttribute('aria-label',`Вопрос ${i+1}: ${q.header||q.question}`);tab.onclick=()=>go(i);tabs.push(tab);nav.append(tab);});section.append(nav);
+    const body=element('div','question-body');
+    questions.forEach((q,i)=>{
+      const field=element('fieldset','question-field');field.dataset.questionIndex=i;
+      const legend=element('legend','question-title',q.question);legend.tabIndex=-1;field.append(legend,element('p','question-hint',q.multiSelect?'Можно выбрать несколько вариантов или написать свой ответ.':'Выберите вариант или напишите свой ответ.'));
+      const choices=element('div','question-choices');(q.options||[]).forEach((option,j)=>{const label=element('label','question-choice'),input=element('input');input.type=q.multiSelect?'checkbox':'radio';input.name=`answer-${request.requestId}-${i}`;input.value=String(j);input.checked=Array.isArray(saved.answers?.[i]?.choices)&&saved.answers[i].choices.includes(j);const text=element('span','question-choice-text');text.append(element('strong','',option.label));if(option.description)text.append(element('small','',option.description));label.append(input,text);choices.append(label);});field.append(choices);
+      const custom=element('label','question-custom'),textarea=element('textarea');textarea.dataset.answer=i;textarea.rows=2;textarea.maxLength=6000;textarea.placeholder='Напишите, как вы хотите';textarea.value=typeof saved.answers?.[i]?.text==='string'?saved.answers[i].text.slice(0,6000):'';custom.append(element('span','','Свой ответ'),textarea);field.append(custom);fields.push(field);body.append(field);
+    });section.append(body);
+    const footer=element('footer','question-footer'),dismiss=element('button','text-button','Пропустить');dismiss.type='button';dismiss.dataset.chatDeny=request.requestId;const progress=element('span','question-progress');progress.setAttribute('aria-live','polite');const back=element('button','text-button','← Назад');back.type='button';back.onclick=()=>go(step-1);const next=element('button','button small question-submit','Далее →');next.type='button';next.onclick=event=>{if(step<questions.length-1){event.stopPropagation();go(step+1);}};footer.append(dismiss,progress,back,next);section.append(footer);
+    function values(){return fields.map(field=>({choices:[...field.querySelectorAll('input:checked')].map(n=>Number(n.value)),text:field.querySelector('textarea').value.trim()}));}
+    function textAnswers(){return Object.fromEntries(questions.map((q,i)=>{const v=values()[i];return [q.question,[...v.choices.map(j=>q.options[j].label),...(v.text?[v.text]:[])].join(', ')];}));}
+    function persist(){try{localStorage.setItem(key,JSON.stringify({step,answers:values()}));}catch{}}
+    function refresh(){const answers=Object.values(textAnswers()),answered=answers.filter(text=>text&&text.length<=8000).length,last=step===questions.length-1;fields.forEach((field,i)=>field.hidden=i!==step);tabs.forEach((tab,i)=>{tab.setAttribute('aria-current',i===step?'step':'false');tab.classList.toggle('is-answered',!!answers[i]);});counter.textContent=`${step+1} / ${questions.length}`;progress.textContent=`Ответов: ${answered} из ${questions.length}`;back.hidden=step===0;next.textContent=last?'Отправить ответы →':'Далее →';next.disabled=last?answered!==questions.length:!answers[step]||answers[step].length>8000;if(last)next.dataset.chatAllow=request.requestId;else delete next.dataset.chatAllow;}
+    function go(index){step=Math.max(0,Math.min(questions.length-1,index));persist();refresh();body.scrollTop=0;fields[step].querySelector('legend').focus({preventScroll:true});}
+    section.addEventListener('input',()=>{persist();refresh();});section.addEventListener('change',()=>{persist();refresh();});
+    section.questionAnswers=textAnswers;section.clearQuestionDraft=()=>{try{localStorage.removeItem(key);}catch{}};
+    section.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();if(!next.disabled)next.click();}});
+    refresh();return section;
+  }
+  return {create};
+})();

@@ -24,11 +24,26 @@ window.OporaClaudeTerminal={create(options){
   function show(){visible=true;dock.hidden=false;document.body.classList.add('with-terminal');height(storage.get('opora:claude-height',460),false);controls();}
   function hide(){saveDraft();visible=false;dock.hidden=true;document.body.classList.remove('with-terminal');}
   const tail=document.createElement('div');tail.className='chat-tail';
-  const live=document.createElement('div');live.className='chat-live';live.setAttribute('role','status');
+  const live=document.createElement('div');live.className='chat-live';live.hidden=true;
+  live.innerHTML='<button class="chat-live-trigger" type="button" aria-label="Показать действия агента" aria-expanded="false"><i aria-hidden="true"></i><strong aria-live="polite"></strong><span class="chat-live-divider" aria-hidden="true">/</span><code></code><time aria-hidden="true"></time><span class="chat-live-chevron" aria-hidden="true">⌄</span></button>';
+  el('messages').after(live);
+  const liveButton=live.querySelector('button');
+  function activeTrace(){return [...el('messages').querySelectorAll('.chat-activity')].find(n=>n.dataset.message==='activity-'+current?.turn_id)?.querySelector('details');}
+  liveButton.onclick=()=>{const trace=activeTrace();if(!trace)return;trace.open=!trace.open;liveButton.setAttribute('aria-expanded',String(trace.open));if(trace.open)trace.scrollIntoView({block:'nearest'});};
   const currentCards=[el('plan'),el('automation'),el('context-preview')];
-  function resetMessages(){for(const node of currentCards)tail.append(node);tail.append(live);el('messages').replaceChildren(tail);}
-  function updateLive(){const active=loading||busy();live.hidden=!active;if(!active)return;const seconds=Math.max(0,Math.floor((Date.now()-new Date(current?.started_at||Date.now()).getTime())/1000));live.dataset.waiting=String(current?.status==='permission');live.innerHTML='<i aria-hidden="true"></i><div><strong>'+esc(loading?'Готовит контекст':current?.activity||'Ожидает ответ Claude')+'</strong><small>'+esc(current?.activity_detail||'')+'</small></div><time>'+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'</time>';}
-  function adoptCards(){const results=[...el('messages').querySelectorAll('.chat-turn-result')],latest=results.at(-1);for(const result of results)result.querySelector('.chat-saved-result')?.removeAttribute('hidden');const matching=latest&&latest.dataset.turn===current?.turn_id&&!busy();for(const node of currentCards){const target=matching&&node!==el('context-preview')?latest:tail;if(node.parentNode!==target)target.append(node);}if(matching)latest.querySelector('.chat-saved-result')?.setAttribute('hidden','');tail.append(live);}
+  function resetMessages(){for(const node of currentCards)tail.append(node);el('messages').replaceChildren(tail);}
+  function updateLive(){
+    const active=loading||busy();live.hidden=!active;if(!active)return;
+    const seconds=Math.max(0,Math.floor((Date.now()-new Date(loading?Date.now():current?.started_at||Date.now()).getTime())/1000));
+    live.dataset.waiting=String(current?.status==='permission');
+    const title=loading?'Готовит контекст':current?.activity||'Ожидает ответ Claude';
+    const permission=current?.permissions?.[0],detail=current?.status==='permission'?(permission?.input.file_path||permission?.input.command||''):current?.activity_detail||'';
+    const label=live.querySelector('strong');if(label.textContent!==title)label.textContent=title;
+    const code=live.querySelector('code');code.textContent=detail;code.title=detail;code.hidden=!detail;live.querySelector('.chat-live-divider').hidden=!detail;
+    live.querySelector('time').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
+    const trace=activeTrace();liveButton.disabled=!trace;liveButton.setAttribute('aria-expanded',String(!!trace?.open));
+  }
+  function adoptCards(){const results=[...el('messages').querySelectorAll('.chat-turn-result')],latest=results.at(-1);for(const result of results)result.querySelector('.chat-saved-result')?.removeAttribute('hidden');const matching=latest&&latest.dataset.turn===current?.turn_id&&!busy();for(const node of currentCards){const target=matching&&node!==el('context-preview')?latest:tail;if(node.parentNode!==target)target.append(node);}if(matching)latest.querySelector('.chat-saved-result')?.setAttribute('hidden','');}
   function archivedResult(message){const run=message.automation?.run;return '<details class="chat-saved-result"><summary>Результат · '+(run?'изменено файлов: '+esc(run.changes_total):'сводка')+'</summary>'+(message.plan?'<p>План: '+esc(message.plan.completed)+' / '+esc(message.plan.total)+'</p><ol>'+message.plan.stages.map(stage=>'<li>'+esc(stage.title)+' · '+esc(stage.status)+'</li>').join('')+'</ol>':'')+(run?'<ul>'+run.changes.map(c=>'<li>'+esc(c.file)+'</li>').join('')+'</ul>'+run.checks.map(c=>'<p>'+esc(({passed:'[+] Пройдено',failed:'[!] Ошибка',not_run:'[—] Не проверено'})[c.result])+' · '+esc(c.name)+'</p>').join(''):'')+'</details>';}
   function renderMessage(message){
     let node=[...el('messages').querySelectorAll('[data-message]')].find(n=>n.dataset.message===message.id);
@@ -37,14 +52,21 @@ window.OporaClaudeTerminal={create(options){
     if(message.kind==='result'){node.className='chat-turn-result';node.dataset.turn=message.turn_id;if(!node.querySelector('.chat-saved-result'))node.innerHTML=archivedResult(message);adoptCards();return;}
     if(!node.querySelector('.claude-message-text')){node.className='claude-message '+(message.role==='user'?'is-user':'is-assistant');const heading=document.createElement('div');heading.className='claude-message-heading';const who=document.createElement('strong');who.textContent=message.role==='user'?'ВЫ':'CLAUDE';const time=document.createElement('time');time.textContent=new Date(message.time).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});const copy=document.createElement('button');copy.className='text-button';copy.textContent='Копировать';copy.onclick=()=>bridge.copy(node.rawText).catch(onError);heading.append(who,time,copy);const text=document.createElement('div');text.className='claude-message-text';node.append(heading,text);}
     node.rawText=message.text||'';node.classList.toggle('is-streaming',!!message.streaming);
-    const paint=()=>{node.renderTimer=null;if(message.role==='user')node.querySelector('.claude-message-text').textContent=node.rawText;else window.OporaChatMarkdown.render(node.querySelector('.claude-message-text'),node.rawText,{copy:text=>bridge.copy(text).catch(onError),onLink:href=>bridge.copy(href).then(()=>notify('Ссылка скопирована')).catch(onError)});};
+    const paint=()=>{const log=el('messages'),follow=log.scrollHeight-log.scrollTop-log.clientHeight<90;node.renderTimer=null;if(message.role==='user')node.querySelector('.claude-message-text').textContent=node.rawText;else window.OporaChatMarkdown.render(node.querySelector('.claude-message-text'),node.rawText,{copy:text=>bridge.copy(text).catch(onError),onLink:href=>bridge.copy(href).then(()=>notify('Ссылка скопирована')).catch(onError)});if(follow)log.scrollTop=log.scrollHeight;};
     if(!message.streaming){clearTimeout(node.renderTimer);paint();}else if(!node.renderTimer)node.renderTimer=setTimeout(paint,100);
   }
   function empty(){if(!el('messages').querySelector('[data-message]')&&!el('messages').querySelector('.claude-chat-empty')){const node=document.createElement('div');node.className='claude-chat-empty';node.innerHTML='<span>&gt;_</span><h3>Над чем работаем?</h3><p>Запрос, задача или идея для вашей игры.</p>';el('messages').insertBefore(node,tail);}}
   resetMessages();el('context-preview').hidden=true;
   function permissions(){
-    const requests=current?.permissions||[],signature=JSON.stringify(requests);if(signature===lastPermissions)return;lastPermissions=signature;
-    if(requests.length)el('context-preview').open=false;el('permissions').innerHTML=requests.map(r=>`<section class="claude-permission" data-permission="${esc(r.requestId)}"><strong>${r.tool==='AskUserQuestion'?'Claude ждёт вашего ответа':'Нужно разрешение: '+esc(r.tool)}</strong>${r.tool==='AskUserQuestion'?(r.input.questions||[]).map((q,i)=>`<fieldset><legend>${esc(q.question)}</legend>${(q.options||[]).map((o,j)=>`<label><input type="${q.multiSelect?'checkbox':'radio'}" name="answer-${i}" value="${j}"> ${esc(o.label)}${o.description?`<small>${esc(o.description)}</small>`:''}</label>`).join('')}<textarea data-answer="${i}" rows="2" placeholder="Ваш ответ своими словами"></textarea></fieldset>`).join(''):`<details><summary>${esc(r.input.file_path||r.input.command||r.input.path||'Посмотреть действие').slice(0,250)}</summary><pre>${esc(JSON.stringify(r.input,null,2))}</pre></details>`}<div><button class="button small" data-chat-allow="${esc(r.requestId)}">${r.tool==='AskUserQuestion'?'Отправить ответ':'Разрешить один раз'}</button><button class="text-button" data-chat-deny="${esc(r.requestId)}">Отклонить</button></div></section>`).join('');
+    const requests=current?.permissions||[],signature=JSON.stringify([current?.id,requests]);if(signature===lastPermissions)return;lastPermissions=signature;
+    if(requests.length)el('context-preview').open=false;
+    const panel=el('permissions');panel.classList.toggle('has-questions',requests.some(r=>r.tool==='AskUserQuestion'));panel.replaceChildren();
+    for(const r of requests){
+      if(r.tool==='AskUserQuestion'){panel.append(window.OporaChatQuestions.create(r,{key:`opora:claude-question:${current.root}:${current.id}:${r.requestId}`}));continue;}
+      const section=document.createElement('section');section.className='claude-permission';section.dataset.permission=r.requestId;
+      section.innerHTML=`<header><span class="permission-mark" aria-hidden="true">›</span><div><small>CLAUDE / РАЗРЕШЕНИЕ</small><strong>Разрешить действие?</strong></div><code>${esc(r.tool)}</code></header><details><summary>${esc(r.input.file_path||r.input.command||r.input.path||'Посмотреть действие').slice(0,250)}</summary><pre>${esc(JSON.stringify(r.input,null,2))}</pre></details><div class="permission-actions"><button class="text-button" data-chat-deny="${esc(r.requestId)}">Отклонить</button><button class="button small" data-chat-allow="${esc(r.requestId)}">Разрешить один раз →</button></div>`;panel.append(section);
+    }
+    if(panel.classList.contains('has-questions'))requestAnimationFrame(()=>panel.querySelector('.question-field:not([hidden]) legend')?.focus({preventScroll:true}));
   }
   function accept(snapshot){if(!snapshot)return;errorMessage='';current=snapshot;storage.set('opora:claude-current:'+snapshot.root,snapshot.id);resetMessages();if(snapshot.hasEarlierMessages){const note=document.createElement('p');note.className='small';note.textContent='Показана последняя часть переписки. Полная сессия доступна Claude Code.';el('messages').append(note);}for(const m of snapshot.messages||[])renderMessage(m);empty();permissions();controls();el('input').value=storage.get(draftKey(),'');requestAnimationFrame(()=>{el('messages').scrollTop=el('messages').scrollHeight;});contextLabel();}
   function update(event){
@@ -117,7 +139,13 @@ window.OporaClaudeTerminal={create(options){
       if(d.chatAction==='context')await preview();
       if(d.chatAction==='task'){const text=await getPrompt();el('input').value=text;saveDraft();el('input').focus();}
       if(d.chatAction==='select'){if(await bridge.claudeSelect())notify('Claude Code выбран.');}
-      if(d.chatAllow||d.chatDeny){const requestId=d.chatAllow||d.chatDeny,request=current.permissions.find(r=>r.requestId===requestId),answers={};if(d.chatAllow&&request?.tool==='AskUserQuestion'){const section=action.closest('[data-permission]');(request.input.questions||[]).forEach((q,i)=>{const values=[...section.querySelectorAll(`input[name="answer-${i}"]:checked`)].map(input=>q.options[Number(input.value)].label),extra=section.querySelector(`[data-answer="${i}"]`).value.trim();answers[q.question]=[...values,...(extra?[extra]:[])].join(', ');});}accept(await bridge.chatAnswer({id:current.id,requestId,allow:!!d.chatAllow,answers}));}
+      if(d.chatAllow||d.chatDeny){
+        const requestId=d.chatAllow||d.chatDeny,request=current.permissions.find(r=>r.requestId===requestId),section=action.closest('[data-permission]');
+        const answers=d.chatAllow&&request?.tool==='AskUserQuestion'?section.questionAnswers():{};
+        action.disabled=true;
+        try{const snapshot=await bridge.chatAnswer({id:current.id,requestId,allow:!!d.chatAllow,answers});section.clearQuestionDraft?.();accept(snapshot);}finally{if(action.isConnected)action.disabled=false;}
+      }
+
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}
   });
   el('input').addEventListener('input',()=>{saveDraft();el('input').style.height='auto';el('input').style.height=Math.min(120,el('input').scrollHeight)+'px';});el('input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();void send();}});
