@@ -21,9 +21,14 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,14);
+    const tools=await client.listTools();assert.equal(tools.tools.length,16);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
+    const packet=(await client.callTool({name:'opora_get_work_context',arguments:{}})).structuredContent;
+    assert.equal(packet.project_id,project.project_id);assert.equal(packet.task.id,'menu');
+    assert.equal((await client.callTool({name:'opora_get_work_context',arguments:{known_revision:packet.work_revision}})).structuredContent.mode,'unchanged');
+    const field=(await client.callTool({name:'opora_read_project_field',arguments:{project_id:project.project_id,field:'rules',limit:4}})).structuredContent;
+    assert.equal(field.text,state.rules.slice(0,4));
     const feedback=require('../src/visual-feedback.cjs');
     const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6X7sAAAAASUVORK5CYII=','base64');
     const shot=await feedback.addShot(root,{revision:(await feedback.read(root)).feedback_revision,title:'Menu screenshot',data:png});
@@ -34,6 +39,8 @@ async function main() {
     assert.ok(visualImage.content.some(c=>c.type==='image'));
     await fs.writeFile(path.join(root,'result.png'),png);
     const visualInput={project_id:project.project_id,feedback_revision:visual.feedback_revision,shot_id:shot.shot_id,note_ids:[added.note_id],image_file:'result.png',summary:'Updated button',agent:'codex',request_id:'visual-smoke-001'};
+    visualInput.note_revisions={[added.note_id]:visual.shot.notes[0].note_revision};
+    await feedback.addNote(root,{revision:visual.feedback_revision,shot_id:shot.shot_id,text:'Unrelated new note',rect:{x:0,y:0,w:.1,h:.1},kind:'fix'});
     const submitted=await client.callTool({name:'opora_submit_feedback_result',arguments:visualInput});assert.ok(!submitted.isError,JSON.stringify(submitted));
     assert.equal((await feedback.read(root)).store.shots[0].notes[0].status,'ready');
     assert.equal((await client.callTool({name:'opora_submit_feedback_result',arguments:visualInput})).structuredContent.duplicate,true);
@@ -66,8 +73,9 @@ async function main() {
     assert.equal((await listReports(root)).reports.length,1);
     assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');
     const allBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
-    const all=await client.callTool({name:'opora_update_project',arguments:{project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop'}],active_task_id:'new-task'}}});
+    const all=await client.callTool({name:'opora_update_project',arguments:{include_state:true,project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop',feedback_note_id:added.note_id,feedback_shot_id:shot.shot_id}],active_task_id:'new-task'}}});
     assert.ok(!all.isError,JSON.stringify(all));assert.equal(all.structuredContent.state.activeTaskId,'new-task');assert.equal(all.structuredContent.state.tasks.length,2);
+    const linked=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'new-task'}})).structuredContent;assert.equal(linked.feedback.notes[0].note_id,added.note_id);
     const second=new Client({name:'parallel-agent',version:'1.0.0'},{capabilities:{}});
     try {
       await second.connect(new StdioClientTransport({command,args:[entry,'--project',root],env:process.env.OPORA_MCP_EXECUTABLE?{ELECTRON_RUN_AS_NODE:'1'}:{},stderr:'pipe'}));
@@ -76,9 +84,12 @@ async function main() {
       const results=await Promise.all([client.callTool({name:'opora_update_brandbook',arguments:input}),second.callTool({name:'opora_update_brandbook',arguments:{...input,request_id:'parallel-sdk-002',fields:{avoid:'Second proposal'}}})]);
       assert.equal(results.filter(r=>r.isError).length,1);assert.match(results.find(r=>r.isError).content[0].text,/STALE_CONTEXT/);
     }finally{await second.close();}
+    const compactBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
+    const compactWrite=await client.callTool({name:'opora_update_project',arguments:{project_id:project.project_id,revision:compactBefore.revision,agent:'codex',request_id:'compact-write-001',summary:'Compact receipt',fields:{goal:'Next iteration'}}});
+    assert.ok(!compactWrite.isError);assert.equal(compactWrite.structuredContent.state,undefined);assert.ok(compactWrite.structuredContent.changed_fields.includes('goal'));
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 14 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 16 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

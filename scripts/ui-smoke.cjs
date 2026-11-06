@@ -78,6 +78,9 @@ async function main() {
     await page.locator('nav [data-tab="brand"]').click();
     await page.locator('[data-field="brand.status"]').selectOption('approved');
     assert.equal(await page.locator('#terminal-brand').textContent(),'СТИЛЬ: УТВЕРЖДЁН');
+    await page.locator('[data-field="brand.palette"]').fill('#FFFFFF — новый текст');
+    assert.equal(await page.locator('[data-field="brand.status"]').inputValue(),'draft');
+    await page.locator('[data-field="brand.status"]').selectOption('approved');
     await page.locator('nav [data-tab="context"]').click();
     assert.match(await page.locator('#context-preview').textContent(),/УТВЕРЖДЁН пользователем/);
     await page.screenshot({path:path.join(__dirname,'../artifacts/context.png'),fullPage:true});

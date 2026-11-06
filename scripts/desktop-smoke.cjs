@@ -87,7 +87,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.9.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.10.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -95,17 +95,18 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.9.0');
+    assert.equal(diagnostics.currentVersion,'0.10.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.9.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.10.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
     await page.getByRole('button',{name:'Обновить эти файлы'}).click();
     await page.waitForFunction(()=>document.querySelector('.badge')?.textContent.includes('ФАЙЛЫ ОБНОВЛЕНЫ'));
     await page.getByRole('button',{name:'Скопировать запрос'}).click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Контекст задачи скопирован.');
     const copied=await app.evaluate(({clipboard})=>clipboard.readText());
     assert.match(copied,/Не менять размер кнопок/);
     await page.locator('nav [data-tab="agents"]').click();
@@ -159,7 +160,7 @@ async function main() {
       assert.equal(await page.locator('[data-field="brand.direction"]').inputValue(),'MCP conflict winner');
       await app.evaluate(({ipcMain})=>{ipcMain.removeHandler('project:save');ipcMain.handle('project:save',global.oporaSaveHandler);delete global.oporaSaveHandler;delete global.oporaReleaseSave;delete global.oporaSaveWaiting;});
       const latestData=(await mcpClient.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
-      const allData=await mcpClient.callTool({name:'opora_update_project',arguments:{project_id:latestData.project_id,revision:latestData.revision,agent:'claude',request_id:'native-project-01',summary:'Game data',fields:{goal:'Goal filled by MCP',tasks:[{id:'agent-task',title:'MCP prototype task',acceptance:'Playable prototype'}],active_task_id:'agent-task',reference_files:['ui/menu.png']}}});
+      const allData=await mcpClient.callTool({name:'opora_update_project',arguments:{include_state:true,project_id:latestData.project_id,revision:latestData.revision,agent:'claude',request_id:'native-project-01',summary:'Game data',fields:{goal:'Goal filled by MCP',tasks:[{id:'agent-task',title:'MCP prototype task',acceptance:'Playable prototype'}],active_task_id:'agent-task',reference_files:['ui/menu.png']}}});
       assert.ok(!allData.isError,JSON.stringify(allData));
       await page.waitForFunction(()=>document.querySelector('#side-active-task').textContent==='MCP prototype task');
       await page.locator('nav [data-tab="overview"]').click();
@@ -243,6 +244,7 @@ async function main() {
     }finally{await visualClient.close();}
     await page.locator('[data-feedback-action="whole"]').click();
     await page.locator('#feedback-kind').selectOption('keep');
+    await page.locator('#feedback-scope').selectOption('project');
     await page.locator('#feedback-text').fill('Сохранить эти отступы');
     await page.getByRole('button',{name:'Сохранить замечание',exact:true}).click();
     await page.locator('.feedback-note').filter({hasText:'Сохранить эти отступы'}).waitFor();
@@ -252,6 +254,20 @@ async function main() {
     await page.locator('[data-feedback-action="accept"]').click();
     await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Решение принято.');
     assert.equal((await feedback.read(project)).store.shots[0].notes[1].status,'accepted');
+    await page.locator('.feedback-selected-note details summary').click();
+    await page.locator('[data-feedback-action="compact"]').click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Старые версии сохранены в архиве.');
+    assert.ok((await feedback.read(project)).store.shots[0].archives.length);
+    await page.locator('[data-feedback-action="archive"]').click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Обсуждение закрыто. Решения сохранены.');
+    await page.locator('[data-feedback-action="archive"]').click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent==='Обсуждение восстановлено.');
+    await page.locator('nav [data-tab="overview"]').click();
+    await page.locator('[data-action="work-context"]').click();
+    await page.getByRole('heading',{name:'Контекст задачи',exact:true}).waitFor();
+    assert.match(await page.locator('#modal-content').textContent(),/Сохранить эти отступы/);
+    await page.screenshot({path:path.join(__dirname,'../artifacts/work-context.png'),fullPage:true});
+    await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     assert.deepEqual(errors,[]);
     await page.locator('nav [data-tab="overview"]').click();
     await page.locator('[data-field="goal"]').fill('Данные сохраняются при закрытии');

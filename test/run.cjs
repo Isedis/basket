@@ -6,3 +6,4 @@ require('./agents.test.cjs');
 require('./brand-review.test.cjs');
 require('./project-map.test.cjs');
 require('./visual-feedback.test.cjs');
+require('./efficiency.test.cjs');

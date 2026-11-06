@@ -69,4 +69,30 @@ async function status(config) {
   }
   return result;
 }
-module.exports={connection,configure,codexMerge,status};
+async function disconnect(client,config){
+  if(!['claude','codex'].includes(client))throw new Error('Неизвестный клиент.');
+  const file=client==='claude'?config.claudeFile:config.codexFile;
+  if(client==='claude')await assertSafePath(config.root,'.mcp.json');
+  const old=await read(file);if(old===null)return {file,changed:false,backup:null};let text;
+  if(client==='claude'){
+    const data=JSON.parse(old),entry=data.mcpServers?.[config.server_name];
+    if(!entry)return {file,changed:false,backup:null};
+    if(!entry.args?.includes(config.root)||entry.env?.ELECTRON_RUN_AS_NODE!=='1')throw new Error('Запись не соответствует этому проекту. Настройки сохранены.');
+    delete data.mcpServers[config.server_name];text=JSON.stringify(data,null,2)+'\n';
+  }else{
+    const parsed=toml.parse(old),entry=parsed.mcp_servers?.[config.server_name];
+    if(!entry)return {file,changed:false,backup:null};
+    const start='# OPORA MCP START '+config.server_name,end='# OPORA MCP END '+config.server_name;
+    if(!entry.args?.includes(config.root)||old.split(start).length!==2||old.split(end).length!==2||old.indexOf(end)<old.indexOf(start))throw new Error('Это не управляемая запись Опоры. Остальные подключения сохранены.');
+    text=old.slice(0,old.indexOf(start))+old.slice(old.indexOf(end)+end.length);toml.parse(text);
+  }
+  const directory=client==='claude'?path.join(config.root,'.opora/config-backups'):path.join(path.dirname(file),'opora-backups');
+  if(client==='claude')await assertSafePath(config.root,'.opora/config-backups');
+  await fs.mkdir(directory,{recursive:true});
+  try{await fs.writeFile(path.join(directory,'.gitignore'),'# Local configuration backups.\n*\n',{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;}
+  if(await read(file)!==old)throw new Error('Настройки изменились. Повторите отключение.');
+  const backup=path.join(directory,client+'-'+crypto.randomUUID()+path.extname(file));await fs.writeFile(backup,old,{flag:'wx',mode:0o600});
+  const temp=file+'.opora-'+crypto.randomUUID()+'.tmp';try{await fs.writeFile(temp,text,{flag:'wx',mode:0o600});await fs.rename(temp,file);}finally{await fs.rm(temp,{force:true});}
+  return {file,changed:true,backup};
+}
+module.exports={connection,configure,codexMerge,status,disconnect};

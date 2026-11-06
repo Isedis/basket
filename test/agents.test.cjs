@@ -110,7 +110,7 @@ test('MCP brand writes only requested fields as a draft, backs up exact prior st
   const args={project_id:s.project_id,revision:s.revision,agent:'codex',request_id:'brand-write-01',summary:'Palette and typography proposal',fields:{palette:'Текст: #FFFFFF на #000000',fonts:'Game.ttf; текст 18 px'}};
   const result=await service.updateBrandbook(root,args);
   assert.equal(result.brand.status,'draft');assert.equal(result.approval_required,true);assert.notEqual(result.revision,s.revision);
-  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,result.backup),'utf8')),state);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,result.backup),'utf8')),s.state);
   const saved=(await core.loadProject(root)).state;
   assert.deepEqual(saved.tasks,state.tasks);assert.deepEqual(saved.references,state.references);assert.equal(saved.rules,state.rules);assert.equal(saved.brand.direction,state.brand.direction);
   assert.equal((await service.updateBrandbook(root,args)).duplicate,true);

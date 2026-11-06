@@ -2,12 +2,12 @@
 window.OporaProjectMap=(()=>{
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const labels={project:'ПРОЕКТ',scene:'СЦЕНА',script:'СКРИПТ',resource:'РЕСУРС',shader:'ШЕЙДЕР',asset:'АССЕТ',other:'ФАЙЛ'};
-  const relations={main:'главная сцена',autoload:'автозагрузка',extends:'наследование',preload:'preload',load:'load',setting:'настройка',literal:'путь в коде',resource:'ресурс'};
+  const relations={class:'глобальный класс',main:'главная сцена',autoload:'автозагрузка',extends:'наследование',preload:'preload',load:'load',setting:'настройка',literal:'путь в коде',resource:'ресурс'};
   const demoFiles=[{file:'project.godot',kind:'project',outgoing:1},{file:'scenes/main_menu.tscn',kind:'scene',incoming:1,outgoing:3},{file:'scripts/main_menu.gd',kind:'script',incoming:1,functions:[{name:'_on_play_pressed',line:8}],signals:[]},{file:'ui/game_theme.tres',kind:'resource',incoming:1},{file:'assets/logo.png',kind:'asset',incoming:1}].map(n=>({...n,exists:true}));
   const demoEdges=demoFiles.slice(1).map((n,i)=>({from:i?'scenes/main_menu.tscn':'project.godot',to:n.file,line:i?i+2:4,kind:i?'resource':'main',node:n}));
   function demo(options={}){const base={map_revision:'demo',indexed_at:new Date().toISOString(),main:'scenes/main_menu.tscn',summary:{files:5,scenes:1,scripts:1,resources:1,links:4,missing:0,dynamic:0,read:0,reused:0},warnings:[],offset:options.offset||0,limit:40};if(options.file){const incoming=demoEdges.filter(e=>e.to===options.file).map(e=>({...e,node:demoFiles.find(n=>n.file===e.from)})),outgoing=demoEdges.filter(e=>e.from===options.file);return {...base,selected:demoFiles.find(n=>n.file===options.file),incoming,outgoing,incoming_total:incoming.length,outgoing_total:outgoing.length,unresolved:[]};}const files=demoFiles.filter(n=>(!options.query||n.file.includes(options.query.toLowerCase()))&&(!options.kind||options.kind==='all'||(options.kind==='unlinked'?!n.incoming:n.kind===options.kind)));return {...base,files,total:files.length};}
   function create({getRoot,bridge,notify,onError}){
-    let host,key,inventory,detail,query='',kind='all',offset=0,linkOffset=0,selected=null,generation=0,searchTimer;
+    let host,key,inventory,detail,query='',kind='all',offset=0,linkOffset=0,symbolOffset=0,selected=null,generation=0,searchTimer;
     const request=options=>getRoot()?bridge.projectMap(options):Promise.resolve(demo(options));
     const button=(file,content,extra='')=>`<button class="map-file ${extra}" data-map-file="${esc(file)}" title="${esc(file)}">${content}</button>`;
     const fileLabel=node=>`<span class="map-kind map-kind-${esc(node.kind)}">${labels[node.kind]||'ФАЙЛ'}</span><span class="map-path">${esc(node.file)}</span>`;
@@ -26,7 +26,7 @@ window.OporaProjectMap=(()=>{
     function drawDetail(){
       if(!host?.isConnected||!detail)return;const n=detail.selected;
       const column=(title,edges,total,direction)=>`<section class="map-column"><h3>${title} <span>/ ${total}</span></h3>${edges.map(e=>button(e.node.file,`${fileLabel(e.node)}<small>${esc(relations[e.kind]||e.kind)} / ${esc(e.from)}:${e.line}${e.missing?' / НЕТ ФАЙЛА':e.unindexed?' / вне индекса':''}</small>`,e.missing?'map-missing':'')).join('')||`<p class="map-empty">${linkOffset?'На этой странице связей нет.':direction==='in'?'Входящие ссылки не найдены.':'Исходящие ссылки не найдены.'}</p>`}</section>`;
-      const symbols=n.functions?.length||n.signals?.length?`<div class="map-symbols"><h3>В скрипте</h3>${[...(n.functions||[]).map(f=>({...f,label:'func'})),...(n.signals||[]).map(f=>({...f,label:'signal'}))].map(f=>`<div><span>${f.label}</span> ${esc(f.name)} <small>:${f.line}</small></div>`).join('')}</div>`:'';
+      const symbols=n.functions?.length||n.signals?.length?`<div class="map-symbols"><h3>В скрипте / ${n.functions_total||n.functions?.length||0} функций, ${n.signals_total||n.signals?.length||0} сигналов</h3>${[...(n.functions||[]).map(f=>({...f,label:'func'})),...(n.signals||[]).map(f=>({...f,label:'signal'}))].map(f=>`<div><span>${f.label}</span> ${esc(f.name)} <small>:${f.line}</small></div>`).join('')}${detail.symbol_page?.available>32?`<div class="map-pages"><button class="text-button" data-map-action="symbols-prev" ${symbolOffset?'':'disabled'}>← Символы</button><span>${symbolOffset+1}–${Math.min(symbolOffset+32,detail.symbol_page.available)}</span><button class="text-button" data-map-action="symbols-next" ${detail.symbol_page.has_more?'':'disabled'}>Символы →</button></div>`:''}${n.symbols_limited?'<p class="context-note">Список ограничен 1024 символами каждого типа. Читайте исходник.</p>':''}</div>`:'';
       host.querySelector('.map-detail').innerHTML=`<div class="map-focus-heading"><span class="section-label">ВЫБРАННЫЙ ФАЙЛ</span><h2>${esc(n.file)}</h2><span class="compact-hint">${n.class_name?'class_name '+esc(n.class_name)+' / ':''}${n.exists===false?'Файл отсутствует':n.unparsed?'Содержимое не разобрано':labels[n.kind]||'ФАЙЛ'}</span></div><div class="map-graph" aria-label="Направление связей: использующие файлы, выбранный файл, зависимости">${column('Где используется',detail.incoming,detail.incoming_total,'in')}<div class="map-center"><span aria-hidden="true">→</span><div class="map-selected"><span class="map-kind">${labels[n.kind]||'ФАЙЛ'}</span><strong>${esc(n.file.split('/').at(-1))}</strong><small>${esc(n.file)}</small></div><span aria-hidden="true">→</span></div>${column('На что ссылается',detail.outgoing,detail.outgoing_total,'out')}</div>${detail.incoming_total>40||detail.outgoing_total>40?`<div class="map-pages"><button class="text-button" data-map-action="links-prev" ${linkOffset?'':'disabled'}>← Связи</button><span>${linkOffset+1}–${linkOffset+40}</span><button class="text-button" data-map-action="links-next" ${linkOffset+40<Math.max(detail.incoming_total,detail.outgoing_total)?'':'disabled'}>Связи →</button></div>`:''}${n.dynamic?`<p class="context-note">Динамических загрузок: ${n.dynamic}. Их цели нужно проверить в коде.</p>`:''}${detail.unresolved?.length?`<details class="technical-note"><summary>Не разрешены пути / ${detail.unresolved.length}</summary>${detail.unresolved.map(r=>`<p>${esc(r.file)}:${r.line} / ${esc(r.value)}</p>`).join('')}</details>`:''}${symbols}<p class="map-legend"><span>← Кто ссылается на файл</span><span>Куда ведут ссылки файла →</span></p>`;
       host.querySelectorAll('.map-file-list .map-file').forEach(b=>{b.classList.toggle('selected',b.dataset.mapFile===selected);b.setAttribute('aria-current',b.dataset.mapFile===selected?'true':'false');});
     }
@@ -38,14 +38,14 @@ window.OporaProjectMap=(()=>{
       try{
         if(!focusOnly) {const result=await request({query,kind,offset,limit:40});if(current!==generation||root!==getRoot())return;inventory=result;drawInventory();}
         if(!selected)selected=inventory.main||'project.godot';
-        const result=await request({file:selected,offset:linkOffset,limit:40});if(current!==generation||root!==getRoot())return;detail=result;drawDetail();
+        const result=await request({file:selected,offset:linkOffset,limit:40,symbol_offset:symbolOffset});if(current!==generation||root!==getRoot())return;detail=result;drawDetail();
         host.querySelector('.map-meta').textContent=`${getRoot()?'Локальная карта':'Демонстрация'} / ${new Date(result.indexed_at).toLocaleTimeString('ru-RU')} / ${result.summary.limited?'НЕПОЛНАЯ КАРТА':result.summary.files+' файлов'}`;
       }catch(error){if(current!==generation||root!==getRoot())return;host.querySelector('.map-meta').textContent='Не удалось обновить карту: '+error.message;host.querySelector('.map-detail').innerHTML='<p class="empty">'+esc(error.message)+'<br>Выберите файл в списке или главную сцену.</p>';detail=null;onError(error);}
       finally{if(current===generation&&host?.isConnected){host.removeAttribute('aria-busy');host.querySelector('[data-map-action="copy"]').disabled=!detail;}}
     }
     async function click(event){
       const target=event.target.closest('[data-map-file],[data-map-action]');if(!target||target.disabled)return;
-      if(target.dataset.mapFile){selected=target.dataset.mapFile;linkOffset=0;await load({focusOnly:true});return;}
+      if(target.dataset.mapFile){selected=target.dataset.mapFile;linkOffset=0;symbolOffset=0;await load({focusOnly:true});return;}
       const action=target.dataset.mapAction;
       if(action==='copy'){
         if(!detail){notify('Сначала дождитесь карты.');return;}
@@ -55,6 +55,7 @@ window.OporaProjectMap=(()=>{
       if(action==='main'){selected=inventory?.main;linkOffset=0;await load({focusOnly:true});}
       if(action==='refresh'){linkOffset=0;await load();}
       if(action==='prev'||action==='next'){offset=Math.max(0,offset+(action==='next'?40:-40));await load();}
+      if(action==='symbols-prev'||action==='symbols-next'){symbolOffset=Math.max(0,symbolOffset+(action==='symbols-next'?32:-32));await load({focusOnly:true});}
       if(action==='links-prev'||action==='links-next'){linkOffset=Math.max(0,linkOffset+(action==='links-next'?40:-40));await load({focusOnly:true});}
     }
     function mount(element){

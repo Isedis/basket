@@ -2,6 +2,9 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const lockfile=require('proper-lockfile');
+const MAX_PROJECT_BYTES=2*1024*1024;
+const brandContent=brand=>JSON.stringify(['direction','palette','fonts','avoid'].map(key=>brand[key]));
+function serializeProject(state){validateState(state);const data=JSON.stringify(state,null,2)+'\n';if(Buffer.byteLength(data)>MAX_PROJECT_BYTES)throw Object.assign(new Error('Настройки проекта превышают 2 МиБ. Сократите текст или перенесите подробности в отдельные файлы; предыдущая версия сохранена.'),{code:'TOO_LARGE'});return data;}
 
 const START = '<!-- OPORA:START -->';
 const END = '<!-- OPORA:END -->';
@@ -9,11 +12,12 @@ const INSTRUCTIONS = `${START}
 ## Общий контекст игры — Opora
 
 Перед работой прочитай .opora/CONTEXT.md и указанные там визуальные эталоны.
-Если подключён MCP Opora, сначала вызови opora_get_project и проверь путь игры,
-затем opora_get_context: он возвращает последние сохранённые данные.
+Если подключён MCP Opora, начни с opora_get_work_context и проверь путь игры.
+Пакет связывает задачу, действующие решения, замечания и версии кода; подробности доступны отдельными инструментами.
 В MCP-запросах используй project_id этого проекта; для отчётов — актуальную revision.
 В начале новой задачи перечитай этот файл: он может измениться вне текущего чата.
-Для интерфейса прочитай замечания и решения пользователя через opora_list_feedback;
+Для интерфейса учитывай замечания рабочего пакета; другие решения и историю
+читай через opora_list_feedback по необходимости;
 если MCP недоступен, проверь существующий .opora/visual-feedback.json и указанные в нём снимки.
 Используй его как описание замысла и критериев задачи, сохраняя остальные инструкции проекта.
 Если пользователь прямо изменил решение, следуй его новому указанию и сообщи о расхождении с памяткой.
@@ -78,18 +82,18 @@ async function withProjectLock(root,work) {
   try{return await work();}finally{await release();}
 }
 async function writeProject(root, state) {
-  validateState(state);
+  const data=serializeProject(state);
   await projectInfo(root);
   await assertSafePath(root, '.opora/project.json');
   await fs.mkdir(path.join(root, '.opora'), {recursive: true});
   const temp = path.join(root, `.opora/project-${crypto.randomUUID()}.tmp`);
   try {
-    await fs.writeFile(temp, JSON.stringify(state, null, 2) + '\n', {flag:'wx'});
+    await fs.writeFile(temp, data, {flag:'wx'});
     await fs.rename(temp, path.join(root, '.opora/project.json'));
   } finally { await fs.rm(temp, {force:true}); }
   return state;
 }
-async function saveProject(root,state,{baseBrand,baseState}={}) {
+async function saveProject(root,state,{baseBrand,baseState,approvedBrand}={}) {
   return withProjectLock(root,async()=>{
     const current=(await loadProject(root)).state;
     let next=structuredClone(state);
@@ -103,6 +107,12 @@ async function saveProject(root,state,{baseBrand,baseState}={}) {
       if(result.conflicts.length)throw Object.assign(new Error('BRAND_CONFLICT: Брендбук изменён параллельно. Сравните версии в Опоре.'),{code:'BRAND_CONFLICT'});
       next.brand=result.brand;
     }
+    const content=brandContent(next.brand),explicit=approvedBrand&&content===brandContent(approvedBrand);
+    if(current?.brand.status==='approved'&&next.brand.status==='approved'&&content!==brandContent(current.brand)&&!explicit)next.brand.status='draft';
+    if(next.brand.status==='approved'){
+      const digest=crypto.createHash('sha256').update(content).digest('hex');
+      if(next.brand.approval?.content_sha256!==digest)next.brand.approval={content_sha256:digest,approvedAt:new Date().toISOString()};
+    }else delete next.brand.approval;
     return writeProject(root,next);
   });
 }
@@ -122,11 +132,11 @@ async function updateProject(root,transform) {
 }
 
 async function previewSync(root, state) {
-  validateState(state);
+  const serialized=serializeProject(state);
   await projectInfo(root);
   const files = [
     {file:'.opora/CONTEXT.md', content:contextMarkdown(state)},
-    {file:'.opora/project.json', content:JSON.stringify(state, null, 2) + '\n'}
+    {file:'.opora/project.json', content:serialized}
   ];
   for (const file of ['AGENTS.md', 'CLAUDE.md']) {
     await assertSafePath(root, file);

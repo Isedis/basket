@@ -2,6 +2,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {assertSafePath,validateState,contextMarkdown,updateProject}=require('./core.cjs');
+const {sourceSnapshot}=require('./source-snapshot.cjs');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fault=(code,message)=>Object.assign(new Error(message),{code});
 
@@ -42,13 +43,15 @@ async function listReports(root,limit=30) {
   let entries;
   try {entries=await fs.readdir(path.join(current.root,directory),{withFileTypes:true});} catch(error) {if(error.code==='ENOENT')return {reports:[],unreadable:0};throw error;}
   let unreadable=0;
+  const source=await sourceSnapshot(current.root);
+  const feedbackRevision=(await require('./visual-feedback.cjs').read(current.root)).feedback_revision;
   const reports=[];
   for(const entry of entries) {
     if(!/^[a-f0-9]{64}\.json$/.test(entry.name) || !entry.isFile())continue;
     try {
       const item=JSON.parse((await boundedRead(path.join(current.root,directory,entry.name),512*1024)).toString('utf8'));
       if(item.version!==1 || typeof item.project_id!=='string' || typeof item.revision!=='string' || typeof item.summary!=='string' || !['in_progress','blocked','ready_for_review'].includes(item.phase) || !['claude','codex','other'].includes(item.agent) || typeof item.recordedAt!=='string' || !Array.isArray(item.checks) || item.checks.some(c=>!c || typeof c.name!=='string' || !['passed','failed','not_run'].includes(c.result))) {unreadable++;continue;}
-      reports.push({...item,stale:item.revision!==current.revision,fromDifferentPath:item.project_id!==current.project_id});
+      reports.push({...item,stale_context:item.revision!==current.revision,stale_feedback:item.feedback_revision?item.feedback_revision!==feedbackRevision:null,stale_code:item.source_snapshot?item.source_snapshot.revision!==source.revision:null,source_unknown:!item.source_snapshot,stale:item.revision!==current.revision||!!item.source_snapshot&&item.source_snapshot.revision!==source.revision||!!item.feedback_revision&&item.feedback_revision!==feedbackRevision,fromDifferentPath:item.project_id!==current.project_id});
     } catch {unreadable++;}
   }
   reports.sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
@@ -64,7 +67,7 @@ async function reportProgress(root,input) {
   const relative=`.opora/agent-reports/${id}.json`;
   await assertSafePath(current.root,relative);
   await fs.mkdir(path.join(current.root,'.opora/agent-reports'),{recursive:true});
-  const report={version:1,id,...payload,fingerprint,brand_revision:current.brand_revision,recordedAt:new Date().toISOString(),selfReported:true};
+  const report={version:1,id,...payload,fingerprint,brand_revision:current.brand_revision,recordedAt:new Date().toISOString(),selfReported:true,source_snapshot:await sourceSnapshot(current.root),feedback_revision:(await require('./visual-feedback.cjs').read(current.root)).feedback_revision};
   try {await fs.writeFile(path.join(current.root,relative),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});} catch(error) {
     if(error.code!=='EEXIST')throw error;
     const existing=JSON.parse((await boundedRead(path.join(current.root,relative),512*1024)).toString('utf8'));
@@ -74,7 +77,9 @@ async function reportProgress(root,input) {
   return {report_id:id,duplicate:false,task_status_unchanged:true};
 }
 async function getReference(root,input) {
-  const current=await snapshot(root);guard(current,input.project_id,input.revision);
+  const current=await snapshot(root);guard(current,input.project_id);
+  if(input.brand_revision!==undefined){if(input.brand_revision!==current.brand_revision)throw fault('STALE_CONTEXT','Брендбук изменился. Перечитайте его.');}
+  else {if(!input.revision)throw fault('INVALID_REVISION','Укажите brand_revision или revision.');guard(current,input.project_id,input.revision);}
   const ref=current.state.references.find(r=>r.id===input.reference_id);
   if(!ref)throw fault('UNKNOWN_REFERENCE','Образец не найден. Перечитайте opora_get_brandbook.');
   await assertSafePath(current.root,ref.file);
@@ -96,22 +101,22 @@ function contextReader(root) {
     const previous=history.get(knownRevision);
     const remember=()=>{history.set(current.revision,structuredClone(current.state));while(history.size>8)history.delete(history.keys().next().value);};
     if(knownRevision===current.revision && previous){remember();return {...projectView(current),mode:'unchanged',unchanged:true};}
+    const markdown=contextMarkdown(current.state);
+    const full={...projectView(current),markdown,mode:'full',reason:knownRevision?'Refresh replaces previous readable context; read detailed task records separately when needed.':'Initial context.'};
+    const fullBytes=Buffer.byteLength(JSON.stringify(full));
     if(previous){
-      const changes={};const removed=[];
+      const changes={},removed=[];
       for(const key of new Set([...Object.keys(previous),...Object.keys(current.state)])){
         if(JSON.stringify(previous[key])===JSON.stringify(current.state[key]))continue;
         if(Object.hasOwn(current.state,key))changes[key]=current.state[key];else removed.push(key);
       }
-      // Selecting a different task also changes its readable acceptance criteria.
       if(Object.hasOwn(changes,'activeTaskId'))changes.tasks=current.state.tasks;
-      // Arrays are replacements, including all task/reference records; no truncation.
-      const result={...projectView(current),mode:'delta',base_revision:knownRevision,revision:current.revision,changes,removed,apply:'These fields override the corresponding sections of your retained context; remove keys in removed. Arrays contain the complete current list. Other fields remain unchanged. Omit known_revision to reread full context anytime.'};
-      if(Buffer.byteLength(JSON.stringify(result))<=256*1024){remember();return result;}
+      const delta={...projectView(current),mode:'delta',base_revision:knownRevision,changes,removed,apply:'Replace listed fields; arrays are complete replacements. Other retained fields remain unchanged. Omit known_revision for a fresh readable context.'};
+      const deltaBytes=Buffer.byteLength(JSON.stringify(delta));
+      if(deltaBytes<=256*1024&&deltaBytes<fullBytes){remember();return delta;}
     }
-    const markdown=contextMarkdown(current.state);
-    if(Buffer.byteLength(markdown)>256*1024)throw fault('TOO_LARGE','Контекст больше 256 КБ. Читайте брендбук и задачи отдельными инструментами.');
-    const full={...projectView(current),markdown};
-    remember();return {...full,mode:'full',reason:knownRevision?'Previous version unavailable or delta too large; full context returned.':'Initial context.'};
+    if(fullBytes>256*1024)throw fault('TOO_LARGE','Контекст больше 256 КБ. Получите opora_get_work_context и читайте длинные поля через opora_read_project_field.');
+    remember();return full;
   };
 }
 
@@ -131,7 +136,7 @@ async function updateBrandbook(root,input) {
     guard(s,input.project_id,input.revision);
     const next=structuredClone(current);
     next.brand={...next.brand,...fields,status:'draft',agentDraft:{agent:input.agent,request_id:input.request_id,summary:input.summary,fingerprint,base_revision:input.revision,updatedAt:new Date().toISOString()}};
-    next.updatedAt=new Date().toISOString();return next;
+    delete next.brand.approval;next.updatedAt=new Date().toISOString();return next;
   });
   return {project_id:id,revision:hash(JSON.stringify(result.state)),brand_revision:hash(JSON.stringify({brand:result.state.brand,references:result.state.references})),brand:result.state.brand,duplicate:!result.changed,backup:result.backup,approval_required:result.state.brand.status!=='approved'};
 }
@@ -151,8 +156,11 @@ async function updateWorkspace(root,input) {
     guard(s,input.project_id,input.revision);const next=structuredClone(current);
     for(const key of textKeys)if(Object.hasOwn(patch,key))next[key]=patch[key];
     if(patch.brand)next.brand={...next.brand,...patch.brand,status:'draft',agentDraft:{agent:input.agent,request_id:input.request_id,summary:input.summary,updatedAt:new Date().toISOString()}};
+    if(patch.brand)delete next.brand.approval;
     const ids=new Set();
-    for(const task of patch.tasks||[]){const id=task.id||crypto.randomUUID();if(ids.has(id))throw fault('INVALID_PATCH','Повторяющийся ID задачи.');ids.add(id);const old=next.tasks.find(t=>t.id===id);const value={...old,...task,id,status:task.status||(old?.status==='done'&&(old.title!==task.title||old.acceptance!==task.acceptance)?'backlog':old?.status||'backlog')};if(old)Object.assign(old,value);else next.tasks.push(value);}
+    const visual=patch.tasks?.some(t=>t.feedback_note_id||t.feedback_shot_id)?await require('./visual-feedback.cjs').read(root):null;
+    for(const task of patch.tasks||[]){if(task.feedback_note_id||task.feedback_shot_id){if(!visual.store.shots.some(s=>s.id===task.feedback_shot_id&&s.notes.some(n=>n.id===task.feedback_note_id)))throw fault('UNKNOWN_NOTE','Связанные снимок и замечание не найдены в этом проекте.');}
+      const id=task.id||crypto.randomUUID();if(ids.has(id))throw fault('INVALID_PATCH','Повторяющийся ID задачи.');ids.add(id);const old=next.tasks.find(t=>t.id===id);const value={...old,...task,id,status:task.status||(old?.status==='done'&&(old.title!==task.title||old.acceptance!==task.acceptance)?'backlog':old?.status||'backlog')};if(task.feedback_note_id){value.feedbackNoteId=task.feedback_note_id;value.feedbackShotId=task.feedback_shot_id;}delete value.feedback_note_id;delete value.feedback_shot_id;if(old)Object.assign(old,value);else next.tasks.push(value);}
     if(Object.hasOwn(patch,'active_task_id')){if(patch.active_task_id!==null && (typeof patch.active_task_id!=='string'||!next.tasks.some(t=>t.id===patch.active_task_id&&t.status!=='done')))throw fault('UNKNOWN_TASK','Нельзя выбрать неизвестную или завершённую задачу.');next.activeTaskId=patch.active_task_id;if(patch.active_task_id)next.tasks.find(t=>t.id===patch.active_task_id).status='active';}
     validateState(next);let total=0;const copies=[];
     for(const original of patch.reference_files||[]){

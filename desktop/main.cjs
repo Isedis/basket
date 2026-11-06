@@ -12,6 +12,8 @@ const agentConfig = require('../src/agent-config.cjs');
 const agentService = require('../src/agent-service.cjs');
 const projectMap = require('../src/project-map.cjs');
 const visualFeedback = require('../src/visual-feedback.cjs');
+const workContext = require('../src/work-context.cjs');
+const workReaders=new Map();
 let root = null;
 let lastScan = null;
 let win;
@@ -69,6 +71,7 @@ if(primary)app.whenReady().then(async () => {
     const result=await agentConfig.configure(client,config);
     return {...result,status:await agentConfig.status(config)};
   });
+  ipcMain.handle('agents:disconnect',async(_,client)=>{const config=await getAgentConfig();const result=await agentConfig.disconnect(client,config);return {...result,status:await agentConfig.status(config)};});
   ipcMain.handle('agents:reports',()=>agentService.listReports(requireProject()));
   ipcMain.handle('project:restore', async () => {
     try {
@@ -92,10 +95,13 @@ if(primary)app.whenReady().then(async () => {
     lastScan = null;
     return loaded;
   });
-  ipcMain.handle('project:save', (_, state,baseBrand,baseState) => core.saveProject(requireProject(), state,{baseBrand,baseState}));
+  ipcMain.handle('project:save', (_, state,baseBrand,baseState,approvedBrand) => core.saveProject(requireProject(), state,{baseBrand,baseState,approvedBrand}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
   ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));
+  ipcMain.handle('workspace:read',(_,input={})=>{const project=requireProject();if(!workReaders.has(project)){workReaders.clear();workReaders.set(project,workContext.reader(project));}return workReaders.get(project)(input);});
   ipcMain.handle('feedback:read',()=>visualFeedback.read(requireProject()));
+  ipcMain.handle('feedback:history',(_,input)=>visualFeedback.history(requireProject(),input));
+  ipcMain.handle('feedback:archive',(_,input)=>visualFeedback.archive(requireProject(),input));
   ipcMain.handle('feedback:note',(_,input)=>visualFeedback.addNote(requireProject(),input));
   ipcMain.handle('feedback:decide',(_,input)=>visualFeedback.decide(requireProject(),input));
   ipcMain.handle('feedback:image',async(_,input)=>{const result=await visualFeedback.image(requireProject(),input);return 'data:image/png;base64,'+result.data.toString('base64');});
@@ -103,7 +109,7 @@ if(primary)app.whenReady().then(async () => {
     if(project!==root)throw new Error('Проект сменился. Повторите добавление снимка.');
     const size=image.getSize();if(image.isEmpty()||!size.width||!size.height||size.width*size.height>16_000_000)throw new Error('Нужен снимок до 16 миллионов пикселей.');
     const data=image.toPNG();visualFeedback.pngInfo(data);
-    if(input.shot_id)return visualFeedback.submitResult(project,{revision:input.revision,shot_id:input.shot_id,note_ids:[input.note_id],summary:input.summary||'Результат добавлен пользователем',agent:'user',request_id:crypto.randomUUID(),data});
+    if(input.shot_id)return visualFeedback.submitResult(project,{revision:input.revision,shot_id:input.shot_id,note_ids:[input.note_id],summary:input.summary||'Результат добавлен пользователем',agent:'user',request_id:crypto.randomUUID(),note_revisions:input.note_revisions,data});
     return visualFeedback.addShot(project,{revision:input.revision,title,data});
   }
   ipcMain.handle('feedback:import',async(_,input={})=>{

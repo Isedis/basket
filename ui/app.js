@@ -18,6 +18,7 @@ let state;
 try {state = JSON.parse(localStorage.getItem('opora-demo') || 'null'); if (state) OporaContext.validateState(state);} catch {state = null;}
 state ||= demoState();
 let savedProject=structuredClone(state);
+let approvedBrand=null;
 let pendingExternalRender=false;
 let brandConflict=null;
 let saving=0;
@@ -77,7 +78,7 @@ function persist() {
     const snapshot=structuredClone(state),saveRevision=revision;
     saving++;
     try {
-      const result=await bridge.save(snapshot,structuredClone(savedProject.brand),structuredClone(savedProject));
+      const result=await bridge.save(snapshot,structuredClone(savedProject.brand),structuredClone(savedProject),approvedBrand&&structuredClone(approvedBrand));
       if(project!==root)return;
       const remote=result?.brand ? result : snapshot;
       const merged=OporaContext.mergeProject(snapshot,state,remote);
@@ -134,12 +135,23 @@ function pageTitle(eyebrow, title, subtitle, action = '') {return `<div class="p
 
 function demoBanner() {return root?'':'<div class="demo-banner"><span><strong>ДЕМО</strong> / Тихая орбита</span><button class="text-button" data-action="open">Выбрать папку игры →</button></div>';}
 
+async function showWorkContext(){
+  if(!root||!bridge?.workContext){toast('Откройте папку игры в приложении.');return;}
+  await persist();const project=root,packet=await bridge.workContext({});if(project!==root)return;
+  showModal(`<h2 id="modal-title">Контекст задачи</h2><p>${escapeHtml(packet.task?.title||'Задача не выбрана')}</p><div class="source-stats"><span>Замечания / ${packet.feedback.total}</span><span>Файлы / ${packet.source_snapshot.files}</span><span>Стиль / ${packet.brand.status==='approved'?'утверждён':'черновик'}</span></div>${packet.warnings.map(w=>`<p class="context-note">${escapeHtml(w)}</p>`).join('')}<section class="card"><h3>Решения и замечания</h3>${packet.feedback.notes.map(n=>`<p><strong>${n.kind==='keep'?'Сохранить':'Исправить'}</strong> / ${escapeHtml(n.text)}<br><small>${escapeHtml(n.scope==='project'?'Весь проект':n.scene||'Область снимка')} / ${n.status==='accepted'?'принято':n.status==='ready'?'на проверке':'открыто'}</small></p>`).join('')||'<p>Связанные замечания не найдены.</p>'}</section><p class="small">Паспорт, выбранная задача, относящиеся к ней решения, ссылки на снимки и связи файлов доступны агенту одним запросом. Подробности читаются отдельно.</p><div class="modal-actions"><button class="button secondary" data-action="close-modal">Закрыть</button><button class="button" data-action="copy-work">Скопировать для агента</button></div>`);
+}
+async function copyWorkContext(){
+  await persist();const project=root,packet=await bridge.workContext({});if(project!==root)return;
+  await bridge.copy(`Работаем с игрой ${packet.name}: ${packet.root}.\nВызови opora_get_work_context${packet.task?` с task_id=${packet.task.id}`:''}, проверь путь проекта. Этот запрос собирает задачу, действующие решения и версии кода/замечаний. Изображения прочитай через opora_get_feedback_image, исходники — перед правкой. Не считай принятый снимок завершением всей задачи. После потери истории получи полный пакет заново.\n\n${JSON.stringify(packet,null,2)}`);
+  toast('Контекст задачи скопирован.');
+}
+
 function overview() {
   const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
   const queue=state.tasks.filter(t=>t.status!=='done' && t.id!==active?.id);
   return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<div class="stack"><button class="button small secondary" data-action="copy-project-agent">Заполнить через агента</button><button class="button small secondary" data-action="new-task">+ Задача</button></div>')}${demoBanner()}
   <div class="project-status"><button data-action="goto-brand"><span class="status-dot"></span>Стиль: ${state.brand.status==='approved'?'утверждён':'черновик'}</button><span>${state.references.filter(r=>r.status==='approved').length} эталонов</span><button data-action="goto-context">${syncedRevision===revision?'Файлы обновлены':'Контекст: есть изменения'} →</button></div>
-  <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>В работе</h2><span class="badge">${active?'ВЫБРАНА':'НЕТ ЗАДАЧИ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ГОТОВО, ЕСЛИ</span><p>${escapeHtml(active.acceptance || 'Добавьте критерии готовности.')}</p></div>`:'<p class="small">Создайте задачу с понятным результатом.</p>'}<div class="stack">${active?'<button class="button" data-action="copy-brief">Скопировать запрос</button>':'<button class="button" data-action="new-task">+ Новая задача</button>'}<button class="button secondary" data-action="goto-agents">Агенты →</button><button class="text-button" data-action="goto-context">Контекст</button></div></section>
+  <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>В работе</h2><span class="badge">${active?'ВЫБРАНА':'НЕТ ЗАДАЧИ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ГОТОВО, ЕСЛИ</span><p>${escapeHtml(active.acceptance || 'Добавьте критерии готовности.')}</p></div>`:'<p class="small">Создайте задачу с понятным результатом.</p>'}<div class="stack">${active?'<button class="button" data-action="copy-brief">Скопировать запрос</button>':'<button class="button" data-action="new-task">+ Новая задача</button>'}<button class="button secondary" data-action="goto-agents">Агенты →</button><button class="text-button" data-action="work-context">Контекст задачи</button></div></section>
   <section class="card queue-card"><div class="card-header"><h2>Следом</h2><button class="text-button" data-action="goto-tasks">Все / ${queue.length} →</button></div>${queue.length?queue.slice(0,4).map(t=>`<div class="queue-item"><div><span class="section-label">${t.status==='active'?'В РАБОТЕ':'ОЧЕРЕДЬ'}</span><strong>${escapeHtml(t.title)}</strong></div><button class="text-button" data-action="select-task" data-id="${escapeHtml(t.id)}">В работу →</button></div>`).join(''):'<div class="empty">Очередь пуста.<br><button class="text-button" data-action="new-task">Добавить задачу →</button></div>'}</section></div>
   <div class="grid-two section-gap"><section class="card"><div class="card-header"><h2>Проект</h2><span class="badge muted">GODOT</span></div><div class="field-row">${field('Название','name','Название игры')}${field('Жанр','genre','Roguelike / idle / …')}</div>${field('Замысел','pitch','Что делает игрок и ради чего?',true,3)}${field('Цель итерации','goal','Один конкретный результат',true,2)}<details class="extra-fields"><summary>Ощущение и принципы</summary>${field('Ощущение игрока','experience','Настроение и характер игры',true,2)}${field('Принципы игры','pillars','По одному принципу на строку',true,3)}</details></section><section class="card"><div class="card-header"><h2>Постоянные правила</h2><button class="text-button" data-action="goto-brand">Брендбук →</button></div>${field('Что агент должен сохранять','rules','Компоненты, размеры, эффекты и другие принятые решения',true,7)}<div class="compact-hint">Сохраняются автоматически. Доступны обоим агентам.</div></section></div>`;
 }
@@ -208,9 +220,9 @@ function agents() {
   const info=agentConnection;
   const cards=['claude','codex'].map(client=>{
     const configured=info?.status?.[client]?.configured;
-    return `<section class="card connection-card"><div class="card-header"><h2>${client==='claude'?'Claude Code':'Codex CLI'}</h2><span class="badge ${configured?'':'muted'}">${configured?'НАСТРОЕНО':'НЕ НАСТРОЕНО'}</span></div><p class="small">${client==='claude'?'Настройки этого проекта':'Настройки пользователя'}</p><button class="button secondary" data-action="configure-agent" data-client="${client}" ${!info?'disabled':''}>${configured?'Обновить подключение':'Настроить подключение'}</button>${info?.status?.[client]?.error?`<p class="context-note">${escapeHtml(info.status[client].error)}</p>`:''}</section>`;
+    return `<section class="card connection-card"><div class="card-header"><h2>${client==='claude'?'Claude Code':'Codex CLI'}</h2><span class="badge ${configured?'':'muted'}">${configured?'НАСТРОЕНО':'НЕ НАСТРОЕНО'}</span></div><p class="small">${client==='claude'?'Настройки этого проекта':'Настройки пользователя'}</p><button class="button secondary" data-action="configure-agent" data-client="${client}" ${!info?'disabled':''}>${configured?'Обновить подключение':'Настроить подключение'}</button>${configured?`<button class="text-button" data-action="disconnect-agent" data-client="${client}">Отключить для этой игры</button>`:''}${info?.status?.[client]?.error?`<p class="context-note">${escapeHtml(info.status[client].error)}</p>`:''}</section>`;
   }).join('');
-  const reportCard=(r,index)=>`<details class="agent-report" ${index===0?'open':''}><summary><span class="report-phase">${({in_progress:'В работе',blocked:'Блокер',ready_for_review:'На просмотр'})[r.phase]||'Отчёт'}</span><strong>${({claude:'Claude',codex:'Codex',other:'Агент'})[r.agent]||'Агент'}</strong><small>${escapeHtml(new Date(r.recordedAt).toLocaleString('ru-RU'))}</small></summary><div class="report-body"><p>${escapeHtml(r.summary)}</p>${r.task_id?`<span class="file-tag">${escapeHtml(state.tasks.find(t=>t.id===r.task_id)?.title||r.task_id)}</span>`:''}${r.stale?'<p class="context-note">Контекст после отчёта изменился.</p>':''}${r.fromDifferentPath?'<p class="context-note">Отчёт из другой папки проекта.</p>':''}${r.checks.length?`<ul class="report-checks">${r.checks.map(c=>`<li><span>${({passed:'[+] Агент: прошло',failed:'[!] Агент: ошибка',not_run:'[—] Не запускалось'})[c.result]}</span> ${escapeHtml(c.name)}${c.evidence?`<p>${escapeHtml(c.evidence)}</p>`:''}</li>`).join('')}</ul>`:''}<small>Проверки заявлены агентом. Завершение подтверждаете вы.</small></div></details>`;
+  const reportCard=(r,index)=>`<details class="agent-report" ${index===0?'open':''}><summary><span class="report-phase">${({in_progress:'В работе',blocked:'Блокер',ready_for_review:'На просмотр'})[r.phase]||'Отчёт'}</span><strong>${({claude:'Claude',codex:'Codex',other:'Агент'})[r.agent]||'Агент'}</strong><small>${escapeHtml(new Date(r.recordedAt).toLocaleString('ru-RU'))}</small></summary><div class="report-body"><p>${escapeHtml(r.summary)}</p>${r.task_id?`<span class="file-tag">${escapeHtml(state.tasks.find(t=>t.id===r.task_id)?.title||r.task_id)}</span>`:''}${r.stale_context?'<p class="context-note">Контекст после отчёта изменился.</p>':''}${r.stale_code?'<p class="context-note">Код изменился после отчёта.</p>':''}${r.stale_feedback?'<p class="context-note">Замечания изменились после отчёта.</p>':''}${r.source_unknown?'<p class="small">Версия кода этого старого отчёта неизвестна.</p>':''}${r.fromDifferentPath?'<p class="context-note">Отчёт из другой папки проекта.</p>':''}${r.checks.length?`<ul class="report-checks">${r.checks.map(c=>`<li><span>${({passed:'[+] Агент: прошло',failed:'[!] Агент: ошибка',not_run:'[—] Не запускалось'})[c.result]}</span> ${escapeHtml(c.name)}${c.evidence?`<p>${escapeHtml(c.evidence)}</p>`:''}</li>`).join('')}</ul>`:''}<small>Проверки заявлены агентом. Завершение подтверждаете вы.</small></div></details>`;
   return `${pageTitle('[04] / АГЕНТЫ','Подключения','', '<button class="button small secondary" data-action="refresh-agents">Обновить данные</button>')}${demoBanner()}<div class="grid-two">${cards}</div><section class="card session-card section-gap"><div class="session-actions"><div><h2>Начать сессию</h2><p class="small">Перезапустите агента в папке игры.</p></div><button class="button" data-action="copy-agent-start" ${!info?'disabled':''}>Скопировать первый запрос</button></div><details class="technical-note"><summary>Настройки MCP</summary>${info?`<p>Сервер: <span class="file-tag">${escapeHtml(info.server_name)}</span></p><p>Проект: ${escapeHtml(info.root)}</p>`:'<p>Подключите проект в приложении Windows.</p>'}<p>«Настроено» означает сохранённую запись, а не подтверждённое соединение. При запросе клиента подтвердите сервер. Авторизация модели остаётся в Claude / Codex. Локальный stdio-сервер работает и при закрытой Опоре.</p></details></section><section class="card section-gap"><div class="card-header"><h2>Отчёты <span class="inline-count">/ ${agentActivity.reports.length}</span></h2><span class="section-label">ОБНОВЛЯЮТСЯ АВТОМАТИЧЕСКИ</span></div>${agentActivity.reports.length?`<div class="agent-reports">${agentActivity.reports.map(reportCard).join('')}</div>`:'<div class="empty">Отчётов пока нет.</div>'}${agentActivity.unreadable?`<p class="context-note">Не прочитано отчётов: ${agentActivity.unreadable}.</p>`:''}</section>`;
 }
 
@@ -322,7 +334,7 @@ async function openProject() {
   brandAssessment=null;assessmentFor=null;reviewErrorFor=null;
   agentConnection=null;agentActivity={reports:[],unreadable:0};
   state = project.state || blankState(project.info.name);
-  savedProject=structuredClone(state);brandConflict=null;$('#brand-conflict').hidden=true;
+  savedProject=structuredClone(state);approvedBrand=null;brandConflict=null;$('#brand-conflict').hidden=true;
   revision = 0; syncedRevision = -1; failedSave = false;
   tab = 'overview';
   await persist();
@@ -346,6 +358,8 @@ document.addEventListener('input', event => {
   if(event.target.id==='command-search'){commandIndex=0;renderCommands();return;}
   const key = event.target.dataset.field;
   if (!key) return;
+  if(key.startsWith('brand.')&&key!=='brand.status'){state.brand.status='draft';delete state.brand.approval;approvedBrand=null;const select=document.querySelector('[data-field="brand.status"]');if(select)select.value='draft';}
+  if(key==='brand.status')approvedBrand=event.target.value==='approved'?structuredClone(state.brand):null;
   const parts = key.split('.');
   if (parts.length === 2) state[parts[0]][parts[1]] = event.target.value;
   else state[key] = event.target.value;
@@ -384,7 +398,10 @@ document.addEventListener('click', async event => {
   if (!button || button.disabled) return;
   const action = button.dataset.action;
   try {
+    if (action === 'disconnect-agent'){await bridge.disconnectAgent(button.dataset.client);await refreshAgents();toast('Подключение убрано. Перезапустите сессию агента.');}
     if (action === 'commands') showCommands();
+    if (action === 'work-context') await showWorkContext();
+    if (action === 'copy-work') await copyWorkContext();
     if (action === 'brand-conflict') await showBrandConflict();
     if (action === 'brand-use-agent') await resolveBrandConflict(true);
     if (action === 'brand-keep-mine') await resolveBrandConflict(false);
@@ -422,7 +439,7 @@ document.addEventListener('click', async event => {
     if (action === 'copy-brand-agent') await copyBrandAgentPrompt();
     if (action === 'copy-project-agent') await copyBrandAgentPrompt(true);
     if (action === 'copy-agent-start' && agentConnection) {
-      await bridge.copy(`Работаем над игрой «${state.name}» в папке ${agentConnection.root}. Используй MCP-сервер ${agentConnection.server_name}: сначала opora_get_project, проверь папку, затем opora_get_context и брендбук. Выполни выбранную задачу. Перед отправкой отчёта используй актуальную revision. Незапущенные проверки отметь not_run. Результат отправь через opora_report_progress со статусом ready_for_review; завершение подтверждает пользователь.`);
+      await bridge.copy(`Работаем над игрой «${state.name}» в папке ${agentConnection.root}. Используй MCP-сервер ${agentConnection.server_name}: начни с opora_get_work_context и проверь папку. Используй связанные замечания и решения; подробные инструменты вызывай по необходимости. Выполни выбранную задачу. Перед отправкой отчёта используй актуальную revision. Незапущенные проверки отметь not_run. Результат отправь через opora_report_progress со статусом ready_for_review; завершение подтверждает пользователь.`);
       toast('Первый запрос скопирован. Вставьте его в новую сессию агента.');
     }
     if (action === 'copy-update-diagnostics') {
@@ -494,7 +511,7 @@ async function initialize() {
     if (!project) return;
     root = project.root;
     state = project.state || blankState(project.info.name);
-  savedProject=structuredClone(state);brandConflict=null;$('#brand-conflict').hidden=true;
+  savedProject=structuredClone(state);approvedBrand=null;brandConflict=null;$('#brand-conflict').hidden=true;
     render(); status('Проект открыт · локальные данные');
     if(needsBrandbook() && bridge.scanBrandbook)await scanBrand(true);
   } catch(error) {fail(error);}
@@ -538,6 +555,7 @@ document.addEventListener('keydown',async event=>{
 });
 
 async function copyBrief() {
+  if(root&&bridge?.workContext)return copyWorkContext();
   const text=OporaContext.taskBrief(state);
   if(bridge)await bridge.copy(text);else await navigator.clipboard.writeText(text);
   toast('Запрос скопирован.');
@@ -634,13 +652,13 @@ async function copyBrandAgentPrompt(allData=false) {
   const info=await bridge.agentInfo();
   if(allData){
     await bridge.copy(`Заполни данные проекта «${state.name}» (${info.root}) через MCP ${info.server_name}.
-Сначала opora_get_project: проверь корень игры, затем opora_get_context, opora_get_brandbook и opora_list_tasks. Изучи доступные файлы и изображения игры, отделяя факты от предложений.
+Начни с opora_get_work_context и проверь корень игры. Поля, задачи и снимки читай отдельно, если нужны подробности. Изучи доступные файлы и изображения игры, отделяя факты от предложений.
 Используй opora_update_project с актуальными project_id/revision, уникальным request_id, agent, summary и fields. Заполни name, genre, pitch, experience, goal, pillars, rules; brand.direction/palette/fonts/avoid; tasks (id, title, acceptance, backlog/active), active_task_id и reference_files (относительные пути PNG/JPG/WebP внутри игры).
 Сохраняй существующие решения и задачи, не выдумывай факты и просмотренные источники. Неопределённое обозначь как предложение или вопрос. Для изменения существующих задач используй их ID. Эталоны добавляются кандидатами, брендбук — черновиком. Завершение и утверждение оставь пользователю. Не редактируй .opora/project.json напрямую. При STALE_CONTEXT перечитай данные и учти новые правки. После записи вызови opora_review_brandbook и перечисли оставшиеся вопросы.`);
     toast('Запрос скопирован. Вставьте его в подключённого агента.');return;
   }
   await bridge.copy(`Заполни брендбук игры «${state.name}» в ${info.root} через MCP ${info.server_name}.
-Сначала opora_get_project: проверь папку; затем opora_get_context и opora_get_brandbook.
+Начни с opora_get_work_context и проверь папку. Для сокращённых полей используй полное чтение; эталоны доступны отдельными инструментами.
 Изучи файлы игры и доступные изображения через свои инструменты и opora_get_reference. Разделяй найденные факты и предлагаемые решения; не выдумывай просмотренные файлы и утверждённые эталоны.
 Подготовь direction (направление), palette (HEX и роли цветов, явные пары текста/фона), fonts (семейства, пути и размеры для разных ролей) и avoid (ограничения). Учитывай существующие правила и объясни существенные изменения.
 Сохрани через opora_update_brandbook: актуальные project_id и revision, уникальный request_id, agent, краткий summary и fields. Перед записью перечитай контекст, если он изменился. Не редактируй .opora/project.json напрямую. Стиль и эталоны самостоятельно не утверждай.
