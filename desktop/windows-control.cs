@@ -11,8 +11,8 @@ class OporaControl {
     [MarshalAs(UnmanagedType.ByValTStr,SizeConst=260)] public string name;
   }
   [DllImport("kernel32.dll",SetLastError=true)] static extern IntPtr CreateToolhelp32Snapshot(uint flags,uint pid);
-  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] static extern bool Process32FirstW(IntPtr handle,ref Entry entry);
-  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] static extern bool Process32NextW(IntPtr handle,ref Entry entry);
+  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool Process32FirstW(IntPtr handle,ref Entry entry);
+  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool Process32NextW(IntPtr handle,ref Entry entry);
   [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
   [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] static extern uint GetLongPathName(string input,StringBuilder output,uint size);
   static string Normal(string value) { var full=Path.GetFullPath(value); var buffer=new StringBuilder(32768); return GetLongPathName(full,buffer,32768)>0?buffer.ToString():full; }
@@ -20,7 +20,9 @@ class OporaControl {
     var parents=new Dictionary<uint,uint>(); var names=new Dictionary<uint,string>();
     var handle=CreateToolhelp32Snapshot(2,0); if(handle==new IntPtr(-1)) return true;
     try { var entry=new Entry(); entry.size=(uint)Marshal.SizeOf(typeof(Entry));
-      if(Process32FirstW(handle,ref entry))do{parents[entry.pid]=entry.parent;names[entry.pid]=entry.name;}while(Process32NextW(handle,ref entry));
+      if(!Process32FirstW(handle,ref entry))return true;
+      do{parents[entry.pid]=entry.parent;names[entry.pid]=entry.name;}while(Process32NextW(handle,ref entry));
+      if(Marshal.GetLastWin32Error()!=18)return true;
     } finally { CloseHandle(handle); }
     foreach(var pair in names) {
       var name=pair.Value.ToLowerInvariant(); if(name!="node.exe"&&name!="openconsole.exe"&&!name.Contains("claude"))continue;

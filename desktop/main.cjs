@@ -97,6 +97,7 @@ if(primary)await app.whenReady().then(async () => {
     installing=true;
     updater.emit({transaction:true});
     let installPlan;
+    let releasedForUpdate=false;
     try {
       if(terminalStarting)await new Promise((resolve,reject)=>{const deadline=Date.now()+20000;const tick=()=>{if(!terminalStarting)return resolve();if(Date.now()>deadline)return reject(new Error('Claude ещё запускается. Повторите обновление через несколько секунд.'));setTimeout(tick,100);};tick();});
       await updater.check();
@@ -116,12 +117,13 @@ if(primary)await app.whenReady().then(async () => {
       await nativeUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
       canClose=true;restarting=true;
       await terminal.detach();
-      await installLayout.atomic(path.join(plan.job,'parent-handoff.json'),{token:plan.token,pid:process.pid,saved:true});
+      app.releaseSingleInstanceLock();releasedForUpdate=true;
+      await installLayout.atomic(path.join(plan.job,'parent-handoff.json'),{token:plan.token,pid:process.pid,saved:true,released:true});
       // The renderer saved before this transaction and the PTY host is separate.
       // Exit the GUI directly; no close dialog or lingering inspector can block it.
       setTimeout(()=>app.exit(0),25);
       return {restarting:true};
-    } catch(error) {installing=false;restarting=false;canClose=false;if(installPlan)await fs.writeFile(path.join(installPlan.job,'cancel'),'cancelled').catch(()=>{});await terminal.connect().catch(()=>{});updater.emit({status:'error',transaction:false,error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
+    } catch(error) {installing=false;restarting=false;canClose=false;if(releasedForUpdate)app.requestSingleInstanceLock();if(installPlan)await fs.writeFile(path.join(installPlan.job,'cancel'),'cancelled').catch(()=>{});await terminal.connect().catch(()=>{});updater.emit({status:'error',transaction:false,error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');

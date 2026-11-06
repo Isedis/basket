@@ -47,7 +47,7 @@ async function run(job){
     while(alive(plan.parentPid)){
       await cancelled();
       const handoff=await json(path.join(job,'parent-handoff.json'));
-      if(handoff?.token===plan.token&&handoff.pid===plan.parentPid&&handoff.saved===true){await pause(250);break;}
+      if(handoff?.token===plan.token&&handoff.pid===plan.parentPid&&handoff.saved===true&&handoff.released===true){await pause(250);break;}
       if(Date.now()>parentDeadline)throw new Error('Окно Опоры не завершило сохранение.');await pause(100);
     }
     parentClosed=true;await cancelled();await progress('Включение новой версии');

@@ -33,6 +33,11 @@ test('Preparation installs beside the running version, verifies application SHA 
   assert.equal(plan.schemaVersion,2);assert.notEqual(plan.directory,current);assert.equal(plan.previousDirectory,current);assert.equal((await layout.read(plan.pointer)).directory,current);
   assert.equal(await fs.readFile(path.join(plan.directory,'Opora.exe'),'utf8'),'engine');assert.equal(await fs.readFile(path.join(current,'engine.dll'),'utf8'),'verified');
   assert.equal(JSON.parse(await fs.readFile(path.join(plan.directory,layout.MARKER),'utf8')).id,plan.installId);
+  const manual=path.join(root,'manual');await fs.mkdir(manual);await fs.copyFile(path.join(payload,'resources/app.asar'),path.join(manual,'new-app.asar'));await fs.copyFile(path.join(payload,'runtime.json'),path.join(manual,'runtime.json'));
+  const migration=await updater.prepareInstall({kind:'app',version:'0.13.0',runtimeVersion:'45.2.3',payload:manual},path.join(current,'Opora.exe'),{storage,runtimeVersion:'45.2.3'});
+  assert.equal(migration.previousDirectory,current);assert.equal((await layout.read(migration.pointer)).directory,current);
+  await fs.writeFile(path.join(manual,'new-app.asar'),'damaged');
+  await assert.rejects(updater.prepareInstall({kind:'app',version:'0.13.0',runtimeVersion:'45.2.3',payload:manual},path.join(current,'Opora.exe'),{storage,runtimeVersion:'45.2.3'}),/Контрольная сумма/);
 });
 test('Temporary sharing violations are retried; permanent I/O failures are returned immediately',async()=>{
   let calls=0;assert.equal(await retry(async()=>{calls++;if(calls<3)throw Object.assign(new Error('locked'),{code:'EACCES'});return 'ready';}), 'ready');assert.equal(calls,3);
