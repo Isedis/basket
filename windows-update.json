@@ -1,7 +1,7 @@
 {
-  "commit": "05a1cd1bea0397db86f986fa09c438bd071da9a1",
-  "run": "https://github.com/Isedis/basket/actions/runs/42165541380",
-  "checkedAt": "2026-11-06T04:59:15.467Z",
+  "commit": "47d90e9992898a549346a75fa17e61aff069078c",
+  "run": "https://github.com/Isedis/basket/actions/runs/42166434007",
+  "checkedAt": "2026-11-06T05:08:26.382Z",
   "platform": "windows-latest",
   "steps": {
     "unit": "success",
@@ -14,13 +14,13 @@
     "platform": "win32",
     "version": "0.12.0",
     "mode": "button",
-    "legacyController": "PROTECTED:8292",
+    "legacyController": "PROTECTED:4536",
     "oldProcess": {
-      "pid": 8292,
+      "pid": 4536,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "8292 quit\n",
+    "lifecycle": "4536 quit\n",
     "terminalSurvived": true,
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
@@ -31,45 +31,45 @@
     "platform": "win32",
     "version": "0.12.0",
     "mode": "button",
-    "legacyController": "PROTECTED:8928",
+    "legacyController": "PROTECTED:7684",
     "oldProcess": {
-      "pid": 8928,
+      "pid": 7684,
       "pageClosed": true,
       "inspectorDetached": false
     },
-    "lifecycle": "8928 quit\n",
+    "lifecycle": "7684 quit\n",
     "worker-launch.json": {
-      "parentPid": 8928,
-      "expectedPid": 5492
+      "parentPid": 7684,
+      "expectedPid": 1056
     },
     "progress.json": {
-      "pid": 5492,
+      "pid": 1056,
       "phase": "Проверка запуска новой версии"
     },
     "ready.json": {
-      "pid": 5492,
+      "pid": 1056,
       "tokenMatches": true
     },
     "plan.json": {
-      "parentPid": 8928,
+      "parentPid": 7684,
       "version": "0.12.0"
     },
     "parent-handoff.json": {
-      "pid": 8928,
+      "pid": 7684,
       "saved": true,
       "released": true,
       "tokenMatches": true
     },
     "gui-process.json": {
-      "pid": 7300,
+      "pid": 4192,
       "exitCode": 19
     },
     "new-start.json": {
-      "pid": 7300,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-4zN6zr\\profile\\runtime\\cd603013a56e2715\\v\\0.12.0-6ef89fc48eba\\Opora.exe",
+      "pid": 4192,
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-SwsUXj\\profile\\runtime\\e85dc8465e8ba14b\\v\\0.12.0-f97bd7769be7\\Opora.exe",
       "version": "0.12.0",
       "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-4zN6zr\\profile\\runtime\\cd603013a56e2715\\v\\0.12.0-6ef89fc48eba\\Opora.exe"
+        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-SwsUXj\\profile\\runtime\\e85dc8465e8ba14b\\v\\0.12.0-f97bd7769be7\\Opora.exe"
       ]
     },
     "rollback": true,
@@ -80,13 +80,13 @@
     "platform": "win32",
     "version": "0.12.0",
     "mode": "migration",
-    "legacyController": "GUI:9940",
+    "legacyController": "GUI:6952",
     "oldProcess": {
-      "pid": 9940,
+      "pid": 6952,
       "pageClosed": true,
       "inspectorDetached": true
     },
-    "lifecycle": "9940 window-all-closed\n9940 before-quit\n9940 will-quit\n9940 quit\n",
+    "lifecycle": "6952 window-all-closed\n6952 before-quit\n6952 will-quit\n6952 quit\n",
     "hardlinkedRuntime": true,
     "localRuntimeReused": true,
     "startLauncherWorks": true,
