@@ -16,7 +16,7 @@ async function main(){
   const initial=process.execPath,layout=await layoutApi.location(initial,{create:true,storage:path.join(userData,'runtime')});
   const current=await layoutApi.active(layout),pkg=await legacy.readArchivePackage(path.join(current.directory,'resources/app.asar'));
   const version=require('../package.json').version;
-  if(compareVersions(pkg.version,version)>=0){console.log('Установлена версия '+pkg.version+'.');const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();return;}
+  if(compareVersions(pkg.version,version)>=0){console.log('Установлена версия '+pkg.version+'.');const env={...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true,detached:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();return;}
   await layoutApi.atomic(layout.pointer,{...current,version:pkg.version});
   const onProgress=text=>console.log(text);
   const plan=await updater.prepareInstall({kind:'app',version,runtimeVersion:process.versions.electron,payload:path.join(packageRoot,'opora-update')},initial,{layout,runtimeVersion:process.versions.electron,onProgress});
@@ -42,7 +42,7 @@ async function main(){
   // Legacy START-OPORA.cmd must find the new installation too; it cannot use
   // the old GUI's main.js redirect that did not exist before this migration.
   const starter=path.join(packageRoot,'OPORA-START.cjs');
-  await fs.writeFile(starter,`const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process');const current=JSON.parse(fs.readFileSync(${JSON.stringify(layout.pointer)},'utf8'));if(current.id!==${JSON.stringify(layout.id)})throw new Error('Invalid Opora installation');const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();\n`);
+  await fs.writeFile(starter,`const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process');const current=JSON.parse(fs.readFileSync(${JSON.stringify(layout.pointer)},'utf8'));if(current.id!==${JSON.stringify(layout.id)})throw new Error('Invalid Opora installation');const env={...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true,detached:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();\n`);
   const relative=path.relative(packageRoot,initial);if(relative.startsWith('..')||path.isAbsolute(relative))throw new Error('Пакет находится вне установленной Опоры.');
   await fs.writeFile(path.join(packageRoot,'START-OPORA.cmd'),'@echo off\r\nsetlocal DisableDelayedExpansion\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"%~dp0'+relative+'" "%~dp0OPORA-START.cjs"\r\n');
   await updater.launchInstaller(plan,path.join(userData,'update-result.json'),{onProgress});

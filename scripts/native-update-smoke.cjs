@@ -97,6 +97,12 @@ async function main(){
       const statOld=await fs.stat(path.join(base,'Opora.exe')),statNew=await fs.stat(path.join(result.directory,'Opora.exe'));report.hardlinkedRuntime=statOld.dev===statNew.dev&&statOld.ino===statNew.ino;
       assert.equal(hash(await fs.readFile(path.join(base,'Opora.exe'))),hash(await fs.readFile(path.join(result.directory,'Opora.exe'))));
       report.localRuntimeReused=true;
+      if(migration){
+        const startCmd=path.join(base,'START-OPORA.cmd');
+        const launch=require('node:child_process').spawn(process.env.ComSpec||'cmd.exe',['/d','/s','/c','""%OPORA_MIGRATION_CMD%""'],{windowsVerbatimArguments:true,windowsHide:true,stdio:'ignore',env:{...process.env,APPDATA:path.dirname(profile),OPORA_MIGRATION_CMD:startCmd}});
+        const exitCode=await new Promise((resolve,reject)=>{launch.once('exit',resolve);launch.once('error',reject);});assert.equal(exitCode,0);
+        await pause(750);process.kill(newPid,0);report.startLauncherWorks=true;
+      }
     }
     const live=await client.callTool({name:'opora_get_work_context',arguments:{}});assert.ok(!live.isError);report.mcpSurvived=true;
     assert.equal((await core.loadProject(game)).state.rules,'Keep all game data');report.dataPreserved=true;

@@ -37,7 +37,7 @@ if(app.isPackaged){
   installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'runtime')});
   const active=await installLayout.active(installation);
   if(active&&!installLayout.same(active.directory,path.dirname(process.execPath))&&!process.env.OPORA_UPDATE_JOB){
-    const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:true,env:{...process.env}});
+    const child=require('node:child_process').spawn(path.join(active.directory,'Opora.exe'),process.argv.slice(1),{cwd:active.directory,stdio:'ignore',windowsHide:true,detached:true,env:{...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'}});
     await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();app.quit();return;
   }
   mcpRuntime=await installLayout.stableMcp(installation);
