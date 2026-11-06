@@ -36,7 +36,14 @@ function Start-UpdateApplication($Plan,[bool]$Confirm) {
         $env:ELECTRON_RUN_AS_NODE=$null
         if ($Confirm) { $env:OPORA_UPDATE_JOB=$Plan.job; $env:OPORA_UPDATE_TOKEN=$Plan.token }
         else { $env:OPORA_UPDATE_JOB=$null; $env:OPORA_UPDATE_TOKEN=$null }
-        return Start-Process -FilePath (Join-Path $Plan.directory 'Opora.exe') -WorkingDirectory $Plan.directory -PassThru
+        # Start-Process resolves wildcard characters in FilePath. ProcessStartInfo
+        # passes the actual path, including square brackets, directly to the OS.
+        $startInfo=New-Object Diagnostics.ProcessStartInfo
+        $startInfo.FileName=Join-Path $Plan.directory 'Opora.exe'
+        $startInfo.WorkingDirectory=$Plan.directory
+        $startInfo.UseShellExecute=$false
+        $startInfo.CreateNoWindow=$true
+        return [Diagnostics.Process]::Start($startInfo)
     } finally { $env:OPORA_UPDATE_JOB=$oldJob; $env:OPORA_UPDATE_TOKEN=$oldToken; $env:ELECTRON_RUN_AS_NODE=$oldNode }
 }
 function Show-UpdateFailure([string]$Message) {
@@ -141,7 +148,5 @@ function Invoke-OporaUpdate($Plan,[int]$ParentTimeoutSeconds=90,[int]$ChildrenTi
         return $false
     } finally { if ($lock) { $lock.Dispose() } }
 }
-if ($MyInvocation.InvocationName -ne '.') {
-    try { $plan=Read-UpdatePlan $env:OPORA_UPDATE_JOB; if (!(Invoke-OporaUpdate $plan)) { exit 1 } }
-    catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
-}
+# Library only. update-bootstrap.ps1 and the manual recovery bootstrap invoke
+# Read-UpdatePlan / Invoke-OporaUpdate explicitly after importing this file.

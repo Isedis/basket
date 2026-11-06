@@ -5,7 +5,7 @@ const path=require('node:path');
 const os=require('node:os');
 const {EventEmitter}=require('node:events');
 const asar=require('@electron/asar');
-const {prepareInstall,launchInstaller,confirmLaunch,readResult,readDiagnostics}=require('../desktop/windows-updater.cjs');
+const {prepareInstall,launchInstaller,confirmLaunch,readResult,readDiagnostics,systemPowerShell}=require('../desktop/windows-updater.cjs');
 async function fixture(t,version='0.5.1'){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'opora-win-update-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
@@ -61,7 +61,7 @@ test('A spawned PowerShell is insufficient: readiness must match the job token a
   const f=await fixture(t);const plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
   let returned=false;
   const spawnProcess=fakeSpawn(async(child,options)=>{
-    assert.equal(options.cwd,plan.job);assert.equal(options.detached,true);
+    assert.equal(options.cwd,plan.job);assert.equal(options.detached,false);
     assert.equal(returned,false);
     await new Promise(resolve=>setTimeout(resolve,40));
     await fs.writeFile(path.join(plan.job,'ready.json'),JSON.stringify({token:plan.token,pid:child.pid}));
@@ -159,4 +159,48 @@ test('Small updates deliver and verify native application files without reading 
     else await assert.rejects(action(),/файл|путь/);
     await assert.rejects(fs.access(path.join(f.directory,native)));
   }
+});
+
+
+test('Silent PowerShell exit 0 never counts as readiness and reports the actual early exit',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),result=path.join(f.root,'result.json');
+  const started=Date.now();
+  const spawnProcess=(command,args,options)=>{
+    assert.ok(args.includes('-File'));assert.ok(!args.includes('-Command'));assert.equal(args.at(-1),path.join(plan.job,'bootstrap.ps1'));assert.equal(options.detached,false);assert.deepEqual(options.stdio.slice(0,1),['ignore']);
+    return fakeSpawn(child=>child.emit('exit',0))(command,args,options);
+  };
+  await assert.rejects(launchInstaller(plan,result,{spawnProcess}),/кодом 0.*до запуска/);
+  assert.ok(Date.now()-started<2000);const state=await readResult(result);assert.equal(state.status,'failed');assert.equal(state.diagnostics.exitCode,0);assert.equal(state.diagnostics.launchMode,'file');
+  await fs.access(path.join(plan.job,'cancel'));await assert.rejects(fs.access(path.join(plan.job,'ready.json')));
+});
+test('An authenticated bootstrap start can extend startup but cannot authorize quitting',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),phases=[];
+  const spawnProcess=fakeSpawn(async child=>{
+    await fs.writeFile(path.join(plan.job,'bootstrap-started.json'),JSON.stringify({token:plan.token,pid:child.pid,powerShellVersion:'5.1',stage:'bootstrap'}));
+    await new Promise(resolve=>setTimeout(resolve,300));
+    await fs.writeFile(path.join(plan.job,'ready.json'),JSON.stringify({token:plan.token,pid:child.pid}));
+  });
+  await launchInstaller(plan,path.join(f.root,'result.json'),{spawnProcess,startupTimeoutMs:100,readyTimeoutMs:1000,onProgress:p=>phases.push(p)});
+  assert.ok(phases.some(p=>p.includes('сценарий')));
+});
+test('Bootstrap loader failures keep their exact stage and cause without leaking the handshake token',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),result=path.join(f.root,'result.json');
+  const spawnProcess=fakeSpawn(async child=>{
+    await fs.writeFile(path.join(plan.job,'bootstrap-started.json'),JSON.stringify({token:plan.token,pid:child.pid,stage:'bootstrap',powerShellVersion:'5.1'}));
+    await fs.writeFile(path.join(plan.job,'bootstrap-error.json'),JSON.stringify({token:plan.token,pid:child.pid,stage:'load-helper',error:'TEST: helper cannot be read'}));
+  });
+  await assert.rejects(launchInstaller(plan,result,{spawnProcess}),/load-helper.*helper cannot be read/);
+  const info=await readDiagnostics(result,{directory:f.directory});assert.equal(info.bootstrapError.stage,'load-helper');assert.equal(info.bootstrap.powerShellVersion,'5.1');assert.ok(!JSON.stringify(info).includes(plan.token));
+});
+test('Foreign bootstrap files cannot authorize or prolong startup',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  const spawnProcess=fakeSpawn(async child=>{
+    await fs.writeFile(path.join(plan.job,'bootstrap-started.json'),JSON.stringify({token:'wrong',pid:child.pid,stage:'bootstrap'}));
+    await fs.writeFile(path.join(plan.job,'bootstrap-error.json'),JSON.stringify({token:'wrong',pid:child.pid,stage:'fake',error:'foreign error'}));
+  });
+  await assert.rejects(launchInstaller(plan,path.join(f.root,'result.json'),{spawnProcess,startupTimeoutMs:120,readyTimeoutMs:1500}),/не сообщил/);
+});
+test('Windows updater resolves the system PowerShell executable instead of a PATH shim',()=>{
+  assert.equal(systemPowerShell('win32',{SystemRoot:'C:\\Windows'}),'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
+  assert.equal(systemPowerShell('linux',{}),'powershell.exe');
 });

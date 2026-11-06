@@ -5,7 +5,10 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawn}=require('node:child_process');
 // The helper's native working directory must be outside the app being replaced.
-const RUN="$ErrorActionPreference='Stop'; [Console]::OutputEncoding=(New-Object Text.UTF8Encoding $false); & ([scriptblock]::Create([IO.File]::ReadAllText($env:OPORA_UPDATE_SCRIPT)))";
+function systemPowerShell(platform=process.platform,env=process.env){
+  const systemRoot=env.SystemRoot||env.SYSTEMROOT||env.WINDIR;
+  return platform==='win32'&&systemRoot?path.win32.join(systemRoot,'System32/WindowsPowerShell/v1.0/powershell.exe'):'powershell.exe';
+}
 const CHECK="$ErrorActionPreference='Stop'; [Console]::OutputEncoding=(New-Object Text.UTF8Encoding $false); . ([scriptblock]::Create([IO.File]::ReadAllText($env:OPORA_UPDATE_SCRIPT))); Assert-NoUpdateMcp $env:OPORA_UPDATE_DEST";
 const EXTRACT=String.raw`$ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -51,10 +54,11 @@ async function tailText(file,limit=4000){
 async function readDiagnostics(resultFile,{directory}={}){
   const result=await readJson(resultFile);if(!result)return {result:null};
   if(!directory||!result.job||!result.directory||!samePath(result.directory,directory)||!samePath(path.dirname(result.job),path.dirname(directory))||!/^\.opora-update-[a-zA-Z0-9]+$/.test(path.basename(result.job)))return {result};
-  const [progress,installer,stderr,stdout]=await Promise.all([readJson(path.join(result.job,'progress.json')),tailText(path.join(result.job,'installer.log')),tailText(path.join(result.job,'stderr.log')),tailText(path.join(result.job,'stdout.log'))]);
-  return {result,progress:progress?{pid:progress.pid,phase:progress.phase,recordedAt:progress.recordedAt}:null,logs:{installer,stderr,stdout}};
+  const [progress,bootstrap,bootstrapError,installer,stderr,stdout]=await Promise.all([readJson(path.join(result.job,'progress.json')),readJson(path.join(result.job,'bootstrap-started.json')),readJson(path.join(result.job,'bootstrap-error.json')),tailText(path.join(result.job,'installer.log')),tailText(path.join(result.job,'stderr.log')),tailText(path.join(result.job,'stdout.log'))]);
+  const safeBootstrap=value=>value?{pid:value.pid,stage:value.stage,powerShellVersion:value.powerShellVersion,recordedAt:value.recordedAt,error:value.error}:null;
+  return {result,bootstrap:safeBootstrap(bootstrap),bootstrapError:safeBootstrap(bootstrapError),progress:progress?{pid:progress.pid,phase:progress.phase,recordedAt:progress.recordedAt}:null,logs:{installer,stderr,stdout}};
 }
-function runPowerShell(script,env,{powerShell='powershell.exe',cwd,spawnProcess=spawn}={}) {
+function runPowerShell(script,env,{powerShell=systemPowerShell(),cwd,spawnProcess=spawn}={}) {
   return new Promise((resolve,reject)=>{
     const child=spawnProcess(powerShell,['-NoLogo','-NoProfile','-NonInteractive','-Command',script],{cwd,env:{...process.env,...env},windowsHide:true});
     let error='';
@@ -123,22 +127,26 @@ async function prepareInstall(download,executable,options={}) {
   }
 }
 async function launchInstaller(plan,resultFile,options={}) {
-  const {powerShell='powershell.exe',spawnProcess=spawn,readyTimeoutMs=180000,startupTimeoutMs=60000,onProgress=()=>{}}=options;
+  const {powerShell=systemPowerShell(),spawnProcess=spawn,readyTimeoutMs=180000,startupTimeoutMs=60000,onProgress=()=>{}}=options;
   if(!samePath(path.dirname(plan.job),path.dirname(plan.directory)) || samePath(plan.job,plan.directory))throw new Error('Папка установщика должна находиться рядом с приложением.');
   const result=path.resolve(resultFile);
   const relative=path.relative(plan.directory,result);
   if(!relative || (relative!=='..' && !relative.startsWith('..'+path.sep) && !path.isAbsolute(relative)))throw new Error('Журнал обновления должен находиться за пределами папки приложения.');
   await fs.mkdir(path.dirname(result),{recursive:true});
   await writeJson(path.join(plan.job,'plan.json'),{...plan,resultFile:result});
+  const bootstrapFile=path.join(plan.job,'bootstrap.ps1');
+  await fs.writeFile(bootstrapFile,await fs.readFile(path.join(__dirname,'update-bootstrap.ps1')),{flag:'wx'});
   const info={status:'preparing',phase:'Запуск установщика',version:plan.version,directory:plan.directory,backup:plan.backup,job:plan.job,log:path.join(plan.job,'installer.log')};
   await writeJson(result,info);
-  let child,exited=false,spawnError=null,exitCode=null,exitSignal=null,lastProgress=null,lastReady=null;
+  let child,exited=false,spawnError=null,exitCode=null,exitSignal=null,lastProgress=null,lastReady=null,lastBootstrap=null;
   const launchStarted=Date.now();
   const out=await fs.open(path.join(plan.job,'stdout.log'),'wx');
   const err=await fs.open(path.join(plan.job,'stderr.log'),'wx');
   try {
-    child=spawnProcess(powerShell,['-NoLogo','-NoProfile','-NonInteractive','-Command',RUN],{
-      cwd:plan.job,detached:true,stdio:['ignore',out.fd,err.fd],windowsHide:true,
+    // A normal Windows child survives its parent's exit; unref below releases
+    // Node's reference. DETACHED_PROCESS and an inline -Command are unnecessary.
+    child=spawnProcess(powerShell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',bootstrapFile],{
+      cwd:plan.job,detached:false,stdio:['ignore',out.fd,err.fd],windowsHide:true,
       env:{...process.env,OPORA_UPDATE_SCRIPT:plan.script,OPORA_UPDATE_JOB:plan.job}
     });
     child.once('error',error=>{spawnError=error;});
@@ -150,13 +158,18 @@ async function launchInstaller(plan,resultFile,options={}) {
       const ready=await readJson(path.join(plan.job,'ready.json'));
       lastReady=ready;
       if(ready?.token===plan.token && ready.pid===child.pid && !exited)return;
+      const bootstrap=await readJson(path.join(plan.job,'bootstrap-started.json'));
+      if(bootstrap?.token===plan.token&&bootstrap.pid===child.pid){if(!lastBootstrap)onProgress('PowerShell запустил сценарий установки');lastBootstrap={pid:bootstrap.pid,powerShellVersion:bootstrap.powerShellVersion,stage:bootstrap.stage,recordedAt:bootstrap.recordedAt};}
+      const bootstrapError=await readJson(path.join(plan.job,'bootstrap-error.json'));
+      if(bootstrapError?.token===plan.token&&bootstrapError.pid===child.pid&&typeof bootstrapError.error==='string')throw new Error('Ошибка сценария установки ('+bootstrapError.stage+'): '+bootstrapError.error);
       const progress=await readJson(path.join(plan.job,'progress.json'));
       if(progress?.token===plan.token&&progress.pid===child.pid&&typeof progress.phase==='string'&&progress.phase.length<500){if(progress.phase!==lastProgress?.phase)onProgress(progress.phase);lastProgress=progress;}
       if(spawnError || exited)break;
-      if(!lastProgress&&Date.now()>=startupDeadline)break;
+      if(!lastProgress&&!lastBootstrap&&Date.now()>=startupDeadline)break;
       await delay(100);
     }
-    const phase=lastProgress?.phase||'PowerShell не сообщил о начале работы';
+    if(exited&&!lastProgress)throw new Error(`PowerShell завершился с кодом ${exitCode}${lastBootstrap?' после запуска сценария':' до запуска сценария установки'}. Опора остаётся открытой.`);
+    const phase=lastProgress?.phase||(lastBootstrap?'Сценарий запущен, установщик ещё не готов':'PowerShell не сообщил о начале работы');
     throw spawnError || new Error(`Установщик не подтвердил готовность (${phase}). Опора остаётся открытой.`);
   } catch(error) {
     // A helper that starts late must not install after the parent abandoned it.
@@ -165,7 +178,7 @@ async function launchInstaller(plan,resultFile,options={}) {
     const stderr=await tailText(path.join(plan.job,'stderr.log'),3000),stdout=await tailText(path.join(plan.job,'stdout.log'),2000);
     const message=state?.error || stderr || error.message;
     const progress=lastProgress?{pid:lastProgress.pid,phase:lastProgress.phase,recordedAt:lastProgress.recordedAt}:null;
-    await writeJson(result,{...info,status:'failed',phase:progress?.phase||'Запуск установщика',error:message,diagnostics:{pid:child?.pid||null,exitCode,exitSignal,elapsedMs:Date.now()-launchStarted,progress,ready:lastReady?{pid:lastReady.pid,tokenMatches:lastReady.token===plan.token}:null,stderr,stdout}});
+    await writeJson(result,{...info,status:'failed',phase:progress?.phase||'Запуск установщика',error:message,diagnostics:{pid:child?.pid||null,powerShell,launchMode:'file',bootstrap:lastBootstrap,exitCode,exitSignal,elapsedMs:Date.now()-launchStarted,progress,ready:lastReady?{pid:lastReady.pid,tokenMatches:lastReady.token===plan.token}:null,stderr,stdout}});
     throw new Error('Установщик не запущен: '+message+' Журнал: '+plan.job);
   } finally {
     await Promise.all([out.close(),err.close()]);
@@ -179,4 +192,4 @@ async function confirmLaunch({version,executable=process.execPath,job=process.en
   await writeJson(path.join(job,'launch-ack.json'),{token,version,executable:path.resolve(executable),pid:process.pid});
   return true;
 }
-module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson,readDiagnostics};
+module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson,readDiagnostics,systemPowerShell};

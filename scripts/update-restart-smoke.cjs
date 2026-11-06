@@ -61,11 +61,11 @@ if(process.env.OPORA_UPDATE_JOB){
     let helper=await fs.readFile(path.join(root,'desktop/windows-install.ps1'),'utf8');
     const slowPreparation=process.env.OPORA_TEST_SLOW_PREP==='1';
     if(slowPreparation)helper=helper.replace('$expected=$Plan.hashes.PSObject.Properties[$relative].Value','Start-Sleep -Milliseconds 9000; $expected=$Plan.hashes.PSObject.Properties[$relative].Value');
-    const startup='-WorkingDirectory $Plan.directory -PassThru';
+    const startup='$startInfo.UseShellExecute=$false';
     assert.equal(helper.split(startup).length,2);
     // Platform adapter only: Linux CI needs Chromium flags before main.js loads.
     // All installer checks, moves, rollback, tokens and GUI acknowledgements stay intact.
-    await fs.writeFile(script,helper.replace(startup,"-WorkingDirectory $Plan.directory -ArgumentList @('--no-sandbox','--ozone-platform=headless') -PassThru"));
+    await fs.writeFile(script,helper.replace(startup,startup+"; $startInfo.Arguments='--no-sandbox --ozone-platform=headless'"));
     const plan={schemaVersion:1,job,script,source,directory,backup:directory+'.opora-backup-'+crypto.randomUUID(),version:require('../package.json').version,parentPid:oldApp.process().pid,token:crypto.randomBytes(32).toString('hex'),hashes};
     const result=path.join(profile,'update-result.json');
     // The proof hook is test-only; the normal startup ack comes from desktop/main.cjs.

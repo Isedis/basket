@@ -1,5 +1,6 @@
 $ErrorActionPreference='Stop'
 $package=$env:OPORA_PACKAGE_ROOT
+if(!$package){$package=$PSScriptRoot}
 try {
  Write-Host 'Подготовка обновления Опоры. Не закрывайте окно.'
  $meta=Get-Content -LiteralPath (Join-Path $package 'runtime.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -41,6 +42,9 @@ try {
  $plan=@{schemaVersion=1;job=$job;source=$source;directory=$directory;backup=($directory+'.opora-backup-'+[guid]::NewGuid());version=$meta.version;parentPid=2147483647;token=([guid]::NewGuid().ToString('N')+[guid]::NewGuid().ToString('N'));hashes=$hashes;resultFile=$result}
  Write-UpdateJson (Join-Path $job 'plan.json') $plan
  $plan=Read-UpdatePlan $job
- if(!(Invoke-OporaUpdate $plan)){throw 'Обновление не подтверждено. Подробности в журнале установки.'}
+ if(!(Invoke-OporaUpdate $plan)){
+  $failed=Get-Content -LiteralPath (Join-Path $job 'result.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+  throw ('Обновление не установлено: '+$failed.error+' Журнал: '+(Join-Path $job 'installer.log'))
+ }
  Write-Host ('Готово: Опора '+$meta.version)
 } catch {Write-Host $_.Exception.Message -ForegroundColor Red;exit 1}

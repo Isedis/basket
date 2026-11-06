@@ -27,7 +27,7 @@ cmd='''@echo off
 setlocal EnableExtensions DisableDelayedExpansion
 set "OPORA_PACKAGE_ROOT=%~dp0"
 cd /d "%TEMP%"
-powershell.exe -NoLogo -NoProfile -Command "& ([scriptblock]::Create([IO.File]::ReadAllText((Join-Path $env:OPORA_PACKAGE_ROOT 'light-update.ps1'))))"
+"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%OPORA_PACKAGE_ROOT%light-update.ps1"
 if errorlevel 1 pause
 '''
 with zipfile.ZipFile(root/'distribution/Opora-small-update.zip','w',zipfile.ZIP_DEFLATED) as z:
@@ -35,7 +35,8 @@ with zipfile.ZipFile(root/'distribution/Opora-small-update.zip','w',zipfile.ZIP_
  for file in app_files:z.write(app/file['name'],file['name'])
  z.writestr('runtime.json',json.dumps(meta))
  z.write(root/'desktop/windows-install.ps1','update-helper.ps1')
- z.write(root/'scripts/light-bootstrap.ps1','light-update.ps1')
+ # -File in Windows PowerShell 5.1 requires a BOM for Russian text.
+ z.writestr('light-update.ps1',b'\xef\xbb\xbf'+(root/'scripts/light-bootstrap.ps1').read_bytes())
  z.write(root/'START-OPORA.cmd','NEW-START-OPORA.cmd')
  z.writestr('UPDATE-OPORA.cmd',cmd.replace('\n','\r\n'))
 print(f'App update: {patch["size"]} bytes; migration ZIP: {(root/"distribution/Opora-small-update.zip").stat().st_size} bytes')
