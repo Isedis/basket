@@ -59,12 +59,16 @@ async function main(){
     client=new Client({name:'update-live-client',version:'1.0.0'},{capabilities:{}});await client.connect(new StdioClientTransport({command:spec.command,args:spec.args,env:spec.env,stderr:'pipe'}));
     await client.callTool({name:'opora_get_work_context',arguments:{}});
     await page.locator('[data-action="updates"]').click();await page.locator('[data-action="install-update"]').click();
-    const deadline=Date.now()+90000;let result;
+    const deadline=Date.now()+90000;let result,inspectorDetached=false;
     while(Date.now()<deadline){try{result=JSON.parse(await fs.readFile(path.join(profile,'update-result.json'),'utf8'));}catch{}if(result?.status==='installed'||result?.status==='failed'||result?.status==='needs_attention')break;
+      // Node's inspector can keep a quitting Windows Electron alive. Detach it
+      // only after the application itself has entered will-quit; never initiate
+      // a premature close that would mask a missing updater handoff.
+      if(oldApp&&!inspectorDetached){let events='';try{events=await fs.readFile(lifecycle,'utf8');}catch{}if(events.includes(oldPid+' will-quit')){inspectorDetached=true;await oldApp.close().catch(()=>{});oldApp=null;}}
       if(!page.isClosed()){const message=await page.locator('#modal-content').innerText().catch(()=>'');if(message.includes('Обновление не завершено'))throw new Error(message);}
       await pause(100);}
     assert.ok(result,result?.error||'No update result');
-    report.oldProcess={pid:oldPid,pageClosed:page.isClosed()};
+    report.oldProcess={pid:oldPid,pageClosed:page.isClosed(),inspectorDetached};
     try{report.lifecycle=await fs.readFile(lifecycle,'utf8');}catch{}
     if(result.status!=='installed'){
       for(const file of ['worker-launch.json','progress.json','ready.json','plan.json'])try{const value=JSON.parse(await fs.readFile(path.join(result.job,file),'utf8'));report[file]={pid:value.pid,parentPid:value.parentPid,expectedPid:value.expectedPid,phase:value.phase,tokenMatches:file==='ready.json'?value.token===JSON.parse(await fs.readFile(path.join(result.job,'plan.json'),'utf8')).token:undefined};}catch{}
