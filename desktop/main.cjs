@@ -21,7 +21,11 @@ const startup=require('./startup.cjs');
 // This workspace uses DOM and a terminal; it does not need a GPU process.
 // Software rendering also avoids retained driver/GPU-cache failures on Windows.
 if(process.platform==='win32')app.disableHardwareAcceleration();
+let profileError;
+let profileWarnings=[];
+try{profileWarnings=require('./profile.cjs').configure(app).warnings;}catch(error){profileError=error;}
 startup.begin(app);
+for(const warning of profileWarnings)startup.log('preferences-not-imported',warning);
 const workReaders=new Map();
 let root = null;
 let lastScan = null;
@@ -38,6 +42,7 @@ let externalHandoff=false;
 const requireProject = () => {if (!root) throw new Error('Сначала подключите папку проекта Godot.'); return root;};
 
 async function runDesktop(){
+if(profileError)throw profileError;
 if(app.isPackaged){
   installation=await installLayout.location(process.execPath,{create:true,storage:path.join(app.getPath('userData'),'runtime')});
   const active=await installLayout.active(installation);
