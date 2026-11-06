@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.11.0",
-  "commit": "932ea470a00e0ac36023a67c84b607d27ade80b8",
-  "size": 162934350,
-  "sha256": "a463526bab14cf678f8e5921b733b26be63289077d72dbc96ae1365151ce2f35",
+  "version": "0.11.1",
+  "commit": "8f4c4591d81e1986c7ba1bc79667a8d3d6155a16",
+  "size": 162937378,
+  "sha256": "1f4ac7d7b077b163ce4a8f58d7ebfc7df18379ca5991ba76d94493f9ac29deef",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "bd0aacff35ea5225bc2995513af01ef96793954391023bcc9c0dc81126f38336"
+      "sha256": "f31fc26e49d57eb71b05e43a9b6f305af94d2b134e0dcde570dcf1f92d140300"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "35695a24ce3b500eb978e7d55eccf02863ce404b0368d8bf0a438f07af297c69"
+      "sha256": "64a45a0463726f21ae589f933aa5ea243e1594ee18e3b6c1bb0c20db57bc3b86"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "8941b642098201789c03b9ce05a66aa2a549ac49895bf9cdb77f298988f35d58"
+      "sha256": "2c42f552d1c73fa5299b782ec5165adcdcc40b7ae9718a1c0e1e661061abed68"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 11939406,
-      "sha256": "06bdb5e54936419d56b07eb4f0e787137d35db1b86c55723fb856a7687214ee7"
+      "size": 11942434,
+      "sha256": "15321969dfc6230dddcb6f1435356d03332dd860f5e3bfb88cd6c2dcc85f68ce"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 4817618,
-    "sha256": "0c64fe341700bb3d43afb2e80720b230686be45ab05bcb5dd13bf79ae55be171",
+    "size": 4819644,
+    "sha256": "5317cea9e239d1250a3a0801a9bd1028d2e1e1c9127804100833899d5a86b085",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 4817618,
-        "sha256": "0c64fe341700bb3d43afb2e80720b230686be45ab05bcb5dd13bf79ae55be171"
+        "size": 4819644,
+        "sha256": "5317cea9e239d1250a3a0801a9bd1028d2e1e1c9127804100833899d5a86b085"
       }
     ]
   },
-  "notes": "Claude Code внутри Опоры: интерактивный терминал в папке выбранной игры, проектный MCP, новая сессия и продолжение последней, вставка текущей задачи. Панель сохраняет сессию при навигации. Используется установленный Claude и его обычная авторизация/разрешения. Терминал включён в малое обновление без повторной загрузки Electron."
+  "notes": "Исправлен запуск установщика: явный bootstrap.ps1 через -File, системный PowerShell, подтверждение старта и точная диагностика раннего выхода. Проверки архива, ready, резервная копия и подтверждение новой версии сохранены. Если 0.10.1/0.11.0 завершает PowerShell без запуска установки, один раз используйте свежий малый пакет UPDATE-OPORA.cmd: старый установленный код не исправляется повторной загрузкой через старую кнопку."
 }
