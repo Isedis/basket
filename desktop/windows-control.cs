@@ -1,4 +1,4 @@
-// Compatibility helper for the first upgrade from a legacy GUI. No termination.
+// Compatibility helper. Explicit repair can terminate only the matched GUI PID.
 using System;
 using System.IO;
 using System.Text;
@@ -33,7 +33,7 @@ class OporaControl {
   }
   static int Main(string[] args) {
     if(args.Length<3)return 2;
-    string target=Normal(args[0]);bool close=args[1]=="close",protect=args[2]=="1";
+    string target=Normal(args[0]);bool close=args[1]=="close",repair=args[1]=="repair",protect=args[2]=="1";
     foreach(var process in Process.GetProcessesByName("Opora"))using(process){
       try {
         if(process.MainWindowHandle==IntPtr.Zero)continue;
@@ -41,6 +41,7 @@ class OporaControl {
         if(!String.Equals(actual,target,StringComparison.OrdinalIgnoreCase))continue;
         if(protect&&HasTerminal((uint)process.Id)){Console.WriteLine("PROTECTED:"+process.Id);continue;}
         Console.WriteLine("GUI:"+process.Id);
+        if(repair){process.Kill();Console.WriteLine("REPAIRED:"+process.Id);continue;}
         if(close)Console.WriteLine("CLOSE:"+process.Id+":"+process.CloseMainWindow());
       }catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}
     }

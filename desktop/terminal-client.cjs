@@ -5,8 +5,8 @@ class TerminalClient{
   get active(){return !!this.state&&this.state.status!=='exited';}
   snapshot(){return this.state;}
   async connect({start=false}={}){
-    if(this.socket&&!this.socket.destroyed)return true;
     if(this.connecting)return this.connecting;
+    if(this.socket&&!this.socket.destroyed)return true;
     this.connecting=this.open(start).finally(()=>{this.connecting=null;});return this.connecting;
   }
   async open(start){
@@ -31,11 +31,13 @@ class TerminalClient{
       if(packet.event){if(this.state?.id!==packet.event.id)this.state={...packet.event,output:''};else this.state={...this.state,...packet.event};if(packet.event.data)this.state.output=(this.state.output+packet.event.data).slice(-1024*1024);this.onEvent(packet.event);}
       else{const pending=this.requests.get(packet.id);if(pending){this.requests.delete(packet.id);clearTimeout(pending.timer);packet.error?pending.reject(new Error(packet.error)):pending.resolve(packet.result);}}
     }});
-    socket.on('close',()=>{if(this.socket===socket)this.socket=null;for(const request of this.requests.values()){clearTimeout(request.timer);request.reject(new Error('Связь с терминалом прервана.'));}this.requests.clear();if(!this.disposed&&this.active)setTimeout(()=>this.connect().then(connected=>{if(connected&&this.state)this.onEvent({...this.state,snapshot:this.state});}).catch(()=>{}),500);});
-    this.state=await this.rpc('hello',null,info.token);return true;
+    let authenticated=false;
+    socket.on('close',()=>{if(this.socket===socket)this.socket=null;for(const [id,request] of this.requests){if(request.socket!==socket)continue;clearTimeout(request.timer);request.reject(new Error('Связь с терминалом прервана.'));this.requests.delete(id);}if(authenticated&&!this.disposed&&this.active)setTimeout(()=>this.connect().then(connected=>{if(connected&&this.state)this.onEvent({...this.state,snapshot:this.state});}).catch(()=>{}),500);});
+    try{this.state=await this.rpc('hello',null,info.token,4000);authenticated=true;return true;}
+    catch(error){if(this.socket===socket)this.socket=null;socket.destroy();throw error;}
   }
-  rpc(op,value,token){return new Promise((resolve,reject)=>{if(!this.socket||this.socket.destroyed)return reject(new Error('Терминал не подключён.'));const id=++this.id,timer=setTimeout(()=>{this.requests.delete(id);reject(new Error('Терминал не ответил вовремя.'));},20000);this.requests.set(id,{resolve,reject,timer});this.socket.write(JSON.stringify({id,op,value,...(token?{token}: {})})+'\n');});}
-  async getState(){if(!await this.connect())return null;this.state=await this.rpc('state');return this.state;}
+  rpc(op,value,token,timeout=20000){return new Promise((resolve,reject)=>{if(!this.socket||this.socket.destroyed)return reject(new Error('Терминал не подключён.'));const id=++this.id,timer=setTimeout(()=>{this.requests.delete(id);reject(new Error('Терминал не ответил вовремя.'));},timeout);this.requests.set(id,{resolve,reject,timer,socket:this.socket});this.socket.write(JSON.stringify({id,op,value,...(token?{token}: {})})+'\n');});}
+  async getState(){if(!await this.connect())return null;this.state=await this.rpc('state',undefined,undefined,4000);return this.state;}
   async start(value){await this.connect({start:true});this.state=await this.rpc('start',value);return this.state;}
   async write(value){await this.connect();return this.rpc('input',value);}
   async resize(value){await this.connect();return this.rpc('resize',value);}

@@ -16,20 +16,23 @@ async function main(){
   const initial=process.execPath,layout=await layoutApi.location(initial,{create:true,storage:path.join(userData,'runtime')});
   const current=await layoutApi.active(layout),pkg=await legacy.readArchivePackage(path.join(current.directory,'resources/app.asar'));
   const version=require('../package.json').version;
-  if(compareVersions(pkg.version,version)>=0){console.log('Установлена версия '+pkg.version+'.');const env={...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true,detached:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();return;}
+  const repair=process.argv[3]==='--repair';
+  if(compareVersions(pkg.version,version)>0||(pkg.version===version&&!repair)){console.log('Установлена версия '+pkg.version+'.');const env={...process.env,ELECTRON_NO_ATTACH_CONSOLE:'1'};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(current.directory,'Opora.exe'),[],{cwd:current.directory,env,stdio:'ignore',windowsHide:true,detached:true});child.on('error',e=>{console.error(e.message);process.exitCode=1;});child.unref();return;}
   await layoutApi.atomic(layout.pointer,{...current,version:pkg.version});
   const onProgress=text=>console.log(text);
   const plan=await updater.prepareInstall({kind:'app',version,runtimeVersion:process.versions.electron,payload:path.join(packageRoot,'opora-update')},initial,{layout,runtimeVersion:process.versions.electron,onProgress});
   let control;try{control=await compileControl(plan.job);}catch(error){console.log('Обновление подготовлено. Дождусь обычного закрытия Опоры. '+error.message);}
-  const protect=compareVersions(pkg.version,'0.12.0')<0;let waiting=false;
+  const protect=compareVersions(pkg.version,'0.12.0')<0;let waiting=false,closeRequestedAt=0;
   while(true){
     let rows=[];
     if(control){
       let query;try{query=await exec(control,[path.join(current.directory,'Opora.exe'),'query',protect?'1':'0'],{windowsHide:true});}catch{control=null;continue;}
       rows=query.stdout.trim().split(/\r?\n/).filter(Boolean);
       if(rows.length&&!rows.some(row=>row.startsWith('PROTECTED:')||row.startsWith('UNKNOWN:'))){
+        if(!closeRequestedAt)closeRequestedAt=Date.now();
         for(const row of rows)if(row.startsWith('GUI:'))await layoutApi.atomic(path.join(userData,'update-handoff.json'),{pid:Number(row.slice(4)),requesterPid:process.pid,expires:Date.now()+30000});
-        await exec(control,[path.join(current.directory,'Opora.exe'),'close',protect?'1':'0'],{windowsHide:true});
+        const mode=repair&&Date.now()-closeRequestedAt>10000?'repair':'close';
+        await exec(control,[path.join(current.directory,'Opora.exe'),mode,protect?'1':'0'],{windowsHide:true});
       }
     }else{
       const query=await exec(path.join(process.env.SystemRoot||process.env.WINDIR,'System32/tasklist.exe'),['/FI','IMAGENAME eq Opora.exe','/FI','WINDOWTITLE eq Опора*','/FO','CSV','/NH'],{windowsHide:true,encoding:'buffer'});

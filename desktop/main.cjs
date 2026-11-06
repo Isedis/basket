@@ -17,6 +17,11 @@ const {resolveClaude}=require('./claude-terminal.cjs');
 const {TerminalClient}=require('./terminal-client.cjs');
 const installLayout=require('./install-layout.cjs');
 const nativeUpdater=require('./native-updater.cjs');
+const startup=require('./startup.cjs');
+// This workspace uses DOM and a terminal; it does not need a GPU process.
+// Software rendering also avoids retained driver/GPU-cache failures on Windows.
+if(process.platform==='win32')app.disableHardwareAcceleration();
+startup.begin(app);
 const workReaders=new Map();
 let root = null;
 let lastScan = null;
@@ -49,13 +54,18 @@ if(primary)await app.whenReady().then(async () => {
   win = new BrowserWindow({show:!startupUpdate.job,width:1360, height:920, minWidth:980, minHeight:720, title:'Опора — память вашей игры', backgroundColor:'#000000', autoHideMenuBar:true, webPreferences:{preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true}});
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate', event => event.preventDefault());
+  let rendererLoaded=false;
+  startup.watch(win,app);
+  win.webContents.on('did-finish-load',()=>{rendererLoaded=true;});
   let readyTimer;
   const workspaceReady=new Promise((resolve,reject)=>{
-    ipcMain.once('app:workspace-ready',event=>{if(event.sender===win.webContents){clearTimeout(readyTimer);resolve();}});
+    ipcMain.once('app:workspace-ready',event=>{if(event.sender===win.webContents){startup.log('workspace-ready');clearTimeout(readyTimer);resolve();}});
     if(startupUpdate.job)readyTimer=setTimeout(()=>reject(new Error('Интерфейс новой версии не завершил запуск.')),45000);
   });
   win.on('close', event => {
     if(restarting)return;
+    // A failed renderer has no save listener. Never trap an empty window open.
+    if(!rendererLoaded||win.webContents.getURL().endsWith('/startup.html'))return;
     try{
       const handoff=require('node:fs').existsSync(path.join(app.getPath('userData'),'update-handoff.json'))?JSON.parse(require('node:fs').readFileSync(path.join(app.getPath('userData'),'update-handoff.json'),'utf8')):null;
       if(handoff?.pid===process.pid&&handoff.expires>Date.now()){process.kill(handoff.requesterPid,0);externalHandoff=true;event.preventDefault();win.webContents.send('app:flush');return;}
@@ -80,9 +90,8 @@ if(primary)await app.whenReady().then(async () => {
   });
   const updateSession=session.fromPartition('opora-updates');
   const proxy=process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-  let proxyError=null;
-  if(proxy)try {await updateSession.setProxy({proxyRules:proxy,proxyBypassRules:'<local>'});} catch(error) {proxyError=error;}
-  const updater=new Updater({runtimeVersion:process.versions.electron,currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:(url,options)=>{if(proxyError)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
+  const proxyReady=proxy?updateSession.setProxy({proxyRules:proxy,proxyBypassRules:'<local>'}).then(()=>null,error=>error):Promise.resolve(null);
+  const updater=new Updater({runtimeVersion:process.versions.electron,currentVersion:require('../package.json').version,directory:path.join(app.getPath('userData'),'updates'),fetch:async(url,options)=>{const error=await proxyReady;if(error)throw new Error('Не удалось настроить прокси для обновлений.');return updateSession.fetch(url,options);},supported:process.platform==='win32' && app.isPackaged,onProgress:info=>{if(!win.isDestroyed())win.webContents.send('updates:progress',info);}});
   let installing=false;
   ipcMain.handle('updates:info',async ()=>{
     const previousInstall=await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'));
@@ -133,7 +142,8 @@ if(primary)await app.whenReady().then(async () => {
     native:app.isPackaged?path.join(process.resourcesPath,'app.asar.unpacked/node_modules/node-pty'):undefined,
     onEvent:event=>{if(!win.isDestroyed())win.webContents.send('claude:event',event);}
   });
-  await terminal.connect();if(terminal.active)root=terminal.snapshot().root;
+  // An unavailable optional broker must never prevent the interface from loading.
+  const terminalConnection=terminal.connect().catch(error=>{startup.log('terminal-unavailable',error.message);return false;});
   const terminalPreferences=path.join(app.getPath('userData'),'claude-terminal.json');
   async function claudeCommand(){
     let selected;
@@ -143,6 +153,7 @@ if(primary)await app.whenReady().then(async () => {
   function terminalHandle(channel,handler){ipcMain.handle(channel,(event,...args)=>{if(event.sender!==win.webContents)throw new Error('Недоступный отправитель.');return handler(...args);});}
   terminalHandle('claude:state',()=>terminal.getState());
   terminalHandle('claude:start',async(options={})=>{
+    await terminalConnection;
     const project=requireProject();
     if(terminalStarting)throw new Error('Claude уже запускается.');
     if(terminal.active)return terminal.snapshot();
@@ -181,6 +192,8 @@ if(primary)await app.whenReady().then(async () => {
   ipcMain.handle('agents:disconnect',async(_,client)=>{const config=await getAgentConfig();const result=await agentConfig.disconnect(client,config);return {...result,status:await agentConfig.status(config)};});
   ipcMain.handle('agents:reports',()=>agentService.listReports(requireProject()));
   ipcMain.handle('project:restore', async () => {
+    await terminalConnection;
+    if(terminal.active&&!root)root=terminal.snapshot().root;
     if(terminal?.active || terminalStarting)return core.loadProject(requireProject());
     try {
       const settings = JSON.parse(await fs.readFile(preferences, 'utf8'));
@@ -194,6 +207,7 @@ if(primary)await app.whenReady().then(async () => {
   });
 
   ipcMain.handle('project:open', async () => {
+    await terminalConnection;
     if(terminal?.active || terminalStarting)throw new Error('Завершите Claude Code в панели терминала перед сменой проекта.');
     const selected = await dialog.showOpenDialog(win, {title:'Выберите папку с project.godot', properties:['openDirectory']});
     if (selected.canceled) return null;
@@ -275,6 +289,7 @@ if(primary)await app.whenReady().then(async () => {
     const ext = path.extname(file).slice(1);
     return `data:image/${['jpg','jpeg'].includes(ext)?'jpeg':ext};base64,${data.toString('base64')}`;
   });
+  startup.log('loading-interface');
   await win.loadFile(path.join(__dirname,'../ui/index.html'));
   if(startupUpdate.job)await workspaceReady;
   try {await nativeUpdater.confirmLaunch({version:require('../package.json').version});if(startupUpdate.job)win.show();}
@@ -283,11 +298,13 @@ if(primary)await app.whenReady().then(async () => {
 });
 }
 runDesktop().catch(async error=>{
+  startup.log('startup-error',error.stack||error.message);
   if(startupUpdate.job&&startupUpdate.token){
     try{await fs.writeFile(path.join(startupUpdate.job,'gui-error.json'),JSON.stringify({token:startupUpdate.token,pid:process.pid,error:error.message}));}catch{}
     app.exit(1);return;
   }
-  dialog.showErrorBox('Запуск Опоры',error.message);app.quit();
+  if(win&&!win.isDestroyed()){await startup.failure(win,error.message);return;}
+  dialog.showErrorBox('Запуск Опоры',error.message+'\nЖурнал: '+startup.filename());app.exit(1);
 });
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit',()=>terminal?.dispose());
