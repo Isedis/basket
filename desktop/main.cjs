@@ -44,20 +44,22 @@ if(primary)app.whenReady().then(async () => {
     return {...updater.info(),previousInstall,installDirectory:path.dirname(process.execPath)};
   });
   ipcMain.handle('updates:check',()=>updater.check());
+  ipcMain.handle('updates:diagnostics',async()=>({currentVersion:require('../package.json').version,installDirectory:path.dirname(process.execPath),...await windowsUpdater.readDiagnostics(path.join(app.getPath('userData'),'update-result.json'),{directory:path.dirname(process.execPath)})}));
   ipcMain.handle('updates:download',()=>updater.download());
   ipcMain.handle('updates:install',async ()=>{
     if(!updater.supported)throw new Error('Установка обновлений доступна только в готовой Windows-сборке.');
     if(installing)throw new Error('Установка уже выполняется.');
     installing=true;
     try {
-      updater.emit({status:'installing'});
+      updater.emit({status:'installing',installPhase:'Подготовка обновления',previousInstall:null});
       const download=await updater.verifiedDownload();
-      const plan=await windowsUpdater.prepareInstall(download,process.execPath);
-      await windowsUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'));
+      const onProgress=installPhase=>updater.emit({status:'installing',installPhase});
+      const plan=await windowsUpdater.prepareInstall(download,process.execPath,{onProgress});
+      await windowsUpdater.launchInstaller(plan,path.join(app.getPath('userData'),'update-result.json'),{onProgress});
       canClose=true;
       setTimeout(()=>app.quit(),250);
       return {restarting:true};
-    } catch(error) {installing=false;updater.emit({status:'error',error:error.message});throw error;}
+    } catch(error) {installing=false;updater.emit({status:'error',error:error.message,previousInstall:await windowsUpdater.readResult(path.join(app.getPath('userData'),'update-result.json'))});throw error;}
   });
 
   const preferences = path.join(app.getPath('userData'), 'preferences.json');

@@ -45,6 +45,15 @@ async function readArchivePackage(file){
 }
 async function writeJson(file,value){const temp=file+'.'+crypto.randomUUID()+'.tmp';await fs.writeFile(temp,JSON.stringify(value,null,2),{flag:'wx'});await fs.rename(temp,file);}
 async function readJson(file){try{return JSON.parse((await fs.readFile(file,'utf8')).replace(/^\uFEFF/,''));}catch{return null;}}
+async function tailText(file,limit=4000){
+  try{const handle=await fs.open(file,'r');try{const stat=await handle.stat();const buffer=Buffer.alloc(Math.min(stat.size,limit));const {bytesRead}=await handle.read(buffer,0,buffer.length,Math.max(0,stat.size-buffer.length));return buffer.subarray(0,bytesRead).toString('utf8').trim();}finally{await handle.close();}}catch{return '';}
+}
+async function readDiagnostics(resultFile,{directory}={}){
+  const result=await readJson(resultFile);if(!result)return {result:null};
+  if(!directory||!result.job||!result.directory||!samePath(result.directory,directory)||!samePath(path.dirname(result.job),path.dirname(directory))||!/^\.opora-update-[a-zA-Z0-9]+$/.test(path.basename(result.job)))return {result};
+  const [progress,installer,stderr,stdout]=await Promise.all([readJson(path.join(result.job,'progress.json')),tailText(path.join(result.job,'installer.log')),tailText(path.join(result.job,'stderr.log')),tailText(path.join(result.job,'stdout.log'))]);
+  return {result,progress:progress?{pid:progress.pid,phase:progress.phase,recordedAt:progress.recordedAt}:null,logs:{installer,stderr,stdout}};
+}
 function runPowerShell(script,env,{powerShell='powershell.exe',cwd,spawnProcess=spawn}={}) {
   return new Promise((resolve,reject)=>{
     const child=spawnProcess(powerShell,['-NoLogo','-NoProfile','-NonInteractive','-Command',script],{cwd,env:{...process.env,...env},windowsHide:true});
@@ -78,14 +87,16 @@ async function prepareInstall(download,executable,options={}) {
   // Stage beside the app, including when downloads and the app are on different drives.
   const job=await fs.mkdtemp(path.join(parent,'.opora-update-'));
   try {
+    options.onProgress?.('Проверка открытых MCP-сессий');
     const script=path.join(job,'installer.ps1');
     await fs.writeFile(script,await fs.readFile(path.join(__dirname,'windows-install.ps1')));
     const run=options.runPowerShell||runPowerShell;
     await run(CHECK,{OPORA_UPDATE_SCRIPT:script,OPORA_UPDATE_DEST:directory},{...options,cwd:job});
     const stage=path.join(job,'unpacked');
+    options.onProgress?.('Распаковка обновления');
     await run(EXTRACT,{OPORA_UPDATE_ZIP:download.archive,OPORA_UPDATE_STAGE:stage},{...options,cwd:job});
     const source=path.join(stage,'Opora-win32-x64');
-    if(download.kind==='app')await stageRuntime(source,directory,download.runtimeVersion,options.runtimeVersion||process.versions.electron);
+    if(download.kind==='app'){options.onProgress?.('Проверка и копирование установленного Electron');await stageRuntime(source,directory,download.runtimeVersion,options.runtimeVersion||process.versions.electron);}
     const pkg=await readArchivePackage(path.join(source,'resources/app.asar'));
     if(pkg.name!=='opora' || pkg.version!==download.version)throw new Error('Версия приложения внутри архива не совпала с описанием. Установка отменена.');
     const hashes={};
@@ -97,7 +108,7 @@ async function prepareInstall(download,executable,options={}) {
   }
 }
 async function launchInstaller(plan,resultFile,options={}) {
-  const {powerShell='powershell.exe',spawnProcess=spawn,readyTimeoutMs=15000}=options;
+  const {powerShell='powershell.exe',spawnProcess=spawn,readyTimeoutMs=180000,startupTimeoutMs=60000,onProgress=()=>{}}=options;
   if(!samePath(path.dirname(plan.job),path.dirname(plan.directory)) || samePath(plan.job,plan.directory))throw new Error('Папка установщика должна находиться рядом с приложением.');
   const result=path.resolve(resultFile);
   const relative=path.relative(plan.directory,result);
@@ -106,7 +117,8 @@ async function launchInstaller(plan,resultFile,options={}) {
   await writeJson(path.join(plan.job,'plan.json'),{...plan,resultFile:result});
   const info={status:'preparing',phase:'Запуск установщика',version:plan.version,directory:plan.directory,backup:plan.backup,job:plan.job,log:path.join(plan.job,'installer.log')};
   await writeJson(result,info);
-  let child,exited=false,spawnError=null;
+  let child,exited=false,spawnError=null,exitCode=null,exitSignal=null,lastProgress=null,lastReady=null;
+  const launchStarted=Date.now();
   const out=await fs.open(path.join(plan.job,'stdout.log'),'wx');
   const err=await fs.open(path.join(plan.job,'stderr.log'),'wx');
   try {
@@ -115,23 +127,30 @@ async function launchInstaller(plan,resultFile,options={}) {
       env:{...process.env,OPORA_UPDATE_SCRIPT:plan.script,OPORA_UPDATE_JOB:plan.job}
     });
     child.once('error',error=>{spawnError=error;});
-    child.once('exit',()=>{exited=true;});
+    child.once('exit',(code,signal)=>{exited=true;exitCode=code;exitSignal=signal;});
     await new Promise((resolve,reject)=>{child.once('error',reject);child.once('spawn',resolve);});
-    const deadline=Date.now()+readyTimeoutMs;
+    onProgress('Ожидание запуска PowerShell');
+    const started=Date.now(),deadline=started+readyTimeoutMs,startupDeadline=started+Math.min(startupTimeoutMs,readyTimeoutMs);
     while(Date.now()<deadline){
       const ready=await readJson(path.join(plan.job,'ready.json'));
+      lastReady=ready;
       if(ready?.token===plan.token && ready.pid===child.pid && !exited)return;
+      const progress=await readJson(path.join(plan.job,'progress.json'));
+      if(progress?.token===plan.token&&progress.pid===child.pid&&typeof progress.phase==='string'&&progress.phase.length<500){if(progress.phase!==lastProgress?.phase)onProgress(progress.phase);lastProgress=progress;}
       if(spawnError || exited)break;
+      if(!lastProgress&&Date.now()>=startupDeadline)break;
       await delay(100);
     }
-    throw spawnError || new Error('Установщик не подтвердил готовность. Опора остаётся открытой.');
+    const phase=lastProgress?.phase||'PowerShell не сообщил о начале работы';
+    throw spawnError || new Error(`Установщик не подтвердил готовность (${phase}). Опора остаётся открытой.`);
   } catch(error) {
     // A helper that starts late must not install after the parent abandoned it.
     await fs.writeFile(path.join(plan.job,'cancel'),'cancelled').catch(()=>{});
     const state=await readJson(path.join(plan.job,'result.json'));
-    const stderr=(await fs.readFile(path.join(plan.job,'stderr.log'),'utf8').catch(()=>'' )).trim().slice(0,1800);
+    const stderr=await tailText(path.join(plan.job,'stderr.log'),3000),stdout=await tailText(path.join(plan.job,'stdout.log'),2000);
     const message=state?.error || stderr || error.message;
-    await writeJson(result,{...info,status:'failed',phase:'Запуск установщика',error:message});
+    const progress=lastProgress?{pid:lastProgress.pid,phase:lastProgress.phase,recordedAt:lastProgress.recordedAt}:null;
+    await writeJson(result,{...info,status:'failed',phase:progress?.phase||'Запуск установщика',error:message,diagnostics:{pid:child?.pid||null,exitCode,exitSignal,elapsedMs:Date.now()-launchStarted,progress,ready:lastReady?{pid:lastReady.pid,tokenMatches:lastReady.token===plan.token}:null,stderr,stdout}});
     throw new Error('Установщик не запущен: '+message+' Журнал: '+plan.job);
   } finally {
     await Promise.all([out.close(),err.close()]);
@@ -145,4 +164,4 @@ async function confirmLaunch({version,executable=process.execPath,job=process.en
   await writeJson(path.join(job,'launch-ack.json'),{token,version,executable:path.resolve(executable),pid:process.pid});
   return true;
 }
-module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson};
+module.exports={prepareInstall,launchInstaller,confirmLaunch,readResult:readJson,readDiagnostics};

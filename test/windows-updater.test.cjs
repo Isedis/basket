@@ -5,7 +5,7 @@ const path=require('node:path');
 const os=require('node:os');
 const {EventEmitter}=require('node:events');
 const asar=require('@electron/asar');
-const {prepareInstall,launchInstaller,confirmLaunch,readResult}=require('../desktop/windows-updater.cjs');
+const {prepareInstall,launchInstaller,confirmLaunch,readResult,readDiagnostics}=require('../desktop/windows-updater.cjs');
 async function fixture(t,version='0.5.1'){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'opora-win-update-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
@@ -93,6 +93,34 @@ test('Startup acknowledgement binds to the running version, executable, job and 
   assert.equal(await confirmLaunch(input),true);
   const ack=await readResult(path.join(plan.job,'launch-ack.json'));
   assert.equal(ack.pid,process.pid);assert.equal(ack.version,'0.5.1');
+});
+
+test('Authenticated preparation progress tolerates a slow hash check beyond the process-start budget',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),phases=[];
+  const spawnProcess=fakeSpawn(async child=>{
+    await fs.writeFile(path.join(plan.job,'progress.json'),JSON.stringify({token:plan.token,pid:child.pid,phase:'Проверка SHA256: Opora.exe'}));
+    await new Promise(resolve=>setTimeout(resolve,350));
+    await fs.writeFile(path.join(plan.job,'ready.json'),JSON.stringify({token:plan.token,pid:child.pid}));
+  });
+  await launchInstaller(plan,path.join(f.root,'result.json'),{spawnProcess,startupTimeoutMs:120,readyTimeoutMs:1500,onProgress:phase=>phases.push(phase)});
+  assert.ok(phases.includes('Проверка SHA256: Opora.exe'));await assert.rejects(fs.access(path.join(plan.job,'cancel')));
+  assert.equal(await fs.readFile(path.join(f.directory,'Opora.exe'),'utf8'),'old executable');
+});
+test('A foreign progress file cannot extend startup or authorize shutdown',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell});
+  await assert.rejects(launchInstaller(plan,path.join(f.root,'result.json'),{startupTimeoutMs:120,readyTimeoutMs:1000,spawnProcess:fakeSpawn(async child=>{await fs.writeFile(path.join(plan.job,'progress.json'),JSON.stringify({token:'wrong',pid:child.pid,phase:'fake'}));})}),/не запущен/);
+  await fs.access(path.join(plan.job,'cancel'));assert.equal((await readResult(path.join(f.root,'result.json'))).diagnostics.progress,null);
+});
+test('Failure diagnostics contain the actual helper phase and output, with protocol tokens omitted',async t=>{
+  const f=await fixture(t),plan=await prepareInstall(f.download,path.join(f.directory,'Opora.exe'),{runPowerShell:f.runPowerShell}),file=path.join(f.root,'profile/result.json');
+  const spawnProcess=fakeSpawn(async child=>{
+    await fs.writeFile(path.join(plan.job,'progress.json'),JSON.stringify({token:plan.token,pid:child.pid,phase:'Проверка SHA256: Opora.exe'}));
+    await new Promise(resolve=>setTimeout(resolve,160));
+    await fs.appendFile(path.join(plan.job,'stderr.log'),'TEST: native startup denied');child.emit('exit',5);
+  });
+  await assert.rejects(launchInstaller(plan,file,{spawnProcess}),/native startup denied/);
+  const info=await readDiagnostics(file,{directory:f.directory});assert.equal(info.result.diagnostics.exitCode,5);assert.match(info.logs.stderr,/native startup denied/);assert.equal(info.result.phase,'Проверка SHA256: Opora.exe');assert.ok(!JSON.stringify(info).includes(plan.token));
+  await fs.writeFile(file,JSON.stringify({directory:f.directory,job:path.join(f.root,'unrelated-directory')}));assert.equal((await readDiagnostics(file,{directory:f.directory})).logs,undefined);
 });
 
 test('Application-only preparation copies verified runtime locally and rejects changed DLLs',async t=>{

@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('opora', {
   reviewBrandbook: state => ipcRenderer.invoke('brandbook:review', state),
   updateInfo: () => ipcRenderer.invoke('updates:info'),
   checkUpdates: () => ipcRenderer.invoke('updates:check'),
+  updateDiagnostics: () => ipcRenderer.invoke('updates:diagnostics'),
   downloadUpdate: () => ipcRenderer.invoke('updates:download'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
   onUpdateProgress: callback => ipcRenderer.on('updates:progress', (_,info) => callback(info)),

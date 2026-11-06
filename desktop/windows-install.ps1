@@ -12,6 +12,11 @@ function Assert-NoUpdateMcp([string]$Directory) {
 function Test-UpdateProcess([int]$ProcessId) { return $null -ne (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue) }
 function Move-UpdateDirectory([string]$Source,[string]$Destination) { [IO.Directory]::Move($Source,$Destination) }
 function Write-UpdateJson([string]$File,$Value) { [IO.File]::WriteAllText($File,($Value | ConvertTo-Json -Depth 5),(New-Object Text.UTF8Encoding $false)) }
+function Write-UpdateProgress($Plan,[string]$Phase) {
+    $progress=@{token=$Plan.token;pid=$PID;phase=$Phase;recordedAt=(Get-Date -Format o)}
+    Write-UpdateJson (Join-Path $Plan.job 'progress.json') $progress
+    [IO.File]::AppendAllText((Join-Path $Plan.job 'installer.log'),($progress.recordedAt+' / '+$Phase+[Environment]::NewLine),(New-Object Text.UTF8Encoding $false))
+}
 function Write-UpdateState($Plan,[string]$Status,[string]$Phase,[string]$ErrorMessage='',[string]$Rollback='') {
     $state=@{status=$Status;phase=$Phase;version=$Plan.version;directory=$Plan.directory;backup=$Plan.backup;job=$Plan.job;log=(Join-Path $Plan.job 'installer.log');error=$ErrorMessage;rollback=$Rollback;recordedAt=(Get-Date -Format o)}
     Write-UpdateJson (Join-Path $Plan.job 'result.json') $state
@@ -38,22 +43,38 @@ function Show-UpdateFailure([string]$Message) {
     if ($env:OS -ne 'Windows_NT') { return }
     try { Add-Type -AssemblyName System.Windows.Forms; [Windows.Forms.MessageBox]::Show($Message,'Обновление Опоры',0,16) | Out-Null } catch {}
 }
-function Invoke-OporaUpdate($Plan,[int]$ParentTimeoutSeconds=90,[int]$ChildrenTimeoutSeconds=15,[int]$LaunchTimeoutSeconds=30) {
+function Invoke-OporaUpdate($Plan,[int]$ParentTimeoutSeconds=90,[int]$ChildrenTimeoutSeconds=15,[int]$LaunchTimeoutSeconds=30,[int]$LockTimeoutSeconds=60) {
     $movedOld=$false; $movedNew=$false; $parentClosed=$false; $readySent=$false; $newProcess=$null; $lock=$null
     $phase='Подготовка установщика'
     try {
         # Leave the application directory in both the provider and native process.
         [Environment]::CurrentDirectory=$Plan.job
         Set-Location -LiteralPath $Plan.job
+        Write-UpdateProgress $Plan 'Проверка подготовленной копии'
         $lockFile=Join-Path ([IO.Path]::GetDirectoryName($Plan.directory)) ('.'+[IO.Path]::GetFileName($Plan.directory)+'.update.lock')
-        $lock=[IO.File]::Open($lockFile,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+        $lockDeadline=(Get-Date).AddSeconds($LockTimeoutSeconds);$lockWaitReported=$false
+        while (!$lock) {
+            if (Test-Path -LiteralPath (Join-Path $Plan.job 'cancel')) { throw 'Приложение отменило установку.' }
+            try { $lock=[IO.File]::Open($lockFile,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None) }
+            catch [IO.IOException] {
+                if ((Get-Date) -ge $lockDeadline) { throw 'Предыдущий установщик ещё использует файлы. Дождитесь его завершения и повторите обновление.' }
+                if (!$lockWaitReported) { $phase='Ожидание завершения предыдущего установщика';Write-UpdateProgress $Plan $phase;$lockWaitReported=$true }
+                Start-Sleep -Milliseconds 250
+            }
+        }
         foreach ($relative in @('Opora.exe','resources/app.asar')) {
+            if (Test-Path -LiteralPath (Join-Path $Plan.job 'cancel')) { throw 'Приложение отменило установку.' }
+            $phase='Проверка SHA256: '+$relative
+            Write-UpdateProgress $Plan $phase
             $expected=$Plan.hashes.PSObject.Properties[$relative].Value
             if ($expected -notmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath (Join-Path $Plan.source $relative) -Algorithm SHA256).Hash -ne $expected) { throw 'Файлы подготовленного обновления изменились. Скачайте обновление заново.' }
         }
+        $phase='Проверка открытых MCP-сессий'
+        Write-UpdateProgress $Plan $phase
         Assert-NoUpdateMcp $Plan.directory
         if (Test-Path -LiteralPath (Join-Path $Plan.job 'cancel')) { throw 'Запуск установки отменён приложением.' }
         Write-UpdateState $Plan 'waiting' 'Ожидание закрытия Опоры'
+        Write-UpdateProgress $Plan 'Установщик готов. Ожидание закрытия Опоры'
         Write-UpdateJson (Join-Path $Plan.job 'ready.json') @{token=$Plan.token;pid=$PID}
         $readySent=$true
         $phase='Ожидание закрытия Опоры'

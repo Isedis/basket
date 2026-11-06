@@ -169,7 +169,9 @@ async function main() {
     await app.waitForTimeout(100);
     assert.equal(installed,true);
     assert.equal((await core.loadProject(fixture)).state.goal,'Сохранить перед закрытием');
-    await app.evaluate(()=>window.emitUpdateProgress({status:'installing',supported:true,currentVersion:'0.2.0'}));
+    await app.evaluate(()=>window.emitUpdateProgress({status:'installing',supported:true,currentVersion:'0.2.0',installPhase:'Проверка SHA256: Opora.exe',previousInstall:{status:'installed',version:'0.6.1'}}));
+    assert.match(await app.locator('#modal-content').textContent(),/Проверка SHA256: Opora.exe/);
+    assert.ok(!(await app.locator('#modal-content').textContent()).includes('Подтверждён запуск 0.6.1'));
     await app.keyboard.press('Escape');
     assert.equal(await app.locator('#modal').evaluate(el=>el.open),true);
     await app.evaluate(()=>window.emitUpdateProgress({status:'downloaded',supported:true,currentVersion:'0.2.0'}));

@@ -53,6 +53,20 @@ function Show-UpdateFailure([string]$Message){$script:Messages+=@($Message)}
 function Read-State($Plan){return Get-Content -LiteralPath $Plan.resultFile -Raw -Encoding UTF8 | ConvertFrom-Json}
 function Assert-Old($Plan){Assert-That ([IO.File]::ReadAllText((Join-Path $Plan.directory 'Opora.exe')) -eq 'old exe') 'Old executable lost'}
 try {
+    Check 'preparation reports authenticated progress before hashing large binaries' {
+        $plan=New-Plan 'progress'
+        $script:hashProgressChecked=0
+        $nativeHash=Get-Command Get-FileHash
+        function Get-FileHash([string]$LiteralPath,[string]$Algorithm) {
+            $progress=Get-Content -LiteralPath (Join-Path $plan.job 'progress.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+            Assert-That ($progress.token -eq $plan.token -and $progress.pid -eq $PID) 'Progress is not bound to this helper'
+            Assert-That ($progress.phase -like '*SHA256*') 'Hashing phase was not reported'
+            $script:hashProgressChecked++
+            return & $nativeHash -LiteralPath $LiteralPath -Algorithm $Algorithm
+        }
+        Assert-That (Invoke-OporaUpdate $plan) 'Update failed'
+        Assert-That ($script:hashProgressChecked -eq 2) 'Hash progress checks were not exercised'
+    }
     Check 'success leaves the app CWD, preserves a backup and records installed only after the new GUI acknowledges' {
         $plan=New-Plan 'success'
         [Environment]::CurrentDirectory=$plan.directory;Set-Location -LiteralPath $plan.directory
@@ -63,6 +77,16 @@ try {
         Assert-That ([IO.File]::ReadAllText((Join-Path $plan.backup 'Opora.exe')) -eq 'old exe') 'Backup lost'
         Assert-That ([IO.File]::ReadAllText((Join-Path ([IO.Path]::GetDirectoryName($plan.directory)) 'game.keep')) -eq 'game data') 'Game data changed'
         Assert-That ($script:Starts.Count -eq 1 -and $script:Starts[0]) 'Unexpected restart'
+    }
+    Check 'another installer lock never permits shutdown or changes the application' {
+        $plan=New-Plan 'locked'
+        $lockFile=Join-Path ([IO.Path]::GetDirectoryName($plan.directory)) ('.'+[IO.Path]::GetFileName($plan.directory)+'.update.lock')
+        $held=[IO.File]::Open($lockFile,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+        try {
+            Assert-That (!(Invoke-OporaUpdate $plan -LockTimeoutSeconds 0)) 'Accepted another installer lock'
+            Assert-Old $plan
+            Assert-That (!(Test-Path -LiteralPath (Join-Path $plan.job 'ready.json'))) 'Readiness sent without lock'
+        } finally { $held.Dispose() }
     }
     Check 'a parent that never closes preserves the old files and never starts a replacement' {
         $plan=New-Plan 'parent';$script:ParentAlive=$true
@@ -128,7 +152,7 @@ try {
         Assert-Old $plan
         Assert-That ($script:MoveCount -eq 0) 'Cancelled install moved files'
     }
-    Assert-That ($script:count -eq 11) 'Not all installer scenarios executed'
+    Assert-That ($script:count -eq 13) 'Not all installer scenarios executed'
     Write-Host ('PASS '+$script:count+' installer scenarios; Windows process discovery, GUI creation and acknowledgement are simulated.')
 } finally {
     Set-Location -LiteralPath $originalLocation;[Environment]::CurrentDirectory=$originalCwd

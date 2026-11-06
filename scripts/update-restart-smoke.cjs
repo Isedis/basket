@@ -58,7 +58,9 @@ if(process.env.OPORA_UPDATE_JOB){
     await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Сохранённая игра');
     const hashes={};for(const file of ['Opora.exe','resources/app.asar'])hashes[file]=crypto.createHash('sha256').update(await fs.readFile(path.join(source,file))).digest('hex');
     const script=path.join(job,'installer.ps1');
-    const helper=await fs.readFile(path.join(root,'desktop/windows-install.ps1'),'utf8');
+    let helper=await fs.readFile(path.join(root,'desktop/windows-install.ps1'),'utf8');
+    const slowPreparation=process.env.OPORA_TEST_SLOW_PREP==='1';
+    if(slowPreparation)helper=helper.replace('$expected=$Plan.hashes.PSObject.Properties[$relative].Value','Start-Sleep -Milliseconds 9000; $expected=$Plan.hashes.PSObject.Properties[$relative].Value');
     const startup='-WorkingDirectory $Plan.directory -PassThru';
     assert.equal(helper.split(startup).length,2);
     // Platform adapter only: Linux CI needs Chromium flags before main.js loads.
@@ -68,7 +70,9 @@ if(process.env.OPORA_UPDATE_JOB){
     const result=path.join(profile,'update-result.json');
     // The proof hook is test-only; the normal startup ack comes from desktop/main.cjs.
     process.env.OPORA_TEST_JOB=job;
-    await launchInstaller(plan,result,{powerShell:process.env.OPORA_PWSH||'pwsh'});
+    const phases=[],started=Date.now();
+    await launchInstaller(plan,result,{powerShell:process.env.OPORA_PWSH||'pwsh',...(slowPreparation?{startupTimeoutMs:3000,readyTimeoutMs:40000}:{}),onProgress:phase=>phases.push(phase)});
+    if(slowPreparation){assert.ok(Date.now()-started>15000,'The former 15-second deadline was not exceeded');assert.ok(phases.some(phase=>phase.includes('SHA256')),'Hashing progress was not received');}
     delete process.env.OPORA_TEST_JOB;
     assert.equal(oldApp.process().exitCode,null,'GUI closed before the helper confirmed readiness');
     await oldApp.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].close());
