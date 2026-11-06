@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.11.1",
-  "commit": "8f4c4591d81e1986c7ba1bc79667a8d3d6155a16",
-  "size": 162937378,
-  "sha256": "1f4ac7d7b077b163ce4a8f58d7ebfc7df18379ca5991ba76d94493f9ac29deef",
+  "version": "0.12.0",
+  "commit": "5dc4ad15e96e983c65157a32b1addf3761cab8ff",
+  "size": 162988192,
+  "sha256": "1c6874dcd255e583ffaf963fd15a3c489b3d26afcf6806fd86ae9bbcd1a0f283",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "f31fc26e49d57eb71b05e43a9b6f305af94d2b134e0dcde570dcf1f92d140300"
+      "sha256": "cf0d01f451517b57465d0a60e1a156f82f622d37fadc1f29caf155785f1de402"
     },
     {
       "name": "Opora-Windows.zip.part02",
       "size": 50331648,
-      "sha256": "64a45a0463726f21ae589f933aa5ea243e1594ee18e3b6c1bb0c20db57bc3b86"
+      "sha256": "28fe2f7697049157424b57636e6643acff91c0729b0cd652ecd741ff4fd3d33b"
     },
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "2c42f552d1c73fa5299b782ec5165adcdcc40b7ae9718a1c0e1e661061abed68"
+      "sha256": "c273b446c8fdf160bb8f83f11829d91c15d664d1e6c0432a39c7bccf2bcc44e8"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 11942434,
-      "sha256": "15321969dfc6230dddcb6f1435356d03332dd860f5e3bfb88cd6c2dcc85f68ce"
+      "size": 11993248,
+      "sha256": "177fcd467b1e247f9e705664b342597b2973469e9ea99240ed74f204d2ed83a4"
     }
   ],
   "appPatch": {
     "runtimeVersion": "45.2.3",
-    "size": 4819644,
-    "sha256": "5317cea9e239d1250a3a0801a9bd1028d2e1e1c9127804100833899d5a86b085",
+    "size": 4869007,
+    "sha256": "e1dd34e798e817aa41e60a4c55864d563fbf987be18b49e8f8f0aa9998f4e306",
     "parts": [
       {
         "name": "Opora-Windows.zip.part01",
-        "size": 4819644,
-        "sha256": "5317cea9e239d1250a3a0801a9bd1028d2e1e1c9127804100833899d5a86b085"
+        "size": 4869007,
+        "sha256": "e1dd34e798e817aa41e60a4c55864d563fbf987be18b49e8f8f0aa9998f4e306"
       }
     ]
   },
-  "notes": "Исправлен запуск установщика: явный bootstrap.ps1 через -File, системный PowerShell, подтверждение старта и точная диагностика раннего выхода. Проверки архива, ready, резервная копия и подтверждение новой версии сохранены. Если 0.10.1/0.11.0 завершает PowerShell без запуска установки, один раз используйте свежий малый пакет UPDATE-OPORA.cmd: старый установленный код не исправляется повторной загрузкой через старую кнопку."
+  "notes": "Обновление одной кнопкой без закрытия Claude/MCP. Новая версия устанавливается отдельно, терминал сохраняет сессию, при сбое запуска восстанавливается предыдущая версия. Проверено на Windows. Для перехода с версий до 0.12 один раз запустите свежий UPDATE-OPORA.cmd из малого ZIP; заранее закрывать программы не нужно."
 }
