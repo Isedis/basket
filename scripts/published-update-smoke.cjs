@@ -20,6 +20,7 @@ async function main(){
     app=await _electron.launch({executablePath:path.join(temp,'Opora-win32-x64/Opora.exe'),args:[],timeout:30000});oldPid=await app.evaluate(()=>process.pid);
     const page=await app.firstWindow();await page.waitForFunction(()=>document.querySelector('#header-name')?.textContent==='Published update game');
     report.profile=await app.evaluate(({app})=>app.getPath('userData'));
+    await pause(3000);{ const capture=await exec('powershell.exe',['-NoProfile','-Command',`Add-Type -AssemblyName System.Windows.Forms;Add-Type -AssemblyName System.Drawing;$r=[Windows.Forms.Screen]::PrimaryScreen.Bounds;$b=New-Object Drawing.Bitmap($r.Width,$r.Height);$g=[Drawing.Graphics]::FromImage($b);$g.CopyFromScreen($r.Location,[Drawing.Point]::Empty,$r.Size);$b.Save($env:OPORA_SCREENSHOT);$colors=New-Object 'System.Collections.Generic.HashSet[int]';for($x=100;$x -lt 900;$x+=10){for($y=100;$y -lt 600;$y+=10){[void]$colors.Add($b.GetPixel($x,$y).ToArgb())}};$colors.Count;$g.Dispose();$b.Dispose()`]);report.beforeVisibleColors=Number(capture.stdout.trim());}
     await page.locator('[data-action="updates"]').click();await page.locator('[data-action="install-update"]').click();
     const deadline=Date.now()+150000;let result;
     while(Date.now()<deadline){
