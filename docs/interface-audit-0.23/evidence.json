@@ -1,0 +1,315 @@
+{
+  "initialViewport": {
+    "width": 1360,
+    "height": 920
+  },
+  "firstLaunch": {
+    "demoVisible": true,
+    "demoTask": "Собрать главное меню"
+  },
+  "firstProject": {
+    "automaticDestination": ">Брендбук",
+    "taskCreateVisible": 0
+  },
+  "taskForm": {
+    "criteriaRequired": true,
+    "draftAfterEscape": ""
+  },
+  "board": {
+    "cards": 51,
+    "searchInputs": 0,
+    "columnLabels": [
+      "В очереди26",
+      "В работе1",
+      "Готово24"
+    ]
+  },
+  "commands": {
+    "connectionLabelResults": 0,
+    "contextLabelResults": 0
+  },
+  "selection": {
+    "bStatus": "active",
+    "currentAfterStatusChange": "Улучшить меню",
+    "focusAfterStatusChange": "BUTTON"
+  },
+  "deletion": {
+    "removedImmediately": true,
+    "undoVisible": 0
+  },
+  "contextPreview": {
+    "shownKeys": [
+      "project",
+      "task",
+      "passport",
+      "brand",
+      "feedback"
+    ],
+    "availablePacketKeys": [
+      "project_id",
+      "revision",
+      "brand_revision",
+      "name",
+      "root",
+      "selected_task_id",
+      "brand_status",
+      "work_revision",
+      "versions",
+      "mode",
+      "passport",
+      "brand",
+      "task_plan",
+      "readiness",
+      "task",
+      "task_count",
+      "references",
+      "references_total",
+      "feedback",
+      "map",
+      "source_snapshot",
+      "warnings",
+      "instructions"
+    ]
+  },
+  "chatContext": {
+    "taskFirstTurn": "a",
+    "taskInResumedConversation": "a",
+    "currentTask": "Настроить баланс",
+    "contextLabel": "Улучшить меню · брендбук: draft · замечаний: 0 · полный пакет",
+    "contextLabelVisible": false,
+    "taskNextTurn": "b",
+    "sameConversation": true,
+    "localCliRequests": 2
+  },
+  "review": {
+    "homeText": ">\nРабочий стол\n+ Задача\nТекущая задача\nВ РАБОТЕ\nУлучшить меню\nОЖИДАЕМЫЙ РЕЗУЛЬТАТ\n\nКнопки читаемы\n\nВыполнить в Claude →\nОткрыть карточку\nСледующие задачи\nВсе / 25 →\nНастроить баланс\nВ работу →\nОчередь 1\nВ работу →\nОчередь 2\nВ работу →\nОчередь 3\nВ работу →\nО проекте и правила\nidle · сохраняются для агента\nИзменить",
+    "taskStatus": "active",
+    "cardHasPendingReport": 1,
+    "reportsHeading": ">Подключения"
+  },
+  "context": {
+    "previewTag": "PRE",
+    "buttons": [
+      "Скопировать запрос",
+      "Обновить файлы проекта",
+      "Подключение →"
+    ]
+  },
+  "brand": {
+    "status": "draft",
+    "buttons": [
+      "← К задаче: Улучшить меню",
+      "Заполнить через агента",
+      "Собрать из проекта",
+      "Проверить →",
+      "К полю →",
+      "+ Добавить задачу",
+      "К полю →",
+      "+ Добавить задачу",
+      "К полю →",
+      "+ Добавить задачу",
+      "Скопировать разбор →",
+      "+ Добавить образцы"
+    ]
+  },
+  "map": {
+    "searchPlaceholder": "Найти систему…",
+    "visibleButtons": 11
+  },
+  "feedback": {
+    "sceneLabel": "Сцена или файл · необязательно",
+    "sceneRequired": false,
+    "scopeError": "Error invoking remote method 'feedback:note': Error: Укажите комментарий, область и область применения решения."
+  },
+  "compact": {
+    "viewport": {
+      "width": 980,
+      "height": 720
+    },
+    "mainOverflow": false,
+    "nav": [
+      {
+        "label": "[1]Рабочий стол",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[2]Задачи26",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[6]Карта проекта",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[7]Замечания",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[3]Брендбук",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[4]Подключения",
+        "size": "10px",
+        "height": 30
+      },
+      {
+        "label": "[5]Передача контекста",
+        "size": "10px",
+        "height": 30
+      }
+    ],
+    "buttons": [
+      {
+        "label": "IsidacorpОПОРА / 0.23.0",
+        "height": 49,
+        "width": 153
+      },
+      {
+        "label": "[ ]Аудит · станцияGodot / локально/",
+        "height": 67,
+        "width": 153
+      },
+      {
+        "label": "[1]Рабочий стол",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[2]Задачи26",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[6]Карта проекта",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[7]Замечания",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[3]Брендбук",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[4]Подключения",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "[5]Передача контекста",
+        "height": 30,
+        "width": 153
+      },
+      {
+        "label": "Открыть карточку →",
+        "height": 25,
+        "width": 119
+      },
+      {
+        "label": "Обновления",
+        "height": 25,
+        "width": 153
+      },
+      {
+        "label": "[?] Справка F1",
+        "height": 25,
+        "width": 153
+      },
+      {
+        "label": ">_ Claude",
+        "height": 25,
+        "width": 59
+      },
+      {
+        "label": ">_ Команды Ctrl K",
+        "height": 25,
+        "width": 117
+      },
+      {
+        "label": "Открыть проект",
+        "height": 29,
+        "width": 102
+      },
+      {
+        "label": "+ Задача",
+        "height": 29,
+        "width": 68
+      },
+      {
+        "label": "Выполнить в Claude →",
+        "height": 38,
+        "width": 174
+      },
+      {
+        "label": "Открыть карточку",
+        "height": 38,
+        "width": 145
+      },
+      {
+        "label": "Все / 25 →",
+        "height": 23,
+        "width": 60
+      },
+      {
+        "label": "Настроить баланс",
+        "height": 22,
+        "width": 115
+      },
+      {
+        "label": "В работу →",
+        "height": 25,
+        "width": 66
+      },
+      {
+        "label": "Очередь 1",
+        "height": 22,
+        "width": 65
+      },
+      {
+        "label": "В работу →",
+        "height": 25,
+        "width": 66
+      },
+      {
+        "label": "Очередь 2",
+        "height": 22,
+        "width": 65
+      },
+      {
+        "label": "В работу →",
+        "height": 25,
+        "width": 66
+      },
+      {
+        "label": "Очередь 3",
+        "height": 22,
+        "width": 65
+      },
+      {
+        "label": "В работу →",
+        "height": 25,
+        "width": 66
+      }
+    ],
+    "chat": {
+      "contextHeight": 120,
+      "contextScrollHeight": 120,
+      "composerBottom": 693,
+      "viewportHeight": 720
+    }
+  },
+  "rendererErrors": [],
+  "version": "0.23.0",
+  "sourceCommit": "f26252b52209d66bb82c792ac60296666ed6afdc",
+  "method": "Linux Electron; isolated synthetic projects; local fake Claude CLI; no model API calls; UX findings are expert review, not a user study."
+}
