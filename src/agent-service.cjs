@@ -40,9 +40,10 @@ async function listReports(root,limit=30,taskId,view={}) {
   const current=view.snapshot||await snapshot(root);
   const indexed=await require('./history-index.cjs').scan(current.root,{directory:'.opora/agent-reports',match:/^[a-f0-9]{64}\.json$/,max:512*1024,summary:item=>{
     if(item.version!==1||typeof item.project_id!=='string'||typeof item.revision!=='string'||typeof item.summary!=='string'||!['in_progress','blocked','ready_for_review'].includes(item.phase)||!['claude','codex','other'].includes(item.agent)||typeof item.recordedAt!=='string'||!Array.isArray(item.checks)||item.checks.some(c=>!c||typeof c.name!=='string'||!['passed','failed','not_run'].includes(c.result)))throw new Error('Некорректный отчёт.');
-    return {task_id:item.task_id,recordedAt:item.recordedAt};
+    return {task_id:item.task_id,recordedAt:item.recordedAt,project_id:item.project_id};
   }});
-  const selected=indexed.rows.filter(r=>!taskId||r.task_id===taskId).sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
+  let selected=indexed.rows.filter(r=>!taskId||r.task_id===taskId).sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
+  if(view.perTask){const seen=new Set();selected=selected.filter(r=>{if(r.project_id!==current.project_id||seen.has(r.task_id))return false;seen.add(r.task_id);return true;});}
   if(!selected.length)return {reports:[],total:0,unreadable:indexed.unreadable};
   const source=view.source||await sourceSnapshot(current.root),feedbackRevision=view.feedback?.feedback_revision||(await require('./visual-feedback.cjs').read(current.root)).feedback_revision;
   const reports=[];let unreadable=indexed.unreadable;

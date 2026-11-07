@@ -34,3 +34,5 @@ require("./agent-profile.test.cjs");
 require('./scene-run.test.cjs');
 
 require('./audit-fixes.test.cjs');
+
+require('./task-queue.test.cjs');

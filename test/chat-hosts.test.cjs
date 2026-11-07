@@ -6,3 +6,4 @@ test('Upgrade keeps a live legacy chat and moves the next idle request to the mo
  legacy.state.status='idle';assert.equal(await forOperation(legacy,modern,'chat:send'),modern);assert.equal(legacy.detached,true);
 });
 test('Idle legacy state does not keep an outdated implementation alive',async()=>{const modern=host(null),legacy=host({status:'idle'});assert.equal((await restore(modern,legacy)).host,modern);assert.equal(legacy.disposed,true);});
+test('An owned queue keeps the legacy broker across idle gaps and switches only after the whole queue stops',async()=>{const modern=host(null),legacy=host({status:'idle',queue:{owned:true}});assert.equal((await restore(modern,legacy)).host,legacy);assert.equal(await forOperation(legacy,modern,'queue:get'),legacy);assert.equal(legacy.detached,false);legacy.state.queue.owned=false;assert.equal(await forOperation(legacy,modern,'queue:resume'),modern);});

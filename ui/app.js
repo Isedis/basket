@@ -64,6 +64,7 @@ const visualFeedbackView=window.OporaVisualFeedback.create({getRoot:()=>root,bri
   state.tasks.push({id:id(),title:(note.kind==='keep'?'Сохранить: ':'Исправить: ')+note.text.slice(0,140),acceptance:`${note.text}\nСнимок: «${shot.title}».\n${note.scene?'Сцена/файл: '+note.scene+'\n':''}Сохранить понравившиеся решения. Приложить результат для сравнения в разделе «Замечания». Получить подтверждение пользователя.`,status:'backlog',feedbackNoteId:note.id,feedbackShotId:shot.id});changed();toast('Замечание добавлено в задачи.');
 }});
 
+const taskQueueUI=window.OporaTaskQueue.create({bridge,getRoot:()=>root,prepare:async()=>{await persist();await saves;},showModal,onError:fail,onReview:(taskId,reportId)=>taskReview.open(taskId,{reportId}),onConversation:async id=>{closeModal();await claudeTerminal.openConversation(id);},onShowChat:async()=>{closeModal();await claudeTerminal.open();}});
 const taskDetail=window.OporaTaskCard.create({bridge,getRoot:()=>root,getState:()=>state,showModal,closeModal,onError:fail,notify:toast,
  onOpened:taskId=>{taskReturnId=taskId;},prepare:async()=>{if(timer||saving||failedSave)await persist();await saves;},onEdit:async taskId=>{await persist();editTask(taskId);$('#task-form').dataset.returnCard=taskId;},
  onFiles:async(taskId,files)=>{const task=state.tasks.find(t=>t.id===taskId);if(!task)throw new Error('Задача удалена.');task.files=OporaContext.normalizeTaskFiles(files);changed();await persist();render();},
@@ -186,7 +187,7 @@ async function copyWorkContext(){
 function overview() {
   const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
   const queue=state.tasks.filter(t=>t.status!=='done' && t.id!==active?.id);
-  return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<button class="button small secondary" data-action="scene-open">▶ Запустить сцену</button><button class="button small secondary" data-action="new-task">+ Задача</button>')}${demoBanner()}
+  return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<button class="button small secondary" data-action="scene-open">▶ Запустить сцену</button><button class="button small secondary" data-action="queue-open" data-queue-indicator>▤ Все задачи в работе</button><button class="button small secondary" data-action="new-task">+ Задача</button>')}${demoBanner()}
   <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>Текущая задача</h2><span class="badge muted">${active?'ТЕКУЩАЯ':'С ЧЕГО НАЧНЁМ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ОЖИДАЕМЫЙ РЕЗУЛЬТАТ</span><p>${escapeHtml(active.acceptance || 'Критерии пока не указаны — их можно добавить в карточке.')}</p></div>`:'<p class="small">Выберите задачу из очереди или создайте новую.</p>'}<div id="task-result-status">${resultNotice(active)}</div><div class="stack">${active?`<button id="focus-run" class="button ${resultNotice(active)?'secondary':''}" data-action="claude-task">Выполнить в Claude →</button><button class="button secondary" data-action="task-card" data-id="${escapeHtml(active.id)}">Открыть карточку</button>`:'<button class="button" data-action="new-task">+ Новая задача</button>'}</div></section>
   <section class="card queue-card"><div class="card-header"><h2>Следующие задачи</h2><button class="text-button" data-action="goto-tasks">Все / ${queue.length} →</button></div>${queue.length?queue.slice(0,4).map(t=>`<div class="queue-item"><div><strong><button class="task-title-link" data-action="task-card" data-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button></strong></div><button class="text-button" data-action="select-task" data-id="${escapeHtml(t.id)}">Сделать текущей →</button></div>`).join(''):'<div class="empty">Очередь пуста.<br><button class="text-button" data-action="new-task">Добавить задачу →</button></div>'}</section></div>
   <details class="project-details section-gap" data-disclosure="project"><summary><span><strong>О проекте и правила</strong><small>${escapeHtml(state.genre||'Описание игры')} · сохраняются для агента</small></span><span class="disclosure-hint">Изменить</span></summary><div class="project-details-body"><div class="project-status"><button data-action="goto-brand"><span class="status-dot"></span>Брендбук: ${state.brand.status==='approved'?'утверждён':'черновик'} →</button><span>${state.references.filter(r=>r.status==='approved').length} эталонов</span><button class="text-button" data-action="copy-project-agent">Заполнить через агента →</button></div><div class="grid-two"><section class="card"><div class="card-header"><h2>Описание игры</h2></div><div class="field-row">${field('Название','name','Название игры')}${field('Жанр','genre','Roguelike / idle / …')}</div>${field('Замысел','pitch','Что делает игрок и ради чего?',true,3)}${field('Цель итерации','goal','Один конкретный результат',true,2)}<details class="extra-fields"><summary>Ощущение и принципы</summary>${field('Ощущение игрока','experience','Настроение и характер игры',true,2)}${field('Принципы игры','pillars','По одному принципу на строку',true,3)}</details></section><section class="card"><div class="card-header"><h2>Постоянные правила</h2></div>${field('Что агент должен сохранять','rules','Принятые решения: компоненты, размеры, эффекты',true,7)}<div class="compact-hint">Сохраняются автоматически и передаются агенту вместе с задачей.</div></section></div></div></details>`;
@@ -243,7 +244,7 @@ function taskCard(task) {
 }
 
 function tasks() {
-  return `${pageTitle('[02] / РАБОТА','Задачи','',`<div class="stack"><button class="text-button" data-action="task-trash">Корзина / ${Object.keys(state.deletedTasks||{}).length}</button><button class="button" data-action="new-task">+ Новая задача</button></div>`) }${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span>${label}</span><span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Нет задач</div>'}</section>`).join('')}</div>`;
+  return `${pageTitle('[02] / РАБОТА','Задачи','',`<div class="stack"><button class="button small secondary" data-action="queue-open" data-queue-indicator>▤ Все задачи в работе</button><button class="text-button" data-action="task-trash">Корзина / ${Object.keys(state.deletedTasks||{}).length}</button><button class="button" data-action="new-task">+ Новая задача</button></div>`) }${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span>${label}</span><span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Нет задач</div>'}</section>`).join('')}</div>`;
 }
 
 function context() {
@@ -302,8 +303,10 @@ function render() {
   const routeChanged=renderedTab!==tab || renderedRoot!==root;
   if(renderedRoot!==root){taskReturnId=null;mapFocus=null;feedbackFocus=null;if($('#modal-content [data-task-card]'))closeModal();}
   refreshChrome();
+  taskQueueUI.projectChanged();taskQueueUI.refresh();
   claudeTerminal.projectChanged();
   $('#main').innerHTML = tab==='feedback'?'<div id="visual-feedback-view"></div>':tab==='map'?'<div id="project-map-view"></div>':({overview,brand,tasks,context,agents})[tab]();
+  taskQueueUI.refresh();
   document.querySelectorAll('#main [data-disclosure]').forEach(el=>{el.open=disclosureState.get(disclosureKey(el.dataset.disclosure))||false;});
   if(tab==='map')projectMapView.mount($('#project-map-view'),{file:mapFocus});mapFocus=null;
   if(tab==='feedback')visualFeedbackView.mount($('#visual-feedback-view'),feedbackFocus);feedbackFocus=null;
@@ -524,6 +527,7 @@ document.addEventListener('click', async event => {
       button.disabled=true;
       try {await applyBrand(pendingBrand,[...document.querySelectorAll('[data-brand-field]:checked')].map(e=>e.dataset.brandField),[...document.querySelectorAll('[data-brand-asset]:checked')].map(e=>e.dataset.brandAsset));} finally {button.disabled=false;}
     }
+    if(action==='queue-open'){await taskQueueUI.open();return;}
     if(action==='scene-open'){await sceneRunner.open();return;}
   if(action==='profile-open')await showAgentProfile({id:button.dataset.id,retired:button.dataset.retired==='true'});
     if(action==='profile-page')await showAgentProfile({...profileView?.options,offset:Number(button.dataset.offset)});

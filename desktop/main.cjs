@@ -46,7 +46,7 @@ let terminal;
 let chatStarting=false;
 let chatHost,modernChatHost;let legacyChatHosts=[];let chatState=null;
 const chatHosts=require('./chat-hosts.cjs');
-const chatBusy=()=>chatStarting||['starting','working','permission','stopping'].includes(chatState?.status);
+const chatBusy=()=>chatStarting||chatState?.queue?.owned||['starting','working','permission','stopping'].includes(chatState?.status);
 let terminalStarting=false;
 let terminalClosePrompt=false;
 let externalHandoff=false;
@@ -211,13 +211,19 @@ if(primary)await app.whenReady().then(async () => {
   terminalHandle('scene:stop',id=>require('../src/scene-run.cjs').cancel(requireProject(),id));
   terminalHandle('scene:image',async id=>{const image=await require('../src/scene-run.cjs').image(requireProject(),id);return 'data:'+image.mimeType+';base64,'+image.data;});
   terminalHandle('automation:godot',async()=>{const selected=await dialog.showOpenDialog(win,{title:'Godot для автоматической проверки проекта',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'Godot',extensions:['exe']}]}:{})});if(selected.canceled)return null;const command=await resolveGodot(selected.filePaths[0]);await fs.mkdir(path.dirname(automationPreferences),{recursive:true});await fs.writeFile(automationPreferences,JSON.stringify({godot:command.file}),{mode:0o600});return {executable:command.file};});
-  async function chatCall(op,value){await chatConnection;chatHost=await chatHosts.forOperation(chatHost,modernChatHost,op);await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
+  async function chatCall(op,value){await chatConnection;chatHost=await chatHosts.forOperation(chatHost,modernChatHost,op);await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status&&Array.isArray(result.messages))chatState=result;return result;}
   terminalHandle('plan:get',async input=>{if(!input?.taskId)return null;return taskPlans.get(requireProject(),input.taskId,{history:input.history===true});});
   terminalHandle('plan:pause',async input=>{const project=requireProject();if(chatBusy()&&chatState?.task_id===input.taskId)await chatCall('chat:stop',chatState.id);return taskPlans.pause(project,input.taskId);});
   terminalHandle('chat:state',async()=>{await chatConnection;return await chatHost.connect()?chatCall('chat:state'):null;});
   terminalHandle('chat:list',()=>chatCall('chat:list',{root:requireProject()}));
   terminalHandle('chat:new',()=>chatCall('chat:new',{root:requireProject()}));
   terminalHandle('chat:open',id=>chatCall('chat:open',{root:requireProject(),id}));
+  async function queueRuntime(autoApprove){const project=requireProject(),command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);if(root!==project)throw new Error('Проект изменился.');return {command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),autoApprove:autoApprove===true};}
+  terminalHandle('queue:get',async()=>{const project=requireProject();await chatConnection;if(!await chatHost.connect())return new (require('./task-queue.cjs').TaskQueue)({chat:null}).load(project);try{return await chatCall('queue:get',{root:project});}catch(error){if(!chatState?.queue&&error.message.includes('Неизвестная команда'))return new (require('./task-queue.cjs').TaskQueue)({chat:null}).load(project);throw error;}});
+  terminalHandle('queue:preview',()=>new (require('./task-queue.cjs').TaskQueue)({chat:null}).preview(requireProject()));
+  for(const action of ['start','resume'])terminalHandle('queue:'+action,async(input={})=>{if(chatBusy()||terminal.active||terminalStarting||installing)throw new Error('Сначала дождитесь завершения текущей работы.');chatStarting=true;try{const project=requireProject(),runtime=await queueRuntime(input.autoApprove);const result=await chatCall('queue:'+action,{...input,root:project,runtime});chatState=await chatCall('chat:state');return result;}finally{chatStarting=false;}});
+  terminalHandle('queue:pause',()=>chatCall('queue:pause',{root:requireProject()}));
+  terminalHandle('queue:refresh',taskId=>chatCall('queue:refresh',{root:requireProject(),taskId}));
   terminalHandle('chat:send',async input=>{
     if(chatBusy())throw new Error('Claude ещё работает.');chatStarting=true;try{
     const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');

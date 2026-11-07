@@ -62,6 +62,13 @@ jobs:
           $code=$LASTEXITCODE
           Get-Content "$env:RUNNER_TEMP/chat.log"
           exit $code
+      - name: Task queue SDK, pause, resume and questions
+        id: queue
+        run: |
+          npm run test:queue > "$env:RUNNER_TEMP/queue.log" 2>&1
+          $code=$LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/queue.log"
+          exit $code
       - name: Unified task card, file links and project navigation
         id: taskcard
         run: |
@@ -113,6 +120,7 @@ jobs:
           OLDBASE_RESULT: ${{ steps.oldbase.outcome }}
           SCENE_RESULT: ${{ steps.scene.outcome }}
           TASKCARD_RESULT: ${{ steps.taskcard.outcome }}
+          QUEUE_RESULT: ${{ steps.queue.outcome }}
           CHAT_RESULT: ${{ steps.chat.outcome }}
           UNIT_RESULT: ${{ steps.unit.outcome }}
           NATIVE_RESULT: ${{ steps.native.outcome }}
@@ -127,12 +135,13 @@ jobs:
             const report = {
               commit: context.sha, run: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               checkedAt: new Date().toISOString(), platform: 'windows-latest',
-              steps: {scene:process.env.SCENE_RESULT,taskcard:process.env.TASKCARD_RESULT,chat:process.env.CHAT_RESULT,release:process.env.RELEASE_RESULT,oldbase:process.env.OLDBASE_RESULT,portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
+              steps: {queue:process.env.QUEUE_RESULT,scene:process.env.SCENE_RESULT,taskcard:process.env.TASKCARD_RESULT,chat:process.env.CHAT_RESULT,release:process.env.RELEASE_RESULT,oldbase:process.env.OLDBASE_RESULT,portable:process.env.PORTABLE_RESULT,startup:process.env.STARTUP_RESULT,unit: process.env.UNIT_RESULT, powershell51: process.env.PS_RESULT, native: process.env.NATIVE_RESULT, rollback: process.env.ROLLBACK_RESULT, migration: process.env.MIGRATION_RESULT},
               scene:read('opora-scene.json'),release:read('opora-release.json'),oldbase:read('opora-oldbase.json'),portable:read('opora-portable.json'),startup:read('opora-startup.json'),native: read('opora-native.json'), rollback: read('opora-rollback.json'), migration: read('opora-migration.json')
             };
             if(process.env.SCENE_RESULT === 'failure') { try { report.sceneLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'scene.log'),'utf8').slice(-12000); } catch {} }
             if(process.env.UNIT_RESULT === 'failure') { try { report.unitLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'unit.log'),'utf8').slice(-8000); } catch {} }
             if(process.env.TASKCARD_RESULT === 'failure') { try { report.taskCardLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'taskcard.log'),'utf8').slice(-12000); } catch {} }
+            if(process.env.QUEUE_RESULT === 'failure') { try { report.queueLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'queue.log'),'utf8').slice(-12000); } catch {} }
             if(process.env.CHAT_RESULT === 'failure') { try { report.chatLog = fs.readFileSync(path.join(process.env.RUNNER_TEMP,'chat.log'),'utf8').slice(-12000); } catch {} }
             const branch = 'opora-windows-validation';
             try { await github.rest.git.getRef({...context.repo, ref: 'heads/' + branch}); }
@@ -152,7 +161,7 @@ jobs:
           script: |
             const fs=require('fs'),path=require('path'),crypto=require('crypto');
             const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
-            if(!/^0\.(14|15|16|17|18|19|20|21|22|23|24|25|26)\.\d+$/.test(manifest.version))return;
+            if(!/^0\.(14|15|16|17|18|19|20|21|22|23|24|25|26|27)\.\d+$/.test(manifest.version))return;
             const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
             const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
             if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');
