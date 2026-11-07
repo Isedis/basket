@@ -64,8 +64,9 @@ const visualFeedbackView=window.OporaVisualFeedback.create({getRoot:()=>root,bri
 }});
 
 const taskDetail=window.OporaTaskCard.create({bridge,getRoot:()=>root,getState:()=>state,showModal,closeModal,onError:fail,notify:toast,
- onOpened:taskId=>{taskReturnId=taskId;},onEdit:editTask,
+ onOpened:taskId=>{taskReturnId=taskId;},prepare:async()=>{if(timer||saving||failedSave)await persist();await saves;},onEdit:async taskId=>{await persist();editTask(taskId);$('#task-form').dataset.returnCard=taskId;},
  onFiles:async(taskId,files)=>{const task=state.tasks.find(t=>t.id===taskId);if(!task)throw new Error('Задача удалена.');task.files=OporaContext.normalizeTaskFiles(files);changed();await persist();render();},
+ onRelink:async(taskId,previous,replacement)=>{const project=root;await persist();if(project!==root)throw new Error('Проект изменился.');if(!replacement)throw new Error('Актуальное решение не найдено.');const latest=await bridge.feedbackRead();if(root!==project)throw new Error('Проект изменился.');const shot=latest.store.shots.find(s=>s.id===replacement.shot_id),note=shot?.notes.find(n=>n.id===replacement.note_id),task=state.tasks.find(t=>t.id===taskId);if(!task||task.feedbackNoteId!==previous||!note||note.superseded_by)throw new Error('Связи изменились. Обновите карточку.');task.feedbackNoteId=note.id;task.feedbackShotId=shot.id;changed();await persist();render();toast('Связь обновлена. Проверьте критерии задачи.');},
  onStatus:async(taskId,value)=>{if(!['backlog','active','done'].includes(value))return;const task=state.tasks.find(t=>t.id===taskId);if(!task)return;task.status=value;if(value==='done'&&state.activeTaskId===taskId)state.activeTaskId=null;changed();await persist();render();},
  onSelect:async taskId=>{const task=state.tasks.find(t=>t.id===taskId);if(!task||task.status==='done')throw new Error('Выберите незавершённую задачу.');if(state.activeTaskId!==taskId||task.status!=='active'){state.activeTaskId=taskId;task.status='active';changed();await persist();render();}},
  onRun:()=>claudeTerminal.runTask(),
@@ -408,7 +409,7 @@ document.addEventListener('submit', event => {
   const existing = state.tasks.find(t=>t.id === form.dataset.id);
   if (existing) Object.assign(existing,{title,acceptance,files});
   else state.tasks.push({id:id(),title,acceptance,files,status:'backlog'});
-  changed(); closeModal(); render();
+  changed(); closeModal(); render();if(form.dataset.returnCard)void taskDetail.open(form.dataset.returnCard);
 });
 document.addEventListener('click', async event => {
   const command=event.target.closest('[data-command]');

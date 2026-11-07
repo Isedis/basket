@@ -24,3 +24,4 @@ require('./chat-usage.test.cjs');
 require('./usage-probe.test.cjs');
 
 require('./task-card.test.cjs');
+require('./task-readiness.test.cjs');

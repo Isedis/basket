@@ -25,7 +25,7 @@ async function main() {
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
     const packet=(await client.callTool({name:'opora_get_work_context',arguments:{}})).structuredContent;
-    assert.equal(packet.project_id,project.project_id);assert.equal(packet.task.id,'menu');
+    assert.equal(packet.project_id,project.project_id);assert.equal(packet.task.id,'menu');assert.equal(packet.readiness.advisory,true);
     assert.equal((await client.callTool({name:'opora_get_work_context',arguments:{known_revision:packet.work_revision}})).structuredContent.mode,'unchanged');
     const field=(await client.callTool({name:'opora_read_project_field',arguments:{project_id:project.project_id,field:'rules',limit:4}})).structuredContent;
     assert.equal(field.text,state.rules.slice(0,4));
@@ -75,7 +75,7 @@ async function main() {
     const refreshed=(await client.callTool({name:'opora_get_context',arguments:{project_id:project.project_id}})).structuredContent;
     const report=await client.callTool({name:'opora_report_progress',arguments:{...args,revision:refreshed.revision}});assert.ok(!report.isError);
     assert.equal((await listReports(root)).reports.length,1);
-    assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');
+    assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');const prepared=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'menu'}})).structuredContent;assert.ok(prepared.readiness.items.some(i=>i.code==='report_review'));const filtered=(await client.callTool({name:'opora_list_reports',arguments:{project_id:project.project_id,task_id:'menu'}})).structuredContent;assert.equal(filtered.reports.length,1);assert.ok(filtered.reports.every(r=>r.task_id==='menu'));
     const allBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     const all=await client.callTool({name:'opora_update_project',arguments:{include_state:true,project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop',files:['res://project.godot'],feedback_note_id:added.note_id,feedback_shot_id:shot.shot_id}],active_task_id:'new-task'}}});
     assert.ok(!all.isError,JSON.stringify(all));assert.equal(all.structuredContent.state.activeTaskId,'new-task');assert.equal(all.structuredContent.state.tasks.length,2);

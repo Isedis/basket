@@ -125,7 +125,7 @@ jobs:
           script: |
             const fs=require('fs'),path=require('path'),crypto=require('crypto');
             const manifest=JSON.parse(fs.readFileSync('distribution/windows/manifest.json'));
-            if(!/^0\.(14|15|16|17|18|19|20|21)\.\d+$/.test(manifest.version))return;
+            if(!/^0\.(14|15|16|17|18|19|20|21|22)\.\d+$/.test(manifest.version))return;
             const parts=manifest.parts.map(p=>fs.readFileSync(path.join('distribution/windows',p.name)));
             const zip=Buffer.concat(parts),hash=crypto.createHash('sha256').update(zip).digest('hex');
             if(hash!==manifest.sha256)throw new Error('Portable archive SHA mismatch');

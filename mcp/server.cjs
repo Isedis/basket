@@ -72,9 +72,9 @@ function makeServer(root) {
     const r=await service.getReference(root,input);
     return {content:[{type:'text',text:JSON.stringify({reference:r.reference,project_id:r.project_id,revision:r.revision})},{type:'image',data:r.data,mimeType:r.mimeType}]};
   });
-  register('opora_list_reports','Read recent agent reports. These are self-reported and may refer to an older context; do not treat them as proof that tests passed.',{project_id:projectId},async input=>{
+  register('opora_list_reports','Read recent agent reports. Optional task_id filters before the result limit. Reports may be self-reported or stale; verify check provenance and source version.',{project_id:projectId,task_id:z.string().min(1).max(160).optional()},async input=>{
     const s=await service.snapshot(root);service.guard(s,input.project_id);
-    return json({...service.identity(s),...await service.listReports(root,10)});
+    return json({...service.identity(s),...await service.listReports(root,10,input.task_id)});
   });
   register('opora_report_progress','Record progress, a blocker or work ready for user review. Does NOT mark the task done or change the brandbook. Reuse request_id only for an exact retry. Refresh context if revision is stale.',{
     project_id:projectId,revision,agent:z.enum(['claude','codex','other']),request_id:z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/),task_id:z.string().max(160).optional(),phase:z.enum(['in_progress','blocked','ready_for_review']),summary:z.string().min(1).max(12000),checks:z.array(z.object({name:z.string().min(1).max(300),result:z.enum(['passed','failed','not_run']),evidence:z.string().max(2000).optional()})).max(30).optional()

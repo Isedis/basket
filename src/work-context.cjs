@@ -3,6 +3,7 @@ const service=require('./agent-service.cjs');
 const feedback=require('./visual-feedback.cjs');
 const {scanProjectMap,projectView}=require('./project-map.cjs');
 const {fromMap}=require('./source-snapshot.cjs');
+const readiness=require('./task-readiness.cjs');
 const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
 function excerpt(value,path,limit=4000){return {text:value.slice(0,limit),length:value.length,truncated:value.length>limit,...(value.length>limit?{read_more:{tool:'opora_read_project_field',field:path,offset:limit}}:{})};}
 function readField(state,{field,offset=0,limit=8000,task_id}){
@@ -25,16 +26,22 @@ function reader(root){
     }
     const task=s.state.tasks.find(t=>t.id===(input.task_id||s.state.activeTaskId))||null;
     if(input.task_id&&!task)throw new Error('Задача не найдена.');
-    const linked=visual.store.shots.flatMap(shot=>shot.notes.map(note=>({shot,note}))).find(x=>x.note.id===task?.feedbackNoteId&&(!task.feedbackShotId||x.shot.id===task.feedbackShotId));
-    const rawFile=input.file||task?.files?.[0]||linked?.note.scene||null;const file=rawFile?rawFile.replace(/\\/g,'/').replace(/^res:\/\//,''):null;
+    const allNotes=visual.store.shots.flatMap(shot=>shot.notes.map(note=>({shot,note})));
+    const linked=allNotes.find(x=>x.note.id===task?.feedbackNoteId&&(!task.feedbackShotId||x.shot.id===task.feedbackShotId));
+    const lookup=new Map(allNotes.map(x=>[x.note.id,x]));let replacement=null,cursor=linked;const visited=new Set();
+    while(cursor?.note.superseded_by&&!visited.has(cursor.note.id)){visited.add(cursor.note.id);cursor=lookup.get(cursor.note.superseded_by);if(!cursor)break;if(!cursor.note.superseded_by)replacement=cursor;}
+    const rawFile=input.file||task?.files?.[0]||replacement?.note.scene||linked?.note.scene||null;const file=rawFile?rawFile.replace(/\\/g,'/').replace(/^res:\/\//,''):null;
     const taskFiles=new Set([...(task?.files||[]),...(file?[file]:[])]);
-    const relevant=visual.store.shots.flatMap(shot=>shot.notes.map(note=>({shot,note}))).filter(({shot,note})=>{
+    const relevant=allNotes.filter(({shot,note})=>{
       if(note.superseded_by)return false;
-      return note.id===task?.feedbackNoteId||linked?.shot.id===shot.id&&note.kind==='keep'&&note.status==='accepted'||taskFiles.has(note.scene.replace(/\\/g,'/').replace(/^res:\/\//,''))&&((note.scope==='scene'&&note.status==='accepted')||!shot.archived&&note.status!=='accepted')||note.scope==='project'&&note.kind==='keep'&&note.status==='accepted';
+      return note.id===task?.feedbackNoteId||note.id===replacement?.note.id||linked?.shot.id===shot.id&&note.kind==='keep'&&note.status==='accepted'||taskFiles.has(note.scene.replace(/\\/g,'/').replace(/^res:\/\//,''))&&((note.scope==='scene'&&note.status==='accepted')||!shot.archived&&note.status!=='accepted')||note.scope==='project'&&note.kind==='keep'&&note.status==='accepted';
     });
     relevant.sort((a,b)=>(b.note.id===task?.feedbackNoteId)-(a.note.id===task?.feedbackNoteId)||b.note.createdAt.localeCompare(a.note.createdAt));
     const task_plan=task?await require('./task-plans.cjs').get(s.root,task.id,{compact:true}):null;
-    const source=fromMap(map),work_revision=hash(JSON.stringify([s.project_id,s.revision,visual.feedback_revision,source.revision,map.map_revision,task?.id||null,file,input.limit||20,task_plan?.revision||null]));
+    const [checkedFiles,activity]=task?await Promise.all([readiness.inspectFiles(s.root,task.files||[]),service.listReports(s.root,100,task.id).catch(()=>({reports:[],readFailed:true}))]):[[],{reports:[]}];
+    const latestReport=activity.reports.find(r=>!r.fromDifferentPath);
+    const task_readiness=readiness.assess({task,files:checkedFiles,plan:task_plan,linked,replacement,notes:relevant,report:latestReport,reportReadFailed:!!activity.readFailed||!!activity.unreadable});
+    const source=fromMap(map),work_revision=hash(JSON.stringify([s.project_id,s.revision,visual.feedback_revision,source.revision,map.map_revision,task?.id||null,file,input.limit||20,task_plan?.revision||null,task_readiness]));
     const identity={...service.projectView(s),work_revision,versions:{context:s.revision,feedback:visual.feedback_revision,code:source.revision,map:map.map_revision}};
     if(input.known_revision===work_revision&&history.has(work_revision))return {project_id:s.project_id,root:s.root,work_revision,mode:'unchanged',unchanged:true};
     let neighborhood=null;
@@ -48,7 +55,7 @@ function reader(root){
     const passport=Object.fromEntries(['name','genre','pitch','experience','goal','pillars','rules'].map(k=>[k,excerpt(s.state[k],k)]));
     const brand={status:s.state.brand.status,approval:s.state.brand.approval||null,...Object.fromEntries(['direction','palette','fonts','avoid'].map(k=>[k,excerpt(s.state.brand[k],'brand.'+k)]))};
     const compactTask=task?{id:task.id,title:task.title,status:task.status,acceptance:task.acceptance.slice(0,8000),acceptance_length:task.acceptance.length,acceptance_truncated:task.acceptance.length>8000,...(task.acceptance.length>8000?{read_more:{tool:'opora_read_project_field',field:'task.acceptance',task_id:task.id,offset:8000}}:{}),feedbackNoteId:task.feedbackNoteId,feedbackShotId:task.feedbackShotId,files:task.files||[]}:null;
-    const result={...identity,mode:'full',passport,brand,task_plan,task:compactTask,task_count:s.state.tasks.length,references:s.state.references.slice(0,10),references_total:s.state.references.length,feedback:{notes,total:relevant.length,has_more:notes.length<relevant.length,read_more:{queries:[{tool:'opora_list_feedback',scope:'project',status:'accepted',include_archived:true},...[...taskFiles].map(scene=>({tool:'opora_list_feedback',scene,include_archived:true})),...(linked?[{tool:'opora_list_feedback',shot_id:linked.shot.id,include_archived:true}]:[])]}},map:{main:map.main,summary:map.summary,neighborhood},source_snapshot:source,warnings:[...new Set(warnings)],instructions:'Verify root before edits. This packet replaces prior packet. Read original images with opora_get_feedback_image and actual code before changing it. More data is available through detailed tools and paginated fields. Feedback accept is not task completion. Source snapshots describe attachment time, not proof of game execution.'};
+    const result={...identity,mode:'full',passport,brand,task_plan,readiness:task_readiness,task:compactTask,task_count:s.state.tasks.length,references:s.state.references.slice(0,10),references_total:s.state.references.length,feedback:{notes,total:relevant.length,has_more:notes.length<relevant.length,read_more:{queries:[{tool:'opora_list_feedback',scope:'project',status:'accepted',include_archived:true},...[...taskFiles].map(scene=>({tool:'opora_list_feedback',scene,include_archived:true})),...(linked?[{tool:'opora_list_feedback',shot_id:linked.shot.id,include_archived:true}]:[])]}},map:{main:map.main,summary:map.summary,neighborhood},source_snapshot:source,warnings:[...new Set(warnings)],instructions:'Verify root before edits. readiness contains advisory observations shared with the task card, not instructions to accept results or discard user decisions. Resolve relevant gaps or explain remaining uncertainty; missing files may be intentional creation targets. This packet replaces prior packet. Read original images with opora_get_feedback_image and actual code before changing it. More data is available through detailed tools and paginated fields. Feedback accept is not task completion. Source snapshots describe attachment time, not proof of game execution.'};
     while(Buffer.byteLength(JSON.stringify(result))>192*1024&&result.feedback.notes.length>1){result.feedback.notes.pop();result.feedback.has_more=true;}
     if(Buffer.byteLength(JSON.stringify(result))>256*1024)throw new Error('Пакет слишком большой. Уменьшите limit.');
     history.add(work_revision);while(history.size>8)history.delete(history.values().next().value);
