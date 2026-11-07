@@ -139,8 +139,9 @@ window.OporaProjectMap=(()=>{
       if(action==='symbols-prev'||action==='symbols-next'){symbolOffset=Math.max(0,symbolOffset+(action==='symbols-next'?32:-32));await load({focusOnly:true});}
       if(action==='links-prev'||action==='links-next'){linkOffset=Math.max(0,linkOffset+(action==='links-next'?LINKS:-LINKS));await load({focusOnly:true});}
     }
-    function mount(element){
+    function mount(element,{file}={}){
       observer?.disconnect();cancelAnimationFrame(frame);host=element;const next=getRoot()||'demo';if(next!==key){key=next;mode='systems';systems=null;system=null;systemQuery='';inventory=null;detail=null;query='';kind='all';offset=0;linkOffset=0;symbolOffset=0;selected=null;}
+      if(file){mode='files';system=null;query='';kind='all';offset=0;selected=file;linkOffset=0;symbolOffset=0;}
       host.innerHTML=shell();host.addEventListener('click',click);
       host.querySelector('#map-search').addEventListener('input',event=>{query=event.target.value;offset=0;clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(),250);});
       host.querySelector('#map-kind').addEventListener('change',event=>{kind=event.target.value;offset=0;load();});
@@ -148,7 +149,7 @@ window.OporaProjectMap=(()=>{
       host.addEventListener('mouseover',highlightSystem);host.addEventListener('focusin',highlightSystem);host.addEventListener('focusout',event=>{if(!event.relatedTarget?.closest?.('[data-map-system],[data-map-file]'))highlightSystem({target:host});});host.addEventListener('mouseout',event=>{if(!event.relatedTarget?.closest?.('[data-map-system],[data-map-file]'))highlightSystem({target:host});});
       applyMode();load();
     }
-    return {mount};
+    return {mount,getSelectedFile:()=>mode==='files'?selected:null};
   }
   return {create};
 })();

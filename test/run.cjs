@@ -22,3 +22,5 @@ require('./chat-events.test.cjs');
 require('./chat-usage.test.cjs');
 
 require('./usage-probe.test.cjs');
+
+require('./task-card.test.cjs');

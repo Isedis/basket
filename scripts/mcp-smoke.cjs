@@ -77,9 +77,9 @@ async function main() {
     assert.equal((await listReports(root)).reports.length,1);
     assert.equal((await listReports(root)).reports[0].phase,'ready_for_review');
     const allBefore=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
-    const all=await client.callTool({name:'opora_update_project',arguments:{include_state:true,project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop',feedback_note_id:added.note_id,feedback_shot_id:shot.shot_id}],active_task_id:'new-task'}}});
+    const all=await client.callTool({name:'opora_update_project',arguments:{include_state:true,project_id:allBefore.project_id,revision:allBefore.revision,agent:'codex',request_id:'all-data-smoke-01',summary:'Project data via MCP',fields:{pitch:'Updated project pitch',rules:'Keep all existing decisions',tasks:[{id:'new-task',title:'Create prototype',acceptance:'Playable loop',files:['res://project.godot'],feedback_note_id:added.note_id,feedback_shot_id:shot.shot_id}],active_task_id:'new-task'}}});
     assert.ok(!all.isError,JSON.stringify(all));assert.equal(all.structuredContent.state.activeTaskId,'new-task');assert.equal(all.structuredContent.state.tasks.length,2);
-    const linked=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'new-task'}})).structuredContent;assert.equal(linked.feedback.notes[0].note_id,added.note_id);
+    const linked=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'new-task'}})).structuredContent;assert.equal(linked.feedback.notes[0].note_id,added.note_id);assert.deepEqual(linked.task.files,['project.godot']);
     const second=new Client({name:'parallel-agent',version:'1.0.0'},{capabilities:{}});
     try {
       await second.connect(new StdioClientTransport({command,args:[entry,'--project',root],env:process.env.OPORA_MCP_EXECUTABLE?{ELECTRON_RUN_AS_NODE:'1'}:{},stderr:'pipe'}));

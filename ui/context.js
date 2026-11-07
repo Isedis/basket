@@ -1,4 +1,13 @@
 /* Shared context format for desktop and demo. No network or filesystem access. */
+function normalizeTaskFiles(files) {
+  if(!Array.isArray(files)||files.length>32)throw new Error('К задаче можно прикрепить до 32 файлов.');
+  return [...new Set(files.map(value=>{
+    if(typeof value!=='string')throw new Error('Укажите путь файла внутри проекта.');
+    const file=value.trim().replace(/\\/g,'/').replace(/^res:\/\//,'');
+    if(!file||file.length>1024||/[\x00-\x1f:]/.test(file)||file.startsWith('/')||file.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Нужен относительный путь внутри игры, например ui/menu.tscn.');
+    return file;
+  }))];
+}
 function validateState(state) {
   if (!state || state.version !== 1 || typeof state.name !== 'string' || !state.name.trim()) throw new Error('Укажите название игры.');
   for (const key of ['genre', 'pitch', 'experience', 'goal', 'pillars', 'rules']) {
@@ -21,6 +30,7 @@ function validateState(state) {
   const ids = new Set();
   for (const task of state.tasks) {
     if (!task || typeof task.id !== 'string' || ids.has(task.id) || typeof task.title !== 'string' || typeof task.acceptance !== 'string' || !['backlog', 'active', 'done'].includes(task.status)) throw new Error('Некорректная задача.');
+    if(task.files!==undefined){const normalized=normalizeTaskFiles(task.files);if(JSON.stringify(normalized)!==JSON.stringify(task.files))throw new Error('Пути задачи должны быть относительными и без повторов.');}
     ids.add(task.id);
   }
   if (state.activeTaskId && !ids.has(state.activeTaskId)) throw new Error('Выбранная задача не найдена.');
@@ -85,7 +95,7 @@ ${s.references.length ? s.references.map(r => `- [${r.status === 'approved' ? '�
 ${text(s.rules)}
 
 ## Выбранная задача
-${active ? `${active.title}\n\nКритерии готовности:\n${text(active.acceptance)}${active.feedbackNoteId?`\n\nСвязанное замечание: shot_id=${active.feedbackShotId}, note_id=${active.feedbackNoteId}. Прочитай снимок и решения через MCP.`:''}` : 'Нет выбранной незавершённой задачи. Уточнить конкретный запрос пользователя.'}
+${active ? `${active.title}\n\nКритерии готовности:\n${text(active.acceptance)}${active.files?.length?'\n\nЗакреплённые файлы (прочитать перед правками):\n'+active.files.map(f=>'res://'+f).join('\n'):''}${active.feedbackNoteId?`\n\nСвязанное замечание: shot_id=${active.feedbackShotId}, note_id=${active.feedbackNoteId}. Прочитай снимок и решения через MCP.`:''}` : 'Нет выбранной незавершённой задачи. Уточнить конкретный запрос пользователя.'}
 
 ## Остальные задачи
 ${s.tasks.filter(t => t.id !== active?.id).map(t => `- [${({backlog:'в очереди', active:'в работе', done:'готово'})[t.status]}] ${t.title}`).join('\n') || 'Нет.'}
@@ -141,5 +151,5 @@ function mergeProject(base,local,remote,preferRemote=false) {
   };
   return {state:merge(base,local,remote,''),conflicts};
 }
-const OporaContext = {validateState, contextMarkdown, taskBrief,mergeBrand,mergeProject};
+const OporaContext = {normalizeTaskFiles,validateState, contextMarkdown, taskBrief,mergeBrand,mergeProject};
 if (typeof module !== 'undefined' && module.exports) module.exports = OporaContext;

@@ -269,6 +269,7 @@ if(primary)await app.whenReady().then(async () => {
   });
   ipcMain.handle('project:save', (_, state,baseBrand,baseState,approvedBrand) => core.saveProject(requireProject(), state,{baseBrand,baseState,approvedBrand}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
+  ipcMain.handle('task:card',(_,id)=>require('../src/task-card.cjs').read(requireProject(),id));
   ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));
   ipcMain.handle('workspace:read',(_,input={})=>{const project=requireProject();if(!workReaders.has(project)){workReaders.clear();workReaders.set(project,workContext.reader(project));}return workReaders.get(project)(input);});
   ipcMain.handle('feedback:read',()=>visualFeedback.read(requireProject()));

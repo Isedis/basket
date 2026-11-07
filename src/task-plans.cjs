@@ -3,7 +3,7 @@ const service=require('./agent-service.cjs'),{assertSafePath}=require('./core.cj
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const fail=(code,message)=>Object.assign(new Error(message),{code});
 const activeChecks=new Map();
-const taskHash=task=>hash([task.id,task.title,task.acceptance,task.feedbackNoteId||null,task.feedbackShotId||null]);
+const taskHash=task=>hash([task.id,task.title,task.acceptance,task.feedbackNoteId||null,task.feedbackShotId||null,...(task.files?.length?[task.files]:[])]);
 function location(taskId){if(typeof taskId!=='string'||!taskId||taskId.length>160)throw fail('INVALID_TASK','Некорректная задача.');return '.opora/task-plans/'+hash(taskId)+'.json';}
 async function read(root,taskId){const relative=location(taskId);await assertSafePath(root,relative);try{const file=path.join(root,relative),stat=await fs.stat(file);if(stat.size>8*1024*1024)throw fail('PLAN_TOO_LARGE','План превышает 8 МиБ.');const p=JSON.parse(await fs.readFile(file,'utf8'));if(p.version!==1||p.task_id!==taskId||!Array.isArray(p.stages))throw fail('INVALID_PLAN','Не удалось прочитать план задачи.');return p;}catch(error){if(error.code==='ENOENT')return null;throw error;}}
 async function write(root,p){p.updated_at=new Date().toISOString();const copy={...p};delete copy.revision;p.revision=hash(copy);const text=JSON.stringify(p,null,2)+'\n';if(Buffer.byteLength(text)>8*1024*1024)throw fail('PLAN_TOO_LARGE','План слишком большой; прежняя версия сохранена.');const file=path.join(root,location(p.task_id)),temp=file+'.'+crypto.randomUUID()+'.tmp';await fs.writeFile(temp,text,{flag:'wx',mode:0o600});try{await fs.rename(temp,file);}finally{await fs.rm(temp,{force:true}).catch(()=>{});}}

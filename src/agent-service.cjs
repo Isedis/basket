@@ -36,7 +36,7 @@ function guard(current,projectId,revision) {
   if(revision!==undefined && current.revision!==revision)throw fault('STALE_CONTEXT','Контекст изменился. Перечитайте opora_get_context и используйте новую revision.');
 }
 function identity(s) {return {project_id:s.project_id,revision:s.revision,brand_revision:s.brand_revision};}
-async function listReports(root,limit=30) {
+async function listReports(root,limit=30,taskId) {
   const current=await snapshot(root);
   const directory='.opora/agent-reports';
   await assertSafePath(current.root,directory);
@@ -51,11 +51,12 @@ async function listReports(root,limit=30) {
     try {
       const item=JSON.parse((await boundedRead(path.join(current.root,directory,entry.name),512*1024)).toString('utf8'));
       if(item.version!==1 || typeof item.project_id!=='string' || typeof item.revision!=='string' || typeof item.summary!=='string' || !['in_progress','blocked','ready_for_review'].includes(item.phase) || !['claude','codex','other'].includes(item.agent) || typeof item.recordedAt!=='string' || !Array.isArray(item.checks) || item.checks.some(c=>!c || typeof c.name!=='string' || !['passed','failed','not_run'].includes(c.result))) {unreadable++;continue;}
+      if(taskId&&item.task_id!==taskId)continue;
       reports.push({...item,stale_context:item.revision!==current.revision,stale_feedback:item.feedback_revision?item.feedback_revision!==feedbackRevision:null,stale_code:item.source_snapshot?item.source_snapshot.revision!==source.revision:null,source_unknown:!item.source_snapshot,stale:item.revision!==current.revision||!!item.source_snapshot&&item.source_snapshot.revision!==source.revision||!!item.feedback_revision&&item.feedback_revision!==feedbackRevision,fromDifferentPath:item.project_id!==current.project_id});
     } catch {unreadable++;}
   }
   reports.sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
-  return {reports:reports.slice(0,Math.min(limit,100)),unreadable};
+  return {reports:reports.slice(0,Math.min(limit,100)),total:reports.length,unreadable};
 }
 async function reportProgress(root,input) {
   const current=await snapshot(root);
@@ -159,8 +160,8 @@ async function updateWorkspace(root,input) {
     if(patch.brand)delete next.brand.approval;
     const ids=new Set();
     const visual=patch.tasks?.some(t=>t.feedback_note_id||t.feedback_shot_id)?await require('./visual-feedback.cjs').read(root):null;
-    for(const task of patch.tasks||[]){if(task.feedback_note_id||task.feedback_shot_id){if(!visual.store.shots.some(s=>s.id===task.feedback_shot_id&&s.notes.some(n=>n.id===task.feedback_note_id)))throw fault('UNKNOWN_NOTE','Связанные снимок и замечание не найдены в этом проекте.');}
-      const id=task.id||crypto.randomUUID();if(ids.has(id))throw fault('INVALID_PATCH','Повторяющийся ID задачи.');ids.add(id);const old=next.tasks.find(t=>t.id===id);const value={...old,...task,id,status:task.status||(old?.status==='done'&&(old.title!==task.title||old.acceptance!==task.acceptance)?'backlog':old?.status||'backlog')};if(task.feedback_note_id){value.feedbackNoteId=task.feedback_note_id;value.feedbackShotId=task.feedback_shot_id;}delete value.feedback_note_id;delete value.feedback_shot_id;if(old)Object.assign(old,value);else next.tasks.push(value);}
+    for(let task of patch.tasks||[]){if(task.feedback_note_id||task.feedback_shot_id){if(!visual.store.shots.some(s=>s.id===task.feedback_shot_id&&s.notes.some(n=>n.id===task.feedback_note_id)))throw fault('UNKNOWN_NOTE','Связанные снимок и замечание не найдены в этом проекте.');}
+      if(task.files!==undefined)task={...task,files:require('../ui/context.js').normalizeTaskFiles(task.files)};const id=task.id||crypto.randomUUID();if(ids.has(id))throw fault('INVALID_PATCH','Повторяющийся ID задачи.');ids.add(id);const old=next.tasks.find(t=>t.id===id);const value={...old,...task,id,status:task.status||(old?.status==='done'&&(old.title!==task.title||old.acceptance!==task.acceptance)?'backlog':old?.status||'backlog')};if(task.feedback_note_id){value.feedbackNoteId=task.feedback_note_id;value.feedbackShotId=task.feedback_shot_id;}delete value.feedback_note_id;delete value.feedback_shot_id;if(old)Object.assign(old,value);else next.tasks.push(value);}
     if(Object.hasOwn(patch,'active_task_id')){if(patch.active_task_id!==null && (typeof patch.active_task_id!=='string'||!next.tasks.some(t=>t.id===patch.active_task_id&&t.status!=='done')))throw fault('UNKNOWN_TASK','Нельзя выбрать неизвестную или завершённую задачу.');next.activeTaskId=patch.active_task_id;if(patch.active_task_id)next.tasks.find(t=>t.id===patch.active_task_id).status='active';}
     validateState(next);let total=0;const copies=[];
     for(const original of patch.reference_files||[]){

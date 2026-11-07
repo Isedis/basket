@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('opora', {
   preview: state => ipcRenderer.invoke('project:preview', state),
   sync: (state,baseBrand,baseState) => ipcRenderer.invoke('project:sync', state,baseBrand,baseState),
   projectSnapshot: () => ipcRenderer.invoke('project:snapshot'),
+  taskCard: id => ipcRenderer.invoke('task:card',id),
   projectMap: options => ipcRenderer.invoke('project:map', options),
   workContext: input => ipcRenderer.invoke('workspace:read',input),
   feedbackHistory: input => ipcRenderer.invoke('feedback:history',input),
