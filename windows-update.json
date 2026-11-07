@@ -1,74 +1,74 @@
 {
-  "commit": "0934f2737986e18c58b06b8721ed9c009ceae3aa",
-  "run": "https://github.com/Isedis/basket/actions/runs/42329140904",
-  "checkedAt": "2026-11-07T02:28:55.940Z",
+  "commit": "51662b38101d4ca3acb91db4225770c2a52c5bf6",
+  "run": "https://github.com/Isedis/basket/actions/runs/42335516664",
+  "checkedAt": "2026-11-07T03:48:30.350Z",
   "platform": "windows-latest",
   "steps": {
-    "taskcard": "success",
-    "chat": "success",
+    "taskcard": "skipped",
+    "chat": "failure",
     "release": "success",
     "oldbase": "success",
     "portable": "success",
     "startup": "success",
     "unit": "success",
-    "native": "success",
-    "rollback": "success"
+    "native": "skipped",
+    "rollback": "skipped"
   },
   "release": {
     "nativeRelaunch": true,
     "result": {
       "status": "installed",
       "phase": "Проверка видимого интерфейса",
-      "version": "0.21.1",
-      "installId": "0fc1cc59-002d-48d7-8240-fbe22eda1be3",
+      "version": "0.22.1",
+      "installId": "c8629ebb-e91a-4479-97d6-fc5f8891d443",
       "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0",
-      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.21.1-199db9cafcb8",
+      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.22.1-615e25bb0d36",
       "previousDirectory": "D:\\a\\basket\\basket\\release\\Opora-win32-x64",
       "backup": "D:\\a\\basket\\basket\\release\\Opora-win32-x64",
-      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-2qjbFT",
-      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-2qjbFT\\installer.log",
-      "recordedAt": "2026-11-07T02:26:14.592Z"
+      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-OZVvoJ",
+      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\.opora-update-OZVvoJ\\installer.log",
+      "recordedAt": "2026-11-07T03:47:45.999Z"
     },
     "gui-process.json": {
-      "pid": 4364,
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.21.1-199db9cafcb8\\Opora.exe"
+      "pid": 6920,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.22.1-615e25bb0d36\\Opora.exe"
     },
     "launch-ack.json": {
-      "version": "0.21.1",
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.21.1-199db9cafcb8\\Opora.exe",
-      "pid": 4364,
+      "version": "0.22.1",
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\1162da33d5c482c0\\v\\0.22.1-615e25bb0d36\\Opora.exe",
+      "pid": 6920,
       "painted": true
     },
     "installer.log": "Готово к штатному перезапуску Electron\nПроверка видимого интерфейса\n",
     "stderr.log": "",
     "visibleColors": 95,
     "dataPreserved": true,
-    "from": "0.21.0",
-    "to": "0.21.1"
+    "from": "0.22.0",
+    "to": "0.22.1"
   },
   "oldbase": {
     "nativeRelaunch": true,
     "result": {
       "status": "installed",
       "phase": "Проверка запуска новой версии",
-      "version": "0.21.0",
-      "installId": "ed32ce3b-78e4-4c61-912f-3526c71482d6",
-      "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7",
-      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7\\v\\0.21.0-b24963ce16a6",
-      "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-dxOn3O\\old\\Opora-win32-x64",
-      "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-dxOn3O\\old\\Opora-win32-x64",
-      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7\\.opora-update-Ee2pbd",
-      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7\\.opora-update-Ee2pbd\\installer.log",
-      "recordedAt": "2026-11-07T02:26:33.779Z"
+      "version": "0.22.0",
+      "installId": "610ef3ce-794d-402e-b85e-46fc96908992",
+      "home": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1",
+      "directory": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1\\v\\0.22.0-6c10806679c6",
+      "previousDirectory": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-jpOiv7\\old\\Opora-win32-x64",
+      "backup": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-release-jpOiv7\\old\\Opora-win32-x64",
+      "job": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1\\.opora-update-1bjwSZ",
+      "log": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1\\.opora-update-1bjwSZ\\installer.log",
+      "recordedAt": "2026-11-07T03:48:07.838Z"
     },
     "gui-process.json": {
-      "pid": 3160,
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7\\v\\0.21.0-b24963ce16a6\\Opora.exe"
+      "pid": 1256,
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1\\v\\0.22.0-6c10806679c6\\Opora.exe"
     },
     "launch-ack.json": {
-      "version": "0.21.0",
-      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\ded7fdbda13b3cc7\\v\\0.21.0-b24963ce16a6\\Opora.exe",
-      "pid": 3160,
+      "version": "0.22.0",
+      "executable": "C:\\Users\\runneradmin\\AppData\\Roaming\\opora-desktop\\runtime\\483b2daa1516fba1\\v\\0.22.0-6c10806679c6\\Opora.exe",
+      "pid": 1256,
       "painted": true
     },
     "installer.log": "Проверка подготовленной версии\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/LICENSE\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/README.md\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/conpty_console_list_agent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/eventEmitter2.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/index.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/interfaces.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/shared/conout.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/terminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/types.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/unixTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/utils.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsConoutConnection.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsPtyAgent.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/windowsTerminal.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/lib/worker/conoutSocketWorker.js\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/package.json\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty/conpty.dll\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty_console_list.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/pty.node\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty-agent.exe\nПроверка SHA256: resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/winpty.dll\nПроверка SHA256: Opora.exe\nПроверка SHA256: resources/app.asar\nПроверка SHA256: .opora-location.json\nУстановщик готов. Перезапуск окна Опоры\nВключение новой версии\nПроверка запуска новой версии\n",
@@ -76,10 +76,10 @@
     "visibleColors": 95,
     "dataPreserved": true,
     "from": "0.13.0",
-    "to": "0.21.0"
+    "to": "0.22.0"
   },
   "portable": {
-    "version": "0.21.0",
+    "version": "0.22.0",
     "opensWithLegacyWindowRunning": true,
     "notesAndBrandbookPreserved": true,
     "saveAndRestartWorks": true,
@@ -90,91 +90,31 @@
     "cases": [
       {
         "scenario": "clean",
-        "visibleMs": 1157,
-        "version": "0.21.0",
+        "visibleMs": 1187,
+        "version": "0.22.0",
         "notesPreserved": true
       },
       {
         "scenario": "invalid-broker",
-        "visibleMs": 562,
-        "version": "0.21.0",
+        "visibleMs": 395,
+        "version": "0.22.0",
         "notesPreserved": true
       },
       {
         "scenario": "silent-broker",
-        "visibleMs": 885,
-        "version": "0.21.0",
+        "visibleMs": 388,
+        "version": "0.22.0",
         "notesPreserved": true
       }
     ],
     "current": {
       "scenario": "silent-broker",
-      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-Molwri\\silent-broker\\opora"
+      "profile": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-startup-4xOXY7\\silent-broker\\opora"
     },
     "failureScreenWorks": true
   },
-  "native": {
-    "platform": "win32",
-    "version": "0.21.0",
-    "mode": "button",
-    "oldProcess": {
-      "pid": 9172,
-      "pageClosed": true,
-      "inspectorDetached": false
-    },
-    "lifecycle": "9172 quit\n",
-    "terminalSurvived": true,
-    "hardlinkedRuntime": true,
-    "localRuntimeReused": true,
-    "mcpSurvived": true,
-    "dataPreserved": true
-  },
-  "rollback": {
-    "platform": "win32",
-    "version": "0.21.0",
-    "mode": "button",
-    "oldProcess": {
-      "pid": 3884,
-      "pageClosed": true,
-      "inspectorDetached": false
-    },
-    "lifecycle": "3884 quit\n",
-    "worker-launch.json": {
-      "parentPid": 3884,
-      "expectedPid": 2360
-    },
-    "progress.json": {
-      "pid": 2360,
-      "phase": "Проверка видимого интерфейса"
-    },
-    "ready.json": {
-      "pid": 2360,
-      "tokenMatches": true
-    },
-    "plan.json": {
-      "parentPid": 3884,
-      "version": "0.21.0"
-    },
-    "parent-handoff.json": {
-      "pid": 3884,
-      "saved": true,
-      "released": true,
-      "tokenMatches": true
-    },
-    "new-start.json": {
-      "pid": 9160,
-      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-Bmki46\\profile\\runtime\\c5d9127de89e6d0d\\v\\0.21.0-be0438423aad\\Opora.exe",
-      "version": "0.21.0",
-      "argv": [
-        "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-Bmki46\\profile\\runtime\\c5d9127de89e6d0d\\v\\0.21.0-be0438423aad\\Opora.exe",
-        "--user-data-dir=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-Bmki46\\profile",
-        "--opora-update-job=C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\opora-update-Bmki46\\profile\\runtime\\c5d9127de89e6d0d\\.opora-update-W0QVQi",
-        "--opora-update-token=[redacted]"
-      ]
-    },
-    "rollback": true,
-    "mcpSurvived": true,
-    "dataPreserved": true
-  },
-  "migration": null
+  "native": null,
+  "rollback": null,
+  "migration": null,
+  "chatLog": "\r\n> opora@0.22.0 test:chat\r\n> node scripts/chat-smoke.cjs\r\n\r\nCHAT_DIAGNOSTICS {\r\n  uiError: '',\r\n  state: {\r\n    root: 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\opora chat & игра-ursaFD\\\\game',\r\n    status: 'idle',\r\n    error: null,\r\n    automation: {\r\n      context_mode: 'delta',\r\n      sent_bytes: 1795,\r\n      full_bytes: 3045,\r\n      avoided_bytes: 1250,\r\n      run: [Object]\r\n    }\r\n  }\r\n}\r\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\r\n+ actual - expected\r\n\r\n+ 'delta'\r\n- 'unchanged'\r\n\r\n    at main (D:\\a\\basket\\basket\\scripts\\chat-smoke.cjs:34:1190) {\r\n  generatedMessage: true,\r\n  code: 'ERR_ASSERTION',\r\n  actual: 'delta',\r\n  expected: 'unchanged',\r\n  operator: 'strictEqual',\r\n  diff: 'simple'\r\n}\r\n"
 }
