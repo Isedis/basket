@@ -7,6 +7,11 @@ window.OporaClaudeTerminal={create(options){
   const storage={get(key,fallback){try{return localStorage.getItem(key)||fallback;}catch{return fallback;}},set(key,value){try{localStorage.setItem(key,value);}catch{}}};
   const busy=()=>['starting','working','permission','stopping'].includes(current?.status);
   const draftKey=()=>`opora:claude-draft:${getRoot()||'none'}:${current?.id||'new'}`;
+  const bindingKey=()=>`opora:claude-task:${getRoot()||'none'}:${current?.id||'new'}`;
+  function boundTask(){try{const value=JSON.parse(storage.get(bindingKey(),''));if(value&&Object.hasOwn(value,'taskId'))return value.taskId;}catch{}if(current&&Object.hasOwn(current,'bound_task_id')&&current.bound_task_id!==undefined)return current.bound_task_id;if(current?.messages?.length)return current.task_id||null;return options.getTaskId?.()||null;}
+  function seedBinding(){if(getRoot()&&!storage.get(bindingKey(),''))storage.set(bindingKey(),JSON.stringify({taskId:boundTask()}));}
+  function bindTask(taskId){storage.set(bindingKey(),JSON.stringify({taskId:taskId||null}));controls();void refreshPlan();}
+  function renderBinding(){const taskId=boundTask(),tasks=options.getTasks?.()||[],select=el('task-binding'),missing=taskId&&!tasks.some(t=>t.id===taskId);const markup='<option value="">Без задачи · обсуждение проекта</option>'+tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}${t.status==='done'?' · завершена':''}</option>`).join('')+(missing?`<option value="${esc(taskId)}">Задача удалена · восстановите из корзины</option>`:'');if(select.innerHTML!==markup)select.innerHTML=markup;select.value=taskId||'';select.disabled=loading||busy()||!getRoot();el('task-binding-note').textContent=missing?'Выберите другую задачу или восстановите удалённую.':!el('context-enabled').checked?'Контекст Опоры выключен':taskId?'Следующее сообщение относится к этой задаче':'Правила проекта без выбранной задачи';}
   function saveDraft(){storage.set(draftKey(),el('input').value);}
   function height(value,persist=true){const max=Math.max(380,window.innerHeight-100),h=Math.min(max,Math.max(380,Number(value)||460));document.body.style.setProperty('--claude-height',h+'px');dock.querySelector('[data-dock="resize"]').setAttribute('aria-valuenow',Math.round(h));dock.querySelector('[data-dock="resize"]').setAttribute('aria-valuemax',Math.round(max));if(persist)storage.set('opora:claude-height',h);legacy?.resize();}
   function controls(){
@@ -18,13 +23,13 @@ window.OporaClaudeTerminal={create(options){
     dock.querySelector('[data-chat-action="stop"]').hidden=!busy();
     el('context-state').textContent=el('context-enabled').checked?'включён':'выключен';
     if(busy()&&typeof current?.autoApprove==='boolean')el('auto-approve').checked=current.autoApprove;
-    renderAutomation();renderPlan();adoptCards();updateLive();window.OporaChatUsage.render(el('usage'),current?.metrics,busy());for(const tab of el('history').querySelectorAll('[data-chat-id]'))tab.disabled=busy()&&tab.dataset.chatId!==current?.id;el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
+    renderBinding();renderAutomation();renderPlan();adoptCards();updateLive();window.OporaChatUsage.render(el('usage'),current?.metrics,busy());for(const tab of el('history').querySelectorAll('[data-chat-id]'))tab.disabled=busy()&&tab.dataset.chatId!==current?.id;el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
     dock.querySelector('[data-chat-action="task"]').disabled=loading||!getRoot();
     document.querySelectorAll('[data-action="claude-open"]').forEach(b=>b.classList.toggle('terminal-running',busy()||!!legacy?.isActive()));
   }
   function setMode(value){mode=value;el('pane').hidden=value!=='chat';el('legacy').hidden=value!=='terminal';for(const b of dock.querySelectorAll('.claude-mode-tabs button'))b.setAttribute('aria-pressed',String(b.dataset.dock===mode));controls();}
   const legacy=window.OporaClaudeLegacy.create({...options,onShow:()=>setMode('terminal'),onState:s=>{legacyState=s;queueMicrotask(controls);}});
-  function show(){visible=true;dock.hidden=false;document.body.classList.add('with-terminal');height(storage.get('opora:claude-height',460),false);controls();}
+  function show(){visible=true;seedBinding();dock.hidden=false;document.body.classList.add('with-terminal');height(storage.get('opora:claude-height',460),false);controls();}
   function hide(){saveDraft();visible=false;dock.hidden=true;document.body.classList.remove('with-terminal');}
   const tail=document.createElement('div');tail.className='chat-tail';
   const live=document.createElement('div');live.className='chat-live';live.hidden=true;
@@ -71,7 +76,7 @@ window.OporaClaudeTerminal={create(options){
     }
     if(panel.classList.contains('has-questions'))requestAnimationFrame(()=>panel.querySelector('.question-field:not([hidden]) legend')?.focus({preventScroll:true}));
   }
-  function accept(snapshot){if(!snapshot)return;errorMessage='';current=snapshot;storage.set('opora:claude-current:'+snapshot.root,snapshot.id);resetMessages();if(snapshot.hasEarlierMessages){const note=document.createElement('p');note.className='small';note.textContent='Показана последняя часть переписки. Полная сессия доступна Claude Code.';el('messages').append(note);}for(const m of snapshot.messages||[])renderMessage(m);empty();permissions();controls();el('input').value=storage.get(draftKey(),'');requestAnimationFrame(()=>{el('messages').scrollTop=el('messages').scrollHeight;});contextLabel();}
+  function accept(snapshot){if(!snapshot)return;errorMessage='';current=snapshot;seedBinding();storage.set('opora:claude-current:'+snapshot.root,snapshot.id);resetMessages();if(snapshot.hasEarlierMessages){const note=document.createElement('p');note.className='small';note.textContent='Показана последняя часть переписки. Полная сессия доступна Claude Code.';el('messages').append(note);}for(const m of snapshot.messages||[])renderMessage(m);empty();permissions();controls();el('input').value=storage.get(draftKey(),'');requestAnimationFrame(()=>{el('messages').scrollTop=el('messages').scrollHeight;});contextLabel();}
   function update(event){
     if(event.root!==getRoot()&&getRoot())return;if(!current||current.id!==event.id){if(busy())return;current={...event,messages:[]};resetMessages();}
     const log=el('messages'),bottom=log.scrollHeight-log.scrollTop-log.clientHeight<90;
@@ -79,7 +84,7 @@ window.OporaClaudeTerminal={create(options){
     permissions();controls();contextLabel();if(bottom)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
     if(!busy()&&event.status)void history(false);
   }
-  const planTaskId=()=>busy()?(current?.task_id||options.getTaskId?.()):(options.getTaskId?.()||current?.task_id);
+  const planTaskId=()=>busy()?current?.task_id:boundTask();
   function renderPlan(){
     const node=el('plan');node.hidden=!plan;if(!plan)return;
     const signature=JSON.stringify(plan)+'|'+busy()+'|'+planHistory;if(signature===planSignature)return;planSignature=signature;
@@ -107,13 +112,13 @@ window.OporaClaudeTerminal={create(options){
     const saved=storage.get('opora:claude-current:'+root,'');if(openSaved&&!current&&items.length){const id=items.find(i=>i.id===saved)?.id||items[0].id;accept(await bridge.chatOpen(id));}
   }
   async function openHistory(id){saveDraft();loading=true;controls();try{accept(await bridge.chatOpen(id));await history(false);}finally{loading=false;controls();}}
-  async function preview(){await prepare();context=await bridge.workContext({});el('context-text').textContent=JSON.stringify({project:context.root,task:context.task,passport:context.passport,brand:context.brand,feedback:context.feedback},null,2);el('context-preview').hidden=false;el('context-preview').open=true;el('context-preview').scrollIntoView({block:'nearest'});}
+  async function preview(){await prepare();context=await bridge.workContext({task_id:boundTask()});el('context-text').textContent=JSON.stringify(context,null,2);el('context-preview').hidden=false;el('context-preview').open=true;el('context-preview').scrollIntoView({block:'nearest'});}
   async function send(task=false,forcedTaskId,extra={}){
     if(loading||busy()||(!task&&!el('input').value.trim()))return;
     const oldDraftKey=draftKey(),draft=el('input').value;errorMessage='';loading=true;controls();saveDraft();
     try{
-      let text=draft,taskId=forcedTaskId;
-      if(task){const request=await getPrompt({inline:true});taskId=request.taskId;text=(extra.requirePlan?'Составь и выполни поэтапный план этой задачи через opora_task_plan. ':'')+request.text+(draft.trim()?'\nУточнения: '+draft:'');el('context-enabled').checked=true;}
+      let text=draft,taskId=forcedTaskId===undefined?boundTask():forcedTaskId;
+      if(task){const request=await getPrompt({inline:true,taskId});taskId=request.taskId;text=(extra.requirePlan?'Составь и выполни поэтапный план этой задачи через opora_task_plan. ':'')+request.text+(draft.trim()?'\nУточнения: '+draft:'');el('context-enabled').checked=true;}
       await prepare();const snapshot=await bridge.chatSend({id:current?.id,text,taskId,includeContext:el('context-enabled').checked,autoApprove:el('auto-approve').checked,...extra});storage.set(oldDraftKey,'');storage.set(`opora:claude-draft:${snapshot.root}:${snapshot.id}`,'');accept(snapshot);el('input').value='';await history(false);
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}finally{loading=false;controls();}
   }
@@ -126,7 +131,7 @@ window.OporaClaudeTerminal={create(options){
       if(d.dock==='chat'){setMode('chat');show();await history(!current);return;}
       if(d.dock==='terminal'){setMode('terminal');show();legacy.show();return;}
       if(d.chatId){if(busy()||loading)return;await openHistory(d.chatId);return;}
-      if(d.chatAction==='usage-refresh'){if(!current){await prepare();accept(await bridge.chatNew());}const snapshot=await bridge.chatUsage();if(snapshot&&snapshot.id===current?.id){current.metrics=snapshot.metrics;controls();}return;}
+      if(d.chatAction==='usage-refresh'){if(!current){const taskId=boundTask();await prepare();accept(await bridge.chatNew());bindTask(taskId);}const snapshot=await bridge.chatUsage();if(snapshot&&snapshot.id===current?.id){current.metrics=snapshot.metrics;controls();}return;}
       if(d.chatAction==='send'){await send();return;}
       if(d.chatAction==='run-task'){await send(true);return;}
       if(d.chatAction==='plan-build'){await send(true,undefined,{requirePlan:true});await refreshPlan();return;}
@@ -136,12 +141,12 @@ window.OporaClaudeTerminal={create(options){
       if(d.chatAction==='plan-history'){planHistory=!planHistory;await refreshPlan();return;}
       if(d.chatAction==='fix-check'){if(busy()||loading)return;el('input').value='Исправь ошибки автоматической проверки Godot из предыдущего ответа, сохрани критерии и принятые решения. Прочитай актуальные исходники перед исправлением.'+(el('input').value.trim()?'\nУточнения: '+el('input').value:'');await send(false,current?.automation?.run?.task_id);return;}
       if(d.chatAction==='godot'){if(await bridge.godotSelect())notify('Godot выбран. Следующие изменения будут проверяться автоматически.');return;}
-      if(d.chatAction==='review'){hide();await options.onReview?.();return;}
+      if(d.chatAction==='review'){hide();await options.onReview?.({taskId:current?.automation?.run?.task_id||current?.task_id,reportId:current?.automation?.run?.report_id});return;}
       if(d.chatAction==='new'){saveDraft();accept(await bridge.chatNew());await history(false);el('input').focus();}
       if(d.chatAction==='history'){dock.classList.toggle('history-hidden');storage.set('opora:claude-history-hidden',dock.classList.contains('history-hidden')?'1':'0');}
       if(d.chatAction==='stop'){accept(await bridge.chatStop(current.id));}
       if(d.chatAction==='context')await preview();
-      if(d.chatAction==='task'){const text=await getPrompt();el('input').value=text;saveDraft();el('input').focus();}
+      if(d.chatAction==='task'){const text=await getPrompt({taskId:boundTask()});el('input').value=text;saveDraft();el('input').focus();}
       if(d.chatAction==='select'){if(await bridge.claudeSelect())notify('Claude Code выбран.');}
       if(d.chatAllow||d.chatDeny){
         const requestId=d.chatAllow||d.chatDeny,request=current.permissions.find(r=>r.requestId===requestId),section=action.closest('[data-permission]');
@@ -152,6 +157,7 @@ window.OporaClaudeTerminal={create(options){
 
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}
   });
+  el('task-binding').addEventListener('change',()=>bindTask(el('task-binding').value||null));
   el('context-enabled').addEventListener('change',controls);
   el('auto-approve').addEventListener('change',async()=>{const enabled=el('auto-approve').checked;storage.set('opora:claude-auto-approve:'+getRoot(),String(enabled));if(current){try{accept(await bridge.chatAutoApprove(enabled));}catch(error){el('auto-approve').checked=!enabled;storage.set('opora:claude-auto-approve:'+getRoot(),String(!enabled));onError(error);}}});
   el('usage').addEventListener('toggle',()=>{if(el('usage').open)window.OporaChatUsage.render(el('usage'),current?.metrics,busy());});
@@ -168,5 +174,5 @@ window.OporaClaudeTerminal={create(options){
   bridge?.onChatEvent?.(update);bridge?.chatState?.().then(snapshot=>{if(snapshot){accept(snapshot);if(busy()){setMode('chat');show();}}}).catch(onError);
   setInterval(()=>{if(!document.hidden){void refreshPlan();updateLive();}},1500);
   empty();controls();
-  return {async runTask(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();await send(true);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);await refreshPlan();el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;el('auto-approve').checked=storage.get('opora:claude-auto-approve:'+root,'true')==='true';plan=null;planKey='';planSignature='';renderPlan();if(!busy()&&current?.root!==root){current=null;resetMessages();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
+  return {async runTask({taskId=options.getTaskId?.(),instructions=''}={}){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();if(boundTask()!==taskId){saveDraft();accept(await bridge.chatNew());await history(false);}bindTask(taskId);if(instructions)el('input').value=instructions;await send(true,taskId);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);await refreshPlan();el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;el('auto-approve').checked=storage.get('opora:claude-auto-approve:'+root,'true')==='true';plan=null;planKey='';planSignature='';renderPlan();if(!busy()&&current?.root!==root){current=null;resetMessages();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
 }};

@@ -216,11 +216,13 @@ if(primary)await app.whenReady().then(async () => {
   terminalHandle('chat:send',async input=>{
     if(chatBusy())throw new Error('Claude ещё работает.');chatStarting=true;try{
     const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');
+    const conversation=input.id?await chatCall('chat:open',{root:project,id:input.id}):null;
+    const taskId=require('./chat-task.cjs').resolve(input,conversation,(await agentService.snapshot(project)).state.activeTaskId);
     const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);if(input.resumePlan){if(!input.taskId)throw new Error('Выберите задачу плана.');await taskPlans.resume(project,input.taskId);}
     let context=null;
-    if(input.includeContext!==false){const packet=await workContext.reader(project)({...(input.taskId?{task_id:input.taskId}:{})});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}
+    if(input.includeContext!==false){const packet=await workContext.reader(project)({task_id:taskId});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}
     if(root!==project)throw new Error('Проект изменился. Повторите отправку.');
-    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),requirePlan:input.requirePlan===true,autoApprove:input.autoApprove===true});
+    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,taskId,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),requirePlan:input.requirePlan===true,autoApprove:input.autoApprove===true});
     }finally{chatStarting=false;}
   });
   terminalHandle('chat:auto-approve',enabled=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:auto-approve',enabled);});
@@ -269,6 +271,7 @@ if(primary)await app.whenReady().then(async () => {
   });
   ipcMain.handle('project:save', (_, state,baseBrand,baseState,approvedBrand) => core.saveProject(requireProject(), state,{baseBrand,baseState,approvedBrand}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
+  ipcMain.handle('task:latest',async(_,id)=>{if(typeof id!=='string'||!id||id.length>160)throw new Error('Некорректная задача.');const reports=await agentService.listReports(requireProject(),100,id);return reports.reports.find(r=>!r.fromDifferentPath)||null;});
   ipcMain.handle('task:card',(_,id)=>require('../src/task-card.cjs').read(requireProject(),id));
   ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));
   ipcMain.handle('workspace:read',(_,input={})=>{const project=requireProject();if(!workReaders.has(project)){workReaders.clear();workReaders.set(project,workContext.reader(project));}return workReaders.get(project)(input);});

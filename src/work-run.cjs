@@ -9,7 +9,7 @@ function differences(before,map){
 }
 async function begin(root,taskId){
   const [s,map]=await Promise.all([service.snapshot(root),scanProjectMap(root)]);
-  const task=s.state.tasks.find(t=>t.id===(taskId||s.state.activeTaskId)&&t.status!=='done');
+  const task=s.state.tasks.find(t=>t.id===(taskId===undefined?s.state.activeTaskId:taskId)&&t.status!=='done');
   return {id:crypto.randomUUID(),root:s.root,project_id:s.project_id,revision:s.revision,task_id:task?.id||null,task_title:task?.title||null,started_at:new Date().toISOString(),files:inventory(map),source:fromMap(map)};
 }
 async function finish(start,{status,summary,sessionId,delivery,usage,godotCommand,signal,onChecking=()=>{},forceCheck=false,verifyScripts,agent='claude'}){

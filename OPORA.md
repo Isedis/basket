@@ -1,4 +1,4 @@
-# Опора · 0.23.0
+# Опора · 0.24.0
 
 Локальное приложение для разработчика игр на Godot, работающего с Claude Code и Codex. Windows 10/11, x64. Интерфейс на русском, API-ключи не нужны.
 
@@ -10,7 +10,7 @@
 
 ## Запуск без программирования
 
-1. [Скачайте готовую Опору для Windows](https://github.com/Isedis/basket/releases/download/v0.23.0/Opora-Windows.zip).
+1. [Скачайте готовую Опору для Windows](https://github.com/Isedis/basket/releases/download/v0.24.0/Opora-Windows.zip).
 2. Полностью распакуйте архив в новую папку.
 3. Откройте папку `Opora-win32-x64` и запустите `Opora.exe`.
 4. Если игра не открылась автоматически, нажмите «Открыть проект» и выберите её папку с `project.godot`.

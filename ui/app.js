@@ -51,9 +51,9 @@ let reviewBusy = false;
 let reviewTimer = null;
 let reviewErrorFor = null;
 const bridge = window.opora;
-const claudeTerminal=window.OporaClaudeTerminal.create({bridge,getRoot:()=>root,getTaskId:()=>state.activeTaskId,prepare:async()=>{await persist();await saves;},onError:fail,notify:toast,onReview:async()=>{tab='agents';render();await refreshAgents();},getPrompt:async({inline=false}={})=>{
+const claudeTerminal=window.OporaClaudeTerminal.create({bridge,getRoot:()=>root,getTaskId:()=>state.activeTaskId,getTasks:()=>state.tasks,prepare:async()=>{await persist();await saves;},onError:fail,notify:toast,onReview:async({taskId,reportId}={})=>{if(taskId){await taskReview.open(taskId,{reportId});return;}tab='agents';render();await refreshAgents();},getPrompt:async({inline=false,taskId}={})=>{
   await persist();await saves;
-  const packet=await bridge.workContext({});
+  const packet=await bridge.workContext(taskId===undefined?{}:{task_id:taskId});
   if(inline){if(!packet.task||packet.task.status==='done')throw new Error('Выбери задачу в разделе «Задачи».');return {taskId:packet.task.id,text:`Выполни выбранную задачу «${packet.task.title}». Оцени объём: если есть несколько самостоятельных результатов или подсистем, создай внутренние этапы через opora_task_plan до правок; простую задачу выполни сразу. Если план уже существует, продолжи незавершённый этап, сохрани выполненные части. Соблюдай критерии, правила и брендбук из приложенного контекста. Прочитай исходники и связанные изображения. Проведи доступные проверки; явно укажи, что не проверялось. Опора сохранит сводку автоматически. Не принимай результат и не завершай задачу за пользователя.`};}
   return `Работаем над игрой «${packet.passport.name.text}» в ${packet.root}. Вызови opora_get_work_context${packet.task?` с task_id=${packet.task.id}`:''}, проверь путь и действующие решения. ${packet.task?`Выполни выбранную задачу «${packet.task.title}», соблюдая критерии и брендбук.`:'Помоги выбрать следующий шаг; пока не меняй файлы.'} Перед правками прочитай исходники. Не утверждай стиль и не принимай результат за пользователя. В конце запиши отчёт через MCP Опоры.`;
 }});
@@ -70,12 +70,28 @@ const taskDetail=window.OporaTaskCard.create({bridge,getRoot:()=>root,getState:(
  onStatus:async(taskId,value)=>{if(!['backlog','active','done'].includes(value))return;const task=state.tasks.find(t=>t.id===taskId);if(!task)return;task.status=value;if(value==='done'&&state.activeTaskId===taskId)state.activeTaskId=null;changed();await persist();render();},
  onSelect:async taskId=>{const task=state.tasks.find(t=>t.id===taskId);if(!task||task.status==='done')throw new Error('Выберите незавершённую задачу.');if(state.activeTaskId!==taskId||task.status!=='active'){state.activeTaskId=taskId;task.status='active';changed();await persist();render();}},
  onRun:()=>claudeTerminal.runTask(),
+ onReview:taskId=>taskReview.open(taskId),
  onNavigate:(target,data)=>{if(target==='map'){mapFocus=data.file;tab='map';}if(target==='feedback'){feedbackFocus={shot:data.shot,note:data.note};tab='feedback';}if(target==='brand')tab='brand';render();}
 });
 
-function toast(message, error = false) {
+const taskReview=window.OporaTaskReview.create({bridge,getRoot:()=>root,prepare:async()=>{await persist();await saves;},showModal,closeModal,onError:fail,notify:toast,
+ onCard:taskId=>taskDetail.open(taskId),onNavigate:data=>{feedbackFocus=data;tab='feedback';render();},
+ onComplete:async(taskId,reportId)=>{const project=root;await persist();const latest=await bridge.taskLatest(taskId);if(root!==project)throw new Error('Проект изменился.');if((latest?.id||null)!==reportId)throw new Error('Появился новый отчёт. Обновите проверку перед завершением задачи.');const task=state.tasks.find(t=>t.id===taskId);if(!task)throw new Error('Задача удалена.');task.status='done';if(state.activeTaskId===taskId)state.activeTaskId=null;changed();await persist();render();toast('Задача завершена.');},
+ onRevise:async(taskId,reason)=>{const project=root;const task=state.tasks.find(t=>t.id===taskId);if(!task||task.status==='done')throw new Error('Выберите незавершённую задачу.');state.activeTaskId=taskId;task.status='active';changed();await persist();if(root!==project)throw new Error('Проект изменился.');closeModal();render();await claudeTerminal.runTask({taskId,instructions:'Доработай результат по замечанию пользователя: '+reason});}
+});
+let latestTaskResult=null,resultLoading=false;
+function resultNotice(task){const r=latestTaskResult?.root===root&&latestTaskResult?.taskId===task?.id?latestTaskResult.report:null;if(!r||!['ready_for_review','blocked'].includes(r.phase))return '';return `<div class="task-result-notice"><div><strong>${r.phase==='blocked'?'Нужны исправления':'Есть результат для просмотра'}</strong><p>${escapeHtml(r.summary.slice(0,220))}</p></div><button class="button small" data-action="review-task" data-id="${escapeHtml(task.id)}">Проверить результат →</button></div>`;}
+async function refreshTaskResult(){if(resultLoading||!root||!bridge?.taskLatest||tab!=='overview'||document.hidden||$('#modal').open)return;const project=root,taskId=state.activeTaskId;if(!taskId){latestTaskResult=null;return;}resultLoading=true;try{const report=await bridge.taskLatest(taskId);if(project!==root||state.activeTaskId!==taskId)return;latestTaskResult={root:project,taskId,report};const host=$('#task-result-status');if(host){const markup=resultNotice(state.tasks.find(t=>t.id===taskId));if(host.innerHTML!==markup)host.innerHTML=markup;$('#focus-run')?.classList.toggle('secondary',!!markup);}}catch{}finally{resultLoading=false;}}
+setInterval(refreshTaskResult,4000);
+bridge?.onChatEvent?.(event=>{if(event.automation?.run&&!['working','starting','permission','stopping'].includes(event.status))void refreshTaskResult();});
+function editorDrafts(){return OporaTaskSafety.drafts(localStorage,root);}
+function captureTaskDraft(){const form=$('#task-form');if(!form||form.dataset.saved==='true')return;const value=OporaTaskSafety.fields(Object.fromEntries(new FormData(form)));try{if(JSON.stringify(value)!==form.dataset.initial)editorDrafts().write(form.dataset.id,value,JSON.parse(form.dataset.initial));else editorDrafts().clear(form.dataset.id);return true;}catch(error){toast('Черновик не сохранён: хранилище приложения недоступно.',true);return false;}}
+function showTaskTrash(){const entries=Object.entries(state.deletedTasks||{}).sort((a,b)=>b[1].deletedAt.localeCompare(a[1].deletedAt));showModal(`<h2 id="modal-title">Корзина задач</h2><p>Сохраняются критерии, файлы и связи. Восстановление не меняет текущую задачу для агента.</p><div class="task-trash">${entries.map(([key,e])=>`<article><div><strong>${escapeHtml(e.task.title)}</strong><small>${escapeHtml(new Date(e.deletedAt).toLocaleString('ru-RU'))}</small></div><button class="button small secondary" data-action="restore-task" data-id="${escapeHtml(key)}">Восстановить</button></article>`).join('')||'<p>Корзина пуста.</p>'}</div><div class="modal-actions"><button class="button secondary" data-action="close-modal">Закрыть</button></div>`);}
+
+function toast(message, error = false, restoreId) {
   clearTimeout(toastTimer);
   $('#toast').textContent = message;
+  if(restoreId){const button=document.createElement('button');button.className='text-button';button.dataset.action='restore-task';button.dataset.id=restoreId;button.textContent='Отменить';$('#toast').append(document.createTextNode(' '),button);}
   $('#toast').className = 'toast visible' + (error ? ' error' : '');
   toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), error ? 11000 : 5500);
 }
@@ -170,8 +186,8 @@ function overview() {
   const active=state.tasks.find(t=>t.id===state.activeTaskId && t.status!=='done');
   const queue=state.tasks.filter(t=>t.status!=='done' && t.id!==active?.id);
   return `${pageTitle('[01] / ПРОЕКТ','Рабочий стол','', '<button class="button small secondary" data-action="new-task">+ Задача</button>')}${demoBanner()}
-  <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>Текущая задача</h2><span class="badge muted">${active?'В РАБОТЕ':'С ЧЕГО НАЧНЁМ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ОЖИДАЕМЫЙ РЕЗУЛЬТАТ</span><p>${escapeHtml(active.acceptance || 'Критерии пока не указаны — их можно добавить в карточке.')}</p></div>`:'<p class="small">Выберите задачу из очереди или создайте новую.</p>'}<div class="stack">${active?`<button class="button" data-action="claude-task">Выполнить в Claude →</button><button class="button secondary" data-action="task-card" data-id="${escapeHtml(active.id)}">Открыть карточку</button>`:'<button class="button" data-action="new-task">+ Новая задача</button>'}</div></section>
-  <section class="card queue-card"><div class="card-header"><h2>Следующие задачи</h2><button class="text-button" data-action="goto-tasks">Все / ${queue.length} →</button></div>${queue.length?queue.slice(0,4).map(t=>`<div class="queue-item"><div><strong><button class="task-title-link" data-action="task-card" data-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button></strong></div><button class="text-button" data-action="select-task" data-id="${escapeHtml(t.id)}">В работу →</button></div>`).join(''):'<div class="empty">Очередь пуста.<br><button class="text-button" data-action="new-task">Добавить задачу →</button></div>'}</section></div>
+  <div class="desk-grid"><section class="card focus-task"><div class="card-header"><h2>Текущая задача</h2><span class="badge muted">${active?'ТЕКУЩАЯ':'С ЧЕГО НАЧНЁМ'}</span></div><h2 class="focus-title">${escapeHtml(active?.title || 'Выберите следующий шаг')}</h2>${active?`<div class="acceptance"><span class="section-label">ОЖИДАЕМЫЙ РЕЗУЛЬТАТ</span><p>${escapeHtml(active.acceptance || 'Критерии пока не указаны — их можно добавить в карточке.')}</p></div>`:'<p class="small">Выберите задачу из очереди или создайте новую.</p>'}<div id="task-result-status">${resultNotice(active)}</div><div class="stack">${active?`<button id="focus-run" class="button ${resultNotice(active)?'secondary':''}" data-action="claude-task">Выполнить в Claude →</button><button class="button secondary" data-action="task-card" data-id="${escapeHtml(active.id)}">Открыть карточку</button>`:'<button class="button" data-action="new-task">+ Новая задача</button>'}</div></section>
+  <section class="card queue-card"><div class="card-header"><h2>Следующие задачи</h2><button class="text-button" data-action="goto-tasks">Все / ${queue.length} →</button></div>${queue.length?queue.slice(0,4).map(t=>`<div class="queue-item"><div><strong><button class="task-title-link" data-action="task-card" data-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</button></strong></div><button class="text-button" data-action="select-task" data-id="${escapeHtml(t.id)}">Сделать текущей →</button></div>`).join(''):'<div class="empty">Очередь пуста.<br><button class="text-button" data-action="new-task">Добавить задачу →</button></div>'}</section></div>
   <details class="project-details section-gap" data-disclosure="project"><summary><span><strong>О проекте и правила</strong><small>${escapeHtml(state.genre||'Описание игры')} · сохраняются для агента</small></span><span class="disclosure-hint">Изменить</span></summary><div class="project-details-body"><div class="project-status"><button data-action="goto-brand"><span class="status-dot"></span>Брендбук: ${state.brand.status==='approved'?'утверждён':'черновик'} →</button><span>${state.references.filter(r=>r.status==='approved').length} эталонов</span><button class="text-button" data-action="copy-project-agent">Заполнить через агента →</button></div><div class="grid-two"><section class="card"><div class="card-header"><h2>Описание игры</h2></div><div class="field-row">${field('Название','name','Название игры')}${field('Жанр','genre','Roguelike / idle / …')}</div>${field('Замысел','pitch','Что делает игрок и ради чего?',true,3)}${field('Цель итерации','goal','Один конкретный результат',true,2)}<details class="extra-fields"><summary>Ощущение и принципы</summary>${field('Ощущение игрока','experience','Настроение и характер игры',true,2)}${field('Принципы игры','pillars','По одному принципу на строку',true,3)}</details></section><section class="card"><div class="card-header"><h2>Постоянные правила</h2></div>${field('Что агент должен сохранять','rules','Принятые решения: компоненты, размеры, эффекты',true,7)}<div class="compact-hint">Сохраняются автоматически и передаются агенту вместе с задачей.</div></section></div></div></details>`;
 }
 
@@ -222,11 +238,11 @@ function analysisSummary(report) {
 
 function taskCard(task) {
   const selected=state.activeTaskId===task.id && task.status!=='done';
-  return `<article class="task ${selected?'selected':''}"><div class="task-meta"><span>${selected?'[>] ТЕКУЩАЯ':'/ GODOT'}</span><button class="icon-button" data-action="edit-task" data-id="${escapeHtml(task.id)}" aria-label="Изменить задачу ${escapeHtml(task.title)}">···</button></div><h3><button class="task-title-link" data-action="task-card" data-id="${escapeHtml(task.id)}">${escapeHtml(task.title)}</button></h3><p>${escapeHtml(task.acceptance || 'Добавьте критерии готовности.')}</p><div class="task-controls"><select data-task-status="${escapeHtml(task.id)}" aria-label="Статус задачи ${escapeHtml(task.title)}">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([v,t])=>`<option value="${v}" ${task.status===v?'selected':''}>${t}</option>`).join('')}</select>${task.status!=='done'?`<button class="text-button" data-action="select-task" data-id="${escapeHtml(task.id)}">${selected?'Карточка →':'В работу →'}</button>`:'<span class="small-note">[+]</span>'}</div></article>`;
+  return `<article class="task ${selected?'selected':''}"><div class="task-meta"><span>${selected?'[>] ТЕКУЩАЯ':'/ GODOT'}</span><button class="icon-button" data-action="edit-task" data-id="${escapeHtml(task.id)}" aria-label="Изменить задачу ${escapeHtml(task.title)}">···</button></div><h3><button class="task-title-link" data-action="task-card" data-id="${escapeHtml(task.id)}">${escapeHtml(task.title)}</button></h3><p>${escapeHtml(task.acceptance || 'Добавьте критерии готовности.')}</p><div class="task-controls"><select data-task-status="${escapeHtml(task.id)}" aria-label="Статус задачи ${escapeHtml(task.title)}">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([v,t])=>`<option value="${v}" ${task.status===v?'selected':''}>${t}</option>`).join('')}</select>${task.status!=='done'?`<button class="text-button" data-action="select-task" data-id="${escapeHtml(task.id)}">${selected?'Карточка →':'Сделать текущей →'}</button>`:'<span class="small-note">[+]</span>'}</div></article>`;
 }
 
 function tasks() {
-  return `${pageTitle('[02] / РАБОТА','Задачи','','<button class="button" data-action="new-task">+ Новая задача</button>')}${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span>${label}</span><span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Нет задач</div>'}</section>`).join('')}</div>`;
+  return `${pageTitle('[02] / РАБОТА','Задачи','',`<div class="stack"><button class="text-button" data-action="task-trash">Корзина / ${Object.keys(state.deletedTasks||{}).length}</button><button class="button" data-action="new-task">+ Новая задача</button></div>`) }${demoBanner()}<div class="board">${[['backlog','В очереди'],['active','В работе'],['done','Готово']].map(([key,label])=>`<section class="column"><div class="column-header"><span>${label}</span><span>${state.tasks.filter(t=>t.status===key).length}</span></div>${state.tasks.filter(t=>t.status===key).map(taskCard).join('') || '<div class="empty">Нет задач</div>'}</section>`).join('')}</div>`;
 }
 
 function context() {
@@ -285,6 +301,7 @@ function render() {
   renderedTab=tab;renderedRoot=root;
   if (tab === 'context') updatePreview();
   if (tab === 'brand' && root) loadImages();
+  if(tab==='overview')void refreshTaskResult();
   document.querySelectorAll('[data-color]').forEach(el=>{el.style.backgroundColor=el.dataset.color;});
   if(tab==='brand'){refreshReviewPanel();queueBrandReview();}
 }
@@ -300,8 +317,8 @@ async function loadImages() {
     try {img.src = await bridge.referenceImage(ref.file);} catch {img.alt = `Не удалось загрузить: ${ref.name}`;}
   }
 }
-function showModal(content) {$('#modal').classList.toggle('task-card-dialog',content.includes('data-task-card='));$('#modal').classList.remove('command-dialog');$('#modal-content').innerHTML = content; $('#modal').showModal();}
-function closeModal() {$('#modal').close();$('#modal').classList.remove('task-card-dialog');$('#modal').classList.remove('command-dialog'); pendingSync = null; pendingBrand = null; pendingAgent=null;updatesOpen=false;}
+function showModal(content) {captureTaskDraft();$('#modal').classList.toggle('task-card-dialog',content.includes('data-task-card='));$('#modal').classList.remove('command-dialog');$('#modal-content').innerHTML = content; $('#modal').showModal();}
+function closeModal() {captureTaskDraft();$('#modal').close();$('#modal').classList.remove('task-card-dialog');$('#modal').classList.remove('command-dialog'); pendingSync = null; pendingBrand = null; pendingAgent=null;updatesOpen=false;}
 
 function renderUpdates() {
   const info=updateState;
@@ -346,8 +363,11 @@ async function scanBrand(automatic=false) {
   } finally {scanning=false;if(tab==='brand')render();}
 }
 function editTask(taskId) {
+  captureTaskDraft();
   const task = state.tasks.find(t=>t.id===taskId);
-  showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><label class="field"><span>Связанные файлы · по одному пути на строку</span><textarea name="files" rows="3" placeholder="res://ui/menu.tscn">${escapeHtml((task?.files||[]).join('\n'))}</textarea></label><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
+  showModal(`<h2 id="modal-title">${task?'Изменить задачу':'Новая задача'}</h2><form id="task-form" data-id="${escapeHtml(task?.id || '')}"><label class="field"><span>Что нужно сделать</span><input name="title" required maxlength="180" value="${escapeHtml(task?.title || '')}" placeholder="Например: привести кнопки меню к эталону"></label><label class="field"><span>Как понять, что готово</span><textarea name="acceptance" rows="5" required placeholder="Какие элементы изменить, на какой образец опираться и что проверить?">${escapeHtml(task?.acceptance || '')}</textarea></label><label class="field"><span>Связанные файлы · по одному пути на строку</span><textarea name="files" rows="3" placeholder="res://ui/menu.tscn">${escapeHtml((task?.files||[]).join('\n'))}</textarea></label><p class="task-draft-status" role="status">Черновик сохраняется автоматически.</p><button type="button" class="text-button" data-action="clear-task-draft">Очистить черновик</button><div class="modal-actions">${task?`<button type="button" class="button secondary danger" data-action="delete-task" data-id="${escapeHtml(task.id)}">Удалить</button>`:''}<button type="button" class="button secondary" data-action="close-modal">Отмена</button><button class="button" type="submit">Сохранить задачу</button></div></form>`);
+  const form=$('#task-form'),initial=OporaTaskSafety.fields(task),draft=editorDrafts().read(taskId);form.dataset.initial=JSON.stringify(initial);
+  if(draft){for(const key of ['title','acceptance','files'])form.elements[key].value=draft[key];form.querySelector('.task-draft-status').textContent=JSON.stringify(draft.base)!==JSON.stringify(initial)?'Черновик восстановлен. Сохранённая задача изменилась — проверьте текст перед сохранением.':'Черновик восстановлен.';}
 }
 async function openProject() {
   if(scanning || applyingBrand){toast('Дождитесь завершения работы с брендбуком.');return;}
@@ -381,6 +401,7 @@ async function previewSync() {
 }
 
 document.addEventListener('input', event => {
+  if(event.target.closest('#task-form')){const saved=captureTaskDraft(),note=$('.task-draft-status');if(note)note.textContent=saved?'Черновик сохранён.':'Не удалось сохранить черновик.';return;}
   if(event.target.id==='command-search'){commandIndex=0;renderCommands();return;}
   const key = event.target.dataset.field;
   if (!key) return;
@@ -402,10 +423,11 @@ document.addEventListener('change', event => {
   const refId = event.target.dataset.refStatus;
   if (refId) {state.references.find(r=>r.id===refId).status = event.target.value; changed();}
 });
-document.addEventListener('submit', event => {
+document.addEventListener('submit', async event => {
   if (event.target.id !== 'task-form') return;
   event.preventDefault();
-  const form = event.target;
+  const form = event.target;if(form.dataset.committing)return;captureTaskDraft();
+  const project=root,draftStore=editorDrafts(),draftId=form.dataset.id;
   const data = new FormData(form);
   const title = data.get('title').trim();
   const acceptance = data.get('acceptance').trim();
@@ -414,7 +436,8 @@ document.addEventListener('submit', event => {
   const existing = state.tasks.find(t=>t.id === form.dataset.id);
   if (existing) Object.assign(existing,{title,acceptance,files});
   else state.tasks.push({id:id(),title,acceptance,files,status:'backlog'});
-  changed(); closeModal(); render();if(form.dataset.returnCard)void taskDetail.open(form.dataset.returnCard);
+  const value=OporaTaskSafety.fields(Object.fromEntries(data));form.dataset.committing='true';const submit=form.querySelector('[type=submit]');submit.disabled=true;
+  changed();try{await persist();draftStore.clear(draftId,value);form.dataset.saved='true';if(root===project&&form.isConnected){closeModal();render();if(form.dataset.returnCard)void taskDetail.open(form.dataset.returnCard);}}catch(error){if(form.isConnected){delete form.dataset.committing;submit.disabled=false;}}
 });
 document.addEventListener('click', async event => {
   const command=event.target.closest('[data-command]');
@@ -490,12 +513,14 @@ document.addEventListener('click', async event => {
       button.disabled=true;
       try {await applyBrand(pendingBrand,[...document.querySelectorAll('[data-brand-field]:checked')].map(e=>e.dataset.brandField),[...document.querySelectorAll('[data-brand-asset]:checked')].map(e=>e.dataset.brandAsset));} finally {button.disabled=false;}
     }
+    if(action==='review-task')await taskReview.open(button.dataset.id);
+    if(action==='task-trash')showTaskTrash();
+    if(action==='clear-task-draft'){const form=$('#task-form');editorDrafts().clear(form.dataset.id);const original=state.tasks.find(t=>t.id===form.dataset.id),value=OporaTaskSafety.fields(original);for(const key of ['title','acceptance','files'])form.elements[key].value=value[key];form.dataset.initial=JSON.stringify(value);form.querySelector('.task-draft-status').textContent='Черновик очищен.';}
+    if(action==='restore-task'){const project=root;await persist();if(project!==root)return;OporaTaskSafety.restore(state,button.dataset.id);changed();await persist();render();if($('#modal').open&&$('#modal-title')?.textContent==='Корзина задач')showTaskTrash();toast('Задача восстановлена.');}
     if (action === 'new-task') editTask();
     if (action === 'edit-task') editTask(button.dataset.id);
     if (action === 'delete-task') {
-      state.tasks = state.tasks.filter(t=>t.id !== button.dataset.id);
-      if (state.activeTaskId === button.dataset.id) state.activeTaskId = null;
-      changed(); closeModal(); render();
+      const project=root;captureTaskDraft();await persist();if(root!==project)return;OporaTaskSafety.remove(state,button.dataset.id);changed();await persist();if($('#task-form'))$('#task-form').dataset.saved='true';closeModal();render();toast('Задача перемещена в корзину.',false,button.dataset.id);
     }
     if (action === 'select-task') {
       if (state.activeTaskId === button.dataset.id) {await taskDetail.open(button.dataset.id);return;}
@@ -530,8 +555,9 @@ document.addEventListener('click', async event => {
     if (action === 'help') showHelp();
   } catch(error) {fail(error);}
 });
-window.addEventListener('beforeunload', () => {if (!root) persist();});
+window.addEventListener('beforeunload', () => {captureTaskDraft();if (!root) persist();});
 $('#modal').addEventListener('cancel', event => {
+  captureTaskDraft();
   if(updatesOpen && (updateState?.transaction||updateState?.status==='installing')){event.preventDefault();return;}
   pendingSync = null;pendingBrand=null;pendingAgent=null;updatesOpen=false;
 });
@@ -551,6 +577,7 @@ async function initialize() {
 bridge?.onCloseRequested?.(async () => {
   if (closing) return;
   closing = true;
+  captureTaskDraft();
   try {await visualFeedbackView.whenIdle(); await persist(); await saves; bridge.readyToClose();} catch {
     closing = false;
     showModal('<h2 id="modal-title">Изменения не сохранены</h2><p>Проверьте название игры и доступ к её папке. Можно вернуться к работе или закрыть приложение, потеряв последние несохранённые изменения.</p><div class="modal-actions"><button class="button secondary" data-action="discard-close">Закрыть без сохранения</button><button class="button" data-action="close-modal">Продолжить работу</button></div>');

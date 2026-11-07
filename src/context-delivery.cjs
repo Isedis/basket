@@ -12,7 +12,7 @@ function prepare(packet,previous){
   const delta={...identity,mode:Object.keys(changed).length?'delta':'unchanged',replace:changed};
   const fullText=JSON.stringify(full),deltaText=JSON.stringify(delta);
   const payload=compatible&&Buffer.byteLength(deltaText)<Buffer.byteLength(fullText)?delta:full;
-  const prefix='Актуальный контекст Опоры. full заменяет прежний пакет; delta заменяет перечисленные разделы целиком (включая null и массивы); unchanged сохраняет разделы. Всегда обновляй версии. Исходники и изображения читай отдельно. Если предыдущий пакет потерян или сокращён, вызови opora_get_work_context без known_revision. Поля truncated дочитывай через MCP.\n';
+  const prefix='Актуальный контекст Опоры. full заменяет прежний пакет; delta заменяет перечисленные разделы целиком (включая null и массивы); unchanged сохраняет разделы. Всегда обновляй версии. Исходники и изображения читай отдельно. Если предыдущий пакет потерян или сокращён, вызови opora_get_work_context без known_revision. Поля truncated дочитывай через MCP. task:null означает обсуждение проекта без назначенной задачи; задача на доске не является поручением к исполнению.\n';
   const text=prefix+JSON.stringify(payload),fullBytes=Buffer.byteLength(prefix+fullText);
   return {text,cache,mode:payload.mode,sent_bytes:Buffer.byteLength(text),full_bytes:fullBytes,avoided_bytes:fullBytes-Buffer.byteLength(text)};
 }

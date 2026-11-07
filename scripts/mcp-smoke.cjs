@@ -27,6 +27,7 @@ async function main() {
     const packet=(await client.callTool({name:'opora_get_work_context',arguments:{}})).structuredContent;
     assert.equal(packet.project_id,project.project_id);assert.equal(packet.task.id,'menu');assert.equal(packet.readiness.advisory,true);
     assert.equal((await client.callTool({name:'opora_get_work_context',arguments:{known_revision:packet.work_revision}})).structuredContent.mode,'unchanged');
+    const generalPacket=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:null}})).structuredContent;assert.equal(generalPacket.task,null);assert.match(generalPacket.instructions,/No task is assigned/);
     const field=(await client.callTool({name:'opora_read_project_field',arguments:{project_id:project.project_id,field:'rules',limit:4}})).structuredContent;
     assert.equal(field.text,state.rules.slice(0,4));
     const feedback=require('../src/visual-feedback.cjs');

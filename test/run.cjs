@@ -25,3 +25,6 @@ require('./usage-probe.test.cjs');
 
 require('./task-card.test.cjs');
 require('./task-readiness.test.cjs');
+
+require('./task-safety.test.cjs');
+require('./chat-task.test.cjs');

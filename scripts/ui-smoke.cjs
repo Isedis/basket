@@ -11,7 +11,7 @@ async function main() {
   await fs.writeFile(path.join(fixture,'project.godot'),'config_version=5\n[application]\nconfig/name="UI test game"\n');
   await fs.writeFile(path.join(fixture,'AGENTS.md'),'# Existing rules\nKeep original assets.\n');
   const server = http.createServer(async (req,res) => {
-    const files = {'/task-card.js':'task-card.js','/task-card.css':'task-card.css','/chat-usage.js':'chat-usage.js','/chat-polish.css':'chat-polish.css','/chat-questions.js':'chat-questions.js','/chat-markdown.js':'chat-markdown.js','/vendor/marked.js':'vendor/marked.js','/vendor/purify.js':'vendor/purify.js','/vendor/prism.js':'vendor/prism.js','/claude-chat.js':'claude-chat.js','/claude-terminal.js':'claude-terminal.js','/vendor/xterm.js':'vendor/xterm.js','/vendor/addon-fit.js':'vendor/addon-fit.js','/vendor/xterm.css':'vendor/xterm.css','/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/brand-review.js':'brand-review.js','/app.js':'app.js','/project-map.js':'project-map.js','/visual-feedback.js':'visual-feedback.js','/fonts/JetBrainsMono-Regular.ttf':'fonts/JetBrainsMono-Regular.ttf','/fonts/JetBrainsMono-SemiBold.ttf':'fonts/JetBrainsMono-SemiBold.ttf'};
+    const files = {'/task-safety.js':'task-safety.js','/task-review.js':'task-review.js','/task-card.js':'task-card.js','/task-card.css':'task-card.css','/chat-usage.js':'chat-usage.js','/chat-polish.css':'chat-polish.css','/chat-questions.js':'chat-questions.js','/chat-markdown.js':'chat-markdown.js','/vendor/marked.js':'vendor/marked.js','/vendor/purify.js':'vendor/purify.js','/vendor/prism.js':'vendor/prism.js','/claude-chat.js':'claude-chat.js','/claude-terminal.js':'claude-terminal.js','/vendor/xterm.js':'vendor/xterm.js','/vendor/addon-fit.js':'vendor/addon-fit.js','/vendor/xterm.css':'vendor/xterm.css','/':'index.html','/index.html':'index.html','/style.css':'style.css','/context.js':'context.js','/brand-review.js':'brand-review.js','/app.js':'app.js','/project-map.js':'project-map.js','/visual-feedback.js':'visual-feedback.js','/fonts/JetBrainsMono-Regular.ttf':'fonts/JetBrainsMono-Regular.ttf','/fonts/JetBrainsMono-SemiBold.ttf':'fonts/JetBrainsMono-SemiBold.ttf'};
     const file = files[req.url];
     if (!file) {res.writeHead(404); res.end(); return;}
     const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.ttf':'font/ttf'};
@@ -74,7 +74,7 @@ async function main() {
     await page.locator('[name="acceptance"]').fill('Кнопки совпадают с утверждённым меню.');
     await page.keyboard.press('Control+Enter');
     const task=page.locator('article.task').filter({has:page.getByRole('heading',{name:'Проверить экран магазина'})});
-    await task.getByRole('button',{name:'В работу →'}).click();
+    await task.getByRole('button',{name:'Сделать текущей →'}).click();
     await page.keyboard.press('Control+5');
     assert.equal(await page.locator('#side-active-task').textContent(),'Проверить экран магазина');
     assert.match(await page.locator('#context-preview').textContent(),/Кнопки совпадают с утверждённым меню/);

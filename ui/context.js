@@ -33,6 +33,14 @@ function validateState(state) {
     if(task.files!==undefined){const normalized=normalizeTaskFiles(task.files);if(JSON.stringify(normalized)!==JSON.stringify(task.files))throw new Error('Пути задачи должны быть относительными и без повторов.');}
     ids.add(task.id);
   }
+  if(state.deletedTasks!==undefined){
+    if(!state.deletedTasks||typeof state.deletedTasks!=='object'||Array.isArray(state.deletedTasks))throw new Error('Повреждена корзина задач.');
+    for(const [id,entry] of Object.entries(state.deletedTasks)){
+      const task=entry?.task;
+      if(!task||task.id!==id||typeof task.title!=='string'||typeof task.acceptance!=='string'||!['backlog','active','done'].includes(task.status)||typeof entry.deletedAt!=='string')throw new Error('Некорректная задача в корзине.');
+      if(task.files!==undefined&&JSON.stringify(normalizeTaskFiles(task.files))!==JSON.stringify(task.files))throw new Error('Некорректные пути задачи в корзине.');
+    }
+  }
   if (state.activeTaskId && !ids.has(state.activeTaskId)) throw new Error('Выбранная задача не найдена.');
   for (const ref of state.references) {
     if (!ref || typeof ref.id !== 'string' || typeof ref.name !== 'string' || !/^\.opora\/references\/[a-zA-Z0-9_-]+\.(png|jpe?g|webp)$/.test(ref.file) || !['draft', 'approved'].includes(ref.status)) throw new Error('Некорректный визуальный эталон.');
@@ -135,6 +143,7 @@ function mergeProject(base,local,remote,preferRemote=false) {
     if(same(l,b))return r;
     if(same(r,b)||same(l,r))return l;
     if(key==='updatedAt')return [l,r].filter(Boolean).sort().at(-1);
+    if(key==='deletedTasks'){const values=[b||{},l||{},r||{}];return Object.fromEntries([...new Set(values.flatMap(v=>Object.keys(v)))].map(id=>[id,merge(values[0][id],values[1][id],values[2][id],key+'.'+id)]).filter(([,v])=>v!==undefined));}
     if(key==='brand'){
       const result=mergeBrand(b,l,r);conflicts.push(...result.conflicts.map(k=>'brand.'+k));
       if(preferRemote)for(const k of result.conflicts)result.brand[k]=r[k];
