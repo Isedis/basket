@@ -78,9 +78,10 @@ jobs:
           Expand-Archive "$env:RUNNER_TEMP/godot.zip" "$env:RUNNER_TEMP/godot"
           $env:OPORA_GODOT_EXECUTABLE=(Get-ChildItem "$env:RUNNER_TEMP/godot" -Filter '*_console.exe' | Select-Object -First 1).FullName
           # Hosted runners have no gaming GPU. Render real frames with Mesa llvmpipe.
-          Invoke-WebRequest 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-msvc.7z' -OutFile "$env:RUNNER_TEMP/mesa.7z"
+          Invoke-WebRequest 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-mingw.7z' -OutFile "$env:RUNNER_TEMP/mesa.7z"
           7z x "$env:RUNNER_TEMP/mesa.7z" "-o$env:RUNNER_TEMP/mesa" -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (!(Test-Path "$env:RUNNER_TEMP/mesa/x64/opengl32.dll") -or !(Test-Path "$env:RUNNER_TEMP/mesa/x64/libgallium_wgl.dll")) { throw "Mesa OpenGL drivers are missing" }
           Copy-Item "$env:RUNNER_TEMP/mesa/x64/*.dll" "$env:RUNNER_TEMP/godot"
           $env:GALLIUM_DRIVER='llvmpipe'
           $env:LIBGL_ALWAYS_SOFTWARE='1'
