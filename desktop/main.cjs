@@ -271,6 +271,8 @@ if(primary)await app.whenReady().then(async () => {
   });
   ipcMain.handle('project:save', (_, state,baseBrand,baseState,approvedBrand) => core.saveProject(requireProject(), state,{baseBrand,baseState,approvedBrand}));
   ipcMain.handle('project:snapshot',()=>core.loadProject(requireProject()));
+  ipcMain.handle('agent-profile:read',(_,input={})=>require('../src/agent-profile.cjs').read(requireProject(),input));
+  ipcMain.handle('agent-profile:update',(_,input)=>require('../src/agent-profile.cjs').update(requireProject(),{...input,agent:'user'}));
   ipcMain.handle('task:latest',async(_,id)=>{if(typeof id!=='string'||!id||id.length>160)throw new Error('Некорректная задача.');const reports=await agentService.listReports(requireProject(),100,id);return reports.reports.find(r=>!r.fromDifferentPath)||null;});
   ipcMain.handle('task:card',(_,id)=>require('../src/task-card.cjs').read(requireProject(),id));
   ipcMain.handle('project:map',(_,options)=>projectMap.getProjectMap(requireProject(),options||{}));

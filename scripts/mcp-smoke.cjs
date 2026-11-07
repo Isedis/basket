@@ -21,13 +21,18 @@ async function main() {
     let diagnostics='';
     transport.stderr?.on('data',data=>{diagnostics+=data.toString();});
     await client.connect(transport);
-    const tools=await client.listTools();assert.equal(tools.tools.length,17);
+    const tools=await client.listTools();assert.equal(tools.tools.length,19);
     const project=(await client.callTool({name:'opora_get_project',arguments:{}})).structuredContent;
     assert.equal(project.name,'MCP fixture');
     const packet=(await client.callTool({name:'opora_get_work_context',arguments:{}})).structuredContent;
     assert.equal(packet.project_id,project.project_id);assert.equal(packet.task.id,'menu');assert.equal(packet.readiness.advisory,true);
     assert.equal((await client.callTool({name:'opora_get_work_context',arguments:{known_revision:packet.work_revision}})).structuredContent.mode,'unchanged');
     const generalPacket=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:null}})).structuredContent;assert.equal(generalPacket.task,null);assert.match(generalPacket.instructions,/No task is assigned/);
+    const profileEmpty=(await client.callTool({name:'opora_get_agent_profile',arguments:{}})).structuredContent;assert.equal(profileEmpty.total,0);
+    const profileArgs={project_id:project.project_id,profile_revision:profileEmpty.profile_revision,action:'upsert',entry:{id:'project-root',kind:'entry_point',title:'Project configuration',body:'Godot settings live in project.godot.',certainty:'source_based',sources:['project.godot'],scope_paths:[]},reason:'Read the project settings',agent:'claude',request_id:'profile-mcp-create'};
+    const profileSaved=await client.callTool({name:'opora_update_agent_profile',arguments:profileArgs});assert.ok(!profileSaved.isError,JSON.stringify(profileSaved));assert.equal((await client.callTool({name:'opora_update_agent_profile',arguments:profileArgs})).structuredContent.duplicate,true);
+    const profilePacket=(await client.callTool({name:'opora_get_work_context',arguments:{task_id:'menu'}})).structuredContent;assert.equal(profilePacket.agent_profile.entries[0].id,'project-root');assert.equal(profilePacket.agent_profile.entries[0].freshness,'current');
+    const wrongProfile=await client.callTool({name:'opora_update_agent_profile',arguments:{...profileArgs,project_id:'0'.repeat(32),request_id:'profile-wrong-project'}});assert.ok(wrongProfile.isError);assert.match(wrongProfile.content[0].text,/WRONG_PROJECT/);
     const field=(await client.callTool({name:'opora_read_project_field',arguments:{project_id:project.project_id,field:'rules',limit:4}})).structuredContent;
     assert.equal(field.text,state.rules.slice(0,4));
     const feedback=require('../src/visual-feedback.cjs');
@@ -100,7 +105,7 @@ async function main() {
     plan=await planCall({action:'pause',plan_revision:plan.revision});assert.equal(plan.status,'paused');
     await client.close();client=null;
     assert.equal(diagnostics,'');
-    console.log('PASS MCP stdio: SDK initialization, 17 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
+    console.log('PASS MCP stdio: SDK initialization, 19 tools, brand review, live context, wrong-project rejection, stale revision rejection, report persistence. Runtime: '+path.basename(command));
   } finally {if(client)await client.close();await fs.rm(root,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

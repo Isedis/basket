@@ -88,7 +88,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.24.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.25.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -96,11 +96,11 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.24.0');
+    assert.equal(diagnostics.currentVersion,'0.25.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.24.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.25.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -293,7 +293,12 @@ async function main() {
     if(!await reopened.locator('[data-disclosure="project"]').evaluate(el=>el.open))await reopened.locator('[data-disclosure="project"]>summary').click();
     await reopened.locator('[data-field="name"]').fill('Native game');
     assert.equal((await core.loadProject(project)).state.brand.direction,'MCP conflict winner');
-    console.log('PASS real Electron: brandbook review, contrast correction, task deduplication, copied advice, MCP assessment/image/report, updates and save/restore.');
+    const technical=require('../src/agent-profile.cjs'),identity=await require('../src/agent-service.cjs').snapshot(project),profileEmpty=await technical.read(project);
+    await technical.update(project,{project_id:identity.project_id,profile_revision:profileEmpty.profile_revision,action:'upsert',entry:{id:'menu-source',kind:'entry_point',title:'Экран меню',body:'Меню создаётся кодом в menu.gd.',certainty:'source_based',sources:['menu.gd'],scope_paths:[]},agent:'claude',reason:'Прочитан скрипт',request_id:'profile-desktop-create'});
+    await reopened.locator('nav [data-tab="agents"]').click();await reopened.locator('[data-action="profile-open"]').click();await reopened.locator('[data-agent-profile] .profile-entry').first().waitFor();assert.match(await reopened.locator('[data-agent-profile]').textContent(),/Источники не изменились/);
+    await fs.writeFile(path.join(project,'menu.gd'),'extends Control\n# changed after profile capture\n');await reopened.locator('[data-agent-profile] [data-action="profile-open"]').filter({hasText:'Обновить'}).click();await reopened.locator('[data-freshness="changed"]').waitFor();await reopened.locator('.profile-entry').first().locator('summary').first().click();await reopened.locator('[data-action="profile-state"]').click();await reopened.waitForFunction(()=>document.querySelector('[data-agent-profile]')?.textContent.includes('Записей пока нет'));assert.equal((await technical.read(project)).total,0);
+    await reopened.locator('[data-action="profile-open"][data-retired="true"]').click();await reopened.locator('[data-action="profile-state"][data-state="restore"]').waitFor({state:'attached'});await reopened.locator('.profile-entry>summary').first().click();await reopened.locator('[data-action="profile-state"][data-state="restore"]').click();await reopened.waitForFunction(()=>document.querySelector('[data-action="profile-state"]')?.dataset.state==='retire');assert.equal((await technical.read(project)).entries[0].freshness,'changed');await reopened.locator('.profile-entry>summary').first().click();await reopened.locator('[data-action="profile-open"][data-id="menu-source"]').click();await reopened.waitForFunction(()=>document.querySelector('[data-agent-profile]')?.textContent.includes('Предыдущие версии'));assert.equal((await technical.read(project,{entry_id:'menu-source',history:true})).history_total,2);await reopened.screenshot({path:path.join(__dirname,'../artifacts/agent-profile.png'),fullPage:true});await reopened.locator('[data-action="close-modal"]').click();
+    console.log('PASS real Electron: brandbook review, contrast correction, task deduplication, copied advice, MCP assessment/image/report, updates, save/restore, shared agent profile, source freshness and user-controlled retirement/history.');
   } finally {
     if(app) await app.close();
     await fs.rm(temp,{recursive:true,force:true});
