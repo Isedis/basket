@@ -205,6 +205,11 @@ if(primary)await app.whenReady().then(async () => {
   terminalHandle('claude:clipboard',()=>clipboard.readText());
   const automationPreferences=path.join(app.getPath('userData'),'automation.json');
   async function godotCommand(){let saved;try{saved=JSON.parse(await fs.readFile(automationPreferences,'utf8')).godot;}catch{}return resolveGodot(saved).catch(()=>null);}
+  terminalHandle('scene:start',async input=>require('../src/scene-run.cjs').start(requireProject(),input||{},{command:await godotCommand()}));
+  terminalHandle('scene:get',id=>require('../src/scene-run.cjs').get(requireProject(),id));
+  terminalHandle('scene:list',input=>require('../src/scene-run.cjs').list(requireProject(),input||{}));
+  terminalHandle('scene:stop',id=>require('../src/scene-run.cjs').cancel(requireProject(),id));
+  terminalHandle('scene:image',async id=>{const image=await require('../src/scene-run.cjs').image(requireProject(),id);return 'data:'+image.mimeType+';base64,'+image.data;});
   terminalHandle('automation:godot',async()=>{const selected=await dialog.showOpenDialog(win,{title:'Godot для автоматической проверки проекта',properties:['openFile'],...(process.platform==='win32'?{filters:[{name:'Godot',extensions:['exe']}]}:{})});if(selected.canceled)return null;const command=await resolveGodot(selected.filePaths[0]);await fs.mkdir(path.dirname(automationPreferences),{recursive:true});await fs.writeFile(automationPreferences,JSON.stringify({godot:command.file}),{mode:0o600});return {executable:command.file};});
   async function chatCall(op,value){await chatConnection;chatHost=await chatHosts.forOperation(chatHost,modernChatHost,op);await chatHost.connect({start:true});const result=await chatHost.rpc(op,value,undefined,60000);if(result?.status)chatState=result;return result;}
   terminalHandle('plan:get',async input=>{if(!input?.taskId)return null;return taskPlans.get(requireProject(),input.taskId,{history:input.history===true});});
