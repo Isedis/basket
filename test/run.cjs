@@ -19,3 +19,6 @@ require('./chat-hosts.test.cjs');
 require('./task-plans.test.cjs');
 
 require('./chat-events.test.cjs');
+require('./chat-usage.test.cjs');
+
+require('./usage-probe.test.cjs');

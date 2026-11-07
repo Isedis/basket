@@ -220,9 +220,11 @@ if(primary)await app.whenReady().then(async () => {
     let context=null;
     if(input.includeContext!==false){const packet=await workContext.reader(project)({...(input.taskId?{task_id:input.taskId}:{})});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}
     if(root!==project)throw new Error('Проект изменился. Повторите отправку.');
-    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),requirePlan:input.requirePlan===true});
+    return await chatCall('chat:send',{root:project,id:input.id,text:input.text,context,command,serverName:config.server_name,serverSpec:config.spec,godotCommand:await godotCommand(),requirePlan:input.requirePlan===true,autoApprove:input.autoApprove===true});
     }finally{chatStarting=false;}
   });
+  terminalHandle('chat:auto-approve',enabled=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:auto-approve',enabled);});
+  terminalHandle('chat:usage',async()=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:usage',{command:chatBusy()?null:await claudeCommand()});});
   terminalHandle('chat:answer',input=>{if(chatState?.root!==requireProject())throw new Error('Выберите игру текущего разговора.');return chatCall('chat:answer',input);});
   terminalHandle('chat:stop',id=>{if(chatState?.root!==requireProject())throw new Error('Разговор в другой игре.');return chatCall('chat:stop',{id});});
 

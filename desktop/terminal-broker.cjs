@@ -21,6 +21,8 @@ async function serve(record,native){
         if(!authenticated){if(request.token!==token||request.op!=='hello'){socket.destroy();return;}authenticated=true;clearTimeout(authTimeout);clients.add(socket);keepAlive();}
         if(!Number.isSafeInteger(request.id)){socket.destroy();return;}
         Promise.resolve().then(()=>{
+          if(request.op==='chat:auto-approve')return chat.setAutoApprove(request.value);
+          if(request.op==='chat:usage')return chat.refreshUsage(request.value?.command);
           if(request.op==='chat:state')return chat.snapshot();
           if(request.op==='chat:list')return chat.list(request.value.root);
           if(['chat:new','chat:open','chat:send'].includes(request.op)){const run=()=>request.op==='chat:new'?chat.create(request.value.root):request.op==='chat:open'?chat.open(request.value.root,request.value.id):chat.send(request.value);const result=mutations.then(run);mutations=result.catch(()=>{});return result;}

@@ -15,7 +15,8 @@ window.OporaClaudeTerminal={create(options){
     el('title').textContent=current?.title||'Новый разговор';el('project').textContent=getRoot()?.split(/[\\/]/).at(-1)||'Выберите игру';
     for(const action of ['send','new','run-task','plan-build'])dock.querySelector(`[data-chat-action="${action}"]`).disabled=loading||busy()||!getRoot()||!bridge?.chatSend;
     dock.querySelector('[data-chat-action="stop"]').disabled=!busy()||current?.status==='stopping';
-    renderAutomation();renderPlan();adoptCards();updateLive();for(const tab of el('history').querySelectorAll('[data-chat-id]'))tab.disabled=busy()&&tab.dataset.chatId!==current?.id;el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
+    if(busy()&&typeof current?.autoApprove==='boolean')el('auto-approve').checked=current.autoApprove;
+    renderAutomation();renderPlan();adoptCards();updateLive();window.OporaChatUsage.render(el('usage'),current?.metrics,busy());for(const tab of el('history').querySelectorAll('[data-chat-id]'))tab.disabled=busy()&&tab.dataset.chatId!==current?.id;el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
     dock.querySelector('[data-chat-action="task"]').disabled=loading||!getRoot();
     document.querySelectorAll('[data-action="claude-open"]').forEach(b=>b.classList.toggle('terminal-running',busy()||!!legacy?.isActive()));
   }
@@ -111,7 +112,7 @@ window.OporaClaudeTerminal={create(options){
     try{
       let text=draft,taskId=forcedTaskId;
       if(task){const request=await getPrompt({inline:true});taskId=request.taskId;text=(extra.requirePlan?'Составь и выполни поэтапный план этой задачи через opora_task_plan. ':'')+request.text+(draft.trim()?'\nУточнения: '+draft:'');el('context-enabled').checked=true;}
-      await prepare();const snapshot=await bridge.chatSend({id:current?.id,text,taskId,includeContext:el('context-enabled').checked,...extra});storage.set(oldDraftKey,'');storage.set(`opora:claude-draft:${snapshot.root}:${snapshot.id}`,'');accept(snapshot);el('input').value='';await history(false);
+      await prepare();const snapshot=await bridge.chatSend({id:current?.id,text,taskId,includeContext:el('context-enabled').checked,autoApprove:el('auto-approve').checked,...extra});storage.set(oldDraftKey,'');storage.set(`opora:claude-draft:${snapshot.root}:${snapshot.id}`,'');accept(snapshot);el('input').value='';await history(false);
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}finally{loading=false;controls();}
   }
   dock.addEventListener('click',async event=>{
@@ -123,6 +124,7 @@ window.OporaClaudeTerminal={create(options){
       if(d.dock==='chat'){setMode('chat');show();await history(!current);return;}
       if(d.dock==='terminal'){setMode('terminal');show();legacy.show();return;}
       if(d.chatId){if(busy()||loading)return;await openHistory(d.chatId);return;}
+      if(d.chatAction==='usage-refresh'){if(!current){await prepare();accept(await bridge.chatNew());}const snapshot=await bridge.chatUsage();if(snapshot&&snapshot.id===current?.id){current.metrics=snapshot.metrics;controls();}return;}
       if(d.chatAction==='send'){await send();return;}
       if(d.chatAction==='run-task'){await send(true);return;}
       if(d.chatAction==='plan-build'){await send(true,undefined,{requirePlan:true});await refreshPlan();return;}
@@ -148,6 +150,10 @@ window.OporaClaudeTerminal={create(options){
 
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}
   });
+  el('auto-approve').addEventListener('change',async()=>{const enabled=el('auto-approve').checked;storage.set('opora:claude-auto-approve:'+getRoot(),String(enabled));if(current){try{accept(await bridge.chatAutoApprove(enabled));}catch(error){el('auto-approve').checked=!enabled;storage.set('opora:claude-auto-approve:'+getRoot(),String(!enabled));onError(error);}}});
+  el('usage').addEventListener('toggle',()=>{if(el('usage').open)window.OporaChatUsage.render(el('usage'),current?.metrics,busy());});
+  document.addEventListener('click',event=>{if(!el('usage').contains(event.target))el('usage').open=false;});
+  dock.addEventListener('keydown',event=>{if(event.key==='Escape')el('usage').open=false;});
   el('input').addEventListener('input',()=>{saveDraft();el('input').style.height='auto';el('input').style.height=Math.min(120,el('input').scrollHeight)+'px';});el('input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();void send();}});
   const resizer=dock.querySelector('[data-dock="resize"]');
   resizer.addEventListener('pointerdown',event=>{if(dock.classList.contains('expanded'))return;resizer.setPointerCapture(event.pointerId);document.body.classList.add('resizing-claude');});
@@ -159,5 +165,5 @@ window.OporaClaudeTerminal={create(options){
   bridge?.onChatEvent?.(update);bridge?.chatState?.().then(snapshot=>{if(snapshot){accept(snapshot);if(busy()){setMode('chat');show();}}}).catch(onError);
   setInterval(()=>{if(!document.hidden){void refreshPlan();updateLive();}},1500);
   empty();controls();
-  return {async runTask(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();await send(true);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);await refreshPlan();el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;plan=null;planKey='';planSignature='';renderPlan();if(!busy()&&current?.root!==root){current=null;resetMessages();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
+  return {async runTask(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}if(loading||busy()){notify('Claude ещё работает.');return;}await this.open();await send(true);},async open(){if(!getRoot()){notify('Сначала откройте папку игры.',true);return;}setMode('chat');show();await history(!current);await refreshPlan();el('input').focus();},projectChanged(){const root=getRoot();if(root===loadedRoot){controls();return;}loadedRoot=root;el('auto-approve').checked=storage.get('opora:claude-auto-approve:'+root,'true')==='true';plan=null;planKey='';planSignature='';renderPlan();if(!busy()&&current?.root!==root){current=null;resetMessages();empty();lastPermissions='';el('permissions').replaceChildren();el('input').value=storage.get(draftKey(),'');}controls();if(visible&&mode==='chat')void history(!current).catch(onError);}};
 }};

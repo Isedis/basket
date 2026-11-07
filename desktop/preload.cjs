@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('opora', {
   planGet:input=>ipcRenderer.invoke('plan:get',input),
   planPause:input=>ipcRenderer.invoke('plan:pause',input),
   godotSelect:()=>ipcRenderer.invoke('automation:godot'),
+  chatAutoApprove:enabled=>ipcRenderer.invoke('chat:auto-approve',enabled),
+  chatUsage:()=>ipcRenderer.invoke('chat:usage'),
   chatState:()=>ipcRenderer.invoke('chat:state'),
   chatList:()=>ipcRenderer.invoke('chat:list'),
   chatNew:()=>ipcRenderer.invoke('chat:new'),
