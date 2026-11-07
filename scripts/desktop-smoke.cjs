@@ -43,6 +43,7 @@ async function main() {
     assert.equal((await core.loadProject(project)).state.references[0].status,'draft');
     assert.ok((await core.loadProject(project)).state.brand.analysis.imageColors.some(c=>c.hex==='#C04818'));
     await page.locator('nav [data-tab="overview"]').click();
+    await page.locator('[data-disclosure="project"]>summary').click();
     await page.locator('[data-field="rules"]').fill('Не менять размер кнопок');
     await page.locator('nav [data-tab="brand"]').click();
     await page.getByRole('button',{name:'+ Добавить образцы'}).click();
@@ -87,7 +88,7 @@ async function main() {
     await app.evaluate(({session},digest)=>{
       session.fromPartition('opora-updates').protocol.handle('https',request=>{
         if(request.url!=='https://raw.githubusercontent.com/Isedis/basket/opora/updates/latest.json')return new Response('',{status:404});
-        return new Response(JSON.stringify({schemaVersion:1,version:'0.22.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schemaVersion:1,version:'0.23.0',commit:'a'.repeat(40),size:1,sha256:digest,parts:[{name:'Opora-Windows.zip.part01',size:1,sha256:digest}]}),{headers:{'Content-Type':'application/json'}});
       });
     },digest);
     await page.getByRole('button',{name:'Обновления',exact:true}).click();
@@ -95,11 +96,11 @@ async function main() {
     await page.getByText('Папка и диагностика',{exact:true}).click();
     await page.getByRole('button',{name:'Скопировать диагностику',exact:true}).click();
     const diagnostics=JSON.parse(await app.evaluate(({clipboard})=>clipboard.readText()));
-    assert.equal(diagnostics.currentVersion,'0.22.0');
+    assert.equal(diagnostics.currentVersion,'0.23.0');
     assert.equal(diagnostics.installDirectory,path.dirname(require('electron')));
     await page.getByRole('button',{name:'Проверить обновления'}).click();
     await page.getByRole('heading',{name:'У вас актуальная версия'}).waitFor();
-    assert.match(await page.locator('#modal-content').textContent(),/0.22.0/);
+    assert.match(await page.locator('#modal-content').textContent(),/0.23.0/);
     await page.getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.locator('nav [data-tab="context"]').click();
     await page.getByRole('button',{name:'Обновить файлы проекта'}).click();
@@ -271,6 +272,7 @@ async function main() {
     await page.locator('[data-card-action="close"]').click();
     assert.deepEqual(errors,[]);
     await page.locator('nav [data-tab="overview"]').click();
+    if(!await page.locator('[data-disclosure="project"]').evaluate(el=>el.open))await page.locator('[data-disclosure="project"]>summary').click();
     await page.locator('[data-field="goal"]').fill('Данные сохраняются при закрытии');
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].close());
     await app.waitForEvent('close'); app=null;
@@ -283,10 +285,12 @@ async function main() {
     await reopened.locator('.feedback-note').filter({hasText:'Сохранить эти отступы'}).waitFor();
     assert.match(await reopened.locator('.feedback-note-list').textContent(),/ПРИНЯТО/);
     await reopened.locator('nav [data-tab="overview"]').click();
+    if(!await reopened.locator('[data-disclosure="project"]').evaluate(el=>el.open))await reopened.locator('[data-disclosure="project"]>summary').click();
     await reopened.locator('[data-field="name"]').fill('');
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].close());
     await reopened.getByRole('heading',{name:'Изменения не сохранены'}).waitFor();
     await reopened.getByRole('button',{name:'Продолжить работу'}).click();
+    if(!await reopened.locator('[data-disclosure="project"]').evaluate(el=>el.open))await reopened.locator('[data-disclosure="project"]>summary').click();
     await reopened.locator('[data-field="name"]').fill('Native game');
     assert.equal((await core.loadProject(project)).state.brand.direction,'MCP conflict winner');
     console.log('PASS real Electron: brandbook review, contrast correction, task deduplication, copied advice, MCP assessment/image/report, updates and save/restore.');

@@ -15,6 +15,8 @@ window.OporaClaudeTerminal={create(options){
     el('title').textContent=current?.title||'Новый разговор';el('project').textContent=getRoot()?.split(/[\\/]/).at(-1)||'Выберите игру';
     for(const action of ['send','new','run-task','plan-build'])dock.querySelector(`[data-chat-action="${action}"]`).disabled=loading||busy()||!getRoot()||!bridge?.chatSend;
     dock.querySelector('[data-chat-action="stop"]').disabled=!busy()||current?.status==='stopping';
+    dock.querySelector('[data-chat-action="stop"]').hidden=!busy();
+    el('context-state').textContent=el('context-enabled').checked?'включён':'выключен';
     if(busy()&&typeof current?.autoApprove==='boolean')el('auto-approve').checked=current.autoApprove;
     renderAutomation();renderPlan();adoptCards();updateLive();window.OporaChatUsage.render(el('usage'),current?.metrics,busy());for(const tab of el('history').querySelectorAll('[data-chat-id]'))tab.disabled=busy()&&tab.dataset.chatId!==current?.id;el('input').disabled=!getRoot()||!bridge?.chatSend;el('error').textContent=errorMessage||current?.error||'';
     dock.querySelector('[data-chat-action="task"]').disabled=loading||!getRoot();
@@ -150,6 +152,7 @@ window.OporaClaudeTerminal={create(options){
 
     }catch(error){errorMessage=error.message;el('error').textContent=error.message;notify(error.message,true);}
   });
+  el('context-enabled').addEventListener('change',controls);
   el('auto-approve').addEventListener('change',async()=>{const enabled=el('auto-approve').checked;storage.set('opora:claude-auto-approve:'+getRoot(),String(enabled));if(current){try{accept(await bridge.chatAutoApprove(enabled));}catch(error){el('auto-approve').checked=!enabled;storage.set('opora:claude-auto-approve:'+getRoot(),String(!enabled));onError(error);}}});
   el('usage').addEventListener('toggle',()=>{if(el('usage').open)window.OporaChatUsage.render(el('usage'),current?.metrics,busy());});
   document.addEventListener('click',event=>{if(!el('usage').contains(event.target))el('usage').open=false;});

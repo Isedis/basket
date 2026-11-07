@@ -19,7 +19,7 @@ packaged = root / 'release/Opora-win32-x64'
 if not (packaged / 'Opora.exe').is_file():
     raise RuntimeError('Run npm run package:win first.')
 shutil.copyfile(root / 'OPORA.md', packaged / 'GUIDE.md')
-(packaged / 'START-HERE.txt').write_text('ОПОРА ' + version + '\n\nЗапустите Opora.exe из полностью распакованной папки.\nВыберите папку игры с project.godot: Опора подготовит черновик брендбука.\nУ существующего проекта нажмите «Брендбук → Собрать из проекта».\nСледующие версии доступны через кнопку «Обновления» в верхней панели.\nПодробности: GUIDE.md.\n', encoding='utf-8-sig')
+(packaged / 'START-HERE.txt').write_text('ОПОРА ' + version + '\n\nЗапустите Opora.exe из полностью распакованной папки.\nВыберите папку игры с project.godot: Опора подготовит черновик брендбука.\nУ существующего проекта нажмите «Брендбук → Собрать из проекта».\nСледующие версии доступны через кнопку «Обновления» внизу боковой панели.\nПодробности: GUIDE.md.\n', encoding='utf-8-sig')
 source = root / f'release/Opora-{version}-windows-x64.zip'
 with zipfile.ZipFile(source,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for file in sorted(packaged.rglob('*')):
