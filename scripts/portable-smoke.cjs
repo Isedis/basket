@@ -30,6 +30,8 @@ async function main(){
     const page=await launch();report.opensWithLegacyWindowRunning=true;
     await page.locator('nav [data-tab="brand"]').click();assert.equal(await page.locator('[data-field="brand.direction"]').inputValue(),'My existing style');
     await page.locator('nav [data-tab="overview"]').click();assert.equal(await page.locator('[data-field="rules"]').inputValue(),'My saved notes');
+    assert.equal(await page.locator('[data-field="rules"]').isVisible(),false);
+    await page.locator('[data-disclosure="project"]>summary').click();
     await page.locator('[data-field="rules"]').fill('Saved in the new Opora');
     await page.waitForFunction(()=>document.querySelector('#save-status')?.textContent.includes('Сохранено'));
     assert.equal((await core.loadProject(game)).state.rules,'Saved in the new Opora');
