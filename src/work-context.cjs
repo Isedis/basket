@@ -38,18 +38,21 @@ function reader(root){
     });
     relevant.sort((a,b)=>(b.note.id===task?.feedbackNoteId)-(a.note.id===task?.feedbackNoteId)||b.note.createdAt.localeCompare(a.note.createdAt));
     const task_plan=task?await require('./task-plans.cjs').get(s.root,task.id,{compact:true}):null;
-    const [checkedFiles,activity]=task?await Promise.all([readiness.inspectFiles(s.root,task.files||[]),service.listReports(s.root,100,task.id).catch(()=>({reports:[],readFailed:true}))]):[[],{reports:[]}];
+    const [checkedFiles,activity]=task?await Promise.all([readiness.inspectFiles(s.root,task.files||[]),service.listReports(s.root,100,task.id,{snapshot:s,source:fromMap(map),feedback:visual}).catch(()=>({reports:[],readFailed:true}))]):[[],{reports:[]}];
     const latestReport=activity.reports.find(r=>!r.fromDifferentPath);
     const task_readiness=readiness.assess({task,files:checkedFiles,plan:task_plan,linked,replacement,notes:relevant,report:latestReport,reportReadFailed:!!activity.readFailed||!!activity.unreadable});
     const agent_profile=await require('./agent-profile.cjs').compact(s.root,{snapshot:s,task,files:[...taskFiles]});
-    const scene_runs=(await require('./scene-run.cjs').list(s.root,{task_id:task?.id||null,limit:3})).map(r=>({id:r.id,scene:r.scene,status:r.status,stale_code:r.stale_code,code_changed_during_run:r.code_changed_during_run,screenshot:!!r.screenshot,created_at:r.created_at,read_more:{tool:'opora_scene_result',run_id:r.id}}));
-    const source=fromMap(map),work_revision=hash(JSON.stringify([s.project_id,s.revision,visual.feedback_revision,source.revision,map.map_revision,task?.id||null,file,input.limit||20,task_plan?.revision||null,task_readiness,agent_profile,scene_runs]));
+    let sceneReadError=null;
+    const scene_runs=(await require('./scene-run.cjs').list(s.root,{task_id:task?.id||null,limit:3,snapshot:s,source:fromMap(map)}).catch(error=>{sceneReadError=error.message;return [];})).map(r=>({id:r.id,scene:r.scene,status:r.status,stale_code:r.stale_code,code_changed_during_run:r.code_changed_during_run,screenshot:!!r.screenshot,created_at:r.created_at,read_more:{tool:'opora_scene_result',run_id:r.id}}));
+    const source=fromMap(map),work_revision=hash(JSON.stringify([s.project_id,s.revision,visual.feedback_revision,source.revision,map.map_revision,task?.id||null,file,input.limit||20,task_plan?.revision||null,task_readiness,agent_profile,scene_runs,sceneReadError]));
     const identity={...service.projectView(s),work_revision,versions:{context:s.revision,feedback:visual.feedback_revision,code:source.revision,map:map.map_revision}};
     if(input.known_revision===work_revision&&history.has(work_revision))return {project_id:s.project_id,root:s.root,work_revision,mode:'unchanged',unchanged:true};
     let neighborhood=null;
     if(file){try{const focused=projectView(map,{file,limit:10});neighborhood={file:focused.selected,incoming:focused.incoming,outgoing:focused.outgoing,incoming_total:focused.incoming_total,outgoing_total:focused.outgoing_total,symbol_page:focused.symbol_page};}catch{neighborhood={file,error:'Указанный файл не найден; scene из замечания — ручная подсказка. Используйте поиск карты.'};}}
     const notes=relevant.slice(0,Math.min(input.limit||20,50)).map(({shot,note})=>({shot_id:shot.id,shot_title:shot.title,note_id:note.id,note_revision:visual.note_revisions[note.id],text:note.text,kind:note.kind,status:note.status,scope:note.scope||'region',scene:note.scene,rect:note.rect,image:{width:shot.image.width,height:shot.image.height},source_snapshot:shot.source_snapshot||null,latest_result:shot.results.filter(r=>r.note_ids.includes(note.id)).at(-1)||null,decisions:note.history.slice(-3),archived:!!shot.archived}));
     const warnings=[];
+    if(sceneReadError)warnings.push('История запусков недоступна: '+sceneReadError+' Остальные данные проекта доступны.');
+    if(scene_runs.some(r=>r.status==='unreadable'))warnings.push('Один из журналов запуска недоступен. Запустите сцену повторно; остальные данные проекта доступны.');
     if(task?.feedbackNoteId&&!linked)warnings.push('Связанное замечание не найдено.');
     if(linked){if(task.status==='done'&&linked.note.status!=='accepted')warnings.push('Задача завершена, связанное замечание ещё не принято.');if(task.status!=='done'&&linked.note.status==='accepted')warnings.push('Замечание принято; завершение задачи подтверждается отдельно.');}
     for(const item of notes)if(item.status==='ready'&&item.latest_result?.source_snapshot&&item.latest_result.source_snapshot.revision!==source.revision)warnings.push('Код изменился после прикрепления результата: '+item.note_id);

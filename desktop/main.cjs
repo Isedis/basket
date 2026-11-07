@@ -222,7 +222,7 @@ if(primary)await app.whenReady().then(async () => {
     if(chatBusy())throw new Error('Claude ещё работает.');chatStarting=true;try{
     const project=requireProject();if(installing)throw new Error('Дождитесь обновления.');if(terminal.active||terminalStarting)throw new Error('В терминале уже работает Claude. Завершите ту сессию перед отправкой в чат.');
     const conversation=input.id?await chatCall('chat:open',{root:project,id:input.id}):null;
-    const taskId=require('./chat-task.cjs').resolve(input,conversation,(await agentService.snapshot(project)).state.activeTaskId);
+    const taskState=(await agentService.snapshot(project)).state;const taskId=require('./chat-task.cjs').resolve(input,conversation,taskState.activeTaskId);if(taskId&&!taskState.tasks.some(t=>t.id===taskId))throw new Error('Задача удалена. Выберите другую задачу или восстановите её.');
     const command=await claudeCommand(),config=await getAgentConfig();await agentConfig.configure('claude',config);if(input.resumePlan){if(!input.taskId)throw new Error('Выберите задачу плана.');await taskPlans.resume(project,input.taskId);}
     let context=null;
     if(input.includeContext!==false){const packet=await workContext.reader(project)({task_id:taskId});context={packet,summary:{name:packet.passport.name.text,task:packet.task?.title||null,brand:packet.brand.status,notes:packet.feedback.notes.length,revision:packet.work_revision}};}

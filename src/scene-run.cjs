@@ -6,6 +6,7 @@ const ID=/^[a-f0-9-]{36}$/;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function atomic(file,value){const temp=file+'.'+crypto.randomUUID()+'.tmp';await fs.writeFile(temp,JSON.stringify(value,null,2),{flag:'wx',mode:0o600});try{await fs.rename(temp,file);}finally{await fs.rm(temp,{force:true}).catch(()=>{});}}
 async function directory(root,id){if(!ID.test(id))throw new Error('Некорректный ID запуска.');const rel='.opora/scene-runs/'+id;await assertSafePath(root,rel);return path.join(root,rel);}
+function jsonTail(value,max){let lo=0,hi=value.length;while(lo<hi){const mid=(lo+hi)>>1;if(Buffer.byteLength(JSON.stringify(value.slice(mid)))>max)lo=mid+1;else hi=mid;}if(lo>0&&/[\uDC00-\uDFFF]/.test(value[lo]||''))lo++;return value.slice(lo);}
 function scenePath(value){const file=String(value||'').replace(/^res:\/\//,'');if(!/\.(tscn|scn)$/i.test(file)||file.length>1024||file.includes('\\')||file.includes(':')||file.split('/').some(p=>!p||p==='.'||p==='..')||/[\x00-\x1f]/.test(file))throw new Error('Выберите сцену .tscn / .scn внутри проекта.');return file;}
 function options(input={}){const width=input.width??1280,height=input.height??720,delay=input.capture_after_ms??2000;if(!Number.isInteger(width)||width<320||width>1920||!Number.isInteger(height)||height<240||height>1080||!Number.isInteger(delay)||delay<500||delay>15000)throw new Error('Размер: 320–1920 × 240–1080; ожидание кадра: 500–15000 мс.');return {width,height,capture_after_ms:delay};}
 async function start(root,input={},runtime={}){
@@ -21,17 +22,20 @@ async function start(root,input={},runtime={}){
  await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();
  await atomic(path.join(dir,'worker.json'),{pid:child.pid});return get(s.root,id);
 }
-async function get(root,id){const dir=await directory(root,id);const request=JSON.parse(await boundedRead(path.join(dir,'request.json'),16000));const s=await service.snapshot(root);service.guard(s,request.project_id);
- let result;try{result=JSON.parse(await boundedRead(path.join(dir,'result.json'),128000));}catch(e){if(e.code!=='ENOENT')throw e;}
- if(result){const now=await sourceSnapshot(root);return {...result,stale_code:now.revision!==result.source_snapshot?.revision||result.code_changed_during_run};}
- let progress;try{progress=JSON.parse(await boundedRead(path.join(dir,'progress.json'),128000));}catch(e){if(e.code!=='ENOENT')throw e;}
+async function get(root,id,view={}){const dir=await directory(root,id);const request=JSON.parse(await boundedRead(path.join(dir,'request.json'),16000));const s=view.snapshot||await service.snapshot(root);service.guard(s,request.project_id);
+ let result;try{result=JSON.parse(await boundedRead(path.join(dir,'result.json'),128000));if(result.id!==id||result.project_id!==s.project_id||!['passed','failed','cancelled'].includes(result.status))throw new Error('Некорректный результат проверки.');}catch(e){if(e.code!=='ENOENT')return {id,scene:request.scene,task_id:request.task_id,created_at:request.created_at,status:'unreadable',error:'Журнал этого запуска недоступен. Можно запустить новую проверку. '+e.message,verified_by:'opora-process'};}
+ if(result){const now=view.source||await sourceSnapshot(root);return {...result,stale_code:now.revision!==result.source_snapshot?.revision||result.code_changed_during_run};}
+ let progress;try{progress=JSON.parse(await boundedRead(path.join(dir,'progress.json'),128000));}catch(e){if(e.code!=='ENOENT')progress={phase:'Журнал прогресса недоступен',log:e.message};}
  let alive=true;try{const worker=JSON.parse(await fs.readFile(path.join(dir,'worker.json'),'utf8'));process.kill(worker.pid,0);}catch{alive=false;}
- if(Date.now()-Date.parse(request.created_at)>90000||!alive&&Date.now()-Date.parse(request.created_at)>5000)return {id,scene:request.scene,task_id:request.task_id,status:'interrupted',error:'Процесс проверки прерван. Запустите сцену снова.',verified_by:'opora-process'};
+ if(Date.now()-Date.parse(progress?.updated_at||request.created_at)>90000||!alive&&Date.now()-Date.parse(request.created_at)>5000)return {id,scene:request.scene,task_id:request.task_id,status:'interrupted',error:'Процесс проверки прерван. Запустите сцену снова.',verified_by:'opora-process'};
  return {id,scene:request.scene,task_id:request.task_id,status:'running',phase:progress?.phase||'Запуск Godot',log:progress?.log||'',created_at:request.created_at};
 }
-async function list(root,{task_id,limit=8}={}){await assertSafePath(root,'.opora/scene-runs');const names=await fs.readdir(path.join(root,'.opora/scene-runs'),{withFileTypes:true}).catch(e=>{if(e.code==='ENOENT')return [];throw e;});const result=[];
- for(const entry of names.filter(e=>e.isDirectory()&&ID.test(e.name))){try{const dir=await directory(root,entry.name),r=JSON.parse(await boundedRead(path.join(dir,'request.json'),16000));if(task_id!==undefined&&r.task_id!==task_id)continue;result.push({id:r.id,created_at:r.created_at,scene:r.scene});}catch{}}
- result.sort((a,b)=>b.created_at.localeCompare(a.created_at));return Promise.all(result.slice(0,Math.max(1,Math.min(limit,20))).map(r=>get(root,r.id)));
+async function list(root,{task_id,limit=8,source,snapshot}={}){
+ const indexed=await require('./history-index.cjs').scan(root,{directory:'.opora/scene-runs',match:ID,child:'request.json',max:16000,summary:(r,name)=>{if(r.id!==name||typeof r.scene!=='string'||typeof r.created_at!=='string')throw new Error('Некорректный запуск.');return {id:r.id,created_at:r.created_at,scene:r.scene,task_id:r.task_id};}});
+ const selected=indexed.rows.filter(r=>task_id===undefined||r.task_id===task_id).sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,Math.max(1,Math.min(limit,20)));
+ if(!selected.length)return [];
+ const current=snapshot||await service.snapshot(root),code=source||await sourceSnapshot(root);
+ return Promise.all(selected.map(async r=>{try{return await get(root,r.id,{snapshot:current,source:code});}catch(error){return {id:r.id,scene:r.scene,task_id:r.task_id,created_at:r.created_at,status:'unreadable',error:error.message};}}));
 }
 async function cancel(root,id){const dir=await directory(root,id),current=await get(root,id);if(current.status==='running')await fs.writeFile(path.join(dir,'cancel'),'cancel',{mode:0o600});return current;}
 async function wait(root,id,{signal}={}){for(;;){if(signal?.aborted){await cancel(root,id);throw new Error('Запуск остановлен по запросу агента.');}const r=await get(root,id);if(r.status!=='running')return r;await sleep(350);}}
@@ -75,14 +79,14 @@ func _opora_start():
 async function worker(root,id){
  const dir=await directory(root,id),request=JSON.parse(await boundedRead(path.join(dir,'request.json'),16000));const s=await service.snapshot(root);service.guard(s,request.project_id);scenePath(request.scene);options(request);await assertSafePath(root,request.scene);
  let release,child,timer,poll,forceTimer,flushTimer,log='',tail='',diagnostics='',errors=false,cancelled=false,timedOut=false,phase='Импорт ресурсов',before,after,check,code=null,exitSignal=null,shot=null;
- const started=Date.now();const progress=()=>atomic(path.join(dir,'progress.json'),{phase,log}).catch(()=>{});
- const read=chunk=>{const text=chunk.toString().replace(/\x1b\[[0-9;]*[A-Za-z]/g,'');log=(log+text).slice(-64000);const scan=tail+text;if(/(?:^|\n)\s*(SCRIPT ERROR:|ERROR:|Parse Error:)/i.test(scan)){errors=true;diagnostics=(diagnostics+'\n'+scan.slice(-2000)).slice(-8000);}tail=scan.slice(-256);};
+ const started=Date.now();const progress=()=>atomic(path.join(dir,'progress.json'),{phase,log,updated_at:new Date().toISOString()}).catch(()=>{});
+ const read=chunk=>{const text=chunk.toString().replace(/\x1b\[[0-9;]*[A-Za-z]/g,'');log=jsonTail(log+text,40000);const scan=tail+text;if(/(?:^|\n)\s*(SCRIPT ERROR:|ERROR:|Parse Error:)/i.test(scan)){errors=true;diagnostics=jsonTail(diagnostics+'\n'+scan.slice(-2000),8000);}tail=scan.slice(-256);};
  const kill=()=>{if(!child||child.exitCode!==null||child.signalCode!==null)return;require('../desktop/stop-process.cjs').stop(child);clearTimeout(forceTimer);forceTimer=setTimeout(()=>{if(child?.exitCode===null&&child?.signalCode===null)require('../desktop/stop-process.cjs').stop(child,true);},1000);};
  try{
   release=await require('proper-lockfile').lock(path.dirname(dir),{realpath:true,stale:120000,retries:0});
   before=await sourceSnapshot(root);
-  const controller=new AbortController();poll=setInterval(()=>{fs.access(path.join(dir,'cancel')).then(()=>{cancelled=true;controller.abort();kill();}).catch(()=>{});},200);flushTimer=setInterval(progress,400);await progress();
-  check=await require('../desktop/godot-check.cjs').check(root,{command:request.command,signal:controller.signal,timeoutMs:45000});read(check.evidence+'\n');
+  const controller=new AbortController();poll=setInterval(()=>{fs.access(path.join(dir,'cancel')).then(()=>{if(cancelled)return;cancelled=true;controller.abort();kill();}).catch(()=>{});},200);flushTimer=setInterval(progress,400);await progress();
+  check=await require('./godot-verification.cjs').check(root,{command:request.command,signal:controller.signal,timeoutMs:45000});read(check.evidence+'\n');
   if(check.result!=='passed')throw new Error(check.error||'Godot не смог импортировать проект.');
   if(cancelled)throw new Error('Запуск остановлен.');
   before=await sourceSnapshot(root);
@@ -101,4 +105,4 @@ async function worker(root,id){
  await atomic(path.join(dir,'result.json'),result);
 }
 function receipt(run){const {log,diagnostics,checks,...rest}=run;return {...rest,log:log?.slice(-4000),log_length:log?.length||0,log_truncated:(log?.length||0)>4000,diagnostics:diagnostics?.slice(-2000),checks:checks?.map(c=>({...c,evidence:c.evidence?.slice(-1200)})),...(log?.length>4000?{read_more:{tool:'opora_scene_result',action:'log',run_id:run.id,offset:0}}:{})};}
-module.exports={receipt,start,get,list,cancel,wait,image,worker,scenePath,options};
+module.exports={receipt,start,get,list,cancel,wait,image,worker,scenePath,options,jsonTail};

@@ -32,3 +32,5 @@ require('./chat-task.test.cjs');
 require("./agent-profile.test.cjs");
 
 require('./scene-run.test.cjs');
+
+require('./audit-fixes.test.cjs');

@@ -1,6 +1,6 @@
 window.OporaSceneRun=(()=>{
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const labels={running:'ПРОВЕРКА ИДЁТ',passed:'КАДР ПОЛУЧЕН',failed:'ОШИБКА',cancelled:'ОСТАНОВЛЕНО',interrupted:'ПРЕРВАНО'};
+ const labels={running:'ПРОВЕРКА ИДЁТ',passed:'КАДР ПОЛУЧЕН',failed:'ОШИБКА',cancelled:'ОСТАНОВЛЕНО',interrupted:'ПРЕРВАНО',unreadable:'ЖУРНАЛ НЕДОСТУПЕН'};
  function create({bridge,getRoot,getTaskId,getTasks,showModal,prepare,onError}){
   let epoch=0,project=null,runId=null,timer,busy=false;
   const host=()=>document.querySelector('#modal[open] [data-scene-run]');

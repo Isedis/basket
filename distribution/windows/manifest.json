@@ -1,13 +1,13 @@
 {
-  "version": "0.26.0",
+  "version": "0.26.1",
   "platform": "windows-x64",
-  "size": 164614653,
-  "sha256": "480a29347f328a93a7c2109f338b7a50b9d69dec7a71bf5fee59e105bec14453",
+  "size": 164617143,
+  "sha256": "ec3743fb4cdbfb86b76aa271a141c364ff1ad0a94d0317047ae86549f7180402",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
       "size": 50331648,
-      "sha256": "4c1081da6c4f306938926a9cee0c1fbbfd240a6f9bd74d745c9c3f95cc017fae"
+      "sha256": "d6fda338d315f7a99fc098176cac57f1b67ce4de06bf6544d91f869756209695"
     },
     {
       "name": "Opora-Windows.zip.part02",
@@ -17,12 +17,12 @@
     {
       "name": "Opora-Windows.zip.part03",
       "size": 50331648,
-      "sha256": "e92a9495d3e48f7383bb4a0d39b6319723e9ac5dbf7b1f7098d8c949c6cad29c"
+      "sha256": "1b111c97bc41aa63f00074a886e6172101380235bb15ac11c17e5b42e9b171df"
     },
     {
       "name": "Opora-Windows.zip.part04",
-      "size": 13619709,
-      "sha256": "355b762952a32735e8f425b327f2410c83011c1a4b4e4f9aea5137e7e883e8ca"
+      "size": 13622199,
+      "sha256": "c26130da4c65d9c408f9044f1067795d5e31035e91acd448f127459fa1920ad0"
     }
   ]
 }

@@ -36,27 +36,18 @@ function guard(current,projectId,revision) {
   if(revision!==undefined && current.revision!==revision)throw fault('STALE_CONTEXT','Контекст изменился. Перечитайте opora_get_context и используйте новую revision.');
 }
 function identity(s) {return {project_id:s.project_id,revision:s.revision,brand_revision:s.brand_revision};}
-async function listReports(root,limit=30,taskId) {
-  const current=await snapshot(root);
-  const directory='.opora/agent-reports';
-  await assertSafePath(current.root,directory);
-  let entries;
-  try {entries=await fs.readdir(path.join(current.root,directory),{withFileTypes:true});} catch(error) {if(error.code==='ENOENT')return {reports:[],unreadable:0};throw error;}
-  let unreadable=0;
-  const source=await sourceSnapshot(current.root);
-  const feedbackRevision=(await require('./visual-feedback.cjs').read(current.root)).feedback_revision;
-  const reports=[];
-  for(const entry of entries) {
-    if(!/^[a-f0-9]{64}\.json$/.test(entry.name) || !entry.isFile())continue;
-    try {
-      const item=JSON.parse((await boundedRead(path.join(current.root,directory,entry.name),512*1024)).toString('utf8'));
-      if(item.version!==1 || typeof item.project_id!=='string' || typeof item.revision!=='string' || typeof item.summary!=='string' || !['in_progress','blocked','ready_for_review'].includes(item.phase) || !['claude','codex','other'].includes(item.agent) || typeof item.recordedAt!=='string' || !Array.isArray(item.checks) || item.checks.some(c=>!c || typeof c.name!=='string' || !['passed','failed','not_run'].includes(c.result))) {unreadable++;continue;}
-      if(taskId&&item.task_id!==taskId)continue;
-      reports.push({...item,stale_context:item.revision!==current.revision,stale_feedback:item.feedback_revision?item.feedback_revision!==feedbackRevision:null,stale_code:item.source_snapshot?item.source_snapshot.revision!==source.revision:null,source_unknown:!item.source_snapshot,stale:item.revision!==current.revision||!!item.source_snapshot&&item.source_snapshot.revision!==source.revision||!!item.feedback_revision&&item.feedback_revision!==feedbackRevision,fromDifferentPath:item.project_id!==current.project_id});
-    } catch {unreadable++;}
-  }
-  reports.sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
-  return {reports:reports.slice(0,Math.min(limit,100)),total:reports.length,unreadable};
+async function listReports(root,limit=30,taskId,view={}) {
+  const current=view.snapshot||await snapshot(root);
+  const indexed=await require('./history-index.cjs').scan(current.root,{directory:'.opora/agent-reports',match:/^[a-f0-9]{64}\.json$/,max:512*1024,summary:item=>{
+    if(item.version!==1||typeof item.project_id!=='string'||typeof item.revision!=='string'||typeof item.summary!=='string'||!['in_progress','blocked','ready_for_review'].includes(item.phase)||!['claude','codex','other'].includes(item.agent)||typeof item.recordedAt!=='string'||!Array.isArray(item.checks)||item.checks.some(c=>!c||typeof c.name!=='string'||!['passed','failed','not_run'].includes(c.result)))throw new Error('Некорректный отчёт.');
+    return {task_id:item.task_id,recordedAt:item.recordedAt};
+  }});
+  const selected=indexed.rows.filter(r=>!taskId||r.task_id===taskId).sort((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
+  if(!selected.length)return {reports:[],total:0,unreadable:indexed.unreadable};
+  const source=view.source||await sourceSnapshot(current.root),feedbackRevision=view.feedback?.feedback_revision||(await require('./visual-feedback.cjs').read(current.root)).feedback_revision;
+  const reports=[];let unreadable=indexed.unreadable;
+  for(const row of selected.slice(0,Math.min(limit,100)))try{const item=await require('./history-index.cjs').read(row);reports.push({...item,stale_context:item.revision!==current.revision,stale_feedback:item.feedback_revision?item.feedback_revision!==feedbackRevision:null,stale_code:item.source_snapshot?item.source_snapshot.revision!==source.revision:null,source_unknown:!item.source_snapshot,stale:item.revision!==current.revision||!!item.source_snapshot&&item.source_snapshot.revision!==source.revision||!!item.feedback_revision&&item.feedback_revision!==feedbackRevision,fromDifferentPath:item.project_id!==current.project_id});}catch{unreadable++;}
+  return {reports,total:selected.length,unreadable};
 }
 async function reportProgress(root,input) {
   const current=await snapshot(root);

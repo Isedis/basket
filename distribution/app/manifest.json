@@ -1,12 +1,12 @@
 {
   "runtimeVersion": "45.2.3",
-  "size": 6496245,
-  "sha256": "fab6954f7b35575162720e935a9f59217b63db3c2e77a212b1cfa4b3027fd0e7",
+  "size": 6498733,
+  "sha256": "179b6ea1f3f5ee097556e02c03488a8ee510c1f5d479fb67b211cff883b8992c",
   "parts": [
     {
       "name": "Opora-Windows.zip.part01",
-      "size": 6496245,
-      "sha256": "fab6954f7b35575162720e935a9f59217b63db3c2e77a212b1cfa4b3027fd0e7"
+      "size": 6498733,
+      "sha256": "179b6ea1f3f5ee097556e02c03488a8ee510c1f5d479fb67b211cff883b8992c"
     }
   ]
 }
