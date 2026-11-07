@@ -82,7 +82,12 @@ jobs:
           7z x "$env:RUNNER_TEMP/mesa.7z" "-o$env:RUNNER_TEMP/mesa" -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (!(Test-Path "$env:RUNNER_TEMP/mesa/x64/opengl32.dll") -or !(Test-Path "$env:RUNNER_TEMP/mesa/x64/libgallium_wgl.dll")) { throw "Mesa OpenGL drivers are missing" }
-          Copy-Item "$env:RUNNER_TEMP/mesa/x64/*.dll" "$env:RUNNER_TEMP/godot"
+          # Register the software ICD for Win32 GDI pixel formats. Copying DLLs
+          # beside Godot alone does not provide a working WGL context on this VM.
+          & "$env:RUNNER_TEMP/mesa/systemwidedeploy.cmd" 1
+          if (!(Test-Path "$env:windir/System32/mesadrv.dll")) { throw "Software OpenGL ICD was not installed" }
+          $icd=Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL'
+          if ($icd.DLL -ne 'mesadrv.dll') { throw "Software OpenGL ICD was not registered" }
           $env:GALLIUM_DRIVER='llvmpipe'
           $env:LIBGL_ALWAYS_SOFTWARE='1'
           npm run test:scene > "$env:RUNNER_TEMP/scene.log" 2>&1
