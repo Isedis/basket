@@ -2600,12 +2600,41 @@ setInterval(() => { if (!tree.hidden && !tRaf) drawTree(); }, 400);
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
 
 /* ---------- сохранение и офлайн-прогресс ---------- */
-function save() {
+// сохранение: в браузер (быстро) и в облако артефакта — личная ячейка игрока, переживает перезапуск
+let cloud = null, cloudJson = null, cloudT = 0;
+function save(force) {
+  if (!booted) return;
   S.vals = stats.map(s => s.v); S.lv = stats.map(s => s.lvl); S.t = Date.now(); S.hpf = hero.hp / D.maxHP;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
+  const json = JSON.stringify(S);
+  try { localStorage.setItem(SAVE_KEY, json); } catch (e) {}
+  cloudSave(json, force === true);
+}
+async function cloudSave(json, force) {
+  if (!cloud || cloud.busy || json === cloud.last) return;
+  if (!force && Date.now() < cloudT) return;
+  cloudT = Date.now() + 15000; cloud.busy = true;
+  try { await cloud.ref.set({ json, t: S.t }); cloud.last = json; } catch (e) { if (e && e.code === 'unavailable') cloudT = Date.now() + 5000; }
+  cloud.busy = false;
+}
+async function cloudLoad() {
+  try {
+    if (typeof window.claude !== 'object' || !window.claude || typeof window.claude.use !== 'function') return;
+    const db = await window.claude.use('db'), user = await window.claude.use('user');
+    if (!db || !user) return;
+    const id = await user.id(); if (!id) return;
+    const ref = db.doc('data/users/' + id + '/save');
+    cloud = { ref, busy: false, last: '' };
+    const snap = await ref.get();
+    const d = snap.exists ? snap.data() : null;
+    if (d && typeof d.json === 'string') {
+      let local = null; try { local = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
+      if (!local || (d.t || 0) > (local.t || 0)) cloudJson = d.json;
+      cloud.last = d.json;
+    }
+  } catch (e) {}
 }
 function load() {
-  try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if (d && d.vals) S = Object.assign(S, d); } catch (e) {}
+  try { const raw = cloudJson || localStorage.getItem(SAVE_KEY); const d = JSON.parse(raw); if (d && d.vals) S = Object.assign(S, d); } catch (e) {}
 }
 function offline(sec) {
   if (sec < 20) return;
@@ -2662,13 +2691,17 @@ $('helpb').onclick = () => {
 
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); save(); }
-  else if (hiddenAt) { offline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; last = performance.now(); }
+  if (document.hidden) { hiddenAt = Date.now(); save(true); }
+  else if (hiddenAt && booted) { offline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; last = performance.now(); }
 });
-window.addEventListener('pagehide', save);
+window.addEventListener('pagehide', () => save(true));
 window.addEventListener('resize', () => setTimeout(resize, 50));
 
-/* ---------- старт ---------- */
+/* ---------- старт: сначала ждём облачное сохранение (не дольше 4 с) ---------- */
+let last = performance.now(), booted = false;
+Promise.race([cloudLoad(), new Promise(r => setTimeout(r, 4000))]).then(boot, boot);
+function boot() {
+if (booted) return; booted = true;
 load();
 if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
@@ -2686,8 +2719,10 @@ const away = (Date.now() - (S.t || Date.now())) / 1000;
 if (S.kills > 0 && away > 20) offline(away);
 else if (S.kills === 0) { $('mt').textContent = 'БЕСКОНЕЧНАЯ ДРАКА'; $('mp').innerHTML = 'Герой дерётся сам.<br>Каждое убийство даёт статы.<br>Статы бесконечны.<br><br><span style="color:#fff8a0">Тапай по врагам</span> — бей молнией с неба!<br><br>Держи <span style="color:#ffdd44">комбо</span>, качай пары статов ради <span style="color:#ff44ff">синергий</span>.<br><br><span style="color:#8a83a6">Низкое HP = меньше наград.</span>'; $('modal').hidden = false; }
 document.fonts && document.fonts.ready.then(() => updateUI());
+last = performance.now();
+requestAnimationFrame(frame);
+}
 
-let last = performance.now();
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
@@ -2695,7 +2730,6 @@ function frame(now) {
   render();
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
 </script>
 </body>
 </html>
