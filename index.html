@@ -306,7 +306,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112153154';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112154301';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -713,7 +713,7 @@ const KS = [
   [['Счастливая звезда', L => 'шанс ' + pct(.005 * L) + ' на сундук: награды как за 30 убийств'], ['Любимец богов', L => 'после золотого врага с шансом ' + pct(Math.min(1, .2 * L)) + ' следующие 5 тоже золотые']],
   [['Перст судьбы', L => 'слабые места у элиты (2+ особенности), урон по ним +' + pct(L)], ['Длань творца', L => 'каждый тап бьёт всех врагов на экране (' + pct(.2 * L) + ' урона)']],
   [['Мудрец', L => 'новый стат сразу получает прирост ×' + 10 * L], ['Всезнание', L => '+' + L + ' к уровню всех форм']],
-  [['Пожиратель душ', L => 'вожаки после 30-й зоны дают ×' + (1 + L) + ' душ'], ['Бессмертная душа', L => 'после перерождения остаётся ' + pct(Math.min(.3, .03 * L)) + ' статов']],
+  [['Пожиратель душ', L => 'вожаки после 30-й зоны дают ×' + (1 + L) + ' душ'], ['Бессмертная душа', L => 'после перерождения часть статов остаётся (' + pct(Math.min(.3, .03 * L)) + ', быстрый старт)']],
 ];
 KS.forEach((pr, bi) => pr.forEach(([n, d], j) => TK['ks' + bi + '_' + j] = [n, 1, d]));
 const BRANCHES = [
@@ -791,6 +791,7 @@ function calcTal() {
     TAL[nd.k] = (TAL[nd.k] || 0) + nd.v * l * (nd.br >= 0 ? TB[nd.br].bm : 1); TAL[nd.k + '!'] = 1;
   }
   TAL.constel = TB.filter(b => b.full).length;
+  TAL.lv = 0; for (const nd of TN) if (!nd.auto) TAL.lv += TL(nd.id);
   calcGear();
 }
 const ta = k => TAL[k] || 0;
@@ -814,7 +815,7 @@ let bossAlive = false, shake = 0, time = 0, tapCd = 0;
 let flashT = 0, slowT = 0, decal = null, decalT = 0;
 let combo = 0, comboT = 0, comboPop = 0;
 let bossT = 0, bossCd = 0, forceBoss = false;
-const BOSS_TIME = 30, WALL_T = 120;   // WALL_T: сколько вожак ждёт, пока герой качается на стене
+const BOSS_TIME = 30, WALL_T = 60;   // WALL_T: сколько вожак ждёт, пока герой качается на стене
 let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
 function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
 function retreat(b, why) {
@@ -1072,8 +1073,12 @@ let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 // рост зоны: в начале круче (герой растёт взрывно), дальше ×1.5 за зону
 const zl = [0];
 function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
-const zoneHP = z => ZB * Math.pow(10, zoneLog(z));
-const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP));
+// предел души: дальше этой зоны враги резко крепнут; каждый уровень таланта отодвигает предел
+let LIM_B = 8, LIM_K = 4, LIM_HP = 4, LIM_DM = 6;
+const soulLimit = () => Math.floor(LIM_B + LIM_K * Math.sqrt(TAL.lv || 0));
+const overZ = z => { const o = Math.max(0, z - soulLimit()); return o * (1 + o / 8); };   // за пределом рост ускоряется
+const zoneHP = z => ZB * Math.pow(10, zoneLog(z)) * Math.pow(LIM_HP, overZ(z));
+const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP)) * Math.pow(LIM_DM, overZ(z));
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
@@ -1256,9 +1261,10 @@ function renderInfo() {
   }
   infoEl.innerHTML = h + '<br><span class="k">(тап — закрыть)</span>';
 }
+const MAX_STATS = 1500;
 function checkUnlocks(silent) {
   let added = 0;
-  while (unlockKills(stats.length) <= S.kills) {
+  while (stats.length < MAX_STATS && unlockKills(stats.length) <= S.kills) {
     const s = makeStat(stats.length);
     if (S.vals[s.n] !== undefined) s.v = S.vals[s.n];
     else if (ksL(6, 0) && D.gainMult) s.v += zs() * D.gainMult * 10 * ksL(6, 0);
@@ -1551,6 +1557,7 @@ function giveBurst(total) {
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
   S.zone++; S.zk = 0; S.wallW = 0;
+  if (S.zone === soulLimit() + 1) toast('ЗА ПРЕДЕЛОМ ДУШИ', 'враги резко крепнут · таланты отодвинут предел', 2600);
   { const keys = Object.keys(ZMODS); S.zmod = S.zone >= 5 && !isLegend(S.zone) && rnd() < .4 ? keys[Math.floor(rnd() * keys.length)] : null; }
   S.meta.best = Math.max(S.meta.best, S.zone);
   if (S.zone >= 2) tip('souls', 'Души забега', 'За врагов и вожаков копятся души (✦ вверху справа). Когда герой падёт, он переродится в новом случайном классе, а души останутся навсегда — трать их в дереве талантов.');
@@ -1903,8 +1910,8 @@ function update(dt) {
     const bm = mobs.find(m => m.boss && !m.dead);
     if (bm) { bm.ws.t -= dt; if (bm.ws.t <= 0) moveWS(bm); }
     if (bm && bossT <= 0) {   // время вышло: вожак впадает в ярость, пока кто-то не падёт
-      bossT = 8; bm.dm *= 2; bm.enr = (bm.enr || 0) + 1; shake = 8; flashT = .1;
-      toast('ЯРОСТЬ ВОЖАКА ×' + Math.pow(2, bm.enr), 'добей его, пока он не добил тебя!', 1800); sfx.boss();
+      bossT = 8; bm.dm *= 3; bm.enr = (bm.enr || 0) + 1; shake = 8; flashT = .1;
+      toast('ЯРОСТЬ ВОЖАКА ×' + Math.pow(3, bm.enr), 'добей его, пока он не добил тебя!', 1800); sfx.boss();
     }
   }
   for (const m of mobs) if (m.ws && !m.boss) { m.ws.t -= dt; if (m.ws.t <= 0) moveWS(m); }
@@ -2426,7 +2433,7 @@ function updateUI() {
   if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
-  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone;
+  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone + ' / ' + soulLimit(); $('znum').style.color = S.zone > soulLimit() ? '#ff6b6b' : '';
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
   else if (S.zk >= need) {
@@ -2602,12 +2609,12 @@ function renderSouls() {
   renderAuto();
   const M = S.meta, g = S.runSouls || 0;
   $('dsouls').textContent = fmt(M.souls); $('dreb').textContent = M.rebirths; $('dbest').textContent = Math.max(M.best, S.zone);
-  $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br><span class="k" style="color:var(--dim)">зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
+  $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br>Предел души: <span style="color:#ff44ff">зона ' + soulLimit() + '</span> — дальше враги резко крепнут. Таланты отодвигают предел.<br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
 }
 function rebirth() {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
   M.souls += g; M.total += g; M.rebirths++; M.best = Math.max(M.best, S.zone);
-  const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => st.v * keepF) : [];
+  const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
@@ -2856,6 +2863,7 @@ function renderHint() {
     : D.lim === 'surv' ? 'вожак убивает героя — узлы с <b style="color:#5cff8a">!</b> добавят живучести'
     : 'стены нет — узлы с <b style="color:#5cff8a">!</b> ускорят рост';
   $('thint').innerHTML = `Активные ветви (${(S.meta.act || []).length}/3): ${act}${startOfLife() ? ' · <b style="color:#f2c94c">тапни название ветви, чтобы вкл/выкл</b>' : ' · сменить можно в начале жизни'}<br>Совет: ${tip}` +
+    `<br>Предел души: <b style="color:#ff44ff">зона ${soulLimit()}</b> · каждый уровень таланта отодвигает его` +
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
 function drawTree() {
