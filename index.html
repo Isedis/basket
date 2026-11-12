@@ -306,7 +306,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112155318';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112155458';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -775,7 +775,7 @@ const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
 const nMax = nd => nd.max || 50;   // обычный талант — до 50 уровней
 const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((nd.max ? 5 * Math.pow(1.45, l) : Math.pow(1 + .5 * l, 2.2)) * (1 + nd.d * .35));
-const brActive = bi => bi < 0 || (S.meta.act || []).includes(bi);
+const brActive = bi => true;   // все ветви работают одновременно
 const startOfLife = () => S.zone <= 1 && S.kills < 200;
 let TAL = {}, TB = [], KSL = [];
 function calcTal() {
@@ -1075,7 +1075,7 @@ let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 const zl = [0];
 function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
 // враги крепнут всё быстрее: к квадрату зоны, а после 50-й — несоизмеримо (стена мира)
-let ZQ = .0125, ZW = 49, ZWK = 10;
+let ZQ = .0125, ZW = 49, ZWK = 25;
 const zoneX = z => ZQ * z * z + ZWK * Math.max(0, z - ZW) ** 2;   // доп. порядки силы врагов
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
 const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + zoneX(z));
@@ -2861,7 +2861,7 @@ function renderHint() {
   const tip = D.lim === 'dmg' ? 'упираешься в урон вожака — узлы с <b style="color:#5cff8a">!</b> добавят урона'
     : D.lim === 'surv' ? 'вожак убивает героя — узлы с <b style="color:#5cff8a">!</b> добавят живучести'
     : 'стены нет — узлы с <b style="color:#5cff8a">!</b> ускорят рост';
-  $('thint').innerHTML = `Активные ветви (${(S.meta.act || []).length}/3): ${act}${startOfLife() ? ' · <b style="color:#f2c94c">тапни название ветви, чтобы вкл/выкл</b>' : ' · сменить можно в начале жизни'}<br>Совет: ${tip}` +
+  $('thint').innerHTML = `Все 8 ветвей работают сразу · у каждого таланта до 50 уровней<br>Совет: ${tip}` +
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
 function drawTree() {
@@ -3012,7 +3012,6 @@ const tUp = e => {
   if (!had || tMoved > 8 || tPtr.size) return;
   const r = tview.getBoundingClientRect(), sx = e.clientX - r.left, sy2 = e.clientY - r.top;
   const wx = (sx - tW / 2) / cam.z + cam.x, wy = (sy2 - tH / 2) / cam.z + cam.y;
-  for (let bi = 0; bi < BRANCHES.length; bi++) { const [lx, ly] = labelPos(bi), [x, y] = toScr(lx, ly); if (Math.abs(sx - x) < 60 && Math.abs(sy2 - y - 5) < 14) { toggleBranch(bi); return; } }
   let best = -1, bd = 1e9; for (const nd of TN) { const d = Math.hypot(nd.x - wx, nd.y - wy); if (d < bd) { bd = d; best = nd.id; } }
   if (best >= 0 && bd < nodeSize(TN[best]) * .9 + 6 / cam.z) { tSel = best; renderTInfo(); drawTree(); }
 };
