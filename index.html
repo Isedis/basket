@@ -307,7 +307,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112161930';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112162833';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1552,7 +1552,7 @@ function killMob(m) {
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) fxLabel('Ядовитое облако', m.x, m.y - 12, '#88ee22');
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) clouds.push({ x: m.x, y: m.y - 2, r: 8 + 2 * Math.min(6, F(EI.poison) - 2), dps: m.psn * .6, t: 3 });
   if (ksL(0, 0) && rnd() < .02 * ksL(0, 0)) { burst(m.x, m.y - 3, '#ff3322', 14, 50); ring(m.x, m.y - 3, 16, '#ff5544'); hitAround(m.x, m.y, 16, D.hit * 3 * ksL(0, 0), '#ff5544', m); }
-  if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); ult = 1; fireUlt(); } }
+  if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); if (ultCd <= 0) { ult = 1; fireUlt(); } } }
   if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
   addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20), m);
@@ -1693,6 +1693,7 @@ function heroStrike(t, fromWave) {
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
+  if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
 }
@@ -1719,45 +1720,129 @@ let ultQ = [];
 const later = (t, fn) => ultQ.push({ t, fn });
 function updUltQ(dt) { for (const q of ultQ) { q.t -= dt; if (q.t <= 0 && !q.done) { q.done = true; q.fn(); } } ultQ = ultQ.filter(q => !q.done); }
 const live = () => mobs.filter(m => !m.dead);
+/* ---------- анимации ульт ---------- */
+// ufx: живые объекты-анимации в мире; d(p) рисует, p — прогресс 0..1; hit — что случится в конце
+let ufx = [], ultBan = null;
+const ULT_CD = 10;   // ульта не чаще раза в 10 секунд
+let ultCd = 0;
+function fx1(life, d, hit) { ufx.push({ t: 0, life, d, hit }); }
+function updUfx(dt) { for (const u of ufx) { u.t += dt; if (u.t >= u.life && !u.done) { u.done = true; if (u.hit) u.hit(); } } ufx = ufx.filter(u => !u.done); if (ultBan) { ultBan.t += dt; if (ultBan.t > 1.6) ultBan = null; } }
+function drawUfx() { for (const u of ufx) u.d(Math.min(1, u.t / u.life), u); }
+const dot = (x, y, s, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s); };
+function circ(x, y, r, c, n, sq = .6, rot = 0) { for (let i = 0; i < n; i++) { const a = i / n * 6.283 + rot; pix(x + Math.cos(a) * r, y + Math.sin(a) * r * sq, c); } }
+// падающий снаряд: из (x0,y0) в цель, след, потом удар
+function dropFx(x0, y0, m, life, col, size, onHit) {
+  const tx = m.x, ty = m.y - 3;
+  fx1(life, p => { const e = p * p, x = x0 + (tx - x0) * e, y = y0 + (ty - y0) * e; ctx.globalAlpha = .5; for (let j = 1; j < 5; j++) dot(x - (tx - x0) * .04 * j, y - (ty - y0) * .04 * j, Math.max(1, size - j), col); ctx.globalAlpha = 1; dot(x, y, size, '#ffffff'); dot(x, y, Math.max(1, size - 1), col); }, onHit);
+}
+// заставка ульты: затемнение, полосы, имя класса
+function ultIntro(name, col) {
+  ultBan = { t: 0, name, col };
+  fx1(.5, p => { const r = 6 + p * 40; ctx.globalAlpha = 1 - p; circ(hero.x, hero.y - 4, r, col, 40); circ(hero.x, hero.y - 4, r * .7, '#ffffff', 28); ctx.globalAlpha = 1; });
+  fx1(.6, p => { ctx.globalAlpha = (1 - p) * .8; for (let i = 0; i < 3; i++) { ctx.fillStyle = i === 1 ? '#ffffff' : col; ctx.fillRect(Math.round(hero.x) - 1 + i, Math.round(hero.y - 70), 1, 66); } ctx.globalAlpha = 1; });
+}
+function drawUltBanner(k) {
+  if (!ultBan) return;
+  const t = ultBan.t, a = t < .15 ? t / .15 : t > 1.2 ? Math.max(0, 1 - (t - 1.2) / .4) : 1;
+  const w = fx.width, h = fx.height, bh = h * .07 * a, cy = h * .32;
+  fctx.save(); fctx.globalAlpha = a;
+  fctx.fillStyle = 'rgba(0,0,0,.65)'; fctx.fillRect(0, 0, w, bh); fctx.fillRect(0, h - bh, w, bh);   // кинополосы
+  const slide = (1 - Math.min(1, t / .2)) * w * .6;
+  fctx.fillStyle = 'rgba(0,0,0,.55)'; fctx.fillRect(slide, cy - h * .04, w, h * .08);
+  fctx.fillStyle = ultBan.col; fctx.fillRect(slide, cy - h * .04, w, 3 * DPR); fctx.fillRect(slide, cy + h * .04 - 3 * DPR, w, 3 * DPR);
+  const fs = Math.round(k * 7 / DPR) * DPR; fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.textAlign = 'center'; fctx.textBaseline = 'middle';
+  fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000'; fctx.fillStyle = Math.sin(t * 30) > 0 || t > .5 ? ultBan.col : '#ffffff';
+  fctx.strokeText(ultBan.name.toUpperCase(), w / 2 + slide, cy); fctx.fillText(ultBan.name.toUpperCase(), w / 2 + slide, cy);
+  fctx.restore(); fctx.textBaseline = 'alphabetic';
+}
 function clsUlt(dmg) {
   const k = cls(), c = CL().c;
+  ultIntro(ULTS[k][0], c);
   switch (k) {
-    case 'war': for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hero.y, m.x - hero.x) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hero.x, y: hero.y - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .6, left: 0 }); }); }
-      ring(hero.x, hero.y - 3, 30, '#ffffff'); break;
-    case 'bers': for (let i = 0; i < 15; i++) later(i * .2, () => { hero.spin = .2; ring(hero.x, hero.y - 3, 26, '#ff4433'); hitAround(hero.x, hero.y, 26, dmg * .15, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 3); tone(140, .08, 'sawtooth', .03, 70); }); break;
-    case 'pal': { const t = live().sort((a, b) => b.hp - a.hp)[0] || hero; for (let i = 0; i < 8; i++) later(i * .03, () => bolts.push({ x1: t.x + i - 4, y1: t.y - 70, x2: t.x + i - 4, y2: t.y - 3, l: .2, c: i % 2 ? '#ffffff' : '#ffe08a' }));
-      later(.3, () => { ring(t.x, t.y - 2, 40, '#ffe08a'); ring(t.x, t.y - 2, 26, '#ffffff'); burst(t.x, t.y - 3, '#ffe08a', 50, 80); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - t.x, m.y - t.y) < 40 ? 1.4 : .5), true, true, '#fff2a8'); hero.hp = D.maxHP; hero.shield = Math.max(hero.shield, D.maxHP * .5); shake = 14; sfx.boom(); }); break; }
-    case 'guard': ring(hero.x, hero.y - 3, 50, '#8fb0d0'); ring(hero.x, hero.y - 3, 30, '#ffffff'); hero.iframe = 3;
-      for (const m of live()) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1; m.kx += dx / d * 260; m.ky += dy / d * 260; if (!m.boss) m.frz = 3; hitMob(m, dmg * .9, true, true, '#8fb0d0'); } break;
-    case 'mage': for (let i = 0; i < 14; i++) later(i * .1, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; bolts.push({ x1: m.x + 20, y1: m.y - 60, x2: m.x, y2: m.y - 3, l: .18, c: '#ff9a3c' }); ring(m.x, m.y - 2, 18, '#ff9a3c'); burst(m.x, m.y - 3, '#ff9a3c', 16, 50); hitAround(m.x, m.y, 18, dmg * .5, '#ff9a3c'); shake = Math.max(shake, 4); sfx.boom(); }); break;
-    case 'sham': for (let r = 0; r < 3; r++) later(r * .35, () => { for (const m of live()) { bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: m.y - 60, x2: m.x, y2: m.y - 3, l: .2, c: r % 2 ? '#ffffff' : '#99eeff' }); hitMob(m, dmg * .4, true, r === 2, '#ccf6ff'); } flashT = .08; tone(1800, .1, 'square', .03, 300); });
-      for (let i = 0; i < 3; i++) totems.push({ x: hero.x + (i - 1) * 14, y: hero.y + 6, t: 14, cd: .3 }); break;
-    case 'arch': for (let i = 0; i < 60; i++) later(i * .025, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const ox = (rnd() - .5) * 6; bolts.push({ x1: m.x + ox - 6, y1: m.y - 30, x2: m.x + ox, y2: m.y - 3, l: .08, c: '#5cff8a' }); hitMob(m, dmg * .08, false, false, '#5cff8a'); }); break;
+    case 'war':
+      fx1(.7, p => { const r = 6 + p * 60; ctx.globalAlpha = 1 - p; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283 + p * 2; for (let j = 0; j < 5; j++) pix(hero.x + Math.cos(a) * (r + j), hero.y - 4 + Math.sin(a) * (r + j) * .7, j > 3 ? '#ffffff' : '#c9ced6'); } ctx.globalAlpha = 1; });
+      for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(.15 + i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hero.y, m.x - hero.x) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hero.x, y: hero.y - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .6, left: 0 }); }); }
+      break;
+    case 'bers':
+      fx1(3.2, p => { const r = 26, rot = p * 40; ctx.globalAlpha = .85; for (let i = 0; i < 4; i++) { const a = rot + i * 1.57; for (let j = 8; j < r; j += 2) pix(hero.x + Math.cos(a) * j, hero.y - 4 + Math.sin(a) * j * .7, j > r - 4 ? '#ffffff' : '#ff4433'); } circ(hero.x, hero.y - 3, r, '#aa1a1a', 36, .7, rot * .2); ctx.globalAlpha = 1;
+        if (rnd() < .6 && parts.length < 500) { const a = rnd() * 6.28; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .7, vx: Math.cos(a) * 30, vy: -20, l: .5, c: '#ff2222' }); } });
+      for (let i = 0; i < 15; i++) later(.2 + i * .2, () => { hero.spin = .2; hitAround(hero.x, hero.y, 26, dmg * .15, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 3); tone(140, .08, 'sawtooth', .03, 70); });
+      break;
+    case 'pal': { const t = live().sort((a, b) => b.hp - a.hp)[0] || hero, tx = t.x, ty = t.y;
+      fx1(.55, p => { const e = p * p, hy = ty - 90 + 84 * e; ctx.fillStyle = '#8a6a3a'; ctx.fillRect(Math.round(tx) - 1, Math.round(hy - 18), 3, 16); ctx.fillStyle = '#ffe08a'; ctx.fillRect(Math.round(tx) - 8, Math.round(hy - 4), 17, 9); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(tx) - 7, Math.round(hy - 3), 15, 2); ctx.fillStyle = '#b08a3a'; ctx.fillRect(Math.round(tx) - 8, Math.round(hy + 3), 17, 2);
+        ctx.globalAlpha = .4; circ(tx, ty, 20 * (1 - p) + 4, '#ffe08a', 24); ctx.globalAlpha = 1; },
+        () => { ring(tx, ty - 2, 44, '#ffe08a'); ring(tx, ty - 2, 26, '#ffffff'); burst(tx, ty - 3, '#ffe08a', 60, 90); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 44 ? 1.4 : .5), true, true, '#fff2a8'); hero.hp = D.maxHP; hero.shield = Math.max(hero.shield, D.maxHP * .5); shake = 16; flashT = .15; sfx.boom();
+          fx1(.8, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(tx) - 1, Math.round(ty - 30), 3, 26); ctx.fillRect(Math.round(tx) - 8, Math.round(ty - 22), 17, 3); ctx.globalAlpha = 1; }); });
+      break; }
+    case 'guard':
+      hero.iframe = 3;
+      fx1(3, p => { const pul = 1 + Math.sin(p * 40) * .08; ctx.globalAlpha = .7 * (1 - p * .5); circ(hero.x, hero.y - 4, 16 * pul, '#8fb0d0', 40, .9); circ(hero.x, hero.y - 4, 14 * pul, '#ffffff', 30, .9, p * 3); for (let i = -2; i <= 2; i++) pix(hero.x + i * 6, hero.y - 4 - 14 * pul * .9 + Math.abs(i) * 2, '#ffffff'); ctx.globalAlpha = 1; });
+      later(.15, () => { ring(hero.x, hero.y - 3, 55, '#8fb0d0'); ring(hero.x, hero.y - 3, 32, '#ffffff'); shake = 14;
+        for (const m of live()) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1; m.kx += dx / d * 260; m.ky += dy / d * 260; if (!m.boss) m.frz = 3; hitMob(m, dmg * .9, true, true, '#8fb0d0'); } sfx.boom(); });
+      break;
+    case 'mage':
+      for (let i = 0; i < 14; i++) later(.15 + i * .1, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const mx = m.x, my = m.y;
+        dropFx(mx + 40, my - 80, m, .3, '#ff9a3c', 4, () => { ring(mx, my - 2, 18, '#ff9a3c'); burst(mx, my - 3, '#ff9a3c', 16, 50); burst(mx, my - 3, '#ffee88', 8, 30); hitAround(mx, my, 18, dmg * .5, '#ff9a3c'); shake = Math.max(shake, 4); sfx.boom(); }); });
+      break;
+    case 'sham':
+      fx1(1.4, p => { const a = p < .15 ? p / .15 : p > .8 ? (1 - p) / .2 : 1; ctx.globalAlpha = .6 * a; for (let i = 0; i < 40; i++) { const x = camX + (i * 37 % W) + Math.sin(time * 2 + i) * 3, y = camY + 4 + (i * 13 % 10); dot(x, y, 5, i % 3 ? '#2a2f44' : '#3a4060'); } ctx.globalAlpha = 1; });
+      for (let r = 0; r < 3; r++) later(.2 + r * .35, () => { for (const m of live()) { bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: camY + 6, x2: m.x, y2: m.y - 3, l: .2, c: r % 2 ? '#ffffff' : '#99eeff' }); hitMob(m, dmg * .4, true, r === 2, '#ccf6ff'); } flashT = .08; shake = 6; tone(1800, .1, 'square', .03, 300); });
+      for (let i = 0; i < 3; i++) totems.push({ x: hero.x + (i - 1) * 14, y: hero.y + 6, t: 14, cd: .3 });
+      break;
+    case 'arch':
+      fx1(.3, p => { ctx.globalAlpha = 1 - p; for (let i = 0; i < 12; i++) pix(hero.x + (i - 6), hero.y - 10 - p * 60 - (i % 3) * 3, '#5cff8a'); ctx.globalAlpha = 1; });
+      for (let i = 0; i < 60; i++) later(.3 + i * .025, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const ox = (rnd() - .5) * 8, x = m.x + ox;
+        fx1(.15, p => { const y = m.y - 40 + 37 * p; for (let j = 0; j < 5; j++) pix(x - 2 + j * .4, y - j, j === 0 ? '#ffffff' : j > 3 ? '#5cff8a' : '#c9a36a'); }, () => { if (!m.dead) hitMob(m, dmg * .08, false, false, '#5cff8a'); }); });
+      break;
     case 'assa': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 12);
-      tg.forEach((m, i) => later(i * .12, () => { if (m.dead) return; blinkTo(m, true); burst(hero.x, hero.y - 4, '#4a3a6a', 10, 40); hitMob(m, dmg * 1.6, true, true, '#9a7aff'); tone(1300 + i * 60, .05, 'triangle', .03, 500); })); hero.iframe = tg.length * .12 + .3; break; }
-    case 'gamb': for (let i = 0; i < 5; i++) later(i * .25, () => { const s = Math.floor(rnd() * 5), nm = ['♥ ЧЕРВИ', '♦ БУБНЫ', '♣ ТРЕФЫ', '♠ ПИКИ', '★ ДЖОКЕР'][s], col = ['#ff4466', '#ffd84a', '#5cff8a', '#e9e4ff', '#44ffaa'][s];
-      ftext(hero.x, hero.y - 22 - i * 3, nm, col, 1, 1); ring(hero.x, hero.y - 3, 22 + i * 4, col);
-      if (s === 0) hero.hp = D.maxHP; if (s === 1) { giveBurst(zs() * D.gainMult * 40); if (rnd() < .15) giveChest('c', 'флеш-рояль'); } if (s === 2) for (const m of live()) { m.psn = Math.max(m.psn || 0, D.hit * 3); m.psnT = 4; }
-      for (const m of live()) hitMob(m, dmg * (s === 3 ? .6 : s === 4 ? 1 : .25), s >= 3, s === 4, col); tone(1600 + i * 200, .06, 'triangle', .03); }); break;
-    case 'alch': for (const m of live()) if (clouds.length < 40) clouds.push({ x: m.x, y: m.y - 1, r: 12, dps: D.hit * 2, t: 4, acid: true });
-      live().forEach((m, i) => later(.4 + i * .05, () => { if (m.dead) return; ring(m.x, m.y - 2, 14, '#b6ff3c'); burst(m.x, m.y - 3, '#b6ff3c', 12, 40); hitAround(m.x, m.y, 14, dmg * .5, '#b6ff3c'); tone(700, .04, 'square', .02, 200); })); break;
-    case 'priest': live().forEach((m, i) => later(i * .04, () => { if (m.dead) return; bolts.push({ x1: m.x, y1: m.y - 70, x2: m.x, y2: m.y - 3, l: .25, c: '#fff6c0' }); bolts.push({ x1: m.x + 1, y1: m.y - 70, x2: m.x + 1, y2: m.y - 3, l: .2, c: '#ffffff' }); ring(m.x, m.y - 2, 10, '#fff6c0'); hitMob(m, dmg * 1.1, true, true, '#fff6c0'); }));
-      hero.hp = D.maxHP; hero.psnT = 0; hero.slowT = 0; ring(hero.x, hero.y - 4, 16, '#fff6c0'); break;
+      fx1(.3 + tg.length * .12, p => { ctx.fillStyle = 'rgba(10,0,20,.35)'; ctx.fillRect(camX - 4, camY - 4, W + 8, H + 8); });
+      tg.forEach((m, i) => later(.2 + i * .12, () => { if (m.dead) return; blinkTo(m, true); burst(hero.x, hero.y - 4, '#4a3a6a', 10, 40); hitMob(m, dmg * 1.6, true, true, '#9a7aff'); tone(1300 + i * 60, .05, 'triangle', .03, 500);
+        const mx = m.x, my = m.y - 4; fx1(.35, p => { ctx.globalAlpha = 1 - p; for (let j = -6; j <= 6; j++) { pix(mx + j, my + j * .8, '#ffffff'); pix(mx + j, my - j * .8, '#9a7aff'); } ctx.globalAlpha = 1; }); }));
+      hero.iframe = tg.length * .12 + .5; break; }
+    case 'gamb': for (let i = 0; i < 5; i++) later(.15 + i * .25, () => { const s = Math.floor(rnd() * 5), nm = ['♥ ЧЕРВИ', '♦ БУБНЫ', '♣ ТРЕФЫ', '♠ ПИКИ', '★ ДЖОКЕР'][s], col = ['#ff4466', '#ffd84a', '#5cff8a', '#e9e4ff', '#44ffaa'][s];
+        const cx0 = hero.x, cy0 = hero.y - 6, dx = (i - 2) * 12;
+        fx1(.9, p => { const x = cx0 + dx * Math.min(1, p * 3), y = cy0 - 26 * Math.min(1, p * 3) - (p > .6 ? (p - .6) * 30 : 0); ctx.globalAlpha = p > .7 ? (1 - p) / .3 : 1; ctx.fillStyle = s === 4 ? '#44ffaa' : '#ffffff'; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 4, 7, 9); ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 4, 7, 1); dot(x, y, 3, col); ctx.globalAlpha = 1; });
+        ftext(hero.x + dx, hero.y - 40, nm, col, .9, 1); ring(hero.x, hero.y - 3, 22 + i * 4, col);
+        if (s === 0) hero.hp = D.maxHP; if (s === 1) { giveBurst(zs() * D.gainMult * 40); if (rnd() < .15) giveChest('c', 'флеш-рояль'); } if (s === 2) for (const m of live()) { m.psn = Math.max(m.psn || 0, D.hit * 3); m.psnT = 4; }
+        for (const m of live()) hitMob(m, dmg * (s === 3 ? .6 : s === 4 ? 1 : .25), s >= 3, s === 4, col); tone(1600 + i * 200, .06, 'triangle', .03); }); break;
+    case 'alch': {
+      const all = live();
+      fx1(1.6, p => { for (let i = 0; i < 6; i++) if (rnd() < .5 && parts.length < 500) parts.push({ x: camX + rnd() * W, y: camY + H, vx: 0, vy: -30 - rnd() * 30, l: 1.2, c: rnd() < .5 ? '#b6ff3c' : '#e8ff8a', f: 1 }); });
+      all.forEach((m, i) => later(.1 + i * .03, () => { if (m.dead) return; const x0 = hero.x, y0 = hero.y - 6, tx = m.x, ty = m.y - 2;
+        fx1(.35, p => { const x = x0 + (tx - x0) * p, y = y0 + (ty - y0) * p - Math.sin(p * Math.PI) * 18; dot(x, y, 2, '#b6ff3c'); pix(x, y - 2, '#e6e6e6'); }, () => { if (clouds.length < 40) clouds.push({ x: tx, y: ty + 1, r: 12, dps: D.hit * 2, t: 4, acid: true }); burst(tx, ty, '#b6ff3c', 8, 30); }); }));
+      all.forEach((m, i) => later(.9 + i * .05, () => { if (m.dead) return; ring(m.x, m.y - 2, 14, '#b6ff3c'); burst(m.x, m.y - 3, '#b6ff3c', 12, 40); hitAround(m.x, m.y, 14, dmg * .5, '#b6ff3c'); tone(700, .04, 'square', .02, 200); })); break; }
+    case 'priest':
+      fx1(1.2, p => { ctx.globalAlpha = .25 * (1 - p); ctx.fillStyle = '#fff6c0'; ctx.fillRect(camX - 4, camY - 4, W + 8, H + 8); ctx.globalAlpha = 1; circ(hero.x, hero.y - 12, 5, '#ffe08a', 14, .4, p * 6); });
+      live().forEach((m, i) => later(.15 + i * .04, () => { if (m.dead) return; const mx = m.x, my = m.y;
+        fx1(.5, p => { const w = Math.round(5 * (1 - p)) + 1; ctx.globalAlpha = 1 - p * .7; ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(mx - w / 2), Math.round(camY - 4), w, Math.round(my - camY + 1)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(mx), Math.round(camY - 4), 1, Math.round(my - camY + 1)); ctx.globalAlpha = 1; });
+        ring(mx, my - 2, 10, '#fff6c0'); hitMob(m, dmg * 1.1, true, true, '#fff6c0'); }));
+      hero.hp = D.maxHP; hero.psnT = 0; hero.slowT = 0; break;
     case 'monk': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 6);
-      for (let i = 0; i < 40; i++) later(i * .04, () => { const m = tg[i % Math.max(1, tg.length)]; if (!m || m.dead) return; hero.fists = .1; hero.swingA = Math.atan2(m.y - hero.y, m.x - hero.x); burst(m.x + (rnd() - .5) * 6, m.y - 4, '#ffaa55', 3, 30); hitMob(m, dmg * .12, false, i % 8 === 0, '#ffaa55'); if (i % 4 === 0) tone(300 + i * 10, .03, 'square', .02); }); break; }
-    case 'chrono': { const st = live(); hero.stopT = 3; for (const m of st) { m.frz = Math.max(m.frz || 0, 3); m.stopD = 0; }
-      later(3, () => { hero.stopT = 0; flashT = .2; shake = 12; for (const m of st) { const d0 = m.stopD || 0; m.stopD = undefined; if (!m.dead) { ring(m.x, m.y - 3, 10, '#88aaff'); hitMob(m, dmg * .6 + d0 * 2, true, true, '#88aaff'); } } sfx.boom(); }); break; }
-    case 'rune': live().forEach((m, i) => runes.push({ x: m.x, y: m.y, t: .3 + i * .08, m, r: 16, res: false, big: dmg * .7 })); break;
-    case 'necro': for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; allies.push({ x: hero.x + Math.cos(a) * 14, y: hero.y + Math.sin(a) * 9, t: 15, cd: .3, face: 1 }); burst(hero.x + Math.cos(a) * 14, hero.y + Math.sin(a) * 9 - 3, '#7affb0', 8, 30); }
-      for (const m of live()) { bolts.push({ x1: hero.x, y1: hero.y - 5, x2: m.x, y2: m.y - 3, l: .25, c: '#7affb0' }); hitMob(m, dmg * .8, true, true, '#7affb0'); } break;
-    case 'reap': hero.sweep = .6; hero.swingA = 0; hero.souls = 5 + Math.floor(25 * cq(1));
-      for (let s2 = 0; s2 < 3; s2++) later(s2 * .2, () => { ring(hero.x, hero.y - 3, 60, '#ff44ff'); for (const m of live()) hitMob(m, dmg * .45, true, s2 === 2, '#ff44ff'); tone(200, .12, 'sawtooth', .04, 80); }); break;
+      fx1(1.9, p => { for (let i = 0; i < 3; i++) if (parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 10, y: hero.y - rnd() * 4, vx: 0, vy: -40, l: .3, c: rnd() < .5 ? '#ffaa55' : '#ffe08a', f: 1 }); });
+      for (let i = 0; i < 40; i++) later(.15 + i * .04, () => { const m = tg[i % Math.max(1, tg.length)]; if (!m || m.dead) return; hero.fists = .1; hero.swingA = Math.atan2(m.y - hero.y, m.x - hero.x); hitMob(m, dmg * .12, false, i % 8 === 0, '#ffaa55'); if (i % 4 === 0) tone(300 + i * 10, .03, 'square', .02);
+        const px = m.x + (rnd() - .5) * 8, py = m.y - 4 + (rnd() - .5) * 6; fx1(.25, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#ffcc99'; ctx.fillRect(Math.round(px) - 2, Math.round(py) - 1, 4, 4); for (let f = 0; f < 4; f++) pix(px - 2 + f, py - 2 - (f % 2), '#ffcc99'); ctx.globalAlpha = 1; }); }); break; }
+    case 'chrono': { const st = live(); later(.1, () => { hero.stopT = 3; for (const m of st) { m.frz = Math.max(m.frz || 0, 3); m.stopD = 0; } });
+      fx1(3.1, p => { const R = 30; ctx.globalAlpha = .8; circ(hero.x, hero.y - 4, R, '#88aaff', 48, .8); circ(hero.x, hero.y - 4, R - 2, '#ffffff', 12, .8); const ah = -1.57 + p * 6.283 * 3, am = -1.57 + p * 6.283 * .25;
+        for (let r = 0; r < R - 6; r++) pix(hero.x + Math.cos(ah) * r, hero.y - 4 + Math.sin(ah) * r * .8, '#ffffff'); for (let r = 0; r < R - 14; r++) pix(hero.x + Math.cos(am) * r, hero.y - 4 + Math.sin(am) * r * .8, '#88aaff'); ctx.globalAlpha = 1; });
+      later(3.1, () => { hero.stopT = 0; flashT = .2; shake = 12; for (const m of st) { const d0 = m.stopD || 0; m.stopD = undefined; if (!m.dead) { ring(m.x, m.y - 3, 10, '#88aaff'); hitMob(m, dmg * .6 + d0 * 2, true, true, '#88aaff'); } } sfx.boom(); }); break; }
+    case 'rune':
+      fx1(1.8, p => { const a = p < .2 ? p / .2 : p > .8 ? (1 - p) / .2 : 1, R = 34 * a; ctx.globalAlpha = .8; circ(hero.x, hero.y, R, '#bb88ff', 50, .55, p * 2); circ(hero.x, hero.y, R * .7, '#e0ccff', 30, .55, -p * 3);
+        for (let i = 0; i < 6; i++) { const an = i / 6 * 6.283 + p * 2, gx = hero.x + Math.cos(an) * R * .85, gy = hero.y + Math.sin(an) * R * .85 * .55; pix(gx, gy - 1, '#ffffff'); pix(gx - 1, gy, '#bb88ff'); pix(gx + 1, gy, '#bb88ff'); pix(gx, gy + 1, '#ffffff'); } ctx.globalAlpha = 1; });
+      live().forEach((m, i) => runes.push({ x: m.x, y: m.y, t: .5 + i * .08, m, r: 16, res: false, big: dmg * .7 })); break;
+    case 'necro':
+      fx1(1.5, p => { ctx.globalAlpha = .5 * (1 - p); circ(hero.x, hero.y, 10 + p * 30, '#7affb0', 40, .5); ctx.globalAlpha = 1; for (let i = 0; i < 2; i++) if (parts.length < 500) { const a = rnd() * 6.28, r = rnd() * 30; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y + Math.sin(a) * r * .5, vx: 0, vy: -25, l: .6, c: rnd() < .5 ? '#7affb0' : '#2a5a3a', f: 1 }); } });
+      for (let i = 0; i < 10; i++) later(.15 + i * .06, () => { const a = i / 10 * 6.283, x = hero.x + Math.cos(a) * 14, y = hero.y + Math.sin(a) * 9; allies.push({ x, y, t: 15, cd: .3, face: 1 }); burst(x, y - 3, '#7affb0', 8, 30); for (let j = 0; j < 4; j++) parts.push({ x: x + (rnd() - .5) * 4, y, vx: 0, vy: -20, l: .4, c: '#5a4a3a' }); });
+      later(.8, () => { for (const m of live()) { bolts.push({ x1: hero.x, y1: hero.y - 5, x2: m.x, y2: m.y - 3, l: .25, c: '#7affb0' }); hitMob(m, dmg * .8, true, true, '#7affb0'); } }); break;
+    case 'reap': hero.souls = 5 + Math.floor(25 * cq(1));
+      for (let s2 = 0; s2 < 3; s2++) later(.2 + s2 * .25, () => { const a0 = s2 * 2.1;
+        fx1(.3, p => { const R = 60; ctx.globalAlpha = 1 - p * .5; for (let s = 0; s < 30; s++) { const a = a0 + (s / 29) * 6.283 * p; for (let r = R - 4; r < R; r++) pix(hero.x + Math.cos(a) * r, hero.y - 4 + Math.sin(a) * r * .7, r === R - 1 ? '#ffffff' : '#ff44ff'); } ctx.globalAlpha = 1; });
+        ring(hero.x, hero.y - 3, 60, '#ff44ff'); for (const m of live()) hitMob(m, dmg * .45, true, s2 === 2, '#ff44ff'); tone(200, .12, 'sawtooth', .04, 80); }); break;
   }
-  ftext(hero.x, hero.y - 30, ULTS[k][0].toUpperCase() + '!', c, 1.6, 1.4);
 }
 
 function fireUlt() {
-  ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
+  if (ultCd > 0) return;
+  ultCd = ULT_CD; ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
   clsUlt(dmg);   // у каждого класса своя ульта
   if (legOn('twin')) later(.9, () => { clsUlt(dmg); flashT = .15; });
@@ -2018,7 +2103,7 @@ function update(dt) {
   hero.cast = (hero.cast || 0) - dt; hero.spin = (hero.spin || 0) - dt; hero.sweep = (hero.sweep || 0) - dt; hero.fists = (hero.fists || 0) - dt; hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
   if (hero.chainT <= 0) hero.chain = 0;
   if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
-  updTele(dt); updWaves(dt); updUltQ(dt); if (hero.stopT > 0) hero.stopT -= dt;
+  updTele(dt); updWaves(dt); updUltQ(dt); updUfx(dt); if (hero.stopT > 0) hero.stopT -= dt;
   for (const e of echoes) { e.t -= dt; if (e.t <= 0) { ring(e.x, e.y - 3, 9, '#ccccff'); hitAround(e.x, e.y, 9, e.dmg, '#ccccff'); fxLabel('Эхо', e.x, e.y - 12, '#ccccff'); } } echoes = echoes.filter(e => e.t > 0);
   if (D.trail > .01) {
     PT.trl = (PT.trl || 0) - dt; if (PT.trl <= 0) { PT.trl = .1; const lp = trailPts[trailPts.length - 1]; if (!lp || Math.hypot(lp.x - hero.x, lp.y - hero.y) > 2) trailPts.push({ x: hero.x, y: hero.y, t: 1.2 }); }
@@ -2120,6 +2205,7 @@ function update(dt) {
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
   shake = Math.max(0, shake - dt * 25);
   comboPop = Math.max(0, comboPop - dt);
+  if (ultCd > 0) { ultCd -= dt; if (ultCd <= 0 && ult >= .999) { ult = 1; ultReadyT = 0; tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); } }
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
   for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 4);
   if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20) fireUlt(); }
@@ -2217,6 +2303,7 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
+  drawUfx();
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
     if (drawClsWave(w)) continue;
@@ -2256,7 +2343,8 @@ function render() {
   }
   // полоса ульты
   const ub = H - 3; ctx.fillStyle = '#000'; ctx.fillRect(2, ub, W - 4, 2);
-  ctx.fillStyle = ult >= 1 ? (Math.sin(time * 12) > 0 ? '#ff88ff' : '#ffffff') : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
+  ctx.fillStyle = ult >= 1 ? (Math.sin(time * 12) > 0 ? '#ff88ff' : '#ffffff') : ultCd > 0 ? '#5a4a6a' : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
+  if (ultCd > 0) { ctx.fillStyle = '#ff88ff'; ctx.fillRect(2, ub, Math.round((W - 4) * (1 - ultCd / ULT_CD)), 1); }
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
@@ -2304,6 +2392,8 @@ function render() {
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
   }
+  drawUltBanner(k);
+  if (ult >= .999 && ult < 1 && ultCd > 0) { fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000'; fctx.fillStyle = '#a59fc0'; const tt = 'УЛЬТА ЧЕРЕЗ ' + Math.ceil(ultCd) + 'С'; fctx.strokeText(tt, fx.width / 2, (H - 9) * k); fctx.fillText(tt, fx.width / 2, (H - 9) * k); }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
     fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
@@ -2687,7 +2777,7 @@ function rebirth() {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); ultQ = []; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); ultQ = []; ufx = []; ultBan = null; ultCd = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
