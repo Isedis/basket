@@ -104,6 +104,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #tinfo .row2{display:flex;gap:8px;margin-top:6px}
 #tinfo .row2 .btn{flex:1;padding:8px;font-size:9px;background:#7a2a8a}
 #tinfo .row2 .btn[disabled]{opacity:.4}
+@keyframes glow{0%,100%{color:#ff44ff}50%{color:#ffffff}}
+.tab.glow{animation:glow 1s steps(2) infinite}
 #modal{position:fixed;inset:0;background:rgba(5,4,10,.86);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #modal[hidden]{display:none}
 #mbox{background:var(--panel);border:3px solid #f2c94c;padding:14px;max-width:340px;width:100%;text-align:center;line-height:1.9}
@@ -115,7 +117,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
+    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="treeb" style="background:#5a2a6a;font-size:13px;padding:0 7px;line-height:20px">★</button> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
     <div class="r"><span id="rank">Новобранец</span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
@@ -1351,6 +1353,9 @@ function updateUI() {
   if (tab === 'Y') renderSyn();
   if (tab === 'D') renderSouls();
   $('dcount').textContent = fmt(S.meta.souls) + (S.zone >= 30 ? ' +' + fmt(soulsFor(S.zone)) : '');
+  const canBuy = TN.some(nd => tOpen(nd) && (!nd.max || TL(nd.id) < nd.max) && S.meta.souls >= tCost(nd, TL(nd.id)));
+  $('tabD').classList.toggle('glow', tab !== 'D' && (S.zone >= 30 || canBuy));
+  $('treeb').style.color = canBuy ? '#ff44ff' : '';
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
   $('snext').textContent = 'новый стат через ' + fmt(nk - S.kills) + ' уб.';
   ubarI.style.width = clamp((S.kills - pk) / (nk - pk) * 100, 0, 100) + '%';
@@ -1439,6 +1444,7 @@ function rebirth() {
 const tree = $('tree'), tcv = $('tcv'), tctx = tcv.getContext('2d'), tview = $('tview');
 const cam = { x: 0, y: 0, z: 1.6 }; let tSel = 0, tW = 0, tH = 0, tDPR = 1;
 $('tbtn').onclick = () => openTree();
+$('treeb').onclick = () => openTree();
 $('tclose').onclick = () => { tree.hidden = true; };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
