@@ -170,20 +170,74 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #mbox h2{font-size:11px;color:var(--zone);margin-bottom:8px;font-weight:normal}
 #mbox p{font-size:8px}
 #mbox .btn{margin-top:12px;font-size:10px;padding:8px 14px;background:#7a5cff}
+/* ===== мобильный интерфейс: бой на весь экран, нижнее меню, шторки ===== */
+:root{--navh:calc(58px + env(safe-area-inset-bottom, 0px))}
+html,body{font-size:10px}
+#app{position:relative;padding:env(safe-area-inset-top,0px) 0 0}
+#hud{padding:5px 10px 5px}
+#hud .r+.r,#hud .bar+.r,#hud .r+.bar{margin-top:3px}
+#zname{font-size:10px}
+#game{flex:1 1 auto}
+#nav{flex:none;display:grid;grid-template-columns:repeat(6,1fr);background:var(--panel);border-top:2px solid var(--line);padding:4px 4px env(safe-area-inset-bottom,0px);z-index:7;position:relative}
+.nb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;background:none;border:0;color:var(--dim);font:inherit;font-size:8px;cursor:pointer;border-radius:6px}
+.nb i{font-style:normal;font-size:18px;line-height:1;font-family:system-ui,sans-serif}
+.nb.on{color:#fff;background:#2b2540}
+.nb.glow{animation:glow 1s steps(2) infinite}
+.nb .badge{position:absolute;top:3px;right:8px;min-width:16px;padding:2px 3px;background:#ff4f6d;color:#fff;font-size:8px;font-weight:normal;border-radius:8px;line-height:1.1}
+.sheet{position:absolute;left:0;right:0;bottom:var(--navh);height:70%;z-index:6;display:none!important;flex-direction:column;background:var(--panel);border-top:3px solid var(--line);box-shadow:0 -8px 20px rgba(0,0,0,.55);min-height:0}
+.sheet.open{display:flex!important}
+#panel.big{height:calc(100% - var(--navh) - 4px)}
+#panel.small{height:70%}
+.shead{padding:10px 12px 6px;font-size:11px;color:var(--zone)}
+.setb{display:flex;flex-direction:column;gap:10px;padding:6px 12px 16px;overflow-y:auto}
+.btn.big2{min-height:52px;font-size:11px;background:#2b2540;text-align:left;padding:10px 14px}
+#buildl{font-size:8px;color:var(--dim);margin-top:4px}
+#gear,#tree{bottom:var(--navh)}
+.btn{font-size:10px;min-height:34px;padding:6px 10px}
+.tab{font-size:10px;padding:8px 0}
+#phead{padding:8px 10px 6px}
+#sum{font-size:9px;gap:4px 8px;padding:0 10px 6px}
+#dsrc .dleg{font-size:8px}
+.row{font-size:10px;padding:6px 4px}
+.row .w{font-size:8px}
+.gh{font-size:10px;padding:9px 6px}
+.gh .gn em,.gh .gn u,.gh .gc{font-size:8px}
+#info{font-size:9px}
+#dlist{font-size:10px}
+#dlist .big{min-height:48px;font-size:11px}
+#dlist .dim{font-size:8px}
+.aut{font-size:10px;padding:10px 4px;min-height:44px}
+.aut small{font-size:8px}
+.cls{font-size:8px;padding:9px}
+.cls b{font-size:10px}
+.it{font-size:9px}
+.it .nm{font-size:10px}
+.it .bt .btn{font-size:9px;min-height:40px}
+.chest{font-size:10px}
+.chest .btn{min-height:44px;font-size:10px}
+#tinfo{font-size:9px}
+#tinfo .row2 .btn{min-height:48px;font-size:11px}
+#ghead,#thead{font-size:10px}
+#ghead .btn,#thead .btn{min-height:40px}
+.syn{font-size:10px;padding:8px 4px}
+.syn .sd{font-size:8px}
+.tst{font-size:10px}
+#spdb{min-height:40px;padding:8px 12px}
+#mbox .btn{min-height:48px}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="helpb">?</button> <button class="btn" id="gearb" style="background:#6a4a1a">▣</button> <button class="btn" id="treeb" style="background:#5a2a6a;font-size:13px;padding:0 7px;line-height:20px">★</button> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
+    <div class="r"><span id="zname">Луг</span><span id="znum">Зона 1</span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
     <div class="r"><span id="rank">Новобранец</span><span id="zmodl"></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
   </div>
   <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><div id="toast"></div></div>
-  <div id="panel">
+  <div id="panel" class="sheet">
     <div id="phead">
-      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="updb" title="Обновить игру">⟳</button><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog">▼</button></span></div>
+      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog" hidden>▼</button></span></div>
       <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
     </div>
     <div id="sum"></div>
@@ -204,6 +258,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
       <div class="dim">Перерождение сбрасывает зону и статы. Души остаются навсегда — трать их в дереве талантов на вечные бонусы. Чем дальше зашёл, тем больше душ.</div>
     </div>
   </div>
+  <div id="settings" class="sheet">
+    <div class="shead">МЕНЮ</div>
+    <div class="setb">
+      <button class="btn big2" id="mute">Звук: ВКЛ</button>
+      <button class="btn big2" id="fxb">Эффекты: ВСЕ</button>
+      <button class="btn big2" id="helpb">Что на экране?</button>
+      <button class="btn big2" id="updb">⟳ Проверить обновление</button>
+      <div class="dim" id="buildl"></div>
+    </div>
+  </div>
+  <nav id="nav">
+    <button class="nb on" id="nFight"><i>⚔</i><span>Бой</span></button>
+    <button class="nb" id="nStats"><i>≡</i><span>Статы</span></button>
+    <button class="nb" id="treeb"><i>★</i><span>Таланты</span></button>
+    <button class="nb" id="gearb"><i>▣</i><span>Вещи</span><b class="badge" id="gbadge" hidden></b></button>
+    <button class="nb" id="nSouls"><i>✦</i><span>Души</span></button>
+    <button class="nb" id="nSet"><i>⚙</i><span>Меню</span></button>
+  </nav>
 </div>
 <div id="gear" hidden>
   <div id="ghead"><span>СНАРЯЖЕНИЕ</span><span>Пыль: <b id="gdust">0</b></span><button class="btn" id="gclose">✕ ЗАКРЫТЬ</button></div>
@@ -224,7 +296,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 
 <script>
 'use strict';
-const BUILD = '20261112150253';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112151005';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2074,7 +2146,8 @@ function updateUI() {
   const canBuy = TN.some(nd => tOpen(nd) && (!nd.max || TL(nd.id) < nd.max) && S.meta.souls >= tCost(nd, TL(nd.id)));
   $('tabD').classList.toggle('glow', tab !== 'D' && (S.zone >= 30 || canBuy));
   $('treeb').style.color = canBuy ? '#ff44ff' : '';
-  { const cc = G().chests, n = cc.c + cc.r + cc.e; $('gearb').textContent = n ? '▣' + n : '▣'; $('gearb').classList.toggle('glow', n > 0); }
+  { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; $('gearb').classList.toggle('glow', n > 0); }
+  $('nSouls').classList.toggle('glow', $('tabD').classList.contains('glow'));
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
   $('snext').textContent = 'новый стат через ' + fmt(nk - S.kills) + ' уб.';
   ubarI.style.width = clamp((S.kills - pk) / (nk - pk) * 100, 0, 100) + '%';
@@ -2120,10 +2193,10 @@ function updateUI() {
 }
 $('sum').onclick = () => { S.sumFull = !S.sumFull; updateUI(); setTimeout(resize, 50); };
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
-function applyFx() { $('fxb').textContent = 'ЭФФ'; $('fxb').style.opacity = S.fxLow ? .45 : 1; }
+function applyFx() { $('fxb').textContent = 'Эффекты: ' + (S.fxLow ? 'МИНИМУМ' : 'ВСЕ'); }
 $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
 $('spdb').onclick = () => { S.fast = !S.fast; updateUI(); tone(S.fast ? 880 : 440, .08, 'square', .04, S.fast ? 1320 : 330); };
-$('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = '♪'; $('mute').style.opacity = S.mute ? .4 : 1; audio(); };
+$('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); audio(); };
 let tab = 'S', lastSpec;
 function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('dlist').hidden = t !== 'D'; $('tabD').classList.toggle('on', t === 'D'); if (t === 'D') renderSouls(); $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
 $('tabD').onclick = () => setTab('D'); $('tabS').onclick = () => setTab('S'); $('tabY').onclick = () => setTab('Y');
@@ -2327,8 +2400,8 @@ function renderGear() {
   $('ginv').innerHTML = inv.length ? inv.map(it => `<div class="it"><img class="ic" src="${iconURL(SLOTS[it.slot].icon, RAR[it.rar].c)}"><div class="tx">${itemHTML(it, 1)}</div>` +
     `<div class="bt"><button class="btn" data-e="${it.id}">НАДЕТЬ</button><button class="btn" data-s="${it.id}" style="background:#5a3a2a">В ПЫЛЬ<br>+${fmt(dustOf(it))}</button></div></div>`).join('') : '<div class="it empty">Пусто. Лишние вещи из сундуков попадают сюда.</div>';
 }
-$('gearb').onclick = () => { $('gear').hidden = false; renderGear(); };
-$('gclose').onclick = () => { $('gear').hidden = true; };
+$('gearb').onclick = () => { showSheet('none'); $('tree').hidden = true; navOn('gearb'); $('gear').hidden = false; renderGear(); };
+$('gclose').onclick = () => { $('gear').hidden = true; navOn('nFight'); };
 $('gbody').onclick = e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return; const g = G();
   if (b.dataset.o) startOpening(b.dataset.o);
@@ -2407,8 +2480,8 @@ function tickOpen(dt) {
 const tree = $('tree'), tcv = $('tcv'), tctx = tcv.getContext('2d'), tview = $('tview');
 const cam = { x: 0, y: 0, z: 1.6 }; let tSel = 0, tW = 0, tH = 0, tDPR = 1, tRec = new Set(), tParts = [], tSparks = [], tRaf = 0;
 $('tbtn').onclick = () => openTree();
-$('treeb').onclick = () => openTree();
-$('tclose').onclick = () => { tree.hidden = true; };
+$('treeb').onclick = () => { showSheet('none'); $('gear').hidden = true; navOn('treeb'); openTree(); };
+$('tclose').onclick = () => { tree.hidden = true; navOn('nFight'); };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
 function openTree() { tree.hidden = false; sizeTree(); calcRec(); renderHint(); renderTInfo(); drawTree(); }
@@ -2620,6 +2693,22 @@ tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z *
 setInterval(() => { if (!tree.hidden && !tRaf) drawTree(); }, 400);
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
 
+/* ---------- нижнее меню и шторки ---------- */
+function navOn(id) { for (const b of document.querySelectorAll('.nb')) b.classList.toggle('on', b.id === id); }
+function showSheet(name) {
+  $('panel').classList.toggle('open', name === 'stats' || name === 'souls');
+  $('settings').classList.toggle('open', name === 'set');
+  if (name !== 'none') { $('tree').hidden = true; $('gear').hidden = true; }
+  if (name === 'stats') setTab('S'); if (name === 'souls') setTab('D');
+  navOn({ fight: 'nFight', stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name] || '');
+  setTimeout(resize, 30);
+}
+const sheetToggle = name => () => { const id = { stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name]; showSheet($(id).classList.contains('on') ? 'fight' : name); };
+$('nFight').onclick = () => showSheet('fight');
+$('nStats').onclick = sheetToggle('stats');
+$('nSouls').onclick = sheetToggle('souls');
+$('nSet').onclick = sheetToggle('set');
+
 /* ---------- обновление игры ---------- */
 // берём свежую страницу в обход кэша и сравниваем номер сборки
 async function latestBuild() {
@@ -2762,7 +2851,7 @@ checkUnlocks(true);
 for (let e = 0; e < NE; e++) groupOf(e);
 recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
-$('mute').textContent = '♪'; $('mute').style.opacity = S.mute ? .4 : 1; applyFx();
+$('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); applyFx(); $('buildl').textContent = 'Сборка ' + BUILD + ' · прогресс сохраняется автоматически';
 $('panel').classList.toggle('small', !!S.panelSmall); $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('ptog').textContent = S.panelSmall ? '▲' : '▼';
 resize();
 hero.x = AW / 2; hero.y = AH / 2; camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
