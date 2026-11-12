@@ -276,6 +276,7 @@ html,body{font-size:10px}
       <button class="btn big2" id="helpb">Что на экране?</button>
       <button class="btn big2" id="updb">⟳ Проверить обновление</button>
       <div class="dim" id="buildl"></div>
+      <button class="btn big2" id="resetb" style="background:#5a1a22;margin-top:18px">✕ Сбросить игру</button>
     </div>
   </div>
   <nav id="nav">
@@ -306,7 +307,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112161233';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112161355';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3064,8 +3065,9 @@ if (location.search.includes('v=')) try { history.replaceState(null, '', locatio
 /* ---------- сохранение и офлайн-прогресс ---------- */
 // сохранение: в браузер (быстро) и в облако артефакта — личная ячейка игрока, переживает перезапуск
 let cloud = null, cloudJson = null, cloudT = 0;
+let wiped = false;
 function save(force) {
-  if (!booted) return;
+  if (!booted || wiped) return;
   S.vals = stats.map(s => s.v); S.lv = stats.map(s => s.lvl); S.t = Date.now(); S.hpf = hero.hp / D.maxHP;
   const json = JSON.stringify(S);
   try { localStorage.setItem(SAVE_KEY, json); } catch (e) {}
@@ -3163,6 +3165,15 @@ document.addEventListener('visibilitychange', () => {
   else if (hiddenAt && booted) { offline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; last = performance.now(); }
 });
 window.addEventListener('pagehide', () => save(true));
+// полный сброс: двойное подтверждение, стираем сохранение и начинаем с нуля
+let resetConfirm = 0;
+$('resetb').onclick = async () => {
+  if (performance.now() > resetConfirm) { resetConfirm = performance.now() + 4000; $('resetb').textContent = 'ТОЧНО? ВСЁ БУДЕТ УДАЛЕНО — ТАПНИ ЕЩЁ'; setTimeout(() => { if (!wiped) $('resetb').textContent = '✕ Сбросить игру'; }, 4000); return; }
+  wiped = true; $('resetb').textContent = 'Сброс...';
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  try { if (cloud) await cloud.ref.delete(); } catch (e) {}
+  location.replace(location.pathname + '?v=' + Date.now());
+};
 window.addEventListener('resize', () => setTimeout(resize, 50));
 
 /* ---------- старт: сначала ждём облачное сохранение (не дольше 4 с) ---------- */
