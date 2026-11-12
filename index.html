@@ -38,11 +38,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #ex{color:var(--bad);display:none}
 #game{position:relative;flex:1 1 auto;min-height:150px;overflow:hidden;background:#000;touch-action:none}
 #game canvas{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
-#toast{position:absolute;left:0;right:0;top:12%;text-align:center;pointer-events:none;z-index:3}
-.tst{display:inline-block;margin:3px auto;padding:7px 10px;background:rgba(10,8,18,.88);border:2px solid #f2c94c;
-  color:#fff;font-size:9px;animation:pop 2.6s steps(12) forwards;max-width:92%;white-space:normal}
+#toast{position:absolute;left:0;right:0;top:44px;text-align:center;pointer-events:none;z-index:3}
+.tst{display:inline-block;margin:0 auto;padding:5px 9px;background:rgba(10,8,18,.9);border:2px solid #f2c94c;
+  color:#fff;font-size:9px;animation:pop var(--dur,2.4s) steps(12) forwards;max-width:94%;white-space:normal;line-height:1.6}
+.tst.tip{border-color:#4fd6e8;color:#bff4ff}
+.tst.tip small{color:#e9e4ff}
 .tst small{display:block;font-size:7px;color:var(--dim);margin-top:4px}
-@keyframes pop{0%{transform:scale(.4);opacity:0}8%{transform:scale(1.15);opacity:1}14%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+@keyframes pop{0%{transform:translateY(-8px);opacity:0}6%{transform:none;opacity:1}85%{opacity:1}100%{opacity:0}}
 #panel{flex:0 0 38%;display:flex;flex-direction:column;background:var(--panel);border-top:2px solid var(--line);min-height:0;transition:flex-basis .2s}
 #panel.small{flex-basis:92px}
 #phead{padding:6px 8px 4px;flex:none}
@@ -93,7 +95,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
+    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
     <div class="r"><span id="rank">Новобранец</span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
@@ -263,8 +265,8 @@ function tryEvolve(s, silent) {
   if (!up) return 0;
   D.dirty = true;
   if (s.el) { s.el.children[1].textContent = s.name; s.el.children[2].textContent = '×' + fmt(s.w); s.el.classList.remove('new'); void s.el.offsetWidth; s.el.classList.add('new'); }
-  if (!silent) { ftext(hero.x, hero.y - 16, 'ЭВОЛЮЦИЯ: ' + s.name, EFF[s.e].c, .9, 1.4); }
-  if (!silent && performance.now() > evoToastT) { evoToastT = performance.now() + 6000; toast('ЭВОЛЮЦИЯ!', s.bn + ' → ' + s.name + ' (вес ×' + fmt(s.w) + ')'); sfx.evo(); flashT = Math.max(flashT, .08); burst(hero.x, hero.y - 4, EFF[s.e].c, 24, 45); }
+  if (!silent) feed('Эволюция: ' + s.name + ' ×' + fmt(s.w), EFF[s.e].c);
+  if (!silent && performance.now() > evoToastT) { evoToastT = performance.now() + 3000; sfx.evo(); burst(hero.x, hero.y - 4, EFF[s.e].c, 16, 40); tip('evo', 'Эволюция стата', 'Стат перерос порог и стал сильнее (вес ×4). Это происходит само.'); }
   return up;
 }
 
@@ -369,7 +371,7 @@ function mobSprite(m, flash) {
 const ARMOR = ['#8a8f99', '#b07a3c', '#c9ced6', '#f2c94c', '#4fd6e8', '#a26bff', '#ff4f6d', '#5cff8a', '#ff9a3c', '#ffffff'];
 const RANKS = ['Новобранец', 'Драчун', 'Боец', 'Воин', 'Ветеран', 'Рыцарь', 'Чемпион', 'Герой', 'Легенда', 'Полубог', 'Бог войны', 'Титан', 'Пожиратель миров', 'Абсолют'];
 function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
-function rankName(r) { const c = Math.floor(r / RANKS.length); return RANKS[r % RANKS.length] + (c ? ' ' + roman(c + 1) : ''); }
+function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
 function heroSprite(r, flash, ex) {
   if (flash) return sprite(HERO, { 1: '#ff4444', 2: '#aa2222', 3: '#fff' }, 'hf');
   if (hero.tintT > 0) return sprite(HERO, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff' }, 'ht' + hero.tint);
@@ -402,6 +404,7 @@ function retreat(b, why) {
   combo = 0;
   toast('ОТСТУПЛЕНИЕ', why + ' · готовность ' + Math.floor(Math.min(9.99, D.ready) * 100) + '% · копим силу');
   tone(330, .15, 'square', .04, 0); tone(220, .3, 'square', .04, 0, .15);
+  tip('retreat', 'Это не поражение', 'Герой отступил и копит силу на обычных врагах. Шкала сверху — готовность к вожаку. Тап по ней — бой сразу.');
 }
 const COMBO_T = 2.5;
 const comboM = () => 1 + .25 * Math.log2(1 + combo / 5);
@@ -555,7 +558,7 @@ function checkUnlocks(silent) {
     if (S.vals[s.n] !== undefined) s.v = S.vals[s.n];
     if (S.lv && S.lv[s.n]) setLvl(s, S.lv[s.n]);
     stats.push(s); addStatRow(s, !silent); added++;
-    if (!silent && added <= 2) { toast('НОВЫЙ СТАТ!', `${s.name} → ${EFF[s.e].n}${s.w > 1 ? ' ×' + fmt(s.w) : ''}`); sfx.unlock(); }
+    if (!silent) { feed('Новый стат: ' + s.name + ' → ' + EFF[s.e].n, '#f2c94c'); if (added === 1) sfx.unlock(); }
   }
   if (added) D.dirty = true;
   return added;
@@ -594,6 +597,7 @@ function buildGround() {
     const x = sr() * W | 0, y = sr() * H | 0; g.fillStyle = b.g[2];
     g.fillRect(x, y, 1, 1); if (sr() < .5) { g.fillRect(x - 1, y + 1, 1, 1); g.fillRect(x + 1, y + 1, 1, 1); }
   }
+  g.fillStyle = 'rgba(8,6,16,.4)'; g.fillRect(0, 0, W, H);   // приглушённый фон, чтобы бой читался
   decal = document.createElement('canvas'); decal.width = W; decal.height = H;
   for (let i = 0; i < W * H * .002; i++) {
     const x = sr() * W | 0, y = sr() * H | 0; g.fillStyle = shade(b.g[1], -.3);
@@ -634,17 +638,34 @@ const sfx = {
 
 /* ---------- UI-уведомления ---------- */
 const toastEl = $('toast');
-function toast(t, sub) {
-  while (toastEl.children.length > 1) toastEl.firstChild.remove();
-  const d = document.createElement('div'); d.className = 'tst';
-  d.textContent = t; if (sub) { const s = document.createElement('small'); s.textContent = sub; d.appendChild(s); }
-  toastEl.appendChild(d); setTimeout(() => d.remove(), 2700);
+// баннер сверху: по одному за раз, остальные ждут в очереди
+const tq = []; let tBusy = false;
+function toast(t, sub, dur = 2400, cls = '') {
+  if (cls === 'tip') tq.unshift({ t, sub, dur, cls }); else { tq.push({ t, sub, dur, cls }); while (tq.length > 3) tq.splice(tq.findIndex(q => q.cls !== 'tip'), 1); }
+  if (!tBusy) nextToast();
 }
+function nextToast() {
+  const q = tq.shift(); if (!q) { tBusy = false; return; }
+  tBusy = true; toastEl.innerHTML = '';
+  const d = document.createElement('div'); d.className = 'tst ' + q.cls; d.style.setProperty('--dur', q.dur + 'ms');
+  d.textContent = q.t; if (q.sub) { const s = document.createElement('small'); s.textContent = q.sub; d.appendChild(s); }
+  toastEl.appendChild(d); setTimeout(() => { d.remove(); nextToast(); }, q.dur);
+}
+// подсказки: каждая показывается один раз за всю игру
+function tip(key, title, text) {
+  if (!S.tips) S.tips = {};
+  if (S.tips[key]) return; S.tips[key] = 1;
+  toast('💡 ' + title, text, 5000, 'tip');
+}
+// лента событий в левом нижнем углу: прирост, эволюции, формы
+let feedArr = [], gainFeedT = 0;
+function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 5) feedArr.shift(); }
 function ftext(x, y, s, c, size = 1, life = .9) {
   if (texts.length > 45) texts.shift();
   texts.push({ x, y, s, c, size, life, t: 0, vx: (rnd() - .5) * 6 });
 }
 function burst(x, y, c, n, sp = 30) {
+  if (S.fxLow) n = Math.ceil(n * .3);
   for (let i = 0; i < n; i++) {
     if (parts.length > 500) parts.shift();
     const a = rnd() * Math.PI * 2, v = sp * (.3 + rnd());
@@ -667,11 +688,13 @@ function spawnMob(boss) {
   mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
+  if (na && !boss) tip('aff', 'Особые враги', 'Цветные точки над врагом — его особенности: броня, скорость, взрыв, вампиризм. Такие враги дают больше наград.');
   if (boss) {
     const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
     bossAlive = true; bossT = BOSS_TIME; S.tries = (S.tries || 0) + 1;
     toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
     sfx.boss(); shake = 6;
+    tip('weak', 'Слабое место', 'Жёлтая мигающая точка на вожаке — тапай по ней: ×12 урона. У вожака 30 секунд, иначе отступление.');
   }
 }
 function spawnMini(m) {
@@ -692,6 +715,7 @@ function explode(m) {
   }
 }
 function splat(m) {
+  if (S.fxLow) return;
   const g = decal.getContext('2d'), n = m.boss ? 40 : 8 * m.sz;
   g.fillStyle = shade(m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48), -.45);
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
@@ -704,17 +728,17 @@ function hurtHero(dmg) {
   hero.hp = Math.max(1, hero.hp - dmg); hero.hurt = .1;
   return dmg;
 }
-function ring(x, y, r, c) { if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
+function ring(x, y, r, c) { if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
   if (m.dead) return;
-  if (m.af & 128 && rnd() < .3) { if (show) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
+  if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
   m.hp -= dmg; m.fl = .07;
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = m.boss ? .4 : 1.6; m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
-  if (show && (texts.length < 22 || (crit && texts.length < 35))) ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.5 : 1);
+  if (show && texts.length < (crit ? 14 : 7)) ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.5 : 1);
   if (m.hp <= 0) { m.dead = true; killMob(m); }
 }
 
@@ -724,7 +748,7 @@ function killMob(m) {
   if (!m.boss) S.zk++;
   combo++; comboT = COMBO_T; comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008);
   if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
-  if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { toast('КОМБО ' + combo + '!', 'награды ×' + comboM().toFixed(2)); sfx.combo(); flashT = Math.max(flashT, .05); }
+  if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { feed('Комбо ' + combo + '! награды ×' + comboM().toFixed(2), '#ffdd44'); sfx.combo(); comboPop = .4; if (combo === 10) tip('combo', 'Комбо', 'Убивай без пауз — растёт множитель наград (вверху справа). Тапы по врагам продлевают комбо.'); }
   splat(m);
   const c = m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48);
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
@@ -736,13 +760,13 @@ function killMob(m) {
   for (let i = 0; i < cnt; i++) {
     const s = pickStat();
     let amt = base * (.5 + rnd()) * (fav.includes(s.e) ? 2 : 1);
-    if (dbl > 0 && rnd() < dbl) { amt *= 2; if (texts.length < 8) ftext(m.x + 6, m.y - 6, '×2', '#bb88ff', .8, .6); }
-    if (orbs.length < 160) { const a = rnd() * 6.28; orbs.push({ x: m.x, y: m.y - 3, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55 - 20, c: EFF[s.e].c, t: 0 }); }
+    if (dbl > 0 && rnd() < dbl) amt *= 2;
+    if (orbs.length < (S.fxLow ? 20 : 120)) { const a = rnd() * 6.28; orbs.push({ x: m.x, y: m.y - 3, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55 - 20, c: EFF[s.e].c, t: 0 }); }
     s.v += amt; s.g = amt; s.at = now; tryEvolve(s);
-    if (i < (m.boss ? 3 : texts.length < 12 ? 1 : 0)) ftext(m.x, m.y - 12 * m.sz - i * 5, '+' + fmt(amt) + ' ' + s.name, EFF[s.e].c, .85, 1.3);
+    if (i === 0 && (m.boss || m.rare || time > gainFeedT)) { gainFeedT = time + .5; feed('+' + fmt(amt) + ' ' + s.name, EFF[s.e].c); }
   }
   D.dirty = true;
-  if (m.rare) { sfx.rare(); if (texts.length < 20) ftext(m.x, m.y - 20, 'РЕДКИЙ!', '#ffd84a', 1.3, 1.2); } else sfx.kill();
+  if (m.rare) { sfx.rare(); if (texts.length < 14) ftext(m.x, m.y - 14, 'РЕДКИЙ!', '#ffd84a', 1.1, 1); tip('rare', 'Золотой враг', 'Редкие золотые враги дают ×8 наград.'); } else sfx.kill();
   if (F(EI.luck) >= 3 && rnd() < .003 * (F(EI.luck) - 2)) {
     for (const o of mobs) if (!o.dead && !o.boss) o.rare = true;
     toast('ДЖЕКПОТ!', 'все враги стали золотыми'); sfx.rare(); flashT = .1;
@@ -820,7 +844,7 @@ function heroAttack(t) {
 function addUlt(v) {
   if (ult >= 1) return;
   ult = Math.min(1, ult + v);
-  if (ult >= 1) { ultReadyT = 0; toast('УЛЬТА ГОТОВА!', 'тапни по экрану'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
+  if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
 }
 function fireUlt() {
   ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
@@ -869,7 +893,7 @@ fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
 /* ---------- механики и визуал эффектов ---------- */
 function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Math.floor(rnd() * a.length)] : null; }
-function emit(rate, dt, mk) { if (parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
+function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
   if (ff >= 3) { PT.fire -= dt; if (PT.fire <= 0) { PT.fire = 3; const r = 18 + 2 * Math.min(8, ff - 3); ring(hero.x, hero.y - 3, r, '#ff6622'); hitAround(hero.x, hero.y, r, D.hit * (D.fire + .3) * 1.5, '#ff6622'); sfx.boom(); } }
@@ -960,12 +984,12 @@ function update(dt) {
     m.fl -= dt; m.cd -= dt;
     if (d <= reach + 1 && m.cd <= 0) {
       m.cd = (1 + rnd() * .3) * (m.af & 2 ? .6 : 1);
-      if (rnd() < D.dodge) { ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
+      if (rnd() < D.dodge) { if (texts.length < 7) ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
       else {
         const dmg = mdmg * m.dm * (1 - D.armor);
         hurtHero(dmg); sfx.hurt();
         if (m.af & 8) { m.hp = Math.min(m.max, m.hp + m.max * .15); burst(m.x, m.y - 4, '#cc2244', 3, 15); }
-        if (rnd() < .35) ftext(hero.x + (rnd() - .5) * 6, hero.y - 9, '-' + fmt(dmg), '#ff6b6b', .8, .6);
+        if (rnd() < .35 && texts.length < 7) ftext(hero.x + (rnd() - .5) * 6, hero.y - 9, '-' + fmt(dmg), '#ff6b6b', .8, .6);
         if (D.thorns > .02) hitMob(m, D.hit * D.thorns, false, false, '#cc9966');
         if (sy(3)) for (const o of mobs) if (o !== m && !o.dead && Math.hypot(o.x - hero.x, o.y - hero.y) < 12) hitMob(o, D.hit * D.thorns * .5, false, false, '#cc9966');
       }
@@ -992,6 +1016,7 @@ function update(dt) {
   shake = Math.max(0, shake - dt * 25);
   comboPop = Math.max(0, comboPop - dt);
   ultT -= dt;
+  for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 4);
   if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20) fireUlt(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
   decalT -= dt;
@@ -1039,6 +1064,8 @@ function render() {
     const s = 8 * o.sz, x = Math.round(o.x - s / 2), y = Math.round(o.y - s);
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(x + 1, Math.round(o.y) - 1, s - 2, 1);
     const bob = Math.sin(time * 10 + o.x) > .6 ? -1 : 0;
+    const ol = sprite(MOBS[o.t].p, { 1: '#000', 2: '#000', 3: '#000' }, 'mo' + o.t), os = s / 8;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.drawImage(ol, x + dx * Math.max(1, Math.round(os)), y + bob + dy * Math.max(1, Math.round(os)), s, s);
     ctx.drawImage(mobSprite(o, o.fl > 0), x, y + bob, s, s);
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
@@ -1098,6 +1125,18 @@ function render() {
     const s = (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + MOBS[boss.t].n + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
   }
+  // лента событий
+  if (feedArr.length) {
+    const fs3 = Math.round(base * .7 / DPR) * DPR;
+    fctx.font = `${fs3}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs3 / 3); fctx.strokeStyle = '#000';
+    const y0 = (H - (ult >= 1 ? 14 : 7)) * k;
+    feedArr.forEach((f, i) => {
+      const yy = y0 - (feedArr.length - 1 - i) * fs3 * 1.5;
+      fctx.globalAlpha = clamp(1 - (f.t - 3) / 1, 0, 1);
+      fctx.strokeText(f.s, 3 * k, yy); fctx.fillStyle = f.c; fctx.fillText(f.s, 3 * k, yy);
+    });
+    fctx.globalAlpha = 1; fctx.textAlign = 'center';
+  }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
     fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
@@ -1105,15 +1144,15 @@ function render() {
   }
   if (combo >= 3) {
     const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
-    const fs = Math.round(base * (1.1 + comboPop * 3) / DPR) * DPR, fs2 = Math.round(base * .75 / DPR) * DPR;
-    const cx = 4 * k, cy = (boss ? 15 : 5) * k + fs / 2;
+    const fs = Math.round(base * (.9 + comboPop * 2) / DPR) * DPR, fs2 = Math.round(base * .7 / DPR) * DPR;
+    const bw = 30 * k, cx = fx.width - 4 * k - bw, cy = (H - (ult >= 1 ? 14 : 7)) * k - fs2 * 1.3 - 6 * DPR - fs * .9;
     fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
     fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = col;
     fctx.strokeText('КОМБО ' + combo, cx, cy); fctx.fillText('КОМБО ' + combo, cx, cy);
     fctx.font = `${fs2}px "Press Start 2P", monospace`; fctx.lineWidth = Math.max(2, fs2 / 3);
     const s2 = 'награды ×' + comboM().toFixed(2);
     fctx.strokeText(s2, cx, cy + fs * .9 + 2 * DPR); fctx.fillText(s2, cx, cy + fs * .9 + 2 * DPR);
-    const bw = 30 * k, by = cy + fs * .9 + fs2 + 2 * DPR;
+    const by = cy + fs * .9 + fs2 + 2 * DPR;
     fctx.fillStyle = '#000'; fctx.fillRect(cx, by, bw, 2 * DPR + 2);
     fctx.fillStyle = col; fctx.fillRect(cx + 1, by + 1, (bw - 2) * clamp(comboT / COMBO_T, 0, 1), 2 * DPR);
     fctx.textAlign = 'center';
@@ -1121,7 +1160,8 @@ function render() {
 }
 function drawHero(rk) {
   const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8);
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x + 1, Math.round(hero.y) - 1, 6, 1);
+  // светлое кольцо под ногами — героя видно всегда
+  ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
   const moving = hero.swing <= 0 && Math.sin(time * 14) > 0;
   const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
   const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate(X * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X, Y); ctx.restore(); };
@@ -1133,6 +1173,7 @@ function drawHero(rk) {
   if (fp) { ctx.globalAlpha = Math.min(.6, .15 + fp * .1) * (.7 + .3 * Math.sin(time * 6)); const sil = silhouette(EFF[EI.power].c); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(sil, x + ox, y + oy, hero.face); ctx.globalAlpha = 1; }
   // плащ второго по силе эффекта
   if (D.top && D.R[EFF[D.top[1]].k] >= 3) { const cc = EFF[D.top[1]].c, bx = hero.x - hero.face * 3, fl = Math.sin(time * 9) > 0 ? 1 : 0; for (let i = 0; i < 4; i++) pix(bx - hero.face * (i > 1 ? fl + 1 : 0), y + 3 + i, i % 2 ? shade(cc, -.25) : cc); }
+  const hol = silhouette('#000'); for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y - (moving ? 1 : 0) + dy, hero.face);
   ctx.save();
   if (hero.face < 0) { ctx.translate(x * 2 + 8, 0); ctx.scale(-1, 1); }
   ctx.drawImage(spr, x, y - (moving ? 1 : 0));
@@ -1178,6 +1219,8 @@ const hpI = $('hpbar').firstElementChild, shI = $('hpbar').children[1], hpB = $(
 const ubarI = $('ubar').firstElementChild;
 function updateUI() {
   D.ready = readiness();
+  if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
+  if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
   $('zname').textContent = b.name; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
@@ -1199,7 +1242,7 @@ function updateUI() {
   // статы
   $('scount').textContent = stats.length;
   if (synNew.length) {
-    for (const [i, was] of synNew.slice(-2)) toast(was ? 'СИНЕРГИЯ УСИЛЕНА!' : 'СИНЕРГИЯ ОТКРЫТА!', SYN[i].n + ' · ур. ' + sy(i) + ' · ' + SYN[i].d);
+    for (const [i, was] of synNew.slice(-2)) { if (was) feed('Синергия ' + SYN[i].n + ' ур. ' + sy(i), '#ff44ff'); else toast('СИНЕРГИЯ ОТКРЫТА: ' + SYN[i].n, EFF[SYN[i].a].n + ' + ' + EFF[SYN[i].b].n + ' · ' + SYN[i].d); }
     sfx.syn(); flashT = Math.max(flashT, .1); synNew = [];
   }
   $('ycount').textContent = SYN.filter((y, i) => sy(i)).length + '/' + SYN.length;
@@ -1224,8 +1267,9 @@ function updateUI() {
     if (!!gfl[e] !== !!g.fl) { g.fl = !!gfl[e]; g.el.classList.toggle('fl', g.fl); }
   }
   if (formNew.length) {
-    for (const [e, f] of formNew.slice(-2)) toast('НОВАЯ ФОРМА!', EFF[e].n + ': ' + formName(e, f));
-    sfx.evo(); flashT = Math.max(flashT, .08); formNew = [];
+    for (const [e, f] of formNew.slice(-3)) feed('Форма ' + EFF[e].n + ': ' + formName(e, f), EFF[e].c);
+    sfx.evo(); formNew = [];
+    tip('form', 'Формы эффектов', 'Сильный стат меняет форму и получает новую механику. Тапни группу в панели — увидишь подробности.');
   }
   if (D.spec !== lastSpec) { if (lastSpec !== undefined && D.spec >= 0) { toast('СПЕЦИАЛИЗАЦИЯ: ' + SPEC[D.spec].toUpperCase(), EFF[D.spec].n + ' ×1.5'); sfx.syn(); } lastSpec = D.spec; }
   if (infoRef) renderInfo();
@@ -1234,6 +1278,8 @@ function updateUI() {
     `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>`;
 }
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
+function applyFx() { $('fxb').textContent = S.fxLow ? 'ЭФФ: МИН' : 'ЭФФ: ВСЕ'; }
+$('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = S.mute ? '♪ ВЫКЛ' : '♪ ВКЛ'; audio(); };
 let tab = 'S', lastSpec;
 function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
@@ -1308,7 +1354,7 @@ if (!S.vals.length) { stats[0].v = 2; stats[1].v = 3; stats[2].v = 1; }
 checkUnlocks(true);
 recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
-$('mute').textContent = S.mute ? '♪ ВЫКЛ' : '♪ ВКЛ';
+$('mute').textContent = S.mute ? '♪ ВЫКЛ' : '♪ ВКЛ'; applyFx();
 $('panel').classList.toggle('small', !!S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼';
 resize();
 hero.x = W / 2; hero.y = H / 2;
