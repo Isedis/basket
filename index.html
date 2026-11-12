@@ -1006,12 +1006,35 @@ function nextZone() {
 }
 
 /* ---------- атака героя ---------- */
+// дальность клинка: ближе — бьёт меч, дальше — летит видимая волна клинка
+const MELEE = 11;
+let waves = [];
 function heroAttack(t) {
+  const d = Math.hypot(t.x - hero.x, t.y - hero.y) - (t.sz - 1) * 4;
+  hero.face = t.x >= hero.x ? 1 : -1;
+  if (d <= MELEE) return heroStrike(t, false);
+  hero.swing = .13; hero.swType = 0; hero.swDur = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x);
+  waves.push({ x: hero.x + Math.cos(hero.swingA) * 6, y: hero.y - 4 + Math.sin(hero.swingA) * 6, t, sp: 200, a: hero.swingA, l: 1.2, fin: hero.chain % 3 === 2 });
+  fxLabel('Волна клинка', hero.x, hero.y - 16, '#dddd88');
+  tone(700, .05, 'triangle', .02, 1400, 0, 'wave', .05);
+}
+function updWaves(dt) {
+  for (const w of waves) {
+    w.l -= dt;
+    if (w.t.dead) { w.l = 0; continue; }
+    const dx = w.t.x - w.x, dy = w.t.y - 4 * w.t.sz - w.y, d = Math.hypot(dx, dy) || 1;
+    w.a = Math.atan2(dy, dx);
+    const st = Math.min(d, w.sp * dt); w.x += dx / d * st; w.y += dy / d * st;
+    if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, '#ffffff', 4, 30); heroStrike(w.t, true); }
+  }
+  waves = waves.filter(w => w.l > 0);
+}
+function heroStrike(t, fromWave) {
   const crit = rnd() < D.crit, ultra = crit && rnd() < .04;
   const ci = hero.chain % 3; hero.chain++; hero.chainT = 1.2; hero.swType = ci; hero.swDur = ci === 2 ? .2 : .13;
   const dmg = [1, 1.15, 2.5][ci] * (hero.counter > 0 ? 3 : 1) * D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t);
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
-  hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1;
+  if (!fromWave) { hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1; }
   if (ci === 2) hero.kbBoost = 3.5;
   hitMob(t, dmg * (1 + ta('x_focus')), crit, true);
   if (ci === 2) {   // финишер: удар с прыжка, волна, всех разбрасывает
@@ -1303,7 +1326,7 @@ function update(dt) {
   hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
   if (hero.chainT <= 0) hero.chain = 0;
   if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
-  updTele(dt);
+  updTele(dt); updWaves(dt);
   for (const pr of proj) { pr.x += pr.vx * dt; pr.y += pr.vy * dt; pr.t -= dt;
     if (Math.hypot(pr.x - hero.x, pr.y - (hero.y - 4)) < 3.5) { pr.t = 0; if (hero.iframe <= 0 && rnd() >= D.dodge) { const pd = hurtHero(pr.dmg * (1 - D.armor)); if (texts.length < 7) ftext(hero.x, hero.y - 10, '-' + fmt(pd), '#ffdd44', .8, .6); } } }
   proj = proj.filter(pr => pr.t > 0 && pr.x > -10 && pr.x < W + 10 && pr.y > -10 && pr.y < H + 10);
@@ -1476,6 +1499,12 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
+  // волны клинка: светлый серп поперёк полёта + след
+  for (const w of waves) {
+    const ca = Math.cos(w.a), sa = Math.sin(w.a), wc = w.fin ? '#ffffff' : (F(EI.range) >= 2 ? '#ffffaa' : '#dddd88'), half = w.fin ? 6 : 4;
+    for (let i = -half; i <= half; i++) { const bend = (half - Math.abs(i)) * .7; for (const th of [0, -1]) pix(w.x - sa * i + ca * (bend + th), w.y + ca * i + sa * (bend + th), Math.abs(i) < 2 ? '#ffffff' : wc); }
+    ctx.globalAlpha = .4; for (let j = 1; j <= 3; j++) pix(w.x - ca * j * 2, w.y - sa * j * 2, wc); ctx.globalAlpha = 1;
+  }
   for (const pr of proj) { pix(pr.x, pr.y, '#ffffff'); pix(pr.x - pr.vx * .02, pr.y - pr.vy * .02, '#ff3322'); pix(pr.x - pr.vx * .04, pr.y - pr.vy * .04, '#ff3322'); }
   for (const [qx, qy] of pix2) { ctx.fillStyle = '#66aaff'; ctx.fillRect(Math.round(qx) - 1, Math.round(qy), 3, 1); } pix2 = [];
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
@@ -1629,13 +1658,13 @@ function drawHero(rk) {
   const sw = hero.swing > 0;
   const swordC = rk >= 8 ? ac : '#e6e6f0';
   if (sw && hero.swType === 1) {   // укол
-    const p = 1 - hero.swing / hero.swDur, len = Math.min(18, 6 + D.range * .3) * (.5 + p), ca = Math.cos(hero.swingA), sa = Math.sin(hero.swingA);
+    const p = 1 - hero.swing / hero.swDur, len = (MELEE + 1) * (.5 + p), ca = Math.cos(hero.swingA), sa = Math.sin(hero.swingA);
     for (let r = 2; r < len; r++) { pix(hero.x + ca * r, hero.y - 4 + sa * r, r > len - 3 ? '#ffffff' : swordC); pix(hero.x + ca * r - sa, hero.y - 4 + sa * r + ca, swordC); }
   } else if (sw && hero.swType === 2) {   // удар с прыжка: дуга сверху вниз
-    const p = 1 - hero.swing / hero.swDur, len = Math.min(16, 6 + D.range * .25);
+    const p = 1 - hero.swing / hero.swDur, len = MELEE + 1;
     for (let s2 = 0; s2 < 9; s2++) { const a = -Math.PI / 2 + hero.face * (s2 / 8) * Math.PI * Math.min(1, p * 1.5); for (let r = 3; r < len; r++) pix(hero.x + Math.cos(a) * r, hero.y - 6 + hop + Math.sin(a) * r, s2 === 8 ? '#ffffff' : swordC); }
   } else if (sw) {
-    const p = 1 - hero.swing / .13, len = Math.min(16, 4 + D.range * .25 + Math.min(6, F(EI.dmg))), wd = 2 + Math.min(4, F(EI.cleave)) + Math.min(2, F(EI.aspd) >> 1);
+    const p = 1 - hero.swing / .13, len = MELEE + Math.min(3, F(EI.dmg) >> 1), wd = 2 + Math.min(4, F(EI.cleave)) + Math.min(2, F(EI.aspd) >> 1);
     const swingC = F(EI.fire) >= 2 ? '#ff9a3c' : swordC;
     for (let s = -wd; s <= wd; s++) {
       const a = hero.swingA + (p - .5) * 2.2 + s * .12;
