@@ -270,6 +270,14 @@ const EFF = [
   { k: 'thorns',n: 'Шипы',        c: '#cc9966', d: 'отражение урона' },
   { k: 'power', n: 'Мощь',        c: '#ff44ff', d: 'множитель урона' },
   { k: 'fury',  n: 'Ярость',      c: '#ff2222', d: 'урон при низком HP' },
+  { k: 'bleed', n: 'Кровотечение', c: '#ff3355', d: 'удары вызывают кровотечение' },
+  { k: 'frost', n: 'Холод',       c: '#a8e8ff', d: 'замедление и заморозка' },
+  { k: 'exec',  n: 'Добивание',   c: '#f0f0f0', d: 'казнь ослабленных врагов' },
+  { k: 'bounce',n: 'Рикошет',     c: '#ffe08a', d: 'удар отскакивает в соседей' },
+  { k: 'grav',  n: 'Притяжение',  c: '#9a7aff', d: 'стягивает врагов к герою' },
+  { k: 'spirit',n: 'Духи',        c: '#7affd8', d: 'призрачные клинки вокруг героя' },
+  { k: 'greed', n: 'Алчность',    c: '#ffcc33', d: 'больше статов за убийство' },
+  { k: 'barrier',n: 'Барьер',     c: '#6ad8ff', d: 'щит каждые несколько секунд' },
 ];
 const NE = EFF.length;
 const EI = {}; EFF.forEach((e, i) => EI[e.k] = i);
@@ -295,6 +303,14 @@ const EFORM = [
   ['Колючки', 'Шипастая броня', 'Терновая волна', 'Терновый венец'],
   ['Сила воли', 'Мощь', 'Сияние', 'Божественная мощь'],
   ['Злость', 'Гнев', 'Багровая аура', 'Бешенство'],
+  ['Порез', 'Рваная рана', 'Кровавый дождь', 'Река крови'],
+  ['Озноб', 'Иней', 'Ледяные оковы', 'Вечная зима'],
+  ['Добивание', 'Гильотина', 'Приговор', 'Жнец душ'],
+  ['Отскок', 'Двойной рикошет', 'Пляска клинков', 'Буря рикошетов'],
+  ['Тяга', 'Воронка', 'Чёрная дыра', 'Горизонт событий'],
+  ['Искра духа', 'Пара духов', 'Хоровод', 'Легион духов'],
+  ['Скупость', 'Жадность', 'Золотая лихорадка', 'Ненасытность'],
+  ['Заслон', 'Купол', 'Бастион', 'Нерушимая стена'],
 ];
 const FORM_HINT = {
   dmg: 'со 2-й формы удар даёт волну, с 3-й волна ранит соседей',
@@ -314,7 +330,8 @@ const FORM_HINT = {
 const formNeed = f => 3 * Math.pow(10, 1.5 * (f - 1));
 const formName = (e, f) => f <= 0 ? 'нет формы' : EFORM[e][Math.min(f, 4) - 1] + (f > 4 ? ' ' + roman(f - 3) : '');
 const SPEC = ['Громила', 'Колосс', 'Дуэлянт', 'Снайпер', 'Целитель', 'Страж', 'Палач', 'Вампир', 'Счастливчик', 'Мудрец',
-  'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк'];
+  'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк',
+  'Кровопускатель', 'Ледяной страж', 'Палач', 'Метатель', 'Гравитон', 'Призыватель', 'Скряга', 'Хранитель'];
 let formNew = [];
 const F = i => ((S.form && S.form[i]) || 0) + ksL(6, 1);
 function updForms(R) {
@@ -718,6 +735,14 @@ function recalc() {
   D.poison = 0.8 * sat(R.poison, 80) * (1 + ta('x_elem'));
   D.shock = Math.min(.85, 0.5 * sat(R.shock, 100) + .05 * sy(9)); D.chain = 3 + 2 * sy(9);
   D.thorns = 1.5 * sat(R.thorns, 80) * (1 + 2 * sy(3));
+  D.bleed = .6 * sat(R.bleed, 60);
+  D.frost = sat(R.frost, 60);
+  D.exec = .25 * sat(R.exec, 80);
+  D.bounce = Math.min(6, Math.floor(Math.log2(1 + R.bounce / 20)));
+  D.grav = sat(R.grav, 80);
+  D.spirits = Math.min(6, Math.floor(Math.log2(1 + R.spirit / 10)));
+  D.greed = Math.min(10, Math.floor(Math.log2(1 + R.greed / 15)));
+  D.barrier = .3 * sat(R.barrier, 60);
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -776,6 +801,14 @@ function effVal(e) {
     case 'shock': return 'шанс ' + pct(D.shock) + ', цепь до ' + D.chain;
     case 'thorns': return 'отражает ' + pct(D.thorns) + ' удара';
     case 'power': return 'урон ×' + D.power.toFixed(2);
+    case 'bleed': return pct(D.bleed) + ' удара уходит в кровотечение';
+    case 'frost': return 'замедляет с шансом ' + pct(D.frost) + ', заморозка ' + pct(D.frost * .15);
+    case 'exec': return 'казнит врагов ниже ' + pct(D.exec) + ' HP';
+    case 'bounce': return D.bounce + ' отскоков удара';
+    case 'grav': return 'стягивает врагов, сила ' + pct(D.grav);
+    case 'spirit': return D.spirits + ' духов-клинков';
+    case 'greed': return '+' + D.greed + ' статов за убийство';
+    case 'barrier': return 'щит ' + pct(D.barrier) + ' HP каждые 6с';
     case 'fury': return 'до ×' + (1 + D.furyK).toFixed(2) + ' урона при низком HP';
   }
 }
@@ -997,8 +1030,11 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.af & 1) dmg *= .5;
   if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
-  m.hp -= dmg; m.fl = .07; trackDmg(SRC_BY_COL[col] || 'Удар', dmg);
+  trackDmg(SRC_BY_COL[col] || 'Удар', Math.min(dmg, Math.max(0, m.hp))); m.hp -= dmg; m.fl = .07;
   if (!col && legOn('frost')) m.slowT = 2;
+  if (!col && D.bleed > .01) { m.blT = 4; m.bl = Math.min((m.bl || 0) + D.hit * D.bleed * .25, D.hit * D.bleed); }
+  if (!col && D.frost > .01 && rnd() < D.frost) { m.slowT = 1.5; if (!m.boss && rnd() < .15) { m.frz = 1; if (texts.length < 8) fxLabel('Заморозка', m.x, m.y - 12, '#a8e8ff'); } }
+  if (D.exec > .01 && !m.boss && m.hp > 0 && m.hp < m.max * D.exec) { trackDmg('Казнь', m.hp); m.hp = 0; bolts.push({ x1: m.x - 5, y1: m.y - 9, x2: m.x + 5, y2: m.y + 1, l: .12, c: '#ffffff' }); fxLabel('Казнь', m.x, m.y - 12, '#f0f0f0');  }
   if (m.af & 1024 && !col && time > (m.rfT || 0)) { m.rfT = time + 1; hurtHero(zoneDmg(S.zone) * m.dm * .4 * (1 - D.armor)); if (texts.length < 7) ftext(hero.x, hero.y - 10, 'отражено', '#ffffff', .7, .6); }
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
@@ -1018,7 +1054,7 @@ function killMob(m) {
   const c = m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48);
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
   if (m.boss || m.rare) shake = Math.max(shake, m.boss ? 8 : 3);
-  const cnt = 2 + Math.floor(rnd() * 3) + (m.rare ? 3 : 0) + (m.boss ? 8 : 0);
+  const cnt = 2 + (D.greed || 0) + Math.floor(rnd() * 3) + (m.rare ? 3 : 0) + (m.boss ? 8 : 0);
   const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1)
     * (1 + ta('x_greed')) * (on('x_scholar') || on('x_reaper') ? .8 : 1) * (on('x_gamble') && !m.rare ? .8 : 1)
     * (m.rare ? (1 + ta('c_rare')) * (on('x_gamble') ? 1 + ta('x_gamble') : 1) : 1) * (isLegend(S.zone) ? 1 + ta('c_legend') : 1)
@@ -1093,6 +1129,11 @@ function heroAttack(t) {
   fxLabel('Волна клинка', hero.x, hero.y - 16, '#dddd88');
   tone(700, .05, 'triangle', .02, 1400, 0, 'wave', .05);
 }
+function bounceFrom(src, dmg, left) {
+  let best = null, bd = 40;
+  for (const o of mobs) { if (o.dead || o === src) continue; const d = Math.hypot(o.x - src.x, o.y - src.y); if (d < bd) { bd = d; best = o; } }
+  if (best) waves.push({ x: src.x, y: src.y - 4, t: best, sp: 220, a: 0, l: 1, bounce: true, dmg, left: left - 1 });
+}
 function updWaves(dt) {
   for (const w of waves) {
     w.l -= dt;
@@ -1100,7 +1141,8 @@ function updWaves(dt) {
     const dx = w.t.x - w.x, dy = w.t.y - 4 * w.t.sz - w.y, d = Math.hypot(dx, dy) || 1;
     w.a = Math.atan2(dy, dx);
     const st = Math.min(d, w.sp * dt); w.x += dx / d * st; w.y += dy / d * st;
-    if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, '#ffffff', 4, 30); heroStrike(w.t, true); }
+    if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, w.bounce ? '#ffe08a' : '#ffffff', 4, 30);
+      if (w.bounce) { const tg = w.t; hitMob(tg, w.dmg, false, false, '#ffe08a'); fxLabel('Рикошет', tg.x, tg.y - 12, '#ffe08a'); if (w.left > 0) bounceFrom(tg, w.dmg * .8, w.left); } else heroStrike(w.t, true); }
   }
   waves = waves.filter(w => w.l > 0);
 }
@@ -1112,6 +1154,7 @@ function heroStrike(t, fromWave) {
   if (!fromWave) { hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1; }
   if (ci === 2) hero.kbBoost = 3.5;
   hitMob(t, dmg * (1 + ta('x_focus')), crit, true);
+  if (D.bounce > 0) bounceFrom(t, dmg * .6, D.bounce);
   if (crit && legOn('storm')) { const o = randMob(); if (o) { bolts.push({ x1: t.x, y1: t.y - 3, x2: o.x, y2: o.y - 3, l: .12, c: '#99eeff' }); hitMob(o, dmg * .5, false, false, '#99eeff'); } }
   if (legOn('echo') && rnd() < .2 && !t.dead) { ghosts.push({ x: hero.x, y: hero.y, l: .25, face: hero.face }); hitMob(t, dmg * .8, crit, true); }
   if (ci === 2) {   // финишер: удар с прыжка, волна, всех разбрасывает
@@ -1139,7 +1182,7 @@ function heroStrike(t, fromWave) {
   if (D.cleave > 0) {
     const others = mobs.filter(m => m !== t && !m.dead && Math.hypot(m.x - hero.x, m.y - hero.y) < D.range + 7)
       .sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, D.cleave);
-    for (const o of others) { hitMob(o, dmg * .6, crit, false); if (sy(1) && D.poison > .02) { o.psn = Math.max(o.psn, dmg * D.poison * .5); o.psnT = 3; } }
+    for (const o of others) { hitMob(o, dmg * .6, crit, false); if (sy(1) && D.poison > .02) { o.psn = Math.max(o.psn, D.hit * D.poison * .5); o.psnT = 3; } }
   }
   if (D.fire > .02) {
     for (const o of mobs) if (!o.dead && o !== t && Math.hypot(o.x - t.x, o.y - t.y) < D.fireR) {
@@ -1158,7 +1201,7 @@ function heroStrike(t, fromWave) {
       hitSet.add(best); hitMob(best, dmg * .5, false, false, '#99eeff'); from = best;
     }
   }
-  if (D.poison > .02) { t.psn = Math.max(t.psn, dmg * D.poison); t.psnT = 3; }
+  if (D.poison > .02) { t.psn = Math.max(t.psn, D.hit * D.poison); t.psnT = 3; }
   if (D.vamp > 0) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.vamp);
 }
 
@@ -1217,9 +1260,9 @@ function onTap(e) {
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
 /* ---------- понятность боя: источники урона, подписи эффектов ---------- */
-const SRC_BY_COL = { '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
+const SRC_BY_COL = { '#ffe08a': 'Рикошет', '#7affd8': 'Духи', '#9a7aff': 'Притяжение', '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
   '#ff8877': 'Сокрушение', '#66ccff': 'Скорость', '#ff9988': 'Рассечение', '#ff5544': 'Мясник', '#ffffff': 'Финишер', '#ffee66': 'Слабое место', '#fff8a0': 'Тап', '#ffaa33': 'Тап' };
-const SRC_COL = { 'Удар': '#e9e4ff', 'Яд': '#88ee22' };
+const SRC_COL = { 'Удар': '#e9e4ff', 'Яд': '#88ee22', 'Кровотечение': '#ff3355', 'Казнь': '#f0f0f0' };
 for (const c in SRC_BY_COL) SRC_COL[SRC_BY_COL[c]] = SRC_COL[SRC_BY_COL[c]] || c;
 const DS = {};
 const trackDmg = (src, d) => { if (d > 0 && isFinite(d)) DS[src] = (DS[src] || 0) + d; };
@@ -1336,6 +1379,14 @@ function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Ma
 function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
+  if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
+      let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
+      if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
+  if (D.spirits > 0) { PT.spr = (PT.spr ?? 1) - dt; if (PT.spr <= 0) { PT.spr = 1;
+      for (let i = 0; i < D.spirits; i++) { const a = time * 2.5 + i * 6.28 / D.spirits, sx2 = hero.x + Math.cos(a) * 10, sy2 = hero.y - 5 + Math.sin(a) * 6;
+        let best = null, bd = 34; for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - sx2, m.y - sy2); if (d < bd) { bd = d; best = m; } }
+        if (best) { bolts.push({ x1: sx2, y1: sy2, x2: best.x, y2: best.y - 3, l: .08, c: '#7affd8' }); hitMob(best, D.hit * .4, false, false, '#7affd8'); } } } }
+  if (D.barrier > .01) { PT.bar = (PT.bar ?? 6) - dt; if (PT.bar <= 0) { PT.bar = 6; const sh = D.maxHP * D.barrier; if (hero.shield < sh) { hero.shield = sh; ring(hero.x, hero.y - 4, 9, '#6ad8ff'); fxLabel('Барьер', hero.x, hero.y - 16, '#6ad8ff'); } } }
   if (S.zmod === 'storm') { PT.zst = (PT.zst ?? 3) - dt; if (PT.zst <= 0) { PT.zst = 2 + rnd() * 2; const m = randMob(); if (m) { bolts.push({ x1: m.x + (rnd() - .5) * 10, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ccf6ff' }); hitMob(m, D.hit * 2, false, false, '#ccf6ff'); flashT = Math.max(flashT, .04); fxLabel('Гроза', m.x, m.y - 14, '#99eeff'); } } }
   if (ksL(2, 0)) { PT.ksf = (PT.ksf || 0) - dt; if (PT.ksf <= 0) { PT.ksf = fireEvery(ksL(2, 0)); ring(hero.x, hero.y - 3, 22, '#ff6622'); hitAround(hero.x, hero.y, 22, D.hit * (.5 + .5 * ksL(2, 0)), '#ff6622'); } }
   if (ksL(2, 1)) { PT.kss = (PT.kss || 0) - dt; if (PT.kss <= 0) { PT.kss = 1 / ksL(2, 1); const m = randMob(); if (m) { fxLabel('Владыка бурь', m.x, m.y - 14, '#99eeff'); bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .12, c: '#99eeff' }); hitMob(m, D.hit, false, false, '#99eeff'); } } }
@@ -1350,7 +1401,7 @@ function effMech(dt) {
   if (ft >= 3) { PT.nova -= dt; if (PT.nova <= 0) { PT.nova = 4; ring(hero.x, hero.y - 3, 14, '#cc9966'); hitAround(hero.x, hero.y, 14, D.hit * D.thorns * (1 + .5 * (ft - 3)), '#cc9966'); } }
   if (fr >= 2 && hero.hp >= D.maxHP * .999) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
   // ядовитые облака
-  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { m.hp -= c.dps * dt; trackDmg('Яд', c.dps * dt); if (m.hp <= 0) { m.dead = true; killMob(m); } } }
+  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { trackDmg('Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt; if (m.hp <= 0) { m.dead = true; killMob(m); } } }
   clouds = clouds.filter(c => c.t > 0);
   for (const r of rings) { r.l -= dt; r.r += (r.max - r.r) * Math.min(1, dt * 18); } rings = rings.filter(r => r.l > 0);
   for (const g of ghosts) g.l -= dt; ghosts = ghosts.filter(g => g.l > 0);
@@ -1421,7 +1472,8 @@ function update(dt) {
   else if (!bossAlive && S.zone >= 3) { evNext -= dt; if (evNext <= 0) { evNext = 90 + rnd() * 70; startEvent(); } }
   if (tgt) {
     hero.face = tgt.x >= hero.x ? 1 : -1;
-    if (td > D.range) {
+    const reachH = Math.max(D.range, tgt.role === 'archer' || tgt.role === 'shaman' || tgt.goblin ? 40 : 0);
+    if (td > reachH) {
       const dx = tgt.x - hero.x, dy = tgt.y - hero.y, d = Math.hypot(dx, dy) || 1;
       const mv = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1); hero.x += dx / d * mv * dt; hero.y += dy / d * mv * dt;
     } else if (hero.cd <= 0) { hero.cd = 1 / (D.aps * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
@@ -1440,10 +1492,12 @@ function update(dt) {
     const ox0 = m.x, oy0 = m.y;
     const reach = 5 + m.sz * 2, ranged = m.role === 'archer' || m.role === 'shaman';
     if (m.goblin) { m.x -= dx / d * m.sp * dt; m.y -= dy / d * m.sp * dt; m.x = clamp(m.x, 5, W - 5); m.y = clamp(m.y, 10, H - 3); if (rnd() < dt * 8) parts.push({ x: m.x, y: m.y - 2, vx: 0, vy: 0, l: .4, c: '#ffd84a', f: 1 }); }
-    else if (ranged) { const want = m.role === 'archer' ? 34 : 28; if (d > want + 6) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; } else if (d < want - 6) { m.x -= dx / d * m.sp * .8 * dt; m.y -= dy / d * m.sp * .8 * dt; } m.x = clamp(m.x, -4, W + 4); m.y = clamp(m.y, 4, H + 2); shooter(m, dt, mdmg); }
+    else if (ranged) { const want = m.role === 'archer' ? 34 : 28; if (d > want + 6) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; } else if (d < want - 6) { m.x -= dx / d * m.sp * .8 * dt; m.y -= dy / d * m.sp * .8 * dt; } m.x = clamp(m.x, 4, W - 4); m.y = clamp(m.y, 9, H - 2); shooter(m, dt, mdmg); }
     else if (d > reach) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; }
     { const f = (m.slowT > 0 ? .5 : 1) * (S.zmod === 'snow' ? .7 : 1); if (f < 1) { m.x = ox0 + (m.x - ox0) * f; m.y = oy0 + (m.y - oy0) * f; } m.slowT = (m.slowT || 0) - dt; }
     if (m.af & 512) { m.tp = (m.tp ?? 2 + rnd() * 2) - dt; if (m.tp <= 0) { m.tp = 3; burst(m.x, m.y - 3, '#ff88ff', 8, 30); const a = rnd() * 6.28; m.x = clamp(hero.x + Math.cos(a) * 14, 4, W - 4); m.y = clamp(hero.y + Math.sin(a) * 10, 8, H - 2); burst(m.x, m.y - 3, '#ff88ff', 8, 30); } }
+    if (m.frz > 0) { m.frz -= dt; m.x = ox0; m.y = oy0; m.cd = Math.max(m.cd, .3); }
+    if (m.blT > 0 && !m.dead) { m.blT -= dt; trackDmg('Кровотечение', Math.min(m.bl * dt, Math.max(0, m.hp))); m.hp -= m.bl * dt; if (rnd() < dt * 5 && parts.length < 500) parts.push({ x: m.x + (rnd() - .5) * 5, y: m.y - 4, vx: 0, vy: 15, l: .4, c: '#ff3355' }); if (m.hp <= 0) { m.dead = true; killMob(m); continue; } }
     if (S.zmod === 'curse' && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * .03 * dt);
     if (m.role === 'summoner') shooter(m, dt, mdmg);
     if (m.boss) { bossAI(m, dt); bossPhase(m); }
@@ -1481,7 +1535,7 @@ function update(dt) {
     }
     if (m.af & 64 && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * (m.boss ? .01 : .04) * dt);
     if (m.psnT > 0 && !m.dead) {
-      m.psnT -= dt; m.hp -= m.psn * dt; trackDmg('Яд', m.psn * dt);
+      m.psnT -= dt; trackDmg('Яд', Math.min(m.psn * dt, Math.max(0, m.hp))); m.hp -= m.psn * dt;
       if (rnd() < dt * 6) parts.push({ x: m.x + (rnd() - .5) * 6, y: m.y - 4, vx: 0, vy: -12, l: .4, c: '#88ee22' });
       if (m.hp <= 0) { m.dead = true; killMob(m); }
     }
@@ -1574,6 +1628,8 @@ function render() {
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
     if (o.psnT > 0) pix(o.x, y - 1, '#88ee22');
+    if (o.frz > 0) { ctx.globalAlpha = .55; ctx.drawImage(sprite(MOBS[o.t].p, { 1: '#a8e8ff', 2: '#6ab8e0', 3: '#ffffff' }, 'mz' + o.t), x, y + bob, s, s); ctx.globalAlpha = 1; }
+    if (o.blT > 0) pix(o.x + 2, y - 1, '#ff3355');
     if (o.role) { const rc = ROLES[o.role].c, mx = Math.round(o.x), my = y - 6 + bob;
       if (o.role === 'archer') { pix(mx, my - 1, rc); pix(mx - 1, my, rc); pix(mx + 1, my, rc); }
       else if (o.role === 'shaman') { pix(mx, my - 1, rc); pix(mx - 1, my, rc); pix(mx, my, rc); pix(mx + 1, my, rc); pix(mx, my + 1, rc); }
@@ -1594,7 +1650,7 @@ function render() {
   ctx.globalAlpha = 1;
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
-    const ca = Math.cos(w.a), sa = Math.sin(w.a), wc = w.fin ? '#ffffff' : (S.meta.gear && S.meta.gear.eq.w ? RAR[S.meta.gear.eq.w.rar].c : F(EI.range) >= 2 ? '#ffffaa' : '#dddd88'), half = w.fin ? 6 : 4;
+    const ca = Math.cos(w.a), sa = Math.sin(w.a), wc = w.bounce ? '#ffe08a' : w.fin ? '#ffffff' : (S.meta.gear && S.meta.gear.eq.w ? RAR[S.meta.gear.eq.w.rar].c : F(EI.range) >= 2 ? '#ffffaa' : '#dddd88'), half = w.fin ? 6 : 4;
     for (let i = -half; i <= half; i++) { const bend = (half - Math.abs(i)) * .7; for (const th of [0, -1]) pix(w.x - sa * i + ca * (bend + th), w.y + ca * i + sa * (bend + th), Math.abs(i) < 2 ? '#ffffff' : wc); }
     ctx.globalAlpha = .4; for (let j = 1; j <= 3; j++) pix(w.x - ca * j * 2, w.y - sa * j * 2, wc); ctx.globalAlpha = 1;
   }
@@ -1734,6 +1790,8 @@ function drawHero(rk) {
   if (F(EI.armor)) { const ph = (time * (.6 + F(EI.armor) * .1)) % 2; if (ph < .35) { const gx = x + Math.floor(ph / .35 * 9); pix(gx, y + 2, '#ffffff'); pix(gx - 1, y + 3, '#ffffff'); } }
   // щит
   if (hero.shield > 0) { ctx.globalAlpha = .5; for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28 + time; pix(hero.x + Math.cos(a) * 7, hero.y - 4 + Math.sin(a) * 6, '#9fe8ff'); } ctx.globalAlpha = 1; }
+  // духи-клинки
+  for (let i = 0; i < (D.spirits || 0); i++) { const a = time * 2.5 + i * 6.28 / D.spirits, sx2 = Math.round(hero.x + Math.cos(a) * 10), sy2 = Math.round(hero.y - 5 + Math.sin(a) * 6); pix(sx2, sy2 - 1, '#7affd8'); pix(sx2 - 1, sy2, '#7affd8'); pix(sx2 + 1, sy2, '#7affd8'); pix(sx2, sy2 + 1, '#ffffff'); }
   // шаровые молнии
   const fsh = F(EI.shock);
   if (fsh >= 3) { const n = Math.min(4, fsh - 2); for (let i = 0; i < n; i++) { const a = time * 4 + i * 6.28 / n, ox = Math.round(hero.x + Math.cos(a) * 12), oy = Math.round(hero.y - 4 + Math.sin(a) * 7); ctx.fillStyle = '#ffffff'; ctx.fillRect(ox, oy, 2, 2); pix(ox - 1, oy, '#99eeff'); pix(ox + 2, oy + 1, '#99eeff'); } }
@@ -1916,9 +1974,10 @@ const SLOTS = {
   m: { n: 'Амулет', icon: 'star', main: ['gain'], names: [['Деревянный оберег', 'Костяной зуб', 'Медный жетон'], ['Серебряный амулет', 'Камень удачи', 'Клык волка'], ['Око дракона', 'Печать мага', 'Лунный камень'], ['Сердце бури', 'Осколок звезды', 'Глаз бездны'], ['Слеза богов', 'Искра творения', 'Сердце мира']] },
   r: { n: 'Кольцо', icon: 'eye', main: ['e_crit', 'e_critd'], names: [['Медное кольцо', 'Простой перстень', 'Железное кольцо'], ['Кольцо силы', 'Серебряный перстень', 'Кольцо охотника'], ['Перстень мага', 'Кольцо теней', 'Печатка короля'], ['Кольцо рока', 'Перстень бури', 'Кольцо пламени'], ['Кольцо вечности', 'Перстень богов', 'Кольцо судьбы']] },
 };
-const GPOOL = ['e_fire', 'e_shock', 'e_poison', 'e_vamp', 'e_regen', 'e_aspd', 'e_move', 'e_luck', 'e_wis', 'e_power', 'e_range', 'e_cleave', 'e_thorns', 'e_dodge', 'tap', 'ultd', 'ultc', 'combo_m', 'bossdmg', 'elite', 'rare', 'gain', 'hit', 'hp'];
+const GPOOL = ['e_fire', 'e_shock', 'e_poison', 'e_vamp', 'e_regen', 'e_aspd', 'e_move', 'e_luck', 'e_wis', 'e_power', 'e_range', 'e_cleave', 'e_thorns', 'e_dodge', 'tap', 'ultd', 'ultc', 'combo_m', 'bossdmg', 'elite', 'rare', 'gain', 'hit', 'hp', 'e_bleed', 'e_frost', 'e_exec', 'e_bounce', 'e_grav', 'e_spirit', 'e_greed', 'e_barrier'];
 const GSUF = { e_fire: 'пламени', e_shock: 'грозы', e_poison: 'яда', e_vamp: 'крови', e_regen: 'жизни', e_aspd: 'ветра', e_move: 'бега', e_luck: 'удачи', e_wis: 'мудрости', e_power: 'мощи',
-  e_range: 'размаха', e_cleave: 'резни', e_thorns: 'шипов', e_dodge: 'тени', tap: 'длани', ultd: 'гнева', ultc: 'бури', combo_m: 'куража', bossdmg: 'охотника', elite: 'ловца', rare: 'золота', gain: 'жадности', hit: 'силы', hp: 'крепости' };
+  e_range: 'размаха', e_cleave: 'резни', e_thorns: 'шипов', e_dodge: 'тени', tap: 'длани', ultd: 'гнева', ultc: 'бури', combo_m: 'куража', bossdmg: 'охотника', elite: 'ловца', rare: 'золота', gain: 'жадности', hit: 'силы', hp: 'крепости',
+  e_bleed: 'крови', e_frost: 'стужи', e_exec: 'палача', e_bounce: 'рикошета', e_grav: 'бездны', e_spirit: 'духов', e_greed: 'скупца', e_barrier: 'бастиона' };
 const CH = { c: { n: 'Обычный сундук', p: [60, 28, 9, 2.5, .5], col: '#a0703a' }, r: { n: 'Редкий сундук', p: [0, 45, 38, 14, 3], col: '#9fb4cc' }, e: { n: 'Эпический сундук', p: [0, 0, 55, 35, 10], col: '#ffd84a' } };
 const G = () => S.meta.gear;
 const LEG = {
