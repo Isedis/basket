@@ -307,7 +307,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112161556';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112161930';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -599,6 +599,27 @@ function biomeOf(z) {
 }
 
 /* ---------- пиксельные спрайты 8x8 ---------- */
+// облик каждого класса 8×8: 1 — доспех (цвет растёт с рангом), 2 — тёмная ткань, 3 — глаза, 4 — цвет класса, 5 — кожа
+const CLS_SPR = {
+  war:   { p: ["...44...", "..1111..", "..1331..", "..1111..", ".122221.", ".122221.", "..2..2..", "..1..1.."] },
+  bers:  { p: [".4....4.", "..5555..", "..5335..", "..5555..", ".552255.", "..4444..", "..2..2..", ".11..11."] },
+  pal:   { p: ["..1111..", "..1441..", "..1331..", "..1111..", ".141141.", ".114411.", "..2..2..", "..1..1.."] },
+  guard: { p: [".111111.", ".133331.", ".111111.", "11222211", "14444441", "11222211", ".22..22.", ".11..11."] },
+  mage:  { p: ["....4...", "...44...", "..4444..", "..5335..", "..4444..", ".444444.", ".444444.", "..1..1.."] },
+  sham:  { p: [".4.4.4..", "..4444..", "..5335..", "..5555..", ".522225.", "..2442..", "..5..5..", "..2..2.."] },
+  arch:  { p: ["..444...", ".44444..", ".45335..", "..555...", "..4444..", ".5.44.5.", "..2..2..", "..1..1.."] },
+  assa:  { p: ["..222...", ".22222..", ".22332..", ".24442..", "..2222..", ".2.22.2.", "..2..2..", ".2..2..."], pal: { 2: '#241a33' } },
+  gamb:  { p: ["..2222..", "..2222..", ".224422.", "..5355..", "..4444..", ".414414.", "..2..2..", "..1..1.."], pal: { 2: '#222230' } },
+  alch:  { p: ["..222...", ".24342..", "..5555..", "..555...", ".111111.", ".144441.", "..4..4..", "..1..1.."] },
+  priest:{ p: [".44444..", "........", "..5555..", "..5335..", ".111111.", ".114111.", ".114111.", ".111111."], pal: { 1: '#f4f0e0' } },
+  monk:  { p: ["........", "..5555..", "..5335..", "..5555..", ".544445.", "..4224..", "..4..4..", "..5..5.."] },
+  chrono:{ p: ["..1111..", ".141141.", "..5335..", "..5555..", ".414414.", ".444444.", ".4.44.4.", "..1..1.."] },
+  rune:  { p: ["..2222..", ".224422.", ".253352.", "..2552..", ".422224.", "..2442..", "..2..2..", "..1..1.."], pal: { 2: '#2a1f44' } },
+  necro: { p: ["..2222..", ".222222.", ".253352.", ".255552.", ".244442.", ".222222.", ".2.22.2.", "..2..2.."], pal: { 2: '#1c2a22', 5: '#d8e8d8' } },
+  reap:  { p: ["..2222..", ".222222.", ".223322.", ".222222.", "2224222.", ".222222.", "2.2..2.2", "........"], pal: { 2: '#1a1020', 3: '#ff44ff' } },
+};
+const heroPat = () => CLS_SPR[cls()].p;
+
 const HERO = ["..111...", ".11331..", ".11111..", "..222...", ".12221..", ".1.2.1..", "..2.2...", "..1.1..."];
 const MOBS = [
   { n: 'Слизень',   s: 1,   hp: 1,   dm: 1,   p: ["........","........","..1111..",".111111.",".131131.","11111111","12222221",".222222."] },
@@ -641,13 +662,15 @@ const RANKS = ['Новобранец', 'Драчун', 'Боец', 'Воин', '
 function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
 function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
 function heroSprite(r, flash, ex) {
-  if (flash) return sprite(HERO, { 1: '#ff4444', 2: '#aa2222', 3: '#fff' }, 'hf');
-  if (hero.tintT > 0) return sprite(HERO, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff' }, 'ht' + hero.tint);
+  const P = heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;
+  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa' }, 'hf' + k);
+  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3) }, 'ht' + k + hero.tint);
   let a = ARMOR[r % ARMOR.length], v = r >= 6 ? '#77ffff' : '#ffe08a';
   if (D.top && D.R[EFF[D.top[0]].k] >= 3) { a = shade(EFF[D.top[0]].c, -.1); v = EFF[D.top[2]].c; }
-  return sprite(HERO, { 1: ex ? shade(a, -.35) : a, 2: shade(a, -.5), 3: v }, 'h' + a + v + (ex ? 'e' : ''));
+  const c1 = cp[1] || (ex ? shade(a, -.35) : a);
+  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090' }, 'h' + k + c1 + v + (ex ? 'e' : ''));
 }
-const silhouette = c => sprite(HERO, { 1: c, 2: c, 3: c }, 'hs' + c);
+const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c }, 'hs' + cls() + c);
 
 /* ---------- состояние ---------- */
 const SAVE_KEY = 'inf_brawl_save_v1';
@@ -1048,7 +1071,7 @@ function clsTick(dt) {
   if (k === 'reap' && hero.souls > 0) { hero.soulT = (hero.soulT || 0) - dt; if (hero.soulT <= 0) { hero.soulT = .5; hero.souls--; } }
   for (const rn of runes) {
     rn.t -= dt; if (rn.t > 0) continue;
-    const dmg = D.hit * (1.4 + cq(0));
+    const dmg = rn.big || D.hit * (1.4 + cq(0));
     ring(rn.x, rn.y - 2, rn.r, '#bb88ff'); burst(rn.x, rn.y - 2, '#bb88ff', 8, 35);
     if (rn.m && !rn.m.dead && Math.hypot(rn.m.x - rn.x, rn.m.y - rn.y) < rn.r) heroStrike(rn.m, true);
     hitAround(rn.x, rn.y, rn.r, dmg * .7, '#bb88ff', rn.m);
@@ -1480,6 +1503,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
+  if (hero.stopT > 0 && m.stopD !== undefined && m.frz > 0) { m.stopD += dmg; m.fl = .07; burst(m.x, m.y - 3, '#88aaff', 1, 10); return; }   // остановка времени: урон копится
   trackDmg(SRC_BY_COL[col] || 'Удар', Math.min(dmg, Math.max(0, m.hp))); m.hp -= dmg; m.fl = .07;
   if (!col && legOn('frost')) m.slowT = 2;
   if (!col && D.bleed > .01) { m.blT = 4; m.bl = Math.min((m.bl || 0) + D.hit * D.bleed * .25, D.hit * D.bleed); }
@@ -1672,16 +1696,71 @@ function addUlt(v) {
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
 }
+/* ---------- ульты классов ---------- */
+const ULTS = {
+  war:   ['Клинковый шторм', 'веер из 16 волн клинка по всему полю'],
+  bers:  ['Кровавая буря', '3 секунды бешеного вихря: бьёт всех рядом и лечит'],
+  pal:   ['Божий молот', 'огромный молот с неба: урон по площади, полное лечение и щит'],
+  guard: ['Несокрушимая стена', 'ударная волна отшвыривает и оглушает всех; 3с неуязвимости'],
+  mage:  ['Метеоритный дождь', '14 метеоритов падают на врагов'],
+  sham:  ['Великая гроза', 'молнии бьют каждого врага трижды, появляются 3 тотема'],
+  arch:  ['Ливень стрел', 'дождь из стрел накрывает всё поле'],
+  assa:  ['Танец теней', 'скачет от врага к врагу и бьёт критом в спину'],
+  gamb:  ['Флеш-рояль', '5 карт — 5 случайных эффектов, шанс на сундук'],
+  alch:  ['Великая реакция', 'кислота под каждым врагом, потом цепь взрывов'],
+  priest:['Небесный суд', 'столпы света на всех врагов, лечение и очищение'],
+  monk:  ['Сто ладоней', 'шквал ударов по ближайшим врагам'],
+  chrono:['Остановка времени', 'время стоит 3с; весь урон в это время вернётся ×2'],
+  rune:  ['Рунный круг', 'руны под каждым врагом взрываются каскадом'],
+  necro: ['Армия мёртвых', 'поднимает 10 скелетов и бьёт всех тьмой'],
+  reap:  ['Великая жатва', 'коса во весь экран; души — на максимум'],
+};
+let ultQ = [];
+const later = (t, fn) => ultQ.push({ t, fn });
+function updUltQ(dt) { for (const q of ultQ) { q.t -= dt; if (q.t <= 0 && !q.done) { q.done = true; q.fn(); } } ultQ = ultQ.filter(q => !q.done); }
+const live = () => mobs.filter(m => !m.dead);
+function clsUlt(dmg) {
+  const k = cls(), c = CL().c;
+  switch (k) {
+    case 'war': for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hero.y, m.x - hero.x) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hero.x, y: hero.y - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .6, left: 0 }); }); }
+      ring(hero.x, hero.y - 3, 30, '#ffffff'); break;
+    case 'bers': for (let i = 0; i < 15; i++) later(i * .2, () => { hero.spin = .2; ring(hero.x, hero.y - 3, 26, '#ff4433'); hitAround(hero.x, hero.y, 26, dmg * .15, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 3); tone(140, .08, 'sawtooth', .03, 70); }); break;
+    case 'pal': { const t = live().sort((a, b) => b.hp - a.hp)[0] || hero; for (let i = 0; i < 8; i++) later(i * .03, () => bolts.push({ x1: t.x + i - 4, y1: t.y - 70, x2: t.x + i - 4, y2: t.y - 3, l: .2, c: i % 2 ? '#ffffff' : '#ffe08a' }));
+      later(.3, () => { ring(t.x, t.y - 2, 40, '#ffe08a'); ring(t.x, t.y - 2, 26, '#ffffff'); burst(t.x, t.y - 3, '#ffe08a', 50, 80); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - t.x, m.y - t.y) < 40 ? 1.4 : .5), true, true, '#fff2a8'); hero.hp = D.maxHP; hero.shield = Math.max(hero.shield, D.maxHP * .5); shake = 14; sfx.boom(); }); break; }
+    case 'guard': ring(hero.x, hero.y - 3, 50, '#8fb0d0'); ring(hero.x, hero.y - 3, 30, '#ffffff'); hero.iframe = 3;
+      for (const m of live()) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1; m.kx += dx / d * 260; m.ky += dy / d * 260; if (!m.boss) m.frz = 3; hitMob(m, dmg * .9, true, true, '#8fb0d0'); } break;
+    case 'mage': for (let i = 0; i < 14; i++) later(i * .1, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; bolts.push({ x1: m.x + 20, y1: m.y - 60, x2: m.x, y2: m.y - 3, l: .18, c: '#ff9a3c' }); ring(m.x, m.y - 2, 18, '#ff9a3c'); burst(m.x, m.y - 3, '#ff9a3c', 16, 50); hitAround(m.x, m.y, 18, dmg * .5, '#ff9a3c'); shake = Math.max(shake, 4); sfx.boom(); }); break;
+    case 'sham': for (let r = 0; r < 3; r++) later(r * .35, () => { for (const m of live()) { bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: m.y - 60, x2: m.x, y2: m.y - 3, l: .2, c: r % 2 ? '#ffffff' : '#99eeff' }); hitMob(m, dmg * .4, true, r === 2, '#ccf6ff'); } flashT = .08; tone(1800, .1, 'square', .03, 300); });
+      for (let i = 0; i < 3; i++) totems.push({ x: hero.x + (i - 1) * 14, y: hero.y + 6, t: 14, cd: .3 }); break;
+    case 'arch': for (let i = 0; i < 60; i++) later(i * .025, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const ox = (rnd() - .5) * 6; bolts.push({ x1: m.x + ox - 6, y1: m.y - 30, x2: m.x + ox, y2: m.y - 3, l: .08, c: '#5cff8a' }); hitMob(m, dmg * .08, false, false, '#5cff8a'); }); break;
+    case 'assa': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 12);
+      tg.forEach((m, i) => later(i * .12, () => { if (m.dead) return; blinkTo(m, true); burst(hero.x, hero.y - 4, '#4a3a6a', 10, 40); hitMob(m, dmg * 1.6, true, true, '#9a7aff'); tone(1300 + i * 60, .05, 'triangle', .03, 500); })); hero.iframe = tg.length * .12 + .3; break; }
+    case 'gamb': for (let i = 0; i < 5; i++) later(i * .25, () => { const s = Math.floor(rnd() * 5), nm = ['♥ ЧЕРВИ', '♦ БУБНЫ', '♣ ТРЕФЫ', '♠ ПИКИ', '★ ДЖОКЕР'][s], col = ['#ff4466', '#ffd84a', '#5cff8a', '#e9e4ff', '#44ffaa'][s];
+      ftext(hero.x, hero.y - 22 - i * 3, nm, col, 1, 1); ring(hero.x, hero.y - 3, 22 + i * 4, col);
+      if (s === 0) hero.hp = D.maxHP; if (s === 1) { giveBurst(zs() * D.gainMult * 40); if (rnd() < .15) giveChest('c', 'флеш-рояль'); } if (s === 2) for (const m of live()) { m.psn = Math.max(m.psn || 0, D.hit * 3); m.psnT = 4; }
+      for (const m of live()) hitMob(m, dmg * (s === 3 ? .6 : s === 4 ? 1 : .25), s >= 3, s === 4, col); tone(1600 + i * 200, .06, 'triangle', .03); }); break;
+    case 'alch': for (const m of live()) if (clouds.length < 40) clouds.push({ x: m.x, y: m.y - 1, r: 12, dps: D.hit * 2, t: 4, acid: true });
+      live().forEach((m, i) => later(.4 + i * .05, () => { if (m.dead) return; ring(m.x, m.y - 2, 14, '#b6ff3c'); burst(m.x, m.y - 3, '#b6ff3c', 12, 40); hitAround(m.x, m.y, 14, dmg * .5, '#b6ff3c'); tone(700, .04, 'square', .02, 200); })); break;
+    case 'priest': live().forEach((m, i) => later(i * .04, () => { if (m.dead) return; bolts.push({ x1: m.x, y1: m.y - 70, x2: m.x, y2: m.y - 3, l: .25, c: '#fff6c0' }); bolts.push({ x1: m.x + 1, y1: m.y - 70, x2: m.x + 1, y2: m.y - 3, l: .2, c: '#ffffff' }); ring(m.x, m.y - 2, 10, '#fff6c0'); hitMob(m, dmg * 1.1, true, true, '#fff6c0'); }));
+      hero.hp = D.maxHP; hero.psnT = 0; hero.slowT = 0; ring(hero.x, hero.y - 4, 16, '#fff6c0'); break;
+    case 'monk': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 6);
+      for (let i = 0; i < 40; i++) later(i * .04, () => { const m = tg[i % Math.max(1, tg.length)]; if (!m || m.dead) return; hero.fists = .1; hero.swingA = Math.atan2(m.y - hero.y, m.x - hero.x); burst(m.x + (rnd() - .5) * 6, m.y - 4, '#ffaa55', 3, 30); hitMob(m, dmg * .12, false, i % 8 === 0, '#ffaa55'); if (i % 4 === 0) tone(300 + i * 10, .03, 'square', .02); }); break; }
+    case 'chrono': { const st = live(); hero.stopT = 3; for (const m of st) { m.frz = Math.max(m.frz || 0, 3); m.stopD = 0; }
+      later(3, () => { hero.stopT = 0; flashT = .2; shake = 12; for (const m of st) { const d0 = m.stopD || 0; m.stopD = undefined; if (!m.dead) { ring(m.x, m.y - 3, 10, '#88aaff'); hitMob(m, dmg * .6 + d0 * 2, true, true, '#88aaff'); } } sfx.boom(); }); break; }
+    case 'rune': live().forEach((m, i) => runes.push({ x: m.x, y: m.y, t: .3 + i * .08, m, r: 16, res: false, big: dmg * .7 })); break;
+    case 'necro': for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; allies.push({ x: hero.x + Math.cos(a) * 14, y: hero.y + Math.sin(a) * 9, t: 15, cd: .3, face: 1 }); burst(hero.x + Math.cos(a) * 14, hero.y + Math.sin(a) * 9 - 3, '#7affb0', 8, 30); }
+      for (const m of live()) { bolts.push({ x1: hero.x, y1: hero.y - 5, x2: m.x, y2: m.y - 3, l: .25, c: '#7affb0' }); hitMob(m, dmg * .8, true, true, '#7affb0'); } break;
+    case 'reap': hero.sweep = .6; hero.swingA = 0; hero.souls = 5 + Math.floor(25 * cq(1));
+      for (let s2 = 0; s2 < 3; s2++) later(s2 * .2, () => { ring(hero.x, hero.y - 3, 60, '#ff44ff'); for (const m of live()) hitMob(m, dmg * .45, true, s2 === 2, '#ff44ff'); tone(200, .12, 'sawtooth', .04, 80); }); break;
+  }
+  ftext(hero.x, hero.y - 30, ULTS[k][0].toUpperCase() + '!', c, 1.6, 1.4);
+}
+
 function fireUlt() {
   ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
-  ftext(hero.x, hero.y - 22, 'УЛЬТИМЕЙТ!', '#ff44ff', 2, 1.4);
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
-  for (const m of mobs.slice()) if (!m.dead) {
-    bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: -4, x2: m.x, y2: m.y - 3, l: .3, c: '#ff88ff' });
-    hitMob(m, dmg, true, true, '#ff88ff');
-  }
-  ring(hero.x, hero.y - 3, Math.max(W, H), '#ff88ff');
-  if (legOn('twin')) setTimeout(() => { for (const m of mobs.slice()) if (!m.dead) { bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: -4, x2: m.x, y2: m.y - 3, l: .3, c: '#ff88ff' }); hitMob(m, dmg, true, true, '#ff88ff'); } flashT = .15; shake = 8; }, 450);
+  clsUlt(dmg);   // у каждого класса своя ульта
+  if (legOn('twin')) later(.9, () => { clsUlt(dmg); flashT = .15; });
   tone(80, .6, 'sawtooth', .06, 30); tone(1600, .5, 'square', .03, 200); tone(400, .4, 'triangle', .05, 1200, .1);
 }
 function onTap(e) {
@@ -1939,7 +2018,7 @@ function update(dt) {
   hero.cast = (hero.cast || 0) - dt; hero.spin = (hero.spin || 0) - dt; hero.sweep = (hero.sweep || 0) - dt; hero.fists = (hero.fists || 0) - dt; hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
   if (hero.chainT <= 0) hero.chain = 0;
   if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
-  updTele(dt); updWaves(dt);
+  updTele(dt); updWaves(dt); updUltQ(dt); if (hero.stopT > 0) hero.stopT -= dt;
   for (const e of echoes) { e.t -= dt; if (e.t <= 0) { ring(e.x, e.y - 3, 9, '#ccccff'); hitAround(e.x, e.y, 9, e.dmg, '#ccccff'); fxLabel('Эхо', e.x, e.y - 12, '#ccccff'); } } echoes = echoes.filter(e => e.t > 0);
   if (D.trail > .01) {
     PT.trl = (PT.trl || 0) - dt; if (PT.trl <= 0) { PT.trl = .1; const lp = trailPts[trailPts.length - 1]; if (!lp || Math.hypot(lp.x - hero.x, lp.y - hero.y) > 2) trailPts.push({ x: hero.x, y: hero.y, t: 1.2 }); }
@@ -2181,6 +2260,7 @@ function render() {
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
+  if (hero.stopT > 0) { ctx.fillStyle = 'rgba(60,90,200,' + (.18 + .06 * Math.sin(time * 8)) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.zmod === 'night') { ctx.save(); ctx.fillStyle = 'rgba(0,0,25,.55)'; ctx.beginPath(); ctx.rect(-4, -4, W + 8, H + 8); ctx.arc(hero.x - camX, hero.y - 4 - camY, 34, 0, 6.2832, true); ctx.fill('evenodd'); ctx.restore(); }
   if (S.zmod === 'storm' || S.zmod === 'snow') { const st = S.zmod === 'storm';
     for (let i = 0; i < 70; i++) { const yy = ((i * 53.7 + time * (st ? 110 : 14)) % (H + 10)) - 5, xx = ((i * 37.3 + (st ? -yy * .35 : Math.sin(time + i) * 4)) % W + W) % W;
@@ -2356,36 +2436,23 @@ function drawHero(rk) {
 
 // облик и оружие класса (когда герой не машет мечом)
 function drawClsIdle(x, y) {
-  const f = hero.face, hx = hero.x, c = CL().c, P = (dx, dy, col) => pix(hx + f * dx, y + dy, col);
+  const f = hero.face, hx = hero.x, P = (dx, dy, col) => pix(hx + f * dx, y + dy, col);
   switch (cls()) {
-    case 'arch': { const bx = Math.round(hx + f * 4); for (let i = 0; i < 6; i++) pix(bx + f * (i === 0 || i === 5 ? 0 : 1), y + 1 + i, '#c9a36a'); for (let i = 1; i < 5; i++) pix(bx, y + 1 + i, '#e6e6e6');
-      pix(hx - f * 2, y + 1, '#2f8a4f'); pix(hx - f * 1, y, '#2f8a4f'); break; }
-    case 'mage': for (let i = 0; i < 7; i++) P(4, i - 1, '#8a5a2a'); ctx.fillStyle = hero.cast > 0 ? '#ffffff' : '#ff9a3c'; ctx.fillRect(Math.round(hx + f * 4) - 1, y - 3, 3, 3);
-      for (const [dx, dy] of [[-2, -1], [-1, -1], [0, -1], [1, -1], [-1, -2], [0, -2], [0, -3], [1, -4]]) P(dx, dy, '#7a3aaa'); break;
-    case 'necro': for (let i = 0; i < 8; i++) P(4, i - 1, '#5a4a6a'); for (let i = 0; i < 4; i++) P(4 - i, -1 - (i > 2 ? 1 : 0), '#c9ced6');
-      for (const [dx, dy] of [[-2, 0], [1, 0], [-1, -1], [0, -1]]) P(dx, dy, '#1a0a2a'); if (Math.sin(time * 4) > 0) { P(-1, 1, '#7affb0'); P(1, 1, '#7affb0'); } break;
-    case 'bers': for (let i = 0; i < 5; i++) P(4, i, '#8a5a2a'); P(5, 0, '#c9ced6'); P(5, 1, '#c9ced6'); P(6, 1, '#ffffff'); P(5, 2, '#c9ced6');
-      P(-4, 1, '#8a5a2a'); P(-4, 2, '#8a5a2a'); P(-5, 1, '#c9ced6'); P(-2, -1, '#ff4433'); P(1, -1, '#ff4433'); break;
-    case 'pal': for (let i = 0; i < 5; i++) P(4, i + 1, '#8a6a3a'); ctx.fillStyle = '#ffe08a'; ctx.fillRect(Math.round(hx + f * 4) - 1, y - 1, 3, 3); pix(hx + f * 4, y, '#ffffff');
-      for (let i = -2; i <= 2; i++) pix(hx + i, y - 2, '#ffe08a'); break;
-    case 'guard': ctx.fillStyle = '#5a6a8a'; ctx.fillRect(Math.round(hx + f * 3) - (f < 0 ? 2 : 0), y + 1, 3, 6); for (let i = 0; i < 6; i++) P(f > 0 ? 3 : 3, 1 + i, '#8fb0d0'); P(4, 3, '#ffffff'); break;
-    case 'sham': for (let i = 0; i < 8; i++) P(4, i - 1, '#6a4a2a'); P(4, -2, '#66ccff'); if (Math.sin(time * 12) > 0) { P(5, -3, '#ffffff'); P(3, -3, '#99eeff'); }
-      P(-1, -1, '#c9a36a'); P(0, -2, '#ffffff'); P(1, -1, '#c9a36a'); break;
-    case 'assa': P(4, 3, '#c9ced6'); P(5, 2, '#ffffff'); P(-4, 4, '#c9ced6'); for (const [dx, dy] of [[-2, -1], [-1, -1], [0, -1], [1, -1], [-1, -2], [0, -2]]) P(dx, dy, '#2a1f3a'); P(1, 1, '#9a7aff'); break;
-    case 'gamb': { const cy = y + 2 + (Math.sin(time * 5) > 0 ? 0 : 1); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(hx + f * 4), cy, 2, 3); pix(hx + f * 4, cy + 1, '#ff4466');
-      for (let i = -3; i <= 3; i++) pix(hx + i, y - 1, '#2a2a2a'); for (let i = -1; i <= 1; i++) { pix(hx + i, y - 2, '#2a2a2a'); pix(hx + i, y - 3, '#2a2a2a'); } pix(hx, y - 2, '#44ffaa'); break; }
-    case 'alch': ctx.fillStyle = '#b6ff3c'; ctx.fillRect(Math.round(hx + f * 4) - (f < 0 ? 1 : 0), y + 3, 2, 3); P(4, 2, '#e6e6e6'); if (rnd() < .3 && parts.length < 500) parts.push({ x: hx + f * 4, y: y + 1, vx: 0, vy: -10, l: .4, c: '#b6ff3c', f: 1 });
-      P(-1, 1, '#4fd6e8'); P(1, 1, '#4fd6e8'); break;
-    case 'priest': for (let i = 0; i < 8; i++) P(4, i - 1, '#e6d090'); P(3, -1, '#ffe08a'); P(5, -1, '#ffe08a'); P(4, -2, '#ffffff');
-      ctx.globalAlpha = .8; for (let i = -2; i <= 2; i++) pix(hx + i, y - 3, '#fff6c0'); pix(hx - 3, y - 2, '#fff6c0'); pix(hx + 3, y - 2, '#fff6c0'); ctx.globalAlpha = 1; break;
-    case 'monk': for (let i = -3; i <= 3; i++) pix(hx + i, y + 1, '#ff7a33'); P(-4, 2, '#ff7a33'); P(-5, 3, '#ff7a33');
-      if (hero.fists > 0) for (let i = 0; i < 3; i++) { const a = hero.swingA + (rnd() - .5) * .8, r = 4 + rnd() * 7; ctx.fillStyle = '#ffcc99'; ctx.fillRect(Math.round(hx + Math.cos(a) * r), Math.round(hero.y - 4 + Math.sin(a) * r), 2, 2); } break;
-    case 'chrono': { const ox = Math.round(hx + f * 5), oy = y + 1 + Math.round(Math.sin(time * 3)); ctx.fillStyle = '#88aaff'; ctx.fillRect(ox - 1, oy - 1, 3, 3); pix(ox, oy, '#ffffff');
-      const a = time * 3; pix(ox + Math.round(Math.cos(a) * 2), oy + Math.round(Math.sin(a) * 2), '#ffffff'); for (let i = -2; i <= 2; i++) pix(hx + i, y - 1, '#3a4a8a'); break; }
-    case 'rune': for (let i = 0; i < 3; i++) { const a = time * 2 + i * 2.09, rx = hx + Math.cos(a) * 7, ry = y + 2 + Math.sin(a) * 3; pix(rx, ry, '#bb88ff'); pix(rx, ry - 1, '#e0ccff'); pix(rx + 1, ry, '#bb88ff'); }
-      for (let i = -2; i <= 2; i++) pix(hx + i, y - 1, '#5a3a8a'); break;
-    case 'reap': for (let i = 0; i < 9; i++) P(4, i - 2, '#3a2a3a'); for (let i = 0; i < 5; i++) P(4 - i, -2 - (i > 3 ? 1 : 0), i === 4 ? '#ffffff' : '#c9ced6');
-      for (const [dx, dy] of [[-2, 0], [1, 0], [-1, -1], [0, -1]]) P(dx, dy, '#1a0a1a'); if (Math.sin(time * 4) > 0) { P(-1, 1, '#ff44ff'); P(1, 1, '#ff44ff'); } break;
+    case 'arch': { const bx = Math.round(hx + f * 4); for (let i = 0; i < 6; i++) pix(bx + f * (i === 0 || i === 5 ? 0 : 1), y + 1 + i, '#c9a36a'); for (let i = 1; i < 5; i++) pix(bx, y + 1 + i, '#e6e6e6'); P(-3, 3, '#8a5a2a'); P(-3, 2, '#ffffff'); break; }
+    case 'mage': for (let i = 0; i < 7; i++) P(4, i, '#8a5a2a'); ctx.fillStyle = hero.cast > 0 ? '#ffffff' : '#ff9a3c'; ctx.fillRect(Math.round(hx + f * 4) - 1, y - 2, 3, 3); break;
+    case 'necro': for (let i = 0; i < 8; i++) P(4, i - 1, '#5a4a6a'); for (let i = 0; i < 4; i++) P(4 - i, -1 - (i > 2 ? 1 : 0), '#c9ced6'); if (Math.sin(time * 4) > 0) P(4, -2, '#7affb0'); break;
+    case 'bers': for (let i = 0; i < 5; i++) P(4, i + 1, '#8a5a2a'); P(5, 1, '#c9ced6'); P(5, 2, '#c9ced6'); P(6, 2, '#ffffff'); P(5, 3, '#c9ced6'); P(-4, 3, '#8a5a2a'); P(-4, 4, '#8a5a2a'); P(-5, 3, '#c9ced6'); break;
+    case 'pal': for (let i = 0; i < 5; i++) P(4, i + 2, '#8a6a3a'); ctx.fillStyle = '#ffe08a'; ctx.fillRect(Math.round(hx + f * 4) - 1, y, 3, 3); pix(hx + f * 4, y + 1, '#ffffff'); break;
+    case 'guard': ctx.fillStyle = '#5a6a8a'; ctx.fillRect(Math.round(hx + f * 4) - 1, y + 2, 3, 5); for (let i = 0; i < 5; i++) P(5, 2 + i, '#8fb0d0'); P(4, 4, '#ffffff'); break;
+    case 'sham': for (let i = 0; i < 8; i++) P(4, i - 1, '#6a4a2a'); P(4, -2, '#66ccff'); if (Math.sin(time * 12) > 0) { P(5, -3, '#ffffff'); P(3, -3, '#99eeff'); } break;
+    case 'assa': P(4, 4, '#c9ced6'); P(5, 3, '#ffffff'); P(-4, 5, '#c9ced6'); P(-5, 4, '#ffffff'); break;
+    case 'gamb': { const cy = y + 3 + (Math.sin(time * 5) > 0 ? 0 : 1); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(hx + f * 4), cy, 2, 3); pix(hx + f * 4, cy + 1, '#ff4466'); break; }
+    case 'alch': ctx.fillStyle = '#b6ff3c'; ctx.fillRect(Math.round(hx + f * 4) - (f < 0 ? 1 : 0), y + 4, 2, 3); P(4, 3, '#e6e6e6'); if (rnd() < .3 && parts.length < 500) parts.push({ x: hx + f * 4, y: y + 2, vx: 0, vy: -10, l: .4, c: '#b6ff3c', f: 1 }); break;
+    case 'priest': for (let i = 0; i < 8; i++) P(4, i - 1, '#e6d090'); P(3, -1, '#ffe08a'); P(5, -1, '#ffe08a'); P(4, -2, '#ffffff'); if (Math.sin(time * 3) > 0) P(0, -2, '#ffffff'); break;
+    case 'monk': if (hero.fists > 0) for (let i = 0; i < 3; i++) { const a = hero.swingA + (rnd() - .5) * .8, r = 4 + rnd() * 7; ctx.fillStyle = '#ffcc99'; ctx.fillRect(Math.round(hx + Math.cos(a) * r), Math.round(hero.y - 4 + Math.sin(a) * r), 2, 2); } else { P(4, 4, '#f0c090'); P(-3, 4, '#f0c090'); } break;
+    case 'chrono': { const ox = Math.round(hx + f * 5), oy = y + 2 + Math.round(Math.sin(time * 3)); ctx.fillStyle = '#88aaff'; ctx.fillRect(ox - 1, oy - 1, 3, 3); pix(ox, oy, '#ffffff'); const a = time * 3; pix(ox + Math.round(Math.cos(a) * 2), oy + Math.round(Math.sin(a) * 2), '#ffffff'); break; }
+    case 'rune': for (let i = 0; i < 3; i++) { const a = time * 2 + i * 2.09, rx = hx + Math.cos(a) * 7, ry = y + 3 + Math.sin(a) * 3; pix(rx, ry, '#bb88ff'); pix(rx, ry - 1, '#e0ccff'); pix(rx + 1, ry, '#bb88ff'); } break;
+    case 'reap': for (let i = 0; i < 9; i++) P(4, i - 2, '#3a2a3a'); for (let i = 0; i < 5; i++) P(4 - i, -2 - (i > 3 ? 1 : 0), i === 4 ? '#ffffff' : '#c9ced6'); break;
   }
 }
 // эффекты класса поверх героя: вихрь, коса, души
@@ -2551,16 +2618,16 @@ function renderAuto() {
     return `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`; }).join('');
   if (ah !== renderAuto.a) { renderAuto.a = ah; $('autobox').innerHTML = ah; }
   const C = CL(), seen = S.meta.seen || {};
-  const ch = `<div class="cls cur"><div><b style="color:${C.c}">${C.n}</b>${C.d}<small>ветвь «${BRANCHES[C.br].n}» · мастерство ×${clsPow().toFixed(2)} — очки в этой ветви дерева усиливают класс</small></div></div>` +
+  const ch = `<div class="cls cur"><div><b style="color:${C.c}">${C.n}</b>${C.d}<small>ульта «${ULTS[cls()][0]}»: ${ULTS[cls()][1]}</small><small>ветвь «${BRANCHES[C.br].n}» · мастерство ×${clsPow().toFixed(2)} — очки в этой ветви дерева усиливают класс</small></div></div>` +
     CLS_KEYS.map(k => { const c = CLASSES[k], kn = seen[k]; return `<div class="cls${k === cls() ? ' on' : ''}${kn ? '' : ' unk'}" data-c="${k}"><div><b style="color:${kn ? c.c : '#777'}">${kn ? c.n : '???'}</b><small>${BRANCHES[c.br].n}${kn ? ' · жизней: ' + kn : ''}</small></div></div>`; }).join('');
   if (ch !== renderAuto.c) { renderAuto.c = ch; $('clsbox').innerHTML = ch; }
 }
 $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) { tSel = +lk.dataset.t; openTree(); return; } const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
-$('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } toast(c.n.toUpperCase(), c.d + ' · ' + c.st.map(x => x[0]).join(', ')); };
+$('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } toast(c.n.toUpperCase(), c.d + ' · ' + c.st.map(x => x[0]).join(', ') + ' · ульта «' + ULTS[el.dataset.c][0] + '»'); };
 $('clsc').onclick = () => showSheet('souls');
 function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0];
-  const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b></span><em>мастерство ×${clsPow().toFixed(2)} · ${BRANCHES[C.br].n}</em></div>` +
+  const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b></span><em>мастерство ×${clsPow().toFixed(2)} · ${BRANCHES[C.br].n}</em></div>` + `<div class="cs"><span style="color:${C.c}">Ульта</span><em>${ULTS[cls()][0]}</em></div>` +
     C.st.map(([n, f], j) => `<div class="cs"><span style="color:${C.c}">${n} <b style="color:#e9e4ff">${fmt(c0[j])}</b></span><em>${f(cq(j))}</em></div>`).join('');
   if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
 }
@@ -2571,7 +2638,7 @@ function clsReveal() {
     n++;
     if (n < 16) { const k = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; el.innerHTML = `<span style="color:${CLASSES[k].c}">${CLASSES[k].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
     clearInterval(iv);
-    el.innerHTML = `<span style="font-size:8px;color:var(--dim)">НОВЫЙ КЛАСС</span><br><span style="color:${C.c}">${C.n.toUpperCase()}</span><small>${C.d}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>усиливается ветвью «${BRANCHES[C.br].n}»</small>`;
+    el.innerHTML = `<span style="font-size:8px;color:var(--dim)">НОВЫЙ КЛАСС</span><br><span style="color:${C.c}">${C.n.toUpperCase()}</span><small>${C.d}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>ульта: «${ULTS[cls()][0]}»<br>усиливается ветвью «${BRANCHES[C.br].n}»</small>`;
     [523, 659, 784, 1047].forEach((f, i) => tone(f, .15, 'triangle', .05, 0, i * .07));
     setTimeout(() => { el.hidden = true; }, 3200);
   }, 70);
@@ -2620,7 +2687,7 @@ function rebirth() {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); ultQ = []; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
