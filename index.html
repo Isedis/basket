@@ -295,6 +295,14 @@ const EFF = [
   { k: 'spirit',n: 'Духи',        c: '#7affd8', d: 'призрачные клинки вокруг героя' },
   { k: 'greed', n: 'Алчность',    c: '#ffcc33', d: 'больше статов за убийство' },
   { k: 'barrier',n: 'Барьер',     c: '#6ad8ff', d: 'щит каждые несколько секунд' },
+  { k: 'det',   n: 'Детонация',   c: '#ff7744', d: 'убитые враги взрываются' },
+  { k: 'leech', n: 'Похищение',   c: '#dd2266', d: 'каждое убийство лечит' },
+  { k: 'rage',  n: 'Раж',         c: '#ff9944', d: 'убийства разгоняют атаку' },
+  { k: 'scrit', n: 'Сверхкрит',   c: '#ffff66', d: 'крит может сработать дважды' },
+  { k: 'hunt',  n: 'Охотник',     c: '#ff5588', d: 'урон по вожакам и элите' },
+  { k: 'energy',n: 'Энергия',     c: '#cc66ff', d: 'ульта заряжается быстрее' },
+  { k: 'fear',  n: 'Аура страха', c: '#8844aa', d: 'враги рядом слабее и медленнее' },
+  { k: 'curio', n: 'Любознательность', c: '#66ffcc', d: 'новые статы открываются быстрее' },
 ];
 const NE = EFF.length;
 const EI = {}; EFF.forEach((e, i) => EI[e.k] = i);
@@ -328,6 +336,14 @@ const EFORM = [
   ['Искра духа', 'Пара духов', 'Хоровод', 'Легион духов'],
   ['Скупость', 'Жадность', 'Золотая лихорадка', 'Ненасытность'],
   ['Заслон', 'Купол', 'Бастион', 'Нерушимая стена'],
+  ['Хлопок', 'Взрыв', 'Цепная реакция', 'Сверхновая'],
+  ['Глоток', 'Пиявка', 'Кровавый пир', 'Бессмертный голод'],
+  ['Азарт', 'Раж', 'Неистовство', 'Буря ярости'],
+  ['Двойной крит', 'Сверхкрит', 'Мегакрит', 'Абсолютный удар'],
+  ['Следопыт', 'Охотник', 'Ловец чудовищ', 'Убийца богов'],
+  ['Искра', 'Заряд', 'Перегрузка', 'Бесконечная энергия'],
+  ['Тень страха', 'Ужас', 'Кошмар', 'Конец света'],
+  ['Интерес', 'Любопытство', 'Жажда знаний', 'Всеведение'],
 ];
 const FORM_HINT = {
   dmg: 'со 2-й формы удар даёт волну, с 3-й волна ранит соседей',
@@ -348,7 +364,8 @@ const formNeed = f => 3 * Math.pow(10, 1.5 * (f - 1));
 const formName = (e, f) => f <= 0 ? 'нет формы' : EFORM[e][Math.min(f, 4) - 1] + (f > 4 ? ' ' + roman(f - 3) : '');
 const SPEC = ['Громила', 'Колосс', 'Дуэлянт', 'Снайпер', 'Целитель', 'Страж', 'Палач', 'Вампир', 'Счастливчик', 'Мудрец',
   'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк',
-  'Кровопускатель', 'Ледяной страж', 'Палач', 'Метатель', 'Гравитон', 'Призыватель', 'Скряга', 'Хранитель'];
+  'Кровопускатель', 'Ледяной страж', 'Палач', 'Метатель', 'Гравитон', 'Призыватель', 'Скряга', 'Хранитель',
+  'Подрывник', 'Пиявка', 'Неистовый', 'Мастер крита', 'Ловчий', 'Энергетик', 'Ужас ночи', 'Мудрец'];
 let formNew = [];
 const F = i => ((S.form && S.form[i]) || 0) + ksL(6, 1);
 function updForms(R) {
@@ -434,7 +451,7 @@ function rollAff(boss, force) {
   return af;
 }
 const affNames = af => AFF.filter((a, i) => af >> i & 1).map(a => a.n).join(', ');
-const unlockKills = n => n < 3 ? 0 : Math.round(6 * Math.pow(n - 2, 1.6) / ((1 + ta('unlock')) * (1 + ta('x_scholar'))));
+const unlockKills = n => n < 3 ? 0 : Math.round(6 * Math.pow(n - 2, 1.6) / ((1 + (D.curious || 0)) * (1 + ta('unlock')) * (1 + ta('x_scholar'))));
 
 /* ---------- модификаторы зон ---------- */
 const ZMODS = {
@@ -780,6 +797,14 @@ function recalc() {
   D.spirits = Math.min(6, Math.floor(Math.log2(1 + R.spirit / 10)));
   D.greed = Math.min(10, Math.floor(Math.log2(1 + R.greed / 15)));
   D.barrier = .3 * sat(R.barrier, 60);
+  D.det = .5 * sat(R.det, 60);
+  D.leech = .05 * sat(R.leech, 60);
+  D.rageK = .15 * sat(R.rage, 60);
+  D.scrit = .4 * sat(R.scrit, 80);
+  D.hunt = 1 + .5 * lg(R.hunt);
+  D.energy = 1 + .3 * lg(R.energy);
+  D.fear = .5 * sat(R.fear, 80);
+  D.curious = .25 * lg(R.curio);
   // бонусы класса
   if (cls() === 'war') { D.maxHP *= 1.3; D.cleave += 1; }
   if (cls() === 'arch') { D.aps = Math.min(14, D.aps * 1.4); D.crit = Math.min(.95, D.crit + .15); D.maxHP *= .8; }
@@ -850,6 +875,14 @@ function effVal(e) {
     case 'grav': return 'стягивает врагов, сила ' + pct(D.grav);
     case 'spirit': return D.spirits + ' духов-клинков';
     case 'greed': return '+' + D.greed + ' статов за убийство';
+    case 'det': return 'шанс взрыва при убийстве ' + pct(D.det);
+    case 'leech': return 'убийство лечит ' + pct(D.leech) + ' HP';
+    case 'rage': return '+' + pct(D.rageK) + ' скорости атаки за каждое убийство (до 5)';
+    case 'scrit': return 'шанс сверхкрита ' + pct(D.scrit);
+    case 'hunt': return 'урон по вожакам и элите ×' + D.hunt.toFixed(2);
+    case 'energy': return 'заряд ульты ×' + D.energy.toFixed(2);
+    case 'fear': return 'враги рядом бьют на ' + pct(D.fear) + ' слабее';
+    case 'curio': return 'статы открываются в ' + (1 + D.curious).toFixed(2) + ' раза быстрее';
     case 'barrier': return 'щит ' + pct(D.barrier) + ' HP каждые 6с';
     case 'fury': return 'до ×' + (1 + D.furyK).toFixed(2) + ' урона при низком HP';
   }
@@ -1072,6 +1105,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
   if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
+  if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   trackDmg(SRC_BY_COL[col] || 'Удар', Math.min(dmg, Math.max(0, m.hp))); m.hp -= dmg; m.fl = .07;
   if (!col && legOn('frost')) m.slowT = 2;
@@ -1127,6 +1161,9 @@ function killMob(m) {
   if (ksL(7, 0) && m.boss && S.zone >= 30) { const g = ksL(7, 0) * Math.max(1, Math.round(soulsFor(S.zone) / 40)); S.meta.souls += g; S.meta.total += g; feed('+' + fmt(g) + ' душ', '#ff44ff'); }
   if (m.boss) { S.siege = 0; giveChest(isLegend(S.zone) ? 'r' : 'c', isLegend(S.zone) ? 'легенда' : 'вожак'); }
   if (ev && ev.type === 'treasure' && !m.boss && rnd() < .04) giveChest('c', 'сокровищница');
+  if (D.leech > .002) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.leech);
+  if (D.rageK > .005) { hero.rage = Math.min(5, (hero.rage || 0) + 1); hero.rageT = 2; }
+  if (D.det > .01 && !m.boss && rnd() < D.det) { burst(m.x, m.y - 3, '#ff7744', 12, 45); ring(m.x, m.y - 3, 14, '#ff7744'); fxLabel('Детонация', m.x, m.y - 12, '#ff7744'); hitAround(m.x, m.y, 14, D.hit * 1.5, '#ff7744', m); }
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
@@ -1199,9 +1236,10 @@ function updWaves(dt) {
   waves = waves.filter(w => w.l > 0);
 }
 function heroStrike(t, fromWave) {
-  const crit = rnd() < D.crit, ultra = crit && rnd() < .04;
+  const crit = rnd() < D.crit, ultra = crit && rnd() < .04, scrit = crit && rnd() < (D.scrit || 0);
   const ci = hero.chain % 3; hero.chain++; hero.chainT = 1.2; hero.swType = ci; hero.swDur = ci === 2 ? .2 : .13;
-  const dmg = [1, 1.15, 2.5][ci] * (hero.counter > 0 ? 3 : 1) * D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t);
+  const dmg = [1, 1.15, 2.5][ci] * (hero.counter > 0 ? 3 : 1) * D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t) * (scrit ? 1 + D.critM * .5 : 1);
+  if (scrit) fxLabel('Сверхкрит', t.x, t.y - 16, '#ffff66');
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
   if (!fromWave) { hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1; }
   if (ci === 2) hero.kbBoost = 3.5;
@@ -1260,7 +1298,7 @@ function heroStrike(t, fromWave) {
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
-  ult = Math.min(1, ult + v * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1));
+  ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
 }
 function fireUlt() {
@@ -1312,7 +1350,7 @@ function onTap(e) {
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
 /* ---------- понятность боя: источники урона, подписи эффектов ---------- */
-const SRC_BY_COL = { '#7affb0': 'Союзники', '#ffe08a': 'Рикошет', '#7affd8': 'Духи', '#9a7aff': 'Притяжение', '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
+const SRC_BY_COL = { '#ff7744': 'Детонация', '#7affb0': 'Союзники', '#ffe08a': 'Рикошет', '#7affd8': 'Духи', '#9a7aff': 'Притяжение', '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
   '#ff8877': 'Сокрушение', '#66ccff': 'Скорость', '#ff9988': 'Рассечение', '#ff5544': 'Мясник', '#ffffff': 'Финишер', '#ffee66': 'Слабое место', '#fff8a0': 'Тап', '#ffaa33': 'Тап' };
 const SRC_COL = { 'Удар': '#e9e4ff', 'Яд': '#88ee22', 'Кровотечение': '#ff3355', 'Казнь': '#f0f0f0' };
 for (const c in SRC_BY_COL) SRC_COL[SRC_BY_COL[c]] = SRC_COL[SRC_BY_COL[c]] || c;
@@ -1506,6 +1544,7 @@ function update(dt) {
   // регенерация, давление
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
   hero.slowT = (hero.slowT || 0) - dt;
+  hero.rageT = (hero.rageT || 0) - dt; if (hero.rageT <= 0) hero.rage = 0;
   if (hero.psnT > 0) { hero.psnT -= dt; hero.hp = Math.max(1, hero.hp - hero.psnD * dt * (1 - D.armor)); if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
   PT.phx = (PT.phx || 0) - dt;
   if (legOn('phoenix') && hero.hp < D.maxHP * .1 && PT.phx <= 0) { PT.phx = 60; hero.hp = D.maxHP; burst(hero.x, hero.y - 4, '#ff9a3c', 30, 50); ring(hero.x, hero.y - 4, 20, '#ff9a3c'); feed('Феникс: полное исцеление!', '#ff9a3c'); flashT = .1; }
@@ -1535,7 +1574,7 @@ function update(dt) {
     if (td > reachH) {
       const dx = tgt.x - hero.x, dy = tgt.y - hero.y, d = Math.hypot(dx, dy) || 1;
       const mv = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1); hero.x += dx / d * mv * dt; hero.y += dy / d * mv * dt;
-    } else if (hero.cd <= 0) { hero.cd = 1 / (D.aps * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
+    } else if (hero.cd <= 0) { hero.cd = 1 / (D.aps * (1 + (hero.rage || 0) * (D.rageK || 0)) * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
   } else {
     const dx = 0, dy = 0, d = 0;
     if (d > 2) { hero.x += dx / d * D.move * .5 * dt; hero.y += dy / d * D.move * .5 * dt; }
@@ -1555,7 +1594,7 @@ function update(dt) {
     if (m.goblin) { m.x -= dx / d * m.sp * dt; m.y -= dy / d * m.sp * dt; m.x = clamp(m.x, 5, AW - 5); m.y = clamp(m.y, 10, AH - 3); if (rnd() < dt * 8) parts.push({ x: m.x, y: m.y - 2, vx: 0, vy: 0, l: .4, c: '#ffd84a', f: 1 }); }
     else if (ranged) { const want = m.role === 'archer' ? 34 : 28; if (d > want + 6) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; } else if (d < want - 6) { m.x -= dx / d * m.sp * .8 * dt; m.y -= dy / d * m.sp * .8 * dt; } m.x = clamp(m.x, 4, AW - 4); m.y = clamp(m.y, 9, AH - 2); shooter(m, dt, mdmg); }
     else if (d > reach) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; }
-    { const f = (m.slowT > 0 ? .5 : 1) * (S.zmod === 'snow' ? .7 : 1); if (f < 1) { m.x = ox0 + (m.x - ox0) * f; m.y = oy0 + (m.y - oy0) * f; } m.slowT = (m.slowT || 0) - dt; }
+    { const f = (m.slowT > 0 ? .5 : 1) * (S.zmod === 'snow' ? .7 : 1) * (D.fear > .02 && !m.boss && Math.hypot(hero.x - m.x, hero.y - m.y) < 22 ? 1 - D.fear * .6 : 1); if (f < 1) { m.x = ox0 + (m.x - ox0) * f; m.y = oy0 + (m.y - oy0) * f; } m.slowT = (m.slowT || 0) - dt; }
     if (m.af & 512) { m.tp = (m.tp ?? 2 + rnd() * 2) - dt; if (m.tp <= 0) { m.tp = 3; burst(m.x, m.y - 3, '#ff88ff', 8, 30); const a = rnd() * 6.28; m.x = clamp(hero.x + Math.cos(a) * 14, 4, AW - 4); m.y = clamp(hero.y + Math.sin(a) * 10, 8, AH - 2); burst(m.x, m.y - 3, '#ff88ff', 8, 30); } }
     if (m.frz > 0) { m.frz -= dt; m.x = ox0; m.y = oy0; m.cd = Math.max(m.cd, .3); }
     if (m.blT > 0 && !m.dead) { m.blT -= dt; trackDmg('Кровотечение', Math.min(m.bl * dt, Math.max(0, m.hp))); m.hp -= m.bl * dt; if (rnd() < dt * 5 && parts.length < 500) parts.push({ x: m.x + (rnd() - .5) * 5, y: m.y - 4, vx: 0, vy: 15, l: .4, c: '#ff3355' }); if (m.hp <= 0) { m.dead = true; killMob(m); continue; } }
@@ -1584,7 +1623,7 @@ function update(dt) {
       if (rnd() < D.dodge) { if (texts.length < 7) ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
       else {
         if (hero.iframe > 0) continue;
-        const dmg = mdmg * m.dm * (1 - D.armor);
+        const dmg = mdmg * m.dm * (1 - D.armor) * (1 - (D.fear || 0));
         hurtHero(dmg); sfx.hurt();
         if (m.af & 256) hero.slowT = 1.5;
         if (m.af & 2048) { hero.psnT = 3; hero.psnD = dmg * .3; }
@@ -1869,6 +1908,9 @@ function drawHero(rk) {
   // союзники некроманта
   for (const al of allies) { const sp2 = sprite(MOBS[2].p, { 1: '#bfe8d0', 2: '#4a8a6a', 3: '#7affb0' }, 'ally'); ctx.globalAlpha = al.t < 1 ? al.t : .9;
     ctx.save(); if (al.face < 0) { ctx.translate(Math.round(al.x - 4) * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(sp2, Math.round(al.x - 4), Math.round(al.y - 8)); ctx.restore(); ctx.globalAlpha = 1; }
+  // аура страха и раж
+  if (D.fear > .02) { ctx.globalAlpha = .3 + .1 * Math.sin(time * 3); for (let i = 0; i < 28; i++) { const a = i / 28 * 6.28 - time * .7; pix(hero.x + Math.cos(a) * 22, hero.y - 2 + Math.sin(a) * 13, '#8844aa'); } ctx.globalAlpha = 1; }
+  if (hero.rage > 0) for (let i = 0; i < hero.rage; i++) pix(hero.x - 4 + i * 2, y - 3, '#ff9944');
   // духи-клинки
   for (let i = 0; i < (D.spirits || 0); i++) { const a = time * 2.5 + i * 6.28 / D.spirits, sx2 = Math.round(hero.x + Math.cos(a) * 10), sy2 = Math.round(hero.y - 5 + Math.sin(a) * 6); pix(sx2, sy2 - 1, '#7affd8'); pix(sx2 - 1, sy2, '#7affd8'); pix(sx2 + 1, sy2, '#7affd8'); pix(sx2, sy2 + 1, '#ffffff'); }
   // шаровые молнии
@@ -2125,10 +2167,11 @@ const SLOTS = {
   m: { n: 'Амулет', icon: 'star', main: ['gain'], names: [['Деревянный оберег', 'Костяной зуб', 'Медный жетон'], ['Серебряный амулет', 'Камень удачи', 'Клык волка'], ['Око дракона', 'Печать мага', 'Лунный камень'], ['Сердце бури', 'Осколок звезды', 'Глаз бездны'], ['Слеза богов', 'Искра творения', 'Сердце мира']] },
   r: { n: 'Кольцо', icon: 'eye', main: ['e_crit', 'e_critd'], names: [['Медное кольцо', 'Простой перстень', 'Железное кольцо'], ['Кольцо силы', 'Серебряный перстень', 'Кольцо охотника'], ['Перстень мага', 'Кольцо теней', 'Печатка короля'], ['Кольцо рока', 'Перстень бури', 'Кольцо пламени'], ['Кольцо вечности', 'Перстень богов', 'Кольцо судьбы']] },
 };
-const GPOOL = ['e_fire', 'e_shock', 'e_poison', 'e_vamp', 'e_regen', 'e_aspd', 'e_move', 'e_luck', 'e_wis', 'e_power', 'e_range', 'e_cleave', 'e_thorns', 'e_dodge', 'tap', 'ultd', 'ultc', 'combo_m', 'bossdmg', 'elite', 'rare', 'gain', 'hit', 'hp', 'e_bleed', 'e_frost', 'e_exec', 'e_bounce', 'e_grav', 'e_spirit', 'e_greed', 'e_barrier'];
+const GPOOL = ['e_fire', 'e_shock', 'e_poison', 'e_vamp', 'e_regen', 'e_aspd', 'e_move', 'e_luck', 'e_wis', 'e_power', 'e_range', 'e_cleave', 'e_thorns', 'e_dodge', 'tap', 'ultd', 'ultc', 'combo_m', 'bossdmg', 'elite', 'rare', 'gain', 'hit', 'hp', 'e_bleed', 'e_frost', 'e_exec', 'e_bounce', 'e_grav', 'e_spirit', 'e_greed', 'e_barrier', 'e_det', 'e_leech', 'e_rage', 'e_scrit', 'e_hunt', 'e_energy', 'e_fear', 'e_curio'];
 const GSUF = { e_fire: 'пламени', e_shock: 'грозы', e_poison: 'яда', e_vamp: 'крови', e_regen: 'жизни', e_aspd: 'ветра', e_move: 'бега', e_luck: 'удачи', e_wis: 'мудрости', e_power: 'мощи',
   e_range: 'размаха', e_cleave: 'резни', e_thorns: 'шипов', e_dodge: 'тени', tap: 'длани', ultd: 'гнева', ultc: 'бури', combo_m: 'куража', bossdmg: 'охотника', elite: 'ловца', rare: 'золота', gain: 'жадности', hit: 'силы', hp: 'крепости',
-  e_bleed: 'крови', e_frost: 'стужи', e_exec: 'палача', e_bounce: 'рикошета', e_grav: 'бездны', e_spirit: 'духов', e_greed: 'скупца', e_barrier: 'бастиона' };
+  e_bleed: 'крови', e_frost: 'стужи', e_exec: 'палача', e_bounce: 'рикошета', e_grav: 'бездны', e_spirit: 'духов', e_greed: 'скупца', e_barrier: 'бастиона',
+  e_det: 'взрыва', e_leech: 'пиявки', e_rage: 'ража', e_scrit: 'удачного удара', e_hunt: 'ловчего', e_energy: 'энергии', e_fear: 'ужаса', e_curio: 'познания' };
 const CH = { c: { n: 'Обычный сундук', p: [60, 28, 9, 2.5, .5], col: '#a0703a' }, r: { n: 'Редкий сундук', p: [0, 45, 38, 14, 3], col: '#9fb4cc' }, e: { n: 'Эпический сундук', p: [0, 0, 55, 35, 10], col: '#ffd84a' } };
 const G = () => S.meta.gear;
 const LEG = {
