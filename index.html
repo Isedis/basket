@@ -582,7 +582,7 @@ const TK = {
   bossdmg: ['Убийца вожаков', .15, v => '+' + pct(v) + ' урона по вожакам'],
   elite: ['Охотник на элиту', .15, v => '+' + pct(v) + ' урона и наград за особых врагов'],
   rare: ['Золотая лихорадка', .004, v => '+' + pct(Math.min(.15, v)) + ' шанса золотых врагов'],
-  offline: ['Сон воина', .1, v => 'офлайн-прогресс ' + pct(.5 + .5 * sat(v, 1))],
+  offline: ['Сон воина', .1, v => 'офлайн: эффективность ' + pct(.5 + .5 * sat(v, 1)) + ', лимит ' + offCapH(v).toFixed(1) + 'ч'],
   unlock: ['Любопытство', .08, v => 'новые статы открываются в ' + (1 + v).toFixed(2) + ' раза быстрее'],
   evo: ['Перерост', .15, v => 'эволюция наступает в ' + (1 + v).toFixed(2) + ' раза раньше'],
   form: ['Мастерство форм', .1, v => '+' + pct(v) + ' к прогрессу форм'],
@@ -2640,14 +2640,19 @@ async function cloudLoad() {
 function load() {
   try { const raw = cloudJson || localStorage.getItem(SAVE_KEY); const d = JSON.parse(raw); if (d && d.vals) S = Object.assign(S, d); } catch (e) {}
 }
+const offCapH = v => Math.min(24, 4 * (1 + 5 * v));
 function offline(sec) {
   if (sec < 20) return;
-  const kills = Math.floor(sec * Math.max(.1, S.kps) * (.5 + .5 * sat(ta('offline'), 1)));
+  // баланс офлайна: лимит по времени, первый час эффективнее, дальше слабее
+  const capH = offCapH(ta('offline')), used = Math.min(sec, capH * 3600);
+  const effHi = .5 + .5 * sat(ta('offline'), 1), effLo = effHi * .6;
+  const kills = Math.floor(Math.max(.1, S.kps) * (Math.min(used, 3600) * effHi + Math.max(0, used - 3600) * effLo));
+  const t0 = performance.now();
   if (kills < 1) return;
   const z0 = S.zone, s0 = stats.length, k0 = S.kills;
   let left = kills, it = 0, evos = 0;
   mobs = []; bossAlive = false;
-  while (left > 0 && it < 200000) {
+  while (left > 0 && it < 200000 && performance.now() - t0 < 2500) {
     if (it++ % 10 === 0) recalc();
     let k;
     if (S.zk >= zoneNeed()) {
@@ -2667,7 +2672,8 @@ function offline(sec) {
   const zc = Math.min(20, S.zone - z0); if (zc > 0) G().chests.c += zc;
   const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
   $('mt').textContent = 'ПОКА ТЕБЯ НЕ БЫЛО';
-  $('mp').innerHTML = `Прошло: ${h ? h + 'ч ' : ''}${m}м<br>Герой дрался дальше:<br><br>+${fmt(S.kills - k0)} убийств<br>` +
+  const uh = Math.floor(used / 3600), um = Math.floor(used % 3600 / 60);
+  $('mp').innerHTML = `Прошло: ${h ? h + 'ч ' : ''}${m}м${sec > used ? '<br><span style="color:var(--dim)">учтено ' + (uh ? uh + 'ч ' : '') + um + 'м · лимит офлайна ' + capH.toFixed(1) + 'ч (растёт талантом «Сон воина»)</span>' : ''}<br>Герой дрался дальше:<br><br>+${fmt(S.kills - k0)} убийств<br>` +
     `Зона ${z0} → <span style="color:#f2c94c">${S.zone}</span><br>Новых статов: <span style="color:#5cff8a">${stats.length - s0}</span><br>Эволюций: <span style="color:#bb88ff">${evos}</span>${nform ? '<br>Новых форм: <span style="color:#ffdd44">' + nform + '</span>' : ''}${S.zone > z0 ? '<br>Сундуков: <span style="color:#a0703a">+' + Math.min(20, S.zone - z0) + '</span>' : ''}${nsyn ? '<br>Синергий: <span style="color:#ff44ff">+' + nsyn + '</span>' : ''}`;
   $('modal').hidden = false;
 }
