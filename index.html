@@ -48,6 +48,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 @keyframes pop{0%{transform:translateY(-8px);opacity:0}6%{transform:none;opacity:1}85%{opacity:1}100%{opacity:0}}
 #panel{flex:0 0 38%;display:flex;flex-direction:column;background:var(--panel);border-top:2px solid var(--line);min-height:0;transition:flex-basis .2s}
 #panel.small{flex-basis:92px}
+#panel.big{flex-basis:72%}
+#sum{cursor:pointer}
+#sum .more{color:var(--zone)}
+#pbig{margin-right:4px}
 #phead{padding:6px 8px 4px;flex:none}
 #sum{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
 #sum span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -178,7 +182,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><div id="toast"></div></div>
   <div id="panel">
     <div id="phead">
-      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><button class="btn" id="ptog">▼</button></div>
+      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog">▼</button></span></div>
       <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
     </div>
     <div id="sum"></div>
@@ -2097,12 +2101,15 @@ function updateUI() {
   }
   if (D.spec !== lastSpec) { if (lastSpec !== undefined && D.spec >= 0) { toast('СПЕЦИАЛИЗАЦИЯ: ' + SPEC[D.spec].toUpperCase(), EFF[D.spec].n + ' ×1.5'); sfx.syn(); } lastSpec = D.spec; }
   if (infoRef) renderInfo();
-  $('sum').innerHTML =
+  const cells = (
     `<span>Удар <b>${fmt(D.hit * furyM())}</b></span><span>Ат/с <b>${D.aps.toFixed(2)}</b></span><span>Крит <b>${pct(D.crit)}</b></span><span>КритУ <b>×${fmt(D.critM)}</b></span>` +
     `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>` +
     `<span>HP <b>${fmt(D.maxHP)}</b></span><span>Рег/с <b>${fmt(D.maxHP * D.regen)}</b></span><span>Урон/с <b>${fmt(D.hit * D.aps * (1 + D.crit * (D.critM - 1)))}</b></span><span>Уб/с <b>${S.kps.toFixed(1)}</b></span>` +
-    `<span>Бег <b>${D.move.toFixed(0)}</b></span><span>Дальн <b>${({ arch: 48, mage: 40, necro: 32 }[cls()] || D.range).toFixed(0)}</b></span><span>Цели <b>${1 + (D.cleave || 0)}</b></span><span>Золото <b>${pct(D.rare)}</b></span>`;
+    `<span>Бег <b>${D.move.toFixed(0)}</b></span><span>Дальн <b>${({ arch: 48, mage: 40, necro: 32 }[cls()] || D.range).toFixed(0)}</b></span><span>Цели <b>${1 + (D.cleave || 0)}</b></span><span>Золото <b>${pct(D.rare)}</b></span>`).split('</span>').filter(Boolean).map(x => x + '</span>');
+  const sh = S.sumFull ? cells.join('') + '<span class="more">▴ меньше</span>' : cells.slice(0, 3).join('') + '<span class="more">▾ ещё ' + (cells.length - 3) + '</span>';
+  if (sh !== updateUI.sh) { updateUI.sh = sh; $('sum').innerHTML = sh; }
 }
+$('sum').onclick = () => { S.sumFull = !S.sumFull; updateUI(); setTimeout(resize, 50); };
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'ЭФФ'; $('fxb').style.opacity = S.fxLow ? .45 : 1; }
 $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
@@ -2123,8 +2130,9 @@ function renderSyn() {
   });
   $('ylist').innerHTML = h;
 }
-$('ptog').onclick = () => { S.panelSmall = !S.panelSmall; applyPanel(); };
-function applyPanel() { $('panel').classList.toggle('small', S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼'; setTimeout(resize, 220); }
+$('ptog').onclick = () => { S.panelSmall = !S.panelSmall; if (S.panelSmall) S.panelBig = false; applyPanel(); };
+$('pbig').onclick = () => { S.panelBig = !S.panelBig; if (S.panelBig) S.panelSmall = false; applyPanel(); };
+function applyPanel() { $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('panel').classList.toggle('small', S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼'; setTimeout(resize, 220); }
 
 /* ---------- автоматика прокачки ---------- */
 const AUTO = {
@@ -2723,7 +2731,7 @@ for (let e = 0; e < NE; e++) groupOf(e);
 recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
 $('mute').textContent = '♪'; $('mute').style.opacity = S.mute ? .4 : 1; applyFx();
-$('panel').classList.toggle('small', !!S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼';
+$('panel').classList.toggle('small', !!S.panelSmall); $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('ptog').textContent = S.panelSmall ? '▲' : '▼';
 resize();
 hero.x = AW / 2; hero.y = AH / 2; camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
 const away = (Date.now() - (S.t || Date.now())) / 1000;
