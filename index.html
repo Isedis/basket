@@ -108,6 +108,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #tinfo .row2 .btn[disabled]{opacity:.4}
 @keyframes glow{0%,100%{color:#ff44ff}50%{color:#ffffff}}
 .tab.glow{animation:glow 1s steps(2) infinite}
+#dsrc{padding:0 8px 6px;flex:none}
+#dsrc .dbar{display:flex;height:6px;border:1px solid #000;background:#221d33;overflow:hidden}
+#dsrc .dbar i{display:block;height:100%}
+#dsrc .dleg{font-size:7px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dsrc .dleg b{font-weight:normal}
+#mbox.legend{max-width:360px;text-align:left;max-height:86vh;overflow-y:auto}
+#mbox.legend p{font-size:7px;line-height:2}
+#mbox .sw{display:inline-block;width:8px;height:8px;border:1px solid #000;vertical-align:middle;margin-right:5px}
 #modal{position:fixed;inset:0;background:rgba(5,4,10,.86);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #modal[hidden]{display:none}
 #mbox{background:var(--panel);border:3px solid #f2c94c;padding:14px;max-width:340px;width:100%;text-align:center;line-height:1.9}
@@ -119,7 +127,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="treeb" style="background:#5a2a6a;font-size:13px;padding:0 7px;line-height:20px">★</button> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
+    <div class="r"><span id="zname">Луг</span><span><span id="znum">Зона 1</span> <button class="btn" id="helpb">?</button> <button class="btn" id="treeb" style="background:#5a2a6a;font-size:13px;padding:0 7px;line-height:20px">★</button> <button class="btn" id="fxb">ЭФФ</button> <button class="btn" id="mute">♪ ВКЛ</button></span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
     <div class="r"><span id="rank">Новобранец</span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
@@ -131,6 +139,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
       <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
     </div>
     <div id="sum"></div>
+    <div id="dsrc"><div class="dbar"></div><div class="dleg"></div></div>
     <div id="info" hidden></div>
     <div id="slist"></div>
     <div id="ylist" hidden></div>
@@ -868,7 +877,7 @@ function spawnMob(boss) {
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
   { const nm = mobs[mobs.length - 1];
     if (ev && ev.type === 'moon') { nm.hp *= 1.5; nm.max *= 1.5; }
-    if (!boss) { const role = rollRole(); if (role) { nm.role = role; if (role === 'bomber') nm.sp *= 1.8; if (role === 'shield') { nm.hp *= 1.5; nm.max *= 1.5; }
+    if (!boss) { const role = rollRole(); if (role) { nm.role = role; if (!seenRole[role]) { seenRole[role] = 1; nm.lblUntil = time + 4; } if (role === 'bomber') nm.sp *= 1.8; if (role === 'shield') { nm.hp *= 1.5; nm.max *= 1.5; }
       tip('roles', 'Роли врагов', 'Значок над врагом: жёлтый — лучник, зелёный — шаман (лечит, бей первым), синий — щитоносец, красный — камикадзе, фиолетовый — призыватель.'); } } }
   if (na && !boss) tip('aff', 'Особые враги', 'Цветные точки над врагом — его особенности: броня, скорость, взрыв, вампиризм. Такие враги дают больше наград.');
   if (!boss && na >= 2 && ksL(5, 0)) { const me = mobs[mobs.length - 1]; me.ws = { ox: 0, oy: -6, t: 0 }; moveWS(me); }
@@ -908,11 +917,12 @@ function splat(m) {
 function crowd() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')); }
 
 function hurtHero(dmg) {
+  if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp = Math.max(1, hero.hp - dmg); hero.hurt = .1;
   return dmg;
 }
-function ring(x, y, r, c) { if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
+function ring(x, y, r, c) { if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
   if (m.dead) return;
@@ -920,7 +930,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.af & 1) dmg *= .5;
   if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
-  m.hp -= dmg; m.fl = .07;
+  m.hp -= dmg; m.fl = .07; trackDmg(SRC_BY_COL[col] || 'Удар', dmg);
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
@@ -960,6 +970,7 @@ function killMob(m) {
     for (const o of mobs) if (!o.dead && !o.boss) o.rare = true;
     toast('ДЖЕКПОТ!', 'все враги стали золотыми'); sfx.rare(); flashT = .1;
   }
+  if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) fxLabel('Ядовитое облако', m.x, m.y - 12, '#88ee22');
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) clouds.push({ x: m.x, y: m.y - 2, r: 8 + 2 * Math.min(6, F(EI.poison) - 2), dps: m.psn * .6, t: 3 });
   if (ksL(0, 0) && rnd() < .02 * ksL(0, 0)) { burst(m.x, m.y - 3, '#ff3322', 14, 50); ring(m.x, m.y - 3, 16, '#ff5544'); hitAround(m.x, m.y, 16, D.hit * 3 * ksL(0, 0), '#ff5544', m); }
   if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); ult = 1; fireUlt(); } }
@@ -1012,7 +1023,7 @@ function heroAttack(t) {
   hero.atkN++;
   const fd = F(EI.dmg);
   if (fd >= 2) { ring(t.x, t.y - 3, 5 + Math.min(8, fd), '#ff8877'); if (fd >= 3) hitAround(t.x, t.y, 8 + 2 * Math.min(6, fd - 3), dmg * .25, '#ff8877', t); }
-  if (crit && F(EI.crit) >= 3) { burst(t.x, t.y - 4, '#ffee66', 10, 50); hitAround(t.x, t.y, 10 + Math.min(10, F(EI.crit) - 3) * 2, dmg * .3, '#ffee66', t); }
+  if (crit && F(EI.crit) >= 3) { fxLabel('Звёздный крит', t.x, t.y - 16, '#ffee66'); burst(t.x, t.y - 4, '#ffee66', 10, 50); hitAround(t.x, t.y, 10 + Math.min(10, F(EI.crit) - 3) * 2, dmg * .3, '#ffee66', t); }
   if (crit && F(EI.critd) >= 1) { const a = rnd() * 3.14, L = 4 + Math.min(10, F(EI.critd) * 2); bolts.push({ x1: t.x - Math.cos(a) * L, y1: t.y - 3 - Math.sin(a) * L, x2: t.x + Math.cos(a) * L, y2: t.y - 3 + Math.sin(a) * L, l: .12, c: '#ff7a00' }); }
   if (F(EI.vamp) >= 1 && orbs.length < 160) for (let i = 0; i < Math.min(3, F(EI.vamp)); i++) orbs.push({ x: t.x, y: t.y - 3, vx: (rnd() - .5) * 60, vy: -30 - rnd() * 30, c: '#dd2244', t: 0, v: 1 });
   if (F(EI.cleave) >= 3 && hero.atkN % 4 === 0) {
@@ -1021,7 +1032,7 @@ function heroAttack(t) {
   }
   if (F(EI.move) >= 3 && rnd() < Math.min(.8, .2 * (F(EI.move) - 2))) {
     const cand = mobs.filter(o => !o.dead && o !== t && Math.hypot(o.x - hero.x, o.y - hero.y) < 40);
-    if (cand.length) { const o = cand[Math.floor(rnd() * cand.length)]; ghosts.push({ x: o.x - 4 * hero.face, y: o.y, l: .3, face: hero.face }); hitMob(o, dmg * .5, false, false, '#66ccff'); }
+    if (cand.length) { const o = cand[Math.floor(rnd() * cand.length)]; fxLabel('Послеобраз', o.x, o.y - 12, '#66ccff'); ghosts.push({ x: o.x - 4 * hero.face, y: o.y, l: .3, face: hero.face }); hitMob(o, dmg * .5, false, false, '#66ccff'); }
   }
   if (ultra) { ftext(t.x, t.y - 18, 'УЛЬТРА!', '#ff44ff', 1.8, 1.1); flashT = .12; slowT = .25; shake = 8; sfx.ultra(); }
   crit ? (sfx.crit(), shake = Math.max(shake, 2)) : sfx.hit();
@@ -1033,7 +1044,7 @@ function heroAttack(t) {
   if (D.fire > .02) {
     for (const o of mobs) if (!o.dead && o !== t && Math.hypot(o.x - t.x, o.y - t.y) < D.fireR) {
       hitMob(o, dmg * D.fire, false, false, '#ff6622');
-      if (sy(0) && rnd() < .35 && !o.dead) { bolts.push({ x1: t.x, y1: t.y - 3, x2: o.x, y2: o.y - 3, l: .1, c: '#d9a0ff' }); hitMob(o, dmg * .3 * sy(0), false, false, '#d9a0ff'); }
+      if (sy(0) && rnd() < .35 && !o.dead) { fxLabel('Плазма', o.x, o.y - 12, '#d9a0ff'); bolts.push({ x1: t.x, y1: t.y - 3, x2: o.x, y2: o.y - 3, l: .1, c: '#d9a0ff' }); hitMob(o, dmg * .3 * sy(0), false, false, '#d9a0ff'); }
     }
     burst(t.x, t.y - 3, '#ff6622', 4, 30); burst(t.x, t.y - 3, '#ffcc33', 2, 20);
   }
@@ -1104,6 +1115,28 @@ function onTap(e) {
 }
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
+/* ---------- понятность боя: источники урона, подписи эффектов ---------- */
+const SRC_BY_COL = { '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
+  '#ff8877': 'Сокрушение', '#66ccff': 'Скорость', '#ff9988': 'Рассечение', '#ff5544': 'Мясник', '#ffffff': 'Финишер', '#ffee66': 'Слабое место', '#fff8a0': 'Тап', '#ffaa33': 'Тап' };
+const SRC_COL = { 'Удар': '#e9e4ff', 'Яд': '#88ee22' };
+for (const c in SRC_BY_COL) SRC_COL[SRC_BY_COL[c]] = SRC_COL[SRC_BY_COL[c]] || c;
+const DS = {};
+const trackDmg = (src, d) => { if (d > 0 && isFinite(d)) DS[src] = (DS[src] || 0) + d; };
+function renderDS() {
+  const e = Object.entries(DS).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]), tot = e.reduce((a, x) => a + x[1], 0);
+  const bar = $('dsrc').firstElementChild, leg = $('dsrc').lastElementChild;
+  if (!tot) { bar.innerHTML = ''; leg.textContent = 'Источники урона появятся в бою'; return; }
+  bar.innerHTML = e.map(([k, v]) => `<i style="width:${v / tot * 100}%;background:${SRC_COL[k] || '#888'}"></i>`).join('');
+  leg.innerHTML = 'Урон: ' + e.slice(0, 4).map(([k, v]) => `<b style="color:${SRC_COL[k] || '#888'}">${k} ${Math.round(v / tot * 100)}%</b>`).join(' · ');
+  for (const k in DS) DS[k] *= .85;
+}
+// короткая подпись эффекта героя при срабатывании (не чаще раза в 15с на эффект)
+const lblT = {};
+function fxLabel(key, x, y, c) { if (time - (lblT[key] ?? -99) < 15) return; lblT[key] = time; ftext(x, y, key, c, .85, 1.3); }
+const RING_LABEL = { '#ff6622': 'Огненное кольцо', '#ff9a3c': 'Метеор', '#cc9966': 'Терновая волна', '#66ccff': 'Вихрь', '#ff9988': 'Вихрь клинков', '#ff5544': 'Мясник', '#aabbcc': 'Второе дыхание' };
+let hurtV = 0;
+const seenRole = {};
+
 /* ---------- бой: атаки вожаков, роли врагов, события ---------- */
 let pix2 = [], tele = [], proj = [], hitStop = 0, ev = null, evNext = 100;
 const EVS = {
@@ -1141,7 +1174,7 @@ function shooter(m, dt, mdmg) {
     proj.push({ x: m.x, y: m.y - 4, vx: dx / d * 48, vy: dy / d * 48, t: 3, dmg: mdmg * m.dm * 1.2 });
   }
   if (m.role === 'shaman' && m.rt <= 0) {
-    m.rt = 3; ring(m.x, m.y - 3, 20, '#44ee66');
+    m.rt = 3; ring(m.x, m.y - 3, 20, '#44ee66'); fxLabel('Шаман лечит', m.x, m.y - 14, '#44ee66');
     for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 20) { o.hp = Math.min(o.max, o.hp + o.max * .15); burst(o.x, o.y - 4, '#44ee66', 2, 12); }
   }
   if (m.role === 'summoner' && m.rt <= 0) { m.rt = 5; if (mobs.length < 70) { spawnMini(m); ring(m.x, m.y - 3, 10, '#bb66ff'); } }
@@ -1199,7 +1232,7 @@ function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt *
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
   if (ksL(2, 0)) { PT.ksf = (PT.ksf || 0) - dt; if (PT.ksf <= 0) { PT.ksf = fireEvery(ksL(2, 0)); ring(hero.x, hero.y - 3, 22, '#ff6622'); hitAround(hero.x, hero.y, 22, D.hit * (.5 + .5 * ksL(2, 0)), '#ff6622'); } }
-  if (ksL(2, 1)) { PT.kss = (PT.kss || 0) - dt; if (PT.kss <= 0) { PT.kss = 1 / ksL(2, 1); const m = randMob(); if (m) { bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .12, c: '#99eeff' }); hitMob(m, D.hit, false, false, '#99eeff'); } } }
+  if (ksL(2, 1)) { PT.kss = (PT.kss || 0) - dt; if (PT.kss <= 0) { PT.kss = 1 / ksL(2, 1); const m = randMob(); if (m) { fxLabel('Владыка бурь', m.x, m.y - 14, '#99eeff'); bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .12, c: '#99eeff' }); hitMob(m, D.hit, false, false, '#99eeff'); } } }
   if (ff >= 3) { PT.fire -= dt; if (PT.fire <= 0) { PT.fire = 3; const r = 18 + 2 * Math.min(8, ff - 3); ring(hero.x, hero.y - 3, r, '#ff6622'); hitAround(hero.x, hero.y, r, D.hit * (D.fire + .3) * 1.5, '#ff6622'); sfx.boom(); } }
   if (ff >= 4) { PT.met -= dt; if (PT.met <= 0) { PT.met = 2.5 / (ff - 3); const m = randMob(); if (m) {
     bolts.push({ x1: m.x + 18, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ff9a3c' });
@@ -1207,11 +1240,11 @@ function effMech(dt) {
   if (fs >= 3) { PT.orb -= dt; if (PT.orb <= 0) { PT.orb = .25; const n = Math.min(4, fs - 2);
     for (let i = 0; i < n; i++) { const a = time * 4 + i * 6.28 / n, ox = hero.x + Math.cos(a) * 12, oy = hero.y - 4 + Math.sin(a) * 7;
       for (const m of mobs) if (!m.dead && Math.hypot(m.x - ox, m.y - 3 - oy) < 6) { hitMob(m, D.hit * .5, false, false, '#99eeff'); break; } } } }
-  if (fs >= 4) { PT.sky -= dt; if (PT.sky <= 0) { PT.sky = 3 / (fs - 3); const m = randMob(); if (m) { bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ccf6ff' }); hitMob(m, D.hit * 1.2, true, true, '#99eeff'); sfx.tap(); flashT = Math.max(flashT, .03); } } }
+  if (fs >= 4) { PT.sky -= dt; if (PT.sky <= 0) { PT.sky = 3 / (fs - 3); const m = randMob(); if (m) { fxLabel('Небесный гром', m.x, m.y - 14, '#ccf6ff'); bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ccf6ff' }); hitMob(m, D.hit * 1.2, true, true, '#99eeff'); sfx.tap(); flashT = Math.max(flashT, .03); } } }
   if (ft >= 3) { PT.nova -= dt; if (PT.nova <= 0) { PT.nova = 4; ring(hero.x, hero.y - 3, 14, '#cc9966'); hitAround(hero.x, hero.y, 14, D.hit * D.thorns * (1 + .5 * (ft - 3)), '#cc9966'); } }
   if (fr >= 2 && hero.hp >= D.maxHP * .999) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
   // ядовитые облака
-  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { m.hp -= c.dps * dt; if (m.hp <= 0) { m.dead = true; killMob(m); } } }
+  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { m.hp -= c.dps * dt; trackDmg('Яд', c.dps * dt); if (m.hp <= 0) { m.dead = true; killMob(m); } } }
   clouds = clouds.filter(c => c.t > 0);
   for (const r of rings) { r.l -= dt; r.r += (r.max - r.r) * Math.min(1, dt * 18); } rings = rings.filter(r => r.l > 0);
   for (const g of ghosts) g.l -= dt; ghosts = ghosts.filter(g => g.l > 0);
@@ -1332,7 +1365,7 @@ function update(dt) {
     }
     if (m.af & 64 && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * (m.boss ? .01 : .04) * dt);
     if (m.psnT > 0 && !m.dead) {
-      m.psnT -= dt; m.hp -= m.psn * dt;
+      m.psnT -= dt; m.hp -= m.psn * dt; trackDmg('Яд', m.psn * dt);
       if (rnd() < dt * 6) parts.push({ x: m.x + (rnd() - .5) * 6, y: m.y - 4, vx: 0, vy: -12, l: .4, c: '#88ee22' });
       if (m.hp <= 0) { m.dead = true; killMob(m); }
     }
@@ -1351,7 +1384,7 @@ function update(dt) {
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
   shake = Math.max(0, shake - dt * 25);
   comboPop = Math.max(0, comboPop - dt);
-  ultT -= dt;
+  ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
   for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 4);
   if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20) fireUlt(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
@@ -1438,12 +1471,12 @@ function render() {
       ctx.fillStyle = o.rare ? '#ffd84a' : '#e33'; ctx.fillRect(x, y - 2, Math.max(1, Math.round(s * o.hp / o.max)), 1);
     }
   }
-  for (const p of parts) { ctx.globalAlpha = Math.min(1, p.l * 3); pix(p.x, p.y, p.c); }
+  for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3); pix(p.x, p.y, p.c); }
   ctx.globalAlpha = 1;
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
-  for (const r of rings) { ctx.globalAlpha = Math.min(1, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
+  for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
-  for (const pr of proj) { pix(pr.x, pr.y, '#ffdd44'); pix(pr.x - pr.vx * .03, pr.y - pr.vy * .03, '#aa8822'); }
+  for (const pr of proj) { pix(pr.x, pr.y, '#ffffff'); pix(pr.x - pr.vx * .02, pr.y - pr.vy * .02, '#ff3322'); pix(pr.x - pr.vx * .04, pr.y - pr.vy * .04, '#ff3322'); }
   for (const [qx, qy] of pix2) { ctx.fillStyle = '#66aaff'; ctx.fillRect(Math.round(qx) - 1, Math.round(qy), 3, 1); } pix2 = [];
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
   // полоса вожака
@@ -1465,6 +1498,7 @@ function render() {
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
+  if (hurtV > 0) { ctx.fillStyle = 'rgba(255,30,30,' + hurtV + ')'; ctx.fillRect(-4, -4, W + 8, 3 + 4); ctx.fillRect(-4, H - 3, W + 8, 7); ctx.fillRect(-4, -4, 3 + 4, H + 8); ctx.fillRect(W - 3, -4, 7, H + 8); }
   if (ev && ev.type === 'moon') { ctx.fillStyle = 'rgba(140,0,20,.16)'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.hpf < .35) { ctx.fillStyle = `rgba(120,0,0,${.12 + .08 * Math.sin(time * 6)})`; ctx.fillRect(-4, -4, W + 8, H + 8); }
 
@@ -1507,6 +1541,14 @@ function render() {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
     fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
     fctx.strokeText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k); fctx.fillText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k);
+  }
+  {
+    const fsT = Math.round(base * .8 / DPR) * DPR; fctx.font = `${fsT}px "Press Start 2P", monospace`; fctx.textAlign = 'center'; fctx.lineWidth = Math.max(2, fsT / 3); fctx.strokeStyle = '#000';
+    for (const t of tele) { const nm = { jump: 'ПРЫЖОК!', dash: 'РЫВОК!', ring: 'КОЛЬЦО!' }[t.act]; if (!nm) continue;
+      const lx = (t.k === 'c' ? t.x : (t.x + t.x2) / 2) + sx, ly = (t.k === 'c' ? t.y - t.r * .6 - 3 : (t.y + t.y2) / 2 - 8) + sy;
+      fctx.fillStyle = Math.sin(time * 14) > 0 ? '#ffffff' : '#ff3322'; fctx.strokeText(nm, lx * k, ly * k); fctx.fillText(nm, lx * k, ly * k); }
+    const fsR = Math.round(base * .65 / DPR) * DPR; fctx.font = `${fsR}px "Press Start 2P", monospace`; fctx.lineWidth = Math.max(2, fsR / 3);
+    for (const m of mobs) if (m.lblUntil > time && m.role) { fctx.fillStyle = ROLES[m.role].c; const lx = (m.x + sx) * k, ly = (m.y - 12 * m.sz + sy) * k; fctx.strokeText(ROLES[m.role].n, lx, ly); fctx.fillText(ROLES[m.role].n, lx, ly); }
   }
   if (ev) {
     const E = EVS[ev.type], fsE = Math.round(base * .8 / DPR) * DPR, yy = (boss ? 15 : 5) * k;
@@ -1610,8 +1652,10 @@ function drawHero(rk) {
 const zbarI = $('zbar').firstElementChild, zbarB = $('zbar').lastElementChild;
 const hpI = $('hpbar').firstElementChild, shI = $('hpbar').children[1], hpB = $('hpbar').lastElementChild;
 const ubarI = $('ubar').firstElementChild;
+let dsT = 0;
 function updateUI() {
   D.ready = readiness();
+  if (time > dsT) { dsT = time + 1; renderDS(); }
   if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
@@ -1984,7 +2028,27 @@ function offline(sec) {
     `Зона ${z0} → <span style="color:#f2c94c">${S.zone}</span><br>Новых статов: <span style="color:#5cff8a">${stats.length - s0}</span><br>Эволюций: <span style="color:#bb88ff">${evos}</span>${nform ? '<br>Новых форм: <span style="color:#ffdd44">' + nform + '</span>' : ''}${nsyn ? '<br>Синергий: <span style="color:#ff44ff">+' + nsyn + '</span>' : ''}`;
   $('modal').hidden = false;
 }
-$('mok').onclick = () => { $('modal').hidden = true; audio(); };
+$('mok').onclick = () => { $('modal').hidden = true; $('mbox').classList.remove('legend'); $('mok').textContent = 'В БОЙ!'; audio(); };
+const sw = c => `<span class="sw" style="background:${c}"></span>`;
+$('helpb').onclick = () => {
+  $('mbox').classList.add('legend');
+  $('mt').textContent = 'ЧТО НА ЭКРАНЕ';
+  $('mp').innerHTML =
+    '<b style="color:#ff3322">КРАСНОЕ = ОПАСНО</b><br>' +
+    sw('#ff2222') + 'Красная зона — вожак сейчас ударит. Тапни по герою: рывок. Увернулся — ×3 урона на 3с<br>' +
+    sw('#ff3322') + 'Красные стрелы — выстрелы лучников<br>' +
+    sw('#ff3322') + 'Красная рамка экрана — по герою прошёл сильный удар<br><br>' +
+    '<b style="color:#f2c94c">ЗНАЧКИ НАД ВРАГАМИ</b><br>' +
+    Object.values(ROLES).map(r => sw(r.c) + r.n).join('<br>') + '<br>' +
+    'Ряд цветных точек — особенности (' + AFF.map(a => `<span style="color:${a.c}">${a.n.toLowerCase()}</span>`).join(', ') + ')<br>' +
+    sw('#ffd84a') + 'Золотой враг — ×8 наград<br>' + sw('#ffee66') + 'Мигающая жёлтая точка — слабое место, тапай: ×12 урона<br><br>' +
+    '<b style="color:#5cff8a">ГЕРОЙ</b><br>Белое кольцо под ногами — это герой<br>Удары идут сериями 1-2-3, третий — финишер с волной<br>' +
+    'Подписи у эффектов («Огненное кольцо», «Метеор»…) — это твои таланты и формы<br>Полоска «Урон» в панели — откуда идёт урон<br><br>' +
+    '<b style="color:#ff88ff">ВНИЗУ ЭКРАНА</b><br>' + sw('#a04cc0') + 'Полоса ульты: заполнена — тапни куда угодно<br>' +
+    'Слева — лента событий, справа — комбо (множитель наград)<br><br>' +
+    '<b style="color:#f2c94c">ВВЕРХУ</b><br>Шкала зоны: убийства до вожака, потом готовность к нему. Тап по ней — вызвать вожака';
+  $('mok').textContent = 'ПОНЯТНО'; $('modal').hidden = false;
+};
 
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
