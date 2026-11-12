@@ -94,6 +94,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
 #thead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:2px solid var(--line);font-size:9px}
 #thead b{color:#ff44ff;font-weight:normal}
+#thint{padding:5px 10px;font-size:7px;line-height:1.7;color:var(--dim);background:#110e1c;border-bottom:1px solid var(--line)}
+#thint b{font-weight:normal}
 #tview{position:relative;flex:1;min-height:0;touch-action:none;overflow:hidden;background:#0a0812}
 #tview canvas{position:absolute;inset:0}
 #tzoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
@@ -144,6 +146,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 </div>
 <div id="tree" hidden>
   <div id="thead"><span>ДЕРЕВО ТАЛАНТОВ</span><span>Души: <b id="tsouls">0</b></span><button class="btn" id="tclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="thint"></div>
   <div id="tview"><canvas id="tcv"></canvas><div id="tzoom"><button class="btn" id="tzi">+</button><button class="btn" id="tzo">−</button></div></div>
   <div id="tinfo"></div>
 </div>
@@ -267,7 +270,7 @@ const formName = (e, f) => f <= 0 ? 'нет формы' : EFORM[e][Math.min(f, 4
 const SPEC = ['Громила', 'Колосс', 'Дуэлянт', 'Снайпер', 'Целитель', 'Страж', 'Палач', 'Вампир', 'Счастливчик', 'Мудрец',
   'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк'];
 let formNew = [];
-const F = i => (S.form && S.form[i]) || 0;
+const F = i => ((S.form && S.form[i]) || 0) + ksL(6, 1);
 function updForms(R) {
   if (!S.form) S.form = [];
   EFF.forEach((e, i) => {
@@ -349,7 +352,7 @@ function rollAff(boss) {
   return af;
 }
 const affNames = af => AFF.filter((a, i) => af >> i & 1).map(a => a.n).join(', ');
-const unlockKills = n => n < 3 ? 0 : Math.round(6 * Math.pow(n - 2, 1.6) / (1 + ta('unlock')));
+const unlockKills = n => n < 3 ? 0 : Math.round(6 * Math.pow(n - 2, 1.6) / ((1 + ta('unlock')) * (1 + ta('x_scholar'))));
 
 /* ---------- биомы ---------- */
 const BIOMES = [
@@ -445,31 +448,74 @@ const TK = {
   legacy: ['Память жизней', .5, v => '+' + pct(v) + ' прироста, пока зона ниже половины рекорда'],
   crowd: ['Зов битвы', .5, v => '+' + Math.floor(v) + ' врагов на поле'],
   spawn: ['Нетерпение', .08, v => 'враги появляются быстрее на ' + pct(v)],
+  // условные узлы
+  c_combo: ['Кураж резни', .5, v => '+' + pct(v) + ' урона, пока комбо ≥ 100'],
+  c_full: ['Свежие силы', .3, v => '+' + pct(v) + ' урона при полном HP'],
+  c_lowhp: ['Отчаяние', .4, v => 'ульта заряжается на ' + pct(v) + ' быстрее при HP < 50%'],
+  c_boss: ['Первый удар', .5, v => '+' + pct(v) + ' урона в первые 10с боя с вожаком'],
+  c_legend: ['Легендарный трофей', .5, v => '+' + pct(v) + ' наград в легендарных зонах'],
+  c_crowd: ['В гуще боя', .3, v => '+' + pct(v) + ' наград, когда врагов ≥ 15'],
+  c_rare: ['Золотоискатель', 1, v => '+' + pct(v) + ' наград за золотых врагов'],
+  // узлы-выбор с ценой
+  x_glass: ['Стеклянная пушка', .6, v => '+' + pct(v) + ' урона, но −50% здоровья'],
+  x_exec: ['Палач', .5, v => '+' + pct(v) + ' силы крита, но −30% шанса крита'],
+  x_tank: ['Танк', .6, v => '+' + pct(v) + ' здоровья, но −25% скорости атаки'],
+  x_regen: ['Шкура тролля', .6, v => '+' + pct(v) + ' регенерации, но вампиризм отключён'],
+  x_elem: ['Стихийник', .4, v => '+' + pct(v) + ' урона огня и яда, но −30% урона удара'],
+  x_focus: ['Фокус', .5, v => '+' + pct(v) + ' урона по цели, но рассечение отключено'],
+  x_haste: ['Спешка', .3, v => '+' + pct(v) + ' скорости атаки, но −20% урона'],
+  x_swarm: ['Рой', 3, v => '+' + Math.floor(v) + ' врагов на поле, но они бьют на 20% сильнее'],
+  x_greed: ['Жадность дракона', .5, v => '+' + pct(v) + ' наград, но враги на 30% крепче'],
+  x_gamble: ['Азарт', .5, v => 'золотые враги втрое чаще и +' + pct(v) + ' наград за них, но обычные награды −20%'],
+  x_tapper: ['Кулак бога', 1, v => '+' + pct(v) + ' урона тапа, но −30% урона героя'],
+  x_ultra: ['Сверхульта', 1, v => '+' + pct(v) + ' урона ульты, но заряд вдвое медленнее'],
+  x_scholar: ['Книжник', .5, v => 'статы открываются в ' + (1 + v).toFixed(1) + ' раза быстрее, но прирост −20%'],
+  x_reaper: ['Жнец', .5, v => '+' + pct(v) + ' душ, но прирост −20%'],
 };
 EFF.forEach(e => TK['e_' + e.k] = [e.n, .15, v => '+' + pct(v) + ' к эффекту «' + e.n + '»']);
+const ksEvery = L => Math.max(30, 110 - 10 * L), fireEvery = L => Math.max(.8, 3 - .4 * L);
+// ключевые узлы: уникальные механики
+const KS = [
+  [['Мясник', L => 'шанс ' + pct(.02 * L) + ': убитый враг взрывается (×' + 3 * L + ' урона вокруг)'], ['Бог резни', L => 'каждые ' + ksEvery(L) + ' убийств — бесплатная ульта']],
+  [['Несокрушимый', L => 'при HP < 30%: полное лечение и щит ' + pct(.2 * L) + ' (раз в 30с)'], ['Осада', L => pct(Math.min(1, .2 * L)) + ' урона по вожаку сохраняется между попытками']],
+  [['Повелитель огня', L => 'огненная волна вокруг героя каждые ' + fireEvery(L).toFixed(1) + 'с'], ['Владыка бурь', L => 'молния бьёт случайного врага ' + L + ' раз в секунду']],
+  [['Вихрь', L => 'каждый 3-й удар — вихрь (' + pct(.5 * L) + ' урона всем вокруг)'], ['Сама скорость', L => 'при комбо ≥ 50: +' + pct(.3 * L) + ' скорости атаки и бега']],
+  [['Счастливая звезда', L => 'шанс ' + pct(.005 * L) + ' на сундук: награды как за 30 убийств'], ['Любимец богов', L => 'после золотого врага с шансом ' + pct(Math.min(1, .2 * L)) + ' следующие 5 тоже золотые']],
+  [['Перст судьбы', L => 'слабые места у элиты (2+ особенности), урон по ним +' + pct(L)], ['Длань творца', L => 'каждый тап бьёт всех врагов на экране (' + pct(.2 * L) + ' урона)']],
+  [['Мудрец', L => 'новый стат сразу получает прирост ×' + 10 * L], ['Всезнание', L => '+' + L + ' к уровню всех форм']],
+  [['Пожиратель душ', L => 'вожаки после 30-й зоны дают души прямо в бою (×' + L + ')'], ['Бессмертная душа', L => 'после перерождения остаётся ' + pct(Math.min(.3, .03 * L)) + ' статов']],
+];
+KS.forEach((pr, bi) => pr.forEach(([n, d], j) => TK['ks' + bi + '_' + j] = [n, 1, d]));
 const BRANCHES = [
-  { n: 'Ярость', c: '#ff5544', k: ['hit', 'e_crit', 'e_critd', 'e_power', 'e_dmg', 'e_fury'], ks: ['Мясник', 'Бог резни'] },
-  { n: 'Стойкость', c: '#aabbcc', k: ['hp', 'e_armor', 'e_regen', 'e_dodge', 'e_vamp', 'e_thorns'], ks: ['Несокрушимый', 'Вечная крепость'] },
-  { n: 'Стихии', c: '#ff8a3c', k: ['e_fire', 'e_shock', 'e_poison', 'e_range', 'e_cleave'], ks: ['Повелитель огня', 'Владыка бурь'] },
-  { n: 'Скорость', c: '#66ccff', k: ['e_aspd', 'e_move', 'crowd', 'spawn', 'combo_t', 'combo_m'], ks: ['Вихрь', 'Сама скорость'] },
-  { n: 'Удача', c: '#44ffaa', k: ['e_luck', 'rare', 'elite', 'gain', 'e_wis'], ks: ['Счастливая звезда', 'Любимец богов'] },
-  { n: 'Рука бога', c: '#fff8a0', k: ['tap', 'weak', 'ultc', 'ultd', 'boss_t', 'bossdmg'], ks: ['Перст судьбы', 'Длань творца'] },
-  { n: 'Знание', c: '#bb88ff', k: ['unlock', 'evo', 'form', 'gain', 'offline'], ks: ['Мудрец', 'Всезнание'] },
-  { n: 'Душа', c: '#ff44ff', k: ['soul', 'legacy', 'offline', 'gain'], ks: ['Пожиратель душ', 'Бессмертная душа'] },
+  { n: 'Ярость', c: '#ff5544', k: ['hit', 'e_crit', 'e_critd', 'e_power', 'e_dmg', 'e_fury'] },
+  { n: 'Стойкость', c: '#aabbcc', k: ['hp', 'e_armor', 'e_regen', 'e_dodge', 'e_vamp', 'e_thorns'] },
+  { n: 'Стихии', c: '#ff8a3c', k: ['e_fire', 'e_shock', 'e_poison', 'e_range', 'e_cleave'] },
+  { n: 'Скорость', c: '#66ccff', k: ['e_aspd', 'e_move', 'crowd', 'spawn', 'combo_t', 'combo_m'] },
+  { n: 'Удача', c: '#44ffaa', k: ['e_luck', 'rare', 'elite', 'gain', 'e_wis'] },
+  { n: 'Рука бога', c: '#fff8a0', k: ['tap', 'weak', 'ultc', 'ultd', 'boss_t', 'bossdmg'] },
+  { n: 'Знание', c: '#bb88ff', k: ['unlock', 'evo', 'form', 'gain', 'offline'] },
+  { n: 'Душа', c: '#ff44ff', k: ['soul', 'legacy', 'offline', 'gain'] },
+];
+// развилки «или-или»: [условные], [с ценой]
+const PAIRS = [
+  [['c_combo', 'c_full'], ['x_glass', 'x_exec']], [['c_lowhp', 'c_full'], ['x_tank', 'x_regen']],
+  [['c_crowd', 'c_boss'], ['x_elem', 'x_focus']], [['c_combo', 'c_crowd'], ['x_haste', 'x_swarm']],
+  [['c_rare', 'c_legend'], ['x_greed', 'x_gamble']], [['c_boss', 'c_lowhp'], ['x_tapper', 'x_ultra']],
+  [['c_legend', 'c_crowd'], ['x_scholar', 'x_greed']], [['c_legend', 'c_rare'], ['x_reaper', 'x_scholar']],
 ];
 const TN = [{ id: 0, n: 'Искра души', k: 'gain', v: .2, br: -1, p: -1, x: 0, y: 0, d: 0, max: 0 }];
 BRANCHES.forEach((b, bi) => {
   const a = bi / BRANCHES.length * Math.PI * 2 - Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca;
-  let prev = 0, ki = 0; const cnt = {};
+  let prev = 0, ki = 0; const cnt = {}; b.main = []; b.ksId = []; b.dir = [ca, sa, px, py];
   const add = (k, x, y, p, d, ks) => {
     cnt[k] = (cnt[k] || 0) + 1;
-    TN.push({ id: TN.length, br: bi, k, p, x, y, d, v: TK[k][1] * (ks ? 6 : 1), max: ks ? (ks === 1 ? 5 : 10) : 0,
-      n: ks ? b.ks[ks - 1] : TK[k][0] + ' ' + roman(cnt[k]) });
+    TN.push({ id: TN.length, br: bi, k, p, x, y, d, v: TK[k][1], max: ks ? 5 : 0, n: ks ? TK[k][0] : TK[k][0] + ' ' + roman(cnt[k]) });
     return TN.length - 1;
   };
   for (let i = 1; i <= 12; i++) {
     const r = 26 * i + 14, ks = i === 6 ? 1 : i === 12 ? 2 : 0;
-    const id = add(ks ? b.k[0] : b.k[ki++ % b.k.length], ca * r, sa * r, prev, i, ks);
+    const id = add(ks ? 'ks' + bi + '_' + (ks - 1) : b.k[ki++ % b.k.length], ca * r, sa * r, prev, i, ks);
+    b.main[i] = id; if (ks) b.ksId.push(id);
     if ([2, 3, 5, 7, 8, 10, 11].includes(i)) {
       const side = i % 2 ? 1 : -1;
       const sid = add(b.k[ki++ % b.k.length], ca * r + px * 19 * side, sa * r + py * 19 * side, id, i + 1, 0);
@@ -478,13 +524,41 @@ BRANCHES.forEach((b, bi) => {
     prev = id;
   }
 });
+// второй проход: развилки (id старых узлов не меняются)
+BRANCHES.forEach((b, bi) => {
+  const [ca, sa, px, py] = b.dir;
+  [4, 9].forEach((i, pi) => {
+    const r = 26 * i + 14, pr = PAIRS[bi][pi], ids = [];
+    [-1, 1].forEach((side, j) => { TN.push({ id: TN.length, br: bi, k: pr[j], p: b.main[i], x: ca * r + px * 22 * side, y: sa * r + py * 22 * side, d: i + 1, v: TK[pr[j]][1], max: 0, n: TK[pr[j]][0] }); ids.push(TN.length - 1); });
+    TN[ids[0]].alt = ids[1]; TN[ids[1]].alt = ids[0];
+  });
+});
 const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
 const tCost = (nd, l) => Math.ceil((nd.max ? 5 : 1) * (1 + nd.d * .35) * Math.pow(1.45, l));
-let TAL = {};
-function calcTal() { TAL = {}; for (const nd of TN) { const l = TL(nd.id); if (l) TAL[nd.k] = (TAL[nd.k] || 0) + nd.v * l; } }
+const brActive = bi => bi < 0 || (S.meta.act || []).includes(bi);
+const startOfLife = () => S.zone <= 1 && S.kills < 200;
+let TAL = {}, TB = [], KSL = [];
+function calcTal() {
+  if (!S.meta.act) {   // первая загрузка: активируем самые прокачанные ветви
+    const pts = BRANCHES.map((b, bi) => [bi, TN.filter(n => n.br === bi).reduce((a, n) => a + TL(n.id), 0)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+    S.meta.act = pts.slice(0, 3).map(x => x[0]);
+  }
+  TAL = {}; TB = BRANCHES.map(() => ({ pts: 0, ms: 0, full: false, bm: 1, n: 0, have: 0 }));
+  for (const nd of TN) if (nd.br >= 0) { const b = TB[nd.br], l = TL(nd.id); b.pts += l; if (nd.alt == null || nd.alt > nd.id) { b.n++; if (l > 0 || (nd.alt != null && TL(nd.alt) > 0)) b.have++; } }
+  TB.forEach(b => { b.ms = b.pts < 25 ? 0 : Math.floor(Math.log2(b.pts / 25)) + 1; b.full = b.have >= b.n; b.bm = (1 + .01 * b.pts) * Math.pow(1.25, b.ms) * (b.full ? 2 : 1); });
+  KSL = BRANCHES.map((b, bi) => b.ksId.map(id => brActive(bi) ? Math.min(5, TL(id)) : 0));
+  for (const nd of TN) {
+    const l = TL(nd.id); if (!l || nd.k.startsWith('ks') || !brActive(nd.br)) continue;
+    TAL[nd.k] = (TAL[nd.k] || 0) + nd.v * l * (nd.br >= 0 ? TB[nd.br].bm : 1); TAL[nd.k + '!'] = 1;
+  }
+  TAL.constel = TB.filter(b => b.full).length;
+}
 const ta = k => TAL[k] || 0;
-function soulsFor(z) { return z < 30 ? 0 : Math.floor((5 * Math.pow(1.12, z - 30) + (z - 30)) * (1 + ta('soul'))); }
+const on = k => !!TAL[k + '!'];
+const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
+const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
+function soulsFor(z) { return z < 30 ? 0 : Math.floor((5 * Math.pow(1.12, z - 30) + (z - 30)) * (1 + ta('soul')) * (1 + ta('x_reaper'))); }
 let stats = [];
 let D = {};          // производные значения
 const hero = { x: 50, y: 60, hp: 50, face: 1, cd: 0, swing: 0, swingA: 0, hurt: 0, tx: 0, ty: 0, shield: 0, tint: '#fff', tintT: 0, atkN: 0, trail: [], trailT: 0 };
@@ -499,6 +573,7 @@ const BOSS_TIME = 30;
 let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
 function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
 function retreat(b, why) {
+  if (ksL(1, 1)) S.siege = Math.min(.9, 1 - (1 - (S.siege || 0)) * (1 - (1 - Math.max(0, b.hp) / b.max) * Math.min(1, .2 * ksL(1, 1))));
   b.dead = true; bossAlive = false; bossCd = 12;
   burst(b.x, b.y - 8, '#ffffff', 20, 40);
   hero.hp = D.maxHP; hero.shield = 0;
@@ -532,6 +607,7 @@ function readiness() {
   const inc = zoneDmg(z) * (2 * (isLegend(z) ? 1.5 : 1) + 2.5) * (1 - D.armor) * (1 - D.dodge);
   const heal = D.maxHP * D.regen + D.maxHP * D.vamp * D.aps;
   const surv = inc <= heal ? 1e9 : D.maxHP * .85 / (inc - heal);
+  D.rKill = 22 / killT; D.rSurv = surv / killT;
   return Math.min(22 / killT, surv / killT);
 }
 
@@ -548,25 +624,25 @@ function recalc() {
   D.spec = r1 >= 10 && (r1 >= 1.5 * r2 || (D.spec === lead && r1 >= 1.2 * r2)) ? lead : -1;
   if (D.spec >= 0) R[EFF[D.spec].k] *= 1.5;
   D.T = T; D.R = R;
-  D.maxHP = (50 + 8 * T[1]) * (1 + ta('hp'));
-  let aps = 1.2 * (1 + 0.7 * lg(R.aspd)) * (1 + .15 * sy(4));
+  D.maxHP = (50 + 8 * T[1]) * (1 + ta('hp')) * (1 + ta('x_tank')) * (on('x_glass') ? .5 : 1);
+  let aps = 1.2 * (1 + 0.7 * lg(R.aspd)) * (1 + .15 * sy(4)) * (1 + ta('x_haste')) * (on('x_tank') ? .75 : 1);
   let over = 1; if (aps > 10) { over = aps / 10; aps = 10; }
   D.aps = aps;
   D.power = 1 + lg(R.power);
-  D.hit = (4 + T[0]) * D.power * over * (1 + ta('hit'));
-  D.crit = 0.05 + 0.7 * sat(R.crit, 40);
-  D.critM = (2 + Math.log2(1 + R.critd / 5)) * (1 + .5 * sy(11));
-  D.vamp = 0.07 * sat(R.vamp, 60);
-  D.regen = (0.02 + 0.07 * sat(R.regen, 60)) * (1 + .5 * sy(7));
+  D.hit = (4 + T[0]) * D.power * over * (1 + ta('hit')) * (1 + ta('x_glass')) * (on('x_elem') ? .7 : 1) * (on('x_haste') ? .8 : 1) * (on('x_tapper') ? .7 : 1);
+  D.crit = (0.05 + 0.7 * sat(R.crit, 40)) * (on('x_exec') ? .7 : 1);
+  D.critM = (2 + Math.log2(1 + R.critd / 5)) * (1 + .5 * sy(11)) * (1 + ta('x_exec'));
+  D.vamp = on('x_regen') ? 0 : 0.07 * sat(R.vamp, 60);
+  D.regen = (0.02 + 0.07 * sat(R.regen, 60)) * (1 + .5 * sy(7)) * (1 + ta('x_regen'));
   D.armor = 0.9 * sat(R.armor, 80);
   D.dodge = 0.6 * sat(R.dodge, 120);
-  D.rare = 0.02 + 0.06 * sat(R.luck, 100) + Math.min(.1, .01 * sy(5)) + Math.min(.15, ta('rare'));
+  D.rare = (0.02 + 0.06 * sat(R.luck, 100) + Math.min(.1, .01 * sy(5)) + Math.min(.15, ta('rare'))) * (on('x_gamble') ? 3 : 1);
   D.gainMult = (1 + 0.6 * lg(R.wis)) * (1 + 0.4 * lg(R.luck));
   D.move = 22 * (1 + 0.4 * lg(R.move));
   D.range = Math.min(40, 8 + 5 * lg(R.range));
-  D.cleave = Math.floor(Math.log2(1 + R.cleave / 15));
-  D.fire = 0.6 * sat(R.fire, 80); D.fireR = Math.min(34, (6 + 3 * lg(R.fire)) * (1 + .3 * sy(10)));
-  D.poison = 0.8 * sat(R.poison, 80);
+  D.cleave = on('x_focus') ? 0 : Math.floor(Math.log2(1 + R.cleave / 15));
+  D.fire = 0.6 * sat(R.fire, 80) * (1 + ta('x_elem')); D.fireR = Math.min(34, (6 + 3 * lg(R.fire)) * (1 + .3 * sy(10)));
+  D.poison = 0.8 * sat(R.poison, 80) * (1 + ta('x_elem'));
   D.shock = Math.min(.85, 0.5 * sat(R.shock, 100) + .05 * sy(9)); D.chain = 3 + 2 * sy(9);
   D.thorns = 1.5 * sat(R.thorns, 80) * (1 + 2 * sy(3));
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
@@ -657,6 +733,7 @@ function checkUnlocks(silent) {
   while (unlockKills(stats.length) <= S.kills) {
     const s = makeStat(stats.length);
     if (S.vals[s.n] !== undefined) s.v = S.vals[s.n];
+    else if (ksL(6, 0) && D.gainMult) s.v += zs() * D.gainMult * 10 * ksL(6, 0);
     if (S.lv && S.lv[s.n]) setLvl(s, S.lv[s.n]);
     stats.push(s); addStatRow(s, !silent); added++;
     if (!silent) { feed('Новый стат: ' + s.name + ' → ' + EFF[s.e].n, '#f2c94c'); if (added === 1) sfx.unlock(); }
@@ -783,15 +860,17 @@ function spawnMob(boss) {
   let x, y;
   if (side === 0) { x = rnd() * W; y = -6; } else if (side === 1) { x = W + 6; y = rnd() * H; }
   else if (side === 2) { x = rnd() * W; y = H + 6; } else { x = -6; y = rnd() * H; }
-  const rare = !boss && rnd() < D.rare;
+  const rare = !boss && (S.forceRare > 0 ? (S.forceRare--, true) : rnd() < D.rare);
   const af = rollAff(boss), na = popc(af);
-  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1);
+  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1);
   mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
   if (na && !boss) tip('aff', 'Особые враги', 'Цветные точки над врагом — его особенности: броня, скорость, взрыв, вампиризм. Такие враги дают больше наград.');
+  if (!boss && na >= 2 && ksL(5, 0)) { const me = mobs[mobs.length - 1]; me.ws = { ox: 0, oy: -6, t: 0 }; moveWS(me); }
   if (boss) {
     const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
+    if (S.siege > 0) feed('Осада: вожак уже ранен на ' + pct(S.siege), '#aabbcc');
     bossAlive = true; bossT = BOSS_TIME + ta('boss_t'); S.tries = (S.tries || 0) + 1;
     toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
     sfx.boss(); shake = 6;
@@ -822,7 +901,7 @@ function splat(m) {
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
   g.globalAlpha = 1;
 }
-function crowd() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')); }
+function crowd() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')); }
 
 function hurtHero(dmg) {
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
@@ -856,7 +935,10 @@ function killMob(m) {
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
   if (m.boss || m.rare) shake = Math.max(shake, m.boss ? 8 : 3);
   const cnt = 2 + Math.floor(rnd() * 3) + (m.rare ? 3 : 0) + (m.boss ? 8 : 0);
-  const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1);
+  const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1)
+    * (1 + ta('x_greed')) * (on('x_scholar') || on('x_reaper') ? .8 : 1) * (on('x_gamble') && !m.rare ? .8 : 1)
+    * (m.rare ? (1 + ta('c_rare')) * (on('x_gamble') ? 1 + ta('x_gamble') : 1) : 1) * (isLegend(S.zone) ? 1 + ta('c_legend') : 1)
+    * (mobs.length >= 15 ? 1 + ta('c_crowd') : 1) * Math.pow(1.25, TAL.constel || 0);
   const now = performance.now();
   const fav = biomeOf(S.zone).fav, dbl = Math.min(.5, .05 * (F(EI.wis) - 1));
   for (let i = 0; i < cnt; i++) {
@@ -874,6 +956,12 @@ function killMob(m) {
     toast('ДЖЕКПОТ!', 'все враги стали золотыми'); sfx.rare(); flashT = .1;
   }
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) clouds.push({ x: m.x, y: m.y - 2, r: 8 + 2 * Math.min(6, F(EI.poison) - 2), dps: m.psn * .6, t: 3 });
+  if (ksL(0, 0) && rnd() < .02 * ksL(0, 0)) { burst(m.x, m.y - 3, '#ff3322', 14, 50); ring(m.x, m.y - 3, 16, '#ff5544'); hitAround(m.x, m.y, 16, D.hit * 3 * ksL(0, 0), '#ff5544', m); }
+  if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); ult = 1; fireUlt(); } }
+  if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
+  if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
+  if (ksL(7, 0) && m.boss && S.zone >= 30) { const g = ksL(7, 0) * Math.max(1, Math.round(soulsFor(S.zone) / 40)); S.meta.souls += g; S.meta.total += g; feed('+' + fmt(g) + ' душ', '#ff44ff'); }
+  if (m.boss) S.siege = 0;
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
   if (sy(1) && m.psnT > 0) for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 16) {
@@ -881,6 +969,11 @@ function killMob(m) {
   }
   checkUnlocks(false);
   if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; if ((S.tries || 1) > 1) toast('ПРОРЫВ!', 'вожак пал с ' + S.tries + '-й попытки'); S.tries = 0; nextZone(); }
+}
+function giveBurst(total) {
+  const n = Math.min(stats.length, 10);
+  for (let i = 0; i < n; i++) { const st = pickStat(); st.v += total / n; st.at = performance.now(); tryEvolve(st); }
+  D.dirty = true;
 }
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
@@ -898,10 +991,11 @@ function nextZone() {
 /* ---------- атака героя ---------- */
 function heroAttack(t) {
   const crit = rnd() < D.crit, ultra = crit && rnd() < .04;
-  const dmg = D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1);
+  const dmg = D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t);
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
   hero.swing = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1;
-  hitMob(t, dmg, crit, true);
+  hitMob(t, dmg * (1 + ta('x_focus')), crit, true);
+  if (ksL(3, 0) && hero.atkN % 3 === 0) { const rr = D.range * 2 + 4; ring(hero.x, hero.y - 4, rr, '#66ccff'); hitAround(hero.x, hero.y, rr, dmg * .5 * ksL(3, 0), '#66ccff', t); }
   hero.atkN++;
   const fd = F(EI.dmg);
   if (fd >= 2) { ring(t.x, t.y - 3, 5 + Math.min(8, fd), '#ff8877'); if (fd >= 3) hitAround(t.x, t.y, 8 + 2 * Math.min(6, fd - 3), dmg * .25, '#ff8877', t); }
@@ -947,13 +1041,13 @@ function heroAttack(t) {
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
-  ult = Math.min(1, ult + v * (1 + ta('ultc')));
+  ult = Math.min(1, ult + v * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
 }
 function fireUlt() {
   ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
   ftext(hero.x, hero.y - 22, 'УЛЬТИМЕЙТ!', '#ff44ff', 2, 1.4);
-  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + D.crit * (D.critM - 1)) * comboM();
+  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
   for (const m of mobs.slice()) if (!m.dead) {
     bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: -4, x2: m.x, y2: m.y - 3, l: .3, c: '#ff88ff' });
     hitMob(m, dmg, true, true, '#ff88ff');
@@ -971,9 +1065,9 @@ function onTap(e) {
   tapStreak = nowT - lastTap < .45 ? tapStreak + 1 : 0; lastTap = nowT;
   if (ult >= 1) { fireUlt(); return; }
   // слабое место вожака
-  const b = mobs.find(m => m.boss && !m.dead);
-  if (b && Math.hypot(b.x + b.ws.ox - x, b.y + b.ws.oy - y) < 6) {
-    const d = D.hit * 12 * (1 + ta('weak')) * (1 + D.crit * (D.critM - 1)) * comboM();
+  const b = mobs.find(m => m.ws && !m.dead && Math.hypot(m.x + m.ws.ox - x, m.y + m.ws.oy - y) < 6);
+  if (b) {
+    const d = D.hit * 12 * (1 + ta('weak')) * (b.boss ? 1 : 1 + ksL(5, 0)) * (1 + D.crit * (D.critM - 1)) * comboM() * condDmg(b);
     hitMob(b, d, true, false, '#ffee66');
     ftext(b.x, b.y - 22, 'СЛАБОЕ МЕСТО! ' + fmt(d), '#ffee66', 1.3, 1);
     burst(b.x + b.ws.ox, b.y + b.ws.oy, '#ffee66', 18, 50); flashT = Math.max(flashT, .06); slowT = Math.max(slowT, .12); shake = Math.max(shake, 5);
@@ -987,8 +1081,9 @@ function onTap(e) {
   let hit = false;
   for (const m of mobs) if (!m.dead && Math.hypot(m.x - x, m.y - 3 * m.sz - y) < 9 + 4 * m.sz) {
     const crit = rnd() < D.crit;
-    hitMob(m, D.hit * 1.2 * (1 + ta('tap')) * (1 + .05 * Math.min(40, tapStreak)) * comboM() * (crit ? D.critM : 1), crit, true, tapStreak >= 10 ? '#ffaa33' : '#fff8a0'); hit = true;
+    hitMob(m, D.hit * 1.2 * (1 + ta('tap')) * (1 + ta('x_tapper')) * condDmg(m) * (1 + .05 * Math.min(40, tapStreak)) * comboM() * (crit ? D.critM : 1), crit, true, tapStreak >= 10 ? '#ffaa33' : '#fff8a0'); hit = true;
   }
+  if (ksL(5, 1)) { for (const m of mobs) if (!m.dead) hitMob(m, D.hit * .2 * ksL(5, 1) * (1 + ta('tap')), false, false, '#fff8a0'); hit = true; }
   sfx.tap();
   if (hit) { shake = Math.max(shake, 1.5); addUlt(.015); if (combo) comboT = Math.min(comboTime(), comboT + .5); }
   if (tapStreak >= 5 && tapStreak % 5 === 0 && texts.length < 30) ftext(x, y - 8, 'ТАП ×' + (1 + .05 * Math.min(40, tapStreak)).toFixed(2), '#ffaa33', .9, .6);
@@ -1000,6 +1095,8 @@ function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Ma
 function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
+  if (ksL(2, 0)) { PT.ksf = (PT.ksf || 0) - dt; if (PT.ksf <= 0) { PT.ksf = fireEvery(ksL(2, 0)); ring(hero.x, hero.y - 3, 22, '#ff6622'); hitAround(hero.x, hero.y, 22, D.hit * (.5 + .5 * ksL(2, 0)), '#ff6622'); } }
+  if (ksL(2, 1)) { PT.kss = (PT.kss || 0) - dt; if (PT.kss <= 0) { PT.kss = 1 / ksL(2, 1); const m = randMob(); if (m) { bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .12, c: '#99eeff' }); hitMob(m, D.hit, false, false, '#99eeff'); } } }
   if (ff >= 3) { PT.fire -= dt; if (PT.fire <= 0) { PT.fire = 3; const r = 18 + 2 * Math.min(8, ff - 3); ring(hero.x, hero.y - 3, r, '#ff6622'); hitAround(hero.x, hero.y, r, D.hit * (D.fire + .3) * 1.5, '#ff6622'); sfx.boom(); } }
   if (ff >= 4) { PT.met -= dt; if (PT.met <= 0) { PT.met = 2.5 / (ff - 3); const m = randMob(); if (m) {
     bolts.push({ x1: m.x + 18, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ff9a3c' });
@@ -1053,8 +1150,11 @@ function update(dt) {
     if (bm) { bm.ws.t -= dt; if (bm.ws.t <= 0) moveWS(bm); }
     if (bm && (hero.hp < D.maxHP * .15 || bossT <= 0)) retreat(bm, bossT <= 0 ? 'не хватило урона' : 'герой на пределе');
   }
+  for (const m of mobs) if (m.ws && !m.boss) { m.ws.t -= dt; if (m.ws.t <= 0) moveWS(m); }
   // регенерация, давление
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
+  PT.unb = (PT.unb || 0) - dt;
+  if (ksL(1, 0) && hero.hp < D.maxHP * .3 && PT.unb <= 0) { PT.unb = 30; hero.hp = D.maxHP; hero.shield += D.maxHP * .2 * ksL(1, 0); feed('Несокрушимый: второе дыхание!', '#aabbcc'); ring(hero.x, hero.y - 4, 20, '#aabbcc'); flashT = Math.max(flashT, .08); }
   S.hpf = clamp(hero.hp / D.maxHP, 0, 1);
   pressT -= dt;
   kpsT += dt;
@@ -1068,8 +1168,8 @@ function update(dt) {
     hero.face = tgt.x >= hero.x ? 1 : -1;
     if (td > D.range) {
       const dx = tgt.x - hero.x, dy = tgt.y - hero.y, d = Math.hypot(dx, dy) || 1;
-      hero.x += dx / d * D.move * dt; hero.y += dy / d * D.move * dt;
-    } else if (hero.cd <= 0) { hero.cd = 1 / D.aps; heroAttack(tgt); }
+      const mv = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1); hero.x += dx / d * mv * dt; hero.y += dy / d * mv * dt;
+    } else if (hero.cd <= 0) { hero.cd = 1 / (D.aps * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)); heroAttack(tgt); }
   } else {
     const dx = W / 2 - hero.x, dy = H / 2 - hero.y, d = Math.hypot(dx, dy);
     if (d > 2) { hero.x += dx / d * D.move * .5 * dt; hero.y += dy / d * D.move * .5 * dt; }
@@ -1078,7 +1178,7 @@ function update(dt) {
   effMech(dt);
 
   // мобы
-  const mdmg = zoneDmg(S.zone);
+  const mdmg = zoneDmg(S.zone) * (on('x_swarm') ? 1.2 : 1);
   for (const m of mobs) {
     if (m.dead) continue;
     const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1;
@@ -1193,8 +1293,8 @@ function render() {
     ctx.fillStyle = '#ff2a2a'; ctx.fillRect(5, 3, Math.max(0, Math.round((W - 10) * boss.hp / boss.max)), 2);
   }
   // слабое место вожака
-  if (boss) {
-    const wx = Math.round(boss.x + boss.ws.ox), wy = Math.round(boss.y + boss.ws.oy), pu = Math.sin(time * 14) > 0;
+  for (const wm of mobs) if (wm.ws && !wm.dead) {
+    const wx = Math.round(wm.x + wm.ws.ox), wy = Math.round(wm.y + wm.ws.oy), pu = Math.sin(time * 14) > 0;
     ctx.fillStyle = pu ? '#ffee66' : '#ffffff'; ctx.fillRect(wx - 1, wy - 1, 2, 2);
     const rr = 4 + (pu ? 1 : 0); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28 + time * 3; pix(wx + Math.cos(a) * rr, wy + Math.sin(a) * rr, '#ffee66'); }
   }
@@ -1296,6 +1396,16 @@ function drawHero(rk) {
   // шаровые молнии
   const fsh = F(EI.shock);
   if (fsh >= 3) { const n = Math.min(4, fsh - 2); for (let i = 0; i < n; i++) { const a = time * 4 + i * 6.28 / n, ox = Math.round(hero.x + Math.cos(a) * 12), oy = Math.round(hero.y - 4 + Math.sin(a) * 7); ctx.fillStyle = '#ffffff'; ctx.fillRect(ox, oy, 2, 2); pix(ox - 1, oy, '#99eeff'); pix(ox + 2, oy + 1, '#99eeff'); } }
+  // облик от ключевых талантов
+  const hk = bi => ksL(bi, 0) || ksL(bi, 1);
+  if (hk(0)) { pix(x + 1, y - 1, '#ff3322'); pix(x + 6, y - 1, '#ff3322'); pix(x, y - 2, '#ff3322'); pix(x + 7, y - 2, '#ff3322'); }
+  if (hk(5)) { ctx.globalAlpha = .9; for (let i = -2; i <= 3; i++) pix(hero.x + i, y - 3 + (Math.abs(i - .5) > 2 ? 1 : 0), '#ffe08a'); ctx.globalAlpha = 1; }
+  if (hk(1)) { const sx2 = hero.x + hero.face * 4; ctx.fillStyle = '#aabbcc'; ctx.fillRect(Math.round(sx2) - 1, y + 3, 3, 3); pix(sx2, y + 4, '#ffffff'); }
+  if (hk(2) && Math.sin(time * 20) > -.3) { pix(x + 1, y + 2 - (Math.sin(time * 9) > 0 ? 1 : 0), '#ff8a3c'); pix(x + 6, y + 2 - (Math.sin(time * 11) > 0 ? 1 : 0), '#ffcc33'); }
+  if (hk(3)) { ctx.globalAlpha = .5; for (let i = 1; i < 6; i++) pix(hero.x - hero.face * (4 + i), y + 3 + (i % 2), '#66ccff'); ctx.globalAlpha = 1; }
+  if (hk(4)) { const a = time * 2; pix(hero.x + Math.cos(a) * 6, y - 2 + Math.sin(a) * 2, '#44ffaa'); }
+  if (hk(6)) { const by = y - 5 + Math.round(Math.sin(time * 3)); ctx.fillStyle = '#bb88ff'; ctx.fillRect(Math.round(hero.x) + 4, by, 3, 2); }
+  if (hk(7) && rnd() < .3 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 8, vx: 0, vy: -10, l: .5, c: '#ff44ff', f: 1 });
   // крылья
   if (rk >= 10) { const f = Math.sin(time * 8) > 0 ? 1 : 0; for (let i = 0; i < 3; i++) { pix(hero.x - 4 - i, y + 2 + i - f, ac); pix(hero.x + 3 + i, y + 2 + i - f, ac); } }
   // корона
@@ -1426,6 +1536,7 @@ $('rbtn').onclick = () => {
 function rebirth() {
   const g = soulsFor(S.zone), M = S.meta;
   M.souls += g; M.total += g; M.rebirths++; M.best = Math.max(M.best, S.zone);
+  const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => st.v * keepF) : [];
   const keep = { meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
@@ -1433,7 +1544,8 @@ function rebirth() {
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
-  checkUnlocks(true); recalc(); hero.hp = D.maxHP; hero.x = W / 2; hero.y = H / 2;
+  if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
+  calcTal(); checkUnlocks(true); recalc(); hero.hp = D.maxHP; hero.x = W / 2; hero.y = H / 2;
   buildGround(); save(); updateUI(); renderSouls();
   flashT = .5; slowT = .6; shake = 10;
   toast('ПЕРЕРОЖДЕНИЕ #' + M.rebirths, '+' + fmt(g) + ' душ · открой дерево талантов');
@@ -1442,82 +1554,196 @@ function rebirth() {
 
 /* ---------- экран дерева талантов ---------- */
 const tree = $('tree'), tcv = $('tcv'), tctx = tcv.getContext('2d'), tview = $('tview');
-const cam = { x: 0, y: 0, z: 1.6 }; let tSel = 0, tW = 0, tH = 0, tDPR = 1;
+const cam = { x: 0, y: 0, z: 1.6 }; let tSel = 0, tW = 0, tH = 0, tDPR = 1, tRec = new Set(), tParts = [], tSparks = [], tRaf = 0;
 $('tbtn').onclick = () => openTree();
 $('treeb').onclick = () => openTree();
 $('tclose').onclick = () => { tree.hidden = true; };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
-function openTree() { tree.hidden = false; sizeTree(); renderTInfo(); drawTree(); }
+function openTree() { tree.hidden = false; sizeTree(); calcRec(); renderHint(); renderTInfo(); drawTree(); }
 function sizeTree() {
   tDPR = Math.min(3, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
   tcv.width = Math.round(tW * tDPR); tcv.height = Math.round(tH * tDPR); tcv.style.width = tW + 'px'; tcv.style.height = tH + 'px';
 }
-const nodeSize = nd => nd.id === 0 ? 16 : nd.max ? 13 : 9;
+// пиксельные иконки 5×5
+const ICONS = {
+  sword: ['....#', '...#.', '#.#..', '.#...', '#.#..'], shield: ['#####', '#...#', '#...#', '.#.#.', '..#..'],
+  heart: ['.#.#.', '#####', '#####', '.###.', '..#..'], flame: ['..#..', '.##..', '.###.', '#####', '.###.'],
+  bolt: ['..##.', '.##..', '####.', '..##.', '.##..'], drop: ['..#..', '.###.', '.###.', '#####', '.###.'],
+  clover: ['##.##', '##.##', '..#..', '##.##', '##.##'], hand: ['.#.#.', '.#.#.', '####.', '####.', '.##..'],
+  book: ['####.', '#..#.', '####.', '#..#.', '####.'], skull: ['.###.', '#.#.#', '#####', '.###.', '.#.#.'],
+  star: ['..#..', '#####', '.###.', '.#.#.', '#...#'], wing: ['#....', '##...', '###..', '####.', '#####'],
+  eye: ['.....', '.###.', '#.#.#', '.###.', '.....'], clock: ['.###.', '#.#.#', '#.###', '#...#', '.###.'],
+  crown: ['#.#.#', '#####', '#####', '#####', '.....'], spike: ['#.#.#', '.###.', '#####', '.###.', '#.#.#'],
+  fist: ['.###.', '#####', '#####', '.####', '..##.'], cond: ['..#..', '..#..', '..#..', '.....', '..#..'],
+  swap: ['.#...', '#####', '.#.#.', '#####', '...#.'],
+};
+const ICON_OF = { hit: 'sword', e_dmg: 'sword', e_critd: 'sword', e_crit: 'eye', e_power: 'fist', e_fury: 'fist', hp: 'heart', e_armor: 'shield', e_regen: 'heart', e_dodge: 'wing',
+  e_vamp: 'drop', e_thorns: 'spike', e_fire: 'flame', e_shock: 'bolt', e_poison: 'drop', e_range: 'sword', e_cleave: 'sword', e_aspd: 'wing', e_move: 'wing',
+  crowd: 'skull', spawn: 'clock', combo_t: 'clock', combo_m: 'star', e_luck: 'clover', rare: 'clover', elite: 'crown', gain: 'crown', e_wis: 'book',
+  tap: 'hand', weak: 'eye', ultc: 'star', ultd: 'star', boss_t: 'clock', bossdmg: 'skull', unlock: 'book', evo: 'book', form: 'book', offline: 'clock',
+  soul: 'skull', legacy: 'skull' };
+const iconOf = k => k.startsWith('ks') ? 'star' : k.startsWith('c_') ? 'cond' : k.startsWith('x_') ? 'swap' : ICON_OF[k] || 'star';
+const nodeSize = nd => nd.id === 0 ? 16 : nd.max ? 14 : nd.alt != null ? 11 : 10;
 const toScr = (x, y) => [(x - cam.x) * cam.z + tW / 2, (y - cam.y) * cam.z + tH / 2];
+const nodeCol = nd => nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff';
+const labelPos = bi => { const nd = TN[BRANCHES[bi].main[12]]; return [nd.x * 1.13, nd.y * 1.13]; };
+const nodeBlocked = nd => nd.alt != null && TL(nd.alt) > 0;
+function canBuy(nd) {
+  const l = TL(nd.id);
+  return tOpen(nd) && !nodeBlocked(nd) && (!nd.max || l < nd.max) && S.meta.souls >= tCost(nd, l) && (brActive(nd.br) || (S.meta.act || []).length < 3);
+}
+// совет: какие узлы помогут прямо сейчас
+const REC = {
+  dmg: ['hit', 'e_dmg', 'e_crit', 'e_critd', 'e_power', 'bossdmg', 'weak', 'tap', 'x_glass', 'x_exec', 'c_boss', 'c_combo', 'e_fire', 'e_shock'],
+  surv: ['hp', 'e_armor', 'e_regen', 'e_vamp', 'e_dodge', 'x_tank', 'x_regen', 'c_lowhp', 'boss_t'],
+  grow: ['gain', 'e_wis', 'e_luck', 'rare', 'unlock', 'legacy', 'soul', 'x_greed', 'c_crowd', 'c_legend', 'evo'],
+};
+function calcRec() {
+  const walled = S.zk >= zoneNeed() && (D.ready || 0) < 1;
+  D.lim = walled ? ((D.rKill || 0) < (D.rSurv || 0) ? 'dmg' : 'surv') : 'grow';
+  const kinds = REC[D.lim];
+  tRec = new Set(TN.filter(nd => canBuy(nd) && kinds.includes(nd.k)).sort((a, b) => tCost(a, TL(a.id)) - tCost(b, TL(b.id))).slice(0, 3).map(nd => nd.id));
+}
+function renderHint() {
+  const act = (S.meta.act || []).map(bi => `<b style="color:${BRANCHES[bi].c}">${BRANCHES[bi].n}</b>`).join(', ') || 'нет';
+  const tip = D.lim === 'dmg' ? 'упираешься в урон вожака — узлы с <b style="color:#5cff8a">!</b> добавят урона'
+    : D.lim === 'surv' ? 'вожак убивает героя — узлы с <b style="color:#5cff8a">!</b> добавят живучести'
+    : 'стены нет — узлы с <b style="color:#5cff8a">!</b> ускорят рост';
+  $('thint').innerHTML = `Активные ветви (${(S.meta.act || []).length}/3): ${act}${startOfLife() ? ' · <b style="color:#f2c94c">тапни название ветви, чтобы вкл/выкл</b>' : ' · сменить можно в начале жизни'}<br>Совет: ${tip}` +
+    (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
+}
 function drawTree() {
   if (tree.hidden) return;
-  const c = tctx; c.setTransform(tDPR, 0, 0, tDPR, 0, 0); c.clearRect(0, 0, tW, tH);
-  // фон: пиксельная сетка
+  const c = tctx, now = performance.now(); c.setTransform(tDPR, 0, 0, tDPR, 0, 0); c.clearRect(0, 0, tW, tH);
   c.fillStyle = '#141024'; const gs = 26 * cam.z;
   if (gs > 8) for (let gx = ((-cam.x * cam.z + tW / 2) % gs + gs) % gs; gx < tW; gx += gs) for (let gy = ((-cam.y * cam.z + tH / 2) % gs + gs) % gs; gy < tH; gy += gs) c.fillRect(Math.round(gx), Math.round(gy), 2, 2);
+  // линии
   c.lineWidth = Math.max(1.5, 2.5 * cam.z / 1.6);
   for (const nd of TN) if (nd.p >= 0) {
-    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y);
-    const col = nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff';
-    c.strokeStyle = TL(nd.id) ? col : TL(pn.id) ? shade(col, -.45) : '#2a2440';
-    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y), col = nodeCol(nd);
+    const full = nd.br >= 0 && TB[nd.br] && TB[nd.br].full;
+    c.globalAlpha = brActive(nd.br) ? 1 : .35;
+    c.strokeStyle = TL(nd.id) ? (full ? '#ffe08a' : col) : TL(pn.id) ? shade(col, -.45) : '#2a2440';
+    if (nd.alt != null) c.setLineDash([3, 3]); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]);
   }
-  const blink = Math.floor(performance.now() / 400) % 2;
+  c.globalAlpha = 1;
+  // искры по линиям
+  for (const sp of tSparks) { const a = TN[sp.a], b = TN[sp.b], t = sp.t; const [x, y] = toScr(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); c.fillStyle = sp.c; c.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); }
+  const blink = Math.floor(now / 400) % 2;
   for (const nd of TN) {
     const [x, y] = toScr(nd.x, nd.y), sz = Math.round(nodeSize(nd) * cam.z), h = sz / 2;
     if (x < -sz || y < -sz || x > tW + sz || y > tH + sz) continue;
-    const col = nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff', l = TL(nd.id), open = tOpen(nd);
-    const canBuy = open && (!nd.max || l < nd.max) && S.meta.souls >= tCost(nd, l);
-    c.fillStyle = '#000'; c.fillRect(Math.round(x - h) - 2, Math.round(y - h) - 2, sz + 4, sz + 4);
-    c.fillStyle = l ? col : open ? '#221c34' : '#110e1c'; c.fillRect(Math.round(x - h), Math.round(y - h), sz, sz);
-    if (!l) { c.strokeStyle = canBuy ? (blink ? col : '#ffffff') : open ? shade(col, -.4) : '#2a2440'; c.lineWidth = Math.max(1, cam.z); c.strokeRect(Math.round(x - h) + .5, Math.round(y - h) + .5, sz - 1, sz - 1); }
-    else { c.fillStyle = shade(col, .5); c.fillRect(Math.round(x - h) + 2, Math.round(y - h) + 2, Math.max(2, sz / 4), Math.max(2, sz / 4)); }
-    if (nd.max) { c.fillStyle = l ? '#000' : col; c.fillRect(Math.round(x - 1), Math.round(y - 1), 3, 3); }
-    if (nd.id === tSel) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.strokeRect(Math.round(x - h) - 4, Math.round(y - h) - 4, sz + 8, sz + 8); }
+    const col = nodeCol(nd), l = TL(nd.id), open = tOpen(nd), buy = canBuy(nd), blocked = nodeBlocked(nd);
+    const full = nd.br >= 0 && TB[nd.br] && TB[nd.br].full;
+    c.globalAlpha = brActive(nd.br) || buy ? 1 : .35;
+    const X = Math.round(x - h), Y = Math.round(y - h);
+    if (full && l) { c.fillStyle = 'rgba(255,224,138,' + (.25 + .2 * Math.sin(now / 300 + nd.id)) + ')'; c.fillRect(X - 5, Y - 5, sz + 10, sz + 10); }
+    c.fillStyle = '#000'; c.fillRect(X - 2, Y - 2, sz + 4, sz + 4);
+    c.fillStyle = l ? col : open ? '#221c34' : '#110e1c'; c.fillRect(X, Y, sz, sz);
+    if (!l) { c.strokeStyle = buy ? (blink ? col : '#ffffff') : open && !blocked ? shade(col, -.4) : '#2a2440'; c.lineWidth = Math.max(1, cam.z); c.strokeRect(X + .5, Y + .5, sz - 1, sz - 1); }
+    if (nd.alt != null) { c.strokeStyle = l ? '#ffffff' : shade(col, -.2); c.lineWidth = 1; c.strokeRect(X - 3.5, Y - 3.5, sz + 7, sz + 7); }
+    // иконка
+    const ic = ICONS[iconOf(nd.k)], ps = Math.floor((sz - 2) / 6);
+    if (ps >= 1) { c.fillStyle = l ? 'rgba(0,0,0,.7)' : open ? col : shade(col, -.6); const ox = Math.round(x - 2.5 * ps), oy = Math.round(y - 2.5 * ps);
+      for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(ox + i * ps, oy + j * ps, ps, ps); }
+    if (blocked) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(X, Y); c.lineTo(X + sz, Y + sz); c.moveTo(X + sz, Y); c.lineTo(X, Y + sz); c.stroke(); }
+    if (nd.id === tSel) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.strokeRect(X - 5, Y - 5, sz + 10, sz + 10); }
+    if (tRec.has(nd.id)) { c.font = `${Math.max(8, Math.round(6 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText('!', x, Y - 4); c.fillStyle = '#5cff8a'; c.fillText('!', x, Y - 4); }
     if (l && cam.z > .9) {
-      c.font = `${Math.max(7, Math.round(6 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'top';
-      c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(l, x, y + h + 3); c.fillStyle = '#fff'; c.fillText(l, x, y + h + 3);
+      c.font = `${Math.max(7, Math.round(5.5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'top';
+      c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(l, x, Y + sz + 3); c.fillStyle = '#fff'; c.fillText(l, x, Y + sz + 3);
     }
   }
-  // подписи ветвей
-  if (cam.z < 2.6) BRANCHES.forEach((b, bi) => {
-    const nd = TN.find(n => n.br === bi && n.d === 12 && n.max); const [x, y] = toScr(nd.x * 1.12, nd.y * 1.12);
-    c.font = `${Math.max(7, Math.round(5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(b.n, x, y); c.fillStyle = b.c; c.fillText(b.n, x, y);
+  c.globalAlpha = 1;
+  // частицы покупки
+  for (const p of tParts) { const [x, y] = toScr(p.x, p.y); c.globalAlpha = Math.max(0, p.l * 2); c.fillStyle = p.c; c.fillRect(Math.round(x), Math.round(y), 3, 3); }
+  c.globalAlpha = 1;
+  // звёзды созвездий
+  TB.forEach((b, bi) => { if (!b || !b.full) return; for (let i = 0; i < 6; i++) { const nd = TN[BRANCHES[bi].main[1 + ((Math.floor(now / 500) + i * 2) % 12)]], [x, y] = toScr(nd.x + Math.sin(i * 7) * 14, nd.y + Math.cos(i * 5) * 14); c.fillStyle = '#ffe08a'; c.fillRect(Math.round(x), Math.round(y), 2, 2); } });
+  // подписи ветвей: название, очки, рубежи, созвездие
+  BRANCHES.forEach((b, bi) => {
+    const [lx, ly] = labelPos(bi), [x, y] = toScr(lx, ly), tb = TB[bi] || {}, act = brActive(bi);
+    c.font = `${Math.max(7, Math.round(4.5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const t1 = b.n + (tb.full ? ' ✦' : ''), t2 = (act ? '' : 'выкл · ') + (tb.pts || 0) + ' очк. · ×' + (tb.bm || 1).toFixed(2) + (tb.ms ? ' · рубеж ' + tb.ms : '');
+    c.lineWidth = 3; c.strokeStyle = '#000'; c.fillStyle = act ? (tb.full ? '#ffe08a' : b.c) : '#666';
+    c.strokeText(t1, x, y); c.fillText(t1, x, y);
+    c.font = `${Math.max(6, Math.round(3.3 * cam.z))}px "Press Start 2P", monospace`; c.fillStyle = act ? '#e9e4ff' : '#666';
+    c.strokeText(t2, x, y + Math.max(10, 6 * cam.z)); c.fillText(t2, x, y + Math.max(10, 6 * cam.z));
   });
   $('tsouls').textContent = fmt(S.meta.souls);
 }
 function renderTInfo() {
-  const nd = TN[tSel], l = TL(nd.id), open = tOpen(nd), col = nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff';
-  const maxed = nd.max && l >= nd.max, cost = tCost(nd, l), d = TK[nd.k][2];
-  $('tinfo').innerHTML = `<h3 style="color:${col}">${nd.n}${nd.max ? ' ★' : ''}</h3>` +
-    `<span class="k">${nd.br >= 0 ? 'Ветвь «' + BRANCHES[nd.br].n + '»' : 'Корень дерева'} · уровень ${l}${nd.max ? ' / ' + nd.max : ''}</span><br>` +
-    `<span class="k">Сейчас:</span> ${l ? d(nd.v * l) : '—'}<br>` +
-    (maxed ? '<span class="k">Максимальный уровень</span>' : `<span class="k">След. уровень:</span> ${d(nd.v * (l + 1))}<br>`) +
-    (!open ? `<span style="color:#ff6b6b">Сначала изучи «${TN[nd.p].n}»</span>` : '') +
-    `<div class="row2"><button class="btn" id="tb1">+1 · ${fmt(cost)} душ</button><button class="btn" id="tbm">МАКС</button></div>`;
-  const ok = open && !maxed && S.meta.souls >= cost;
+  const nd = TN[tSel], l = TL(nd.id), open = tOpen(nd), col = nodeCol(nd);
+  const maxed = nd.max && l >= nd.max, cost = tCost(nd, l), d = TK[nd.k][2], ks = nd.k.startsWith('ks');
+  const bm = nd.br >= 0 && TB[nd.br] ? TB[nd.br].bm : 1, mul = ks ? 1 : bm;
+  const tb = nd.br >= 0 ? TB[nd.br] : null;
+  let warn = '';
+  if (!open) warn = `Сначала изучи «${TN[nd.p].n}»`;
+  else if (nodeBlocked(nd)) warn = `Выбран «${TN[nd.alt].n}». Поменять можно в начале новой жизни`;
+  else if (!brActive(nd.br) && (S.meta.act || []).length >= 3) warn = 'Уже активны 3 ветви. Сменить набор можно в начале жизни';
+  $('tinfo').innerHTML = `<h3 style="color:${col}">${nd.n}${ks ? ' ★' : ''}${nd.alt != null ? ' <span style="color:#f2c94c">⇄ ВЫБОР</span>' : ''}</h3>` +
+    `<span class="k">${tb ? `Ветвь «${BRANCHES[nd.br].n}»: ${tb.pts} очк. · сила ×${bm.toFixed(2)} · ${tb.have}/${tb.n} узлов${tb.full ? ' · созвездие ✦' : ''}` : 'Корень дерева'} · ур. ${l}${nd.max ? '/' + nd.max : ''}</span><br>` +
+    (nd.alt != null ? `<span class="k">или «${TN[nd.alt].n}» — только один из двух</span><br>` : '') +
+    `<span class="k">Сейчас:</span> ${l ? d(nd.v * l * mul) : '—'}<br>` +
+    (maxed ? '<span class="k">Максимальный уровень</span>' : `<span class="k">След.:</span> ${d(nd.v * (l + 1) * mul)}<br>`) +
+    (warn ? `<span style="color:#ff6b6b">${warn}</span>` : '') +
+    `<div class="row2"><button class="btn" id="tb1">+1 · ${fmt(cost)} душ</button><button class="btn" id="tbm">МАКС</button>` +
+    (nd.alt != null && l > 0 && startOfLife() ? '<button class="btn" id="tbr" style="background:#5a3a2a">СБРОС</button>' : '') + '</div>';
+  const ok = canBuy(nd) && !maxed;
   $('tb1').disabled = !ok; $('tbm').disabled = !ok;
   $('tb1').onclick = () => buyNode(nd, false); $('tbm').onclick = () => buyNode(nd, true);
+  if ($('tbr')) $('tbr').onclick = () => { let back = 0; for (let i = 0; i < TL(nd.id); i++) back += tCost(nd, i); S.meta.souls += back; S.meta.nodes[nd.id] = 0; refreshTree(); feed('Выбор сброшен: +' + fmt(back) + ' душ', '#ff44ff'); };
 }
+function refreshTree() { calcTal(); D.dirty = true; save(); calcRec(); renderHint(); renderTInfo(); drawTree(); }
 function buyNode(nd, all) {
+  if (!canBuy(nd)) return;
+  if (nd.br >= 0 && !brActive(nd.br)) S.meta.act.push(nd.br);
+  const before = TB.map(b => b ? [b.ms, b.full] : [0, false]);
   let n = 0;
-  while (tOpen(nd) && (!nd.max || TL(nd.id) < nd.max) && S.meta.souls >= tCost(nd, TL(nd.id))) {
+  while (canBuy(nd) && (!nd.max || TL(nd.id) < nd.max)) {
     S.meta.souls -= tCost(nd, TL(nd.id)); S.meta.nodes[nd.id] = TL(nd.id) + 1; n++;
     if (!all || n > 500) break;
   }
   if (!n) return;
-  calcTal(); D.dirty = true; save();
-  tone(523, .08, 'square', .04); tone(784, .12, 'square', .04, 0, .06);
-  renderTInfo(); drawTree();
+  calcTal();
+  // анимация: искры к детям, частицы, звук ступени
+  for (let i = 0; i < 18; i++) { const a = rnd() * 6.28, v = 20 + rnd() * 40; tParts.push({ x: nd.x, y: nd.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: .5 + rnd() * .3, c: rnd() < .5 ? nodeCol(nd) : '#ffffff' }); }
+  for (const ch of TN) if (ch.p === nd.id) tSparks.push({ a: nd.id, b: ch.id, t: 0, c: nodeCol(nd) });
+  const lv = Math.min(24, TL(nd.id)); tone(330 * Math.pow(2, lv / 12), .08, 'square', .045); tone(495 * Math.pow(2, lv / 12), .12, 'triangle', .04, 0, .06);
+  // рубежи и созвездия
+  TB.forEach((b, bi) => {
+    if (!b) return;
+    if (b.ms > before[bi][0]) { toast('РУБЕЖ ВЕТВИ «' + BRANCHES[bi].n.toUpperCase() + '»', b.pts + ' очков · вся ветвь ×' + b.bm.toFixed(2)); [523, 659, 784].forEach((f, i) => tone(f, .15, 'square', .04, 0, i * .08)); }
+    if (b.full && !before[bi][1]) {
+      toast('СОЗВЕЗДИЕ «' + BRANCHES[bi].n.toUpperCase() + '»!', 'ветвь заполнена: сила ×2 и все награды ×1.25');
+      for (const n2 of TN) if (n2.br === bi) for (let i = 0; i < 3; i++) tParts.push({ x: n2.x, y: n2.y, vx: (rnd() - .5) * 30, vy: (rnd() - .5) * 30, l: 1 + rnd(), c: '#ffe08a' });
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1));
+    }
+  });
+  refreshTree(); tAnim();
 }
-// управление: перетаскивание, щипок, тап по узлу
+function tAnim() {
+  if (tRaf) return;
+  let last = performance.now();
+  const step = now => {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    for (const p of tParts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .9; p.vy *= .9; p.l -= dt; }
+    tParts = tParts.filter(p => p.l > 0);
+    for (const sp of tSparks) sp.t += dt * 2.2; tSparks = tSparks.filter(sp => sp.t < 1);
+    drawTree();
+    if (!tree.hidden && (tParts.length || tSparks.length)) tRaf = requestAnimationFrame(step); else tRaf = 0;
+  };
+  tRaf = requestAnimationFrame(step);
+}
+function toggleBranch(bi) {
+  if (!startOfLife()) { toast('Сменить ветви можно в начале жизни', 'после перерождения, на 1-й зоне'); return; }
+  const a = S.meta.act;
+  if (a.includes(bi)) a.splice(a.indexOf(bi), 1);
+  else if (a.length < 3) a.push(bi); else { toast('Активны уже 3 ветви', 'сначала выключи одну из них'); return; }
+  refreshTree();
+}
+// управление: перетаскивание, щипок, тап по узлу или названию ветви
 const tPtr = new Map(); let tMoved = 0, tPinch = 0;
 tview.addEventListener('pointerdown', e => { tview.setPointerCapture(e.pointerId); tPtr.set(e.pointerId, { x: e.clientX, y: e.clientY }); tMoved = 0; if (tPtr.size === 2) { const [a, b] = [...tPtr.values()]; tPinch = Math.hypot(a.x - b.x, a.y - b.y); } });
 tview.addEventListener('pointermove', e => {
@@ -1530,13 +1756,15 @@ tview.addEventListener('pointermove', e => {
 const tUp = e => {
   const had = tPtr.has(e.pointerId); tPtr.delete(e.pointerId); if (tPtr.size < 2) tPinch = 0;
   if (!had || tMoved > 8 || tPtr.size) return;
-  const r = tview.getBoundingClientRect(), wx = (e.clientX - r.left - tW / 2) / cam.z + cam.x, wy = (e.clientY - r.top - tH / 2) / cam.z + cam.y;
+  const r = tview.getBoundingClientRect(), sx = e.clientX - r.left, sy2 = e.clientY - r.top;
+  const wx = (sx - tW / 2) / cam.z + cam.x, wy = (sy2 - tH / 2) / cam.z + cam.y;
+  for (let bi = 0; bi < BRANCHES.length; bi++) { const [lx, ly] = labelPos(bi), [x, y] = toScr(lx, ly); if (Math.abs(sx - x) < 60 && Math.abs(sy2 - y - 5) < 14) { toggleBranch(bi); return; } }
   let best = -1, bd = 1e9; for (const nd of TN) { const d = Math.hypot(nd.x - wx, nd.y - wy); if (d < bd) { bd = d; best = nd.id; } }
   if (best >= 0 && bd < nodeSize(TN[best]) * .9 + 6 / cam.z) { tSel = best; renderTInfo(); drawTree(); }
 };
 tview.addEventListener('pointerup', tUp); tview.addEventListener('pointercancel', e => { tPtr.delete(e.pointerId); tPinch = 0; });
 tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); drawTree(); }, { passive: false });
-setInterval(() => { if (!tree.hidden) drawTree(); }, 400);
+setInterval(() => { if (!tree.hidden && !tRaf) drawTree(); }, 400);
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
 
 /* ---------- сохранение и офлайн-прогресс ---------- */
@@ -1562,7 +1790,7 @@ function offline(sec) {
       if (readiness() >= 1) { S.zone++; S.zk = 0; continue; }
       k = Math.min(left, 150);          // стена: герой фармит, пока не станет готов
     } else k = Math.max(1, Math.min(left, zoneNeed() - S.zk));
-    const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1);
+    const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1) * (1 + ta('x_greed')) * Math.pow(1.25, TAL.constel || 0);
     const picks = Math.min(stats.length, 12);
     for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
     S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
