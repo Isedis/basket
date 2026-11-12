@@ -51,7 +51,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #panel.big{flex-basis:72%}
 #sum{cursor:pointer}
 #sum .more{color:var(--zone)}
-#pbig{margin-right:4px}
+#pbig,#updb{margin-right:4px}
+#updb.new{background:#2f8a4f;color:#fff;animation:glow 1s steps(2) infinite}
 #phead{padding:6px 8px 4px;flex:none}
 #sum{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
 #sum span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -182,7 +183,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><div id="toast"></div></div>
   <div id="panel">
     <div id="phead">
-      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog">▼</button></span></div>
+      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="updb" title="Обновить игру">⟳</button><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog">▼</button></span></div>
       <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
     </div>
     <div id="sum"></div>
@@ -223,6 +224,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 
 <script>
 'use strict';
+const BUILD = '20261112150253';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2617,6 +2619,29 @@ tview.addEventListener('pointerup', tUp); tview.addEventListener('pointercancel'
 tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); drawTree(); }, { passive: false });
 setInterval(() => { if (!tree.hidden && !tRaf) drawTree(); }, 400);
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
+
+/* ---------- обновление игры ---------- */
+// берём свежую страницу в обход кэша и сравниваем номер сборки
+async function latestBuild() {
+  const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('http ' + r.status);
+  const m = (await r.text()).match(/const BUILD = '(\d+)'/);
+  return m ? m[1] : null;
+}
+async function checkUpdate(manual) {
+  const b = $('updb');
+  try {
+    const nb = await latestBuild();
+    if (nb && nb !== BUILD) {
+      b.classList.add('new');
+      if (manual) { toast('ОБНОВЛЕНИЕ', 'сохраняю прогресс и загружаю новую версию…', 1500); save(true); setTimeout(() => location.replace(location.pathname + '?v=' + nb), 600); }
+      else feed('Есть обновление игры — нажми ⟳', '#5cff8a');
+    } else if (manual) toast('У ВАС ПОСЛЕДНЯЯ ВЕРСИЯ', 'сборка ' + BUILD);
+  } catch (e) { if (manual) toast('НЕ УДАЛОСЬ ПРОВЕРИТЬ', 'нет связи с сайтом — попробуй позже'); }
+}
+$('updb').onclick = () => checkUpdate(true);
+setInterval(() => { if (!document.hidden) checkUpdate(false); }, 5 * 60 * 1000);
+if (location.search.includes('v=')) try { history.replaceState(null, '', location.pathname); } catch (e) {}
 
 /* ---------- сохранение и офлайн-прогресс ---------- */
 // сохранение: в браузер (быстро) и в облако артефакта — личная ячейка игрока, переживает перезапуск
