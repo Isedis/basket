@@ -81,6 +81,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 .gh .gc{color:var(--dim);font-size:7px}
 .gh .gv{text-align:right;min-width:48px}
 .grp.fl .gh{background:#2c2346}
+.grp.lock .gh{opacity:.45;background:#14111c}
+.grp.lock .gv{color:var(--dim);font-size:7px}
 .grp.fl .gv{color:var(--good)}
 .gb .row{padding-left:18px}
 #info{margin:0 8px 6px;padding:7px 8px;border:2px solid #f2c94c;background:#1f1a2e;font-size:7px;line-height:1.8;flex:none;cursor:pointer;max-height:40%;overflow-y:auto}
@@ -2083,7 +2085,9 @@ function updateUI() {
     const e = g.e;
     g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
     g.fm.textContent = formName(e, F(e));
-    g.cnt.textContent = gcnt[e] || 0; g.val.textContent = fmt(D.T[e]);
+    const locked = !gcnt[e]; g.el.classList.toggle('lock', locked);
+    if (locked) { g.fm.textContent = EFF[e].d; g.cnt.textContent = '🔒'; g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
+    else { g.cnt.textContent = gcnt[e]; g.val.textContent = fmt(D.T[e]); }
     if (!!gfl[e] !== !!g.fl) { g.fl = !!gfl[e]; g.el.classList.toggle('fl', g.fl); }
   }
   if (formNew.length) {
@@ -2203,7 +2207,7 @@ function rebirth() {
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
-  calcTal(); checkUnlocks(true); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
+  calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
   flashT = .5; slowT = .6; shake = 10;
   toast('ПЕРЕРОЖДЕНИЕ #' + M.rebirths, '+' + fmt(g) + ' душ · открой дерево талантов');
@@ -2709,6 +2713,7 @@ calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
 if (!S.vals.length) { stats[0].v = 2; stats[1].v = 3; stats[2].v = 1; }
 checkUnlocks(true);
+for (let e = 0; e < NE; e++) groupOf(e);
 recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
 $('mute').textContent = '♪'; $('mute').style.opacity = S.mute ? .4 : 1; applyFx();
