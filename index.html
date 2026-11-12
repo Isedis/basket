@@ -50,6 +50,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #panel.small{flex-basis:92px}
 #phead{padding:6px 8px 4px;flex:none}
 #sum{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
+#sum span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sum span b{color:var(--text);font-weight:normal}
 #slist,#ylist,#dlist{overflow-y:auto;flex:1;min-height:0;padding:0 4px 8px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .row{display:grid;grid-template-columns:8px 1fr auto auto;gap:6px;align-items:center;padding:3px 4px;border-bottom:1px solid #201b30;font-size:8px}
@@ -2000,7 +2001,9 @@ function updateUI() {
   if (infoRef) renderInfo();
   $('sum').innerHTML =
     `<span>Удар <b>${fmt(D.hit * furyM())}</b></span><span>Ат/с <b>${D.aps.toFixed(2)}</b></span><span>Крит <b>${pct(D.crit)}</b></span><span>КритУ <b>×${fmt(D.critM)}</b></span>` +
-    `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>`;
+    `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>` +
+    `<span>HP <b>${fmt(D.maxHP)}</b></span><span>Рег/с <b>${fmt(D.maxHP * D.regen)}</b></span><span>Урон/с <b>${fmt(D.hit * D.aps * (1 + D.crit * (D.critM - 1)))}</b></span><span>Уб/с <b>${S.kps.toFixed(1)}</b></span>` +
+    `<span>Бег <b>${D.move.toFixed(0)}</b></span><span>Дальн <b>${({ arch: 48, mage: 40, necro: 32 }[cls()] || D.range).toFixed(0)}</b></span><span>Цели <b>${1 + (D.cleave || 0)}</b></span><span>Золото <b>${pct(D.rare)}</b></span>`;
 }
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'ЭФФ'; $('fxb').style.opacity = S.fxLow ? .45 : 1; }
