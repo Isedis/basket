@@ -308,7 +308,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112163446';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112163821';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -842,6 +842,7 @@ let flashT = 0, slowT = 0, decal = null, decalT = 0;
 let combo = 0, comboT = 0, comboPop = 0;
 let bossT = 0, bossCd = 0, forceBoss = false;
 const BOSS_TIME = 30;
+const prepT = () => Math.min(30, .02 * (S.meta.best || 1) ** 2);   // передышка перед вожаком: герой ещё качается, тап по шкале — сразу в бой
 const wallT = () => Math.min(300, 40 + 2 * (S.meta.best || 1));   // сколько вожак ждёт на стене: чем дальше рекорд, тем дольше жизнь
 let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
 function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
@@ -1640,7 +1641,7 @@ function giveBurst(total) {
 }
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
-  S.zone++; S.zk = 0; S.wallW = 0;
+  S.zone++; S.zk = 0; S.wallW = 0; S.prepW = 0;
   { const keys = Object.keys(ZMODS); S.zmod = S.zone >= 5 && !isLegend(S.zone) && rnd() < .4 ? keys[Math.floor(rnd() * keys.length)] : null; }
   S.meta.best = Math.max(S.meta.best, S.zone);
   if (S.zone >= 2) tip('souls', 'Души забега', 'За врагов и вожаков копятся души (✦ вверху справа). Когда герой падёт, он переродится в новом случайном классе, а души останутся навсегда — трать их в дереве талантов.');
@@ -2127,7 +2128,8 @@ function update(dt) {
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
   if (!bossAlive) S.wallW = (S.wallW || 0) + dt;   // время в зоне: вожак не ждёт вечно
-  if (!bossAlive && bossCd <= 0 && (S.wallW >= wallT() || (S.zk >= zoneNeed() && (D.ready >= 1 || forceBoss)))) { if (S.wallW >= wallT() && D.ready < 1 && !forceBoss) feed('Вожак устал ждать и пришёл сам!', '#ff6b6b'); forceBoss = false; S.wallW = 0; spawnMob(true); }
+  if (!bossAlive && S.zk >= zoneNeed()) S.prepW = (S.prepW || 0) + dt;
+  if (!bossAlive && bossCd <= 0 && (S.wallW >= wallT() || (S.zk >= zoneNeed() && (forceBoss || S.prepW >= prepT())))) { S.prepW = 0; if (S.zk < zoneNeed()) feed('Вожак устал ждать и пришёл сам!', '#ff6b6b'); forceBoss = false; S.wallW = 0; spawnMob(true); }
   if (bossAlive) {
     bossT -= dt;
     const bm = mobs.find(m => m.boss && !m.dead);
@@ -2651,18 +2653,12 @@ function updateUI() {
     if (can) tip('fast', 'Ускорение ×2', 'Эту зону ты уже проходил: кнопка ×2 справа вверху ускоряет игру, пока не дойдёшь до рекорда (' + S.meta.best + ').');
     if (!can && S.fast) { S.fast = false; feed('Рекорд зоны — скорость снова ×1', '#5cff8a'); } }
   if (time > dsT) { dsT = time + 1; renderDS(); }
-  if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
   $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
-  else if (S.zk >= need) {
-    const rd = D.ready;
-    zbarI.style.width = Math.min(100, rd * 100) + '%'; zbarI.style.background = rd >= 1 ? '#5cff8a' : '#ff9a3c';
-    zbarB.textContent = bossCd > 0 ? 'ПЕРЕДЫШКА ' + Math.ceil(bossCd) + 'с · готовность ' + Math.floor(Math.min(9.99, rd) * 100) + '%'
-      : rd >= 1 ? 'ВОЖАК ИДЁТ!' : 'ГОТОВНОСТЬ ' + Math.floor(rd * 100) + '% · вожак через ' + Math.max(0, Math.ceil(wallT() - (S.wallW || 0))) + 'с';
-  }
+  else if (S.zk >= need) { zbarI.style.width = '100%'; zbarI.style.background = '#ff9a3c'; zbarB.textContent = 'ВОЖАК ЧЕРЕЗ ' + Math.max(0, Math.ceil(Math.max(bossCd, prepT() - (S.prepW || 0)))) + 'с · ТАП = БОЙ'; }
   else { zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = '#7a5cff'; const wl = Math.ceil(wallT() - (S.wallW || 0)); zbarB.textContent = S.zk + ' / ' + need + (wl < 30 ? ' · вожак через ' + Math.max(0, wl) + 'с' : ''); }
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
@@ -3377,7 +3373,7 @@ $('helpb').onclick = () => {
     'Подписи у эффектов («Огненное кольцо», «Метеор»…) — это твои таланты и формы<br>Полоска «Урон» в панели — откуда идёт урон<br><br>' +
     '<b style="color:#ff88ff">ВНИЗУ ЭКРАНА</b><br>' + sw('#a04cc0') + 'Полоса ульты: заполнена — тапни куда угодно<br>' +
     'Слева — лента событий, справа — комбо (множитель наград)<br><br>' +
-    '<b style="color:#f2c94c">ВВЕРХУ</b><br>Шкала зоны: убийства до вожака, потом готовность к нему. Тап по ней — вызвать вожака';
+    '<b style="color:#f2c94c">ВВЕРХУ</b><br>Шкала зоны: убийства до вожака. Заполнилась — через короткую передышку приходит вожак (тап по шкале — сразу). Если долго не можешь заполнить, вожак придёт сам';
   $('mok').textContent = 'ПОНЯТНО'; $('modal').hidden = false;
 };
 
