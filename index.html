@@ -638,9 +638,17 @@ BRANCHES.forEach((b, bi) => {
     TN[ids[0]].alt = ids[1]; TN[ids[1]].alt = ids[0];
   });
 });
+// узлы автоматики у корня дерева (добавлены в конец — id старых узлов не меняются)
+const AUTO_NODES = [['chest', 'Авто-сундуки', 3], ['up', 'Авто-улучшение', 5], ['tal', 'Авто-таланты', 10], ['reb', 'Авто-перерождение', 20]];
+AUTO_NODES.forEach(([k, n, cost], i) => {
+  const a = (i * 2) / 8 * Math.PI * 2 - Math.PI / 2 + Math.PI / 8;
+  TK['auto_' + k] = [n, 1, () => 'открывает автоматику «' + n + '»'];
+  TN.push({ id: TN.length, br: -1, k: 'auto_' + k, p: 0, x: Math.cos(a) * 26, y: Math.sin(a) * 26, d: 1, v: 1, max: 1, n, auto: k, fixed: cost });
+});
+const autoOpen = k => (S.meta.nodes[TN.find(nd => nd.auto === k).id] || 0) > 0;
 const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
-const tCost = (nd, l) => Math.ceil((nd.max ? 5 : 1) * (1 + nd.d * .35) * Math.pow(1.45, l));
+const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((nd.max ? 5 : 1) * (1 + nd.d * .35) * Math.pow(1.45, l));
 const brActive = bi => bi < 0 || (S.meta.act || []).includes(bi);
 const startOfLife = () => S.zone <= 1 && S.kills < 200;
 let TAL = {}, TB = [], KSL = [];
@@ -2024,15 +2032,18 @@ const AUTO = {
   up: { n: 'Авто-улучшение', d: 'пыль сама тратится на улучшение надетых вещей' },
   reb: { n: 'Авто-перерождение', d: 'если герой упёрся в стену на 90с после 30-й зоны' },
 };
-const au = k => { if (!S.meta.auto) S.meta.auto = { tal: true, chest: true, up: true, reb: false }; return S.meta.auto[k]; };
+const au = k => { if (!S.meta.auto) S.meta.auto = { tal: true, chest: true, up: true, reb: false }; return S.meta.auto[k] && autoOpen(k); };
 function renderAuto() {
-  const ah = Object.keys(AUTO).map(k => `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`).join('');
+  au('chest');
+  const ah = Object.keys(AUTO).map(k => { const nd = TN.find(n => n.auto === k);
+    if (!autoOpen(k)) return `<div class="aut" data-t="${nd.id}" style="opacity:.6"><i style="background:#3a3450"></i><div>🔒 ${AUTO[k].n}<small>открывается в дереве талантов · ${nd.fixed} душ (тап — открыть дерево)</small></div></div>`;
+    return `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`; }).join('');
   if (ah !== renderAuto.a) { renderAuto.a = ah; $('autobox').innerHTML = ah; }
   const ch = Object.keys(CLASSES).map(k => `<div class="cls${cls() === k ? ' on' : ''}${!canPickClass() && cls() !== k ? ' lock' : ''}" data-c="${k}"><div><b style="color:${CLASSES[k].c}">${CLASSES[k].n}</b>${CLASSES[k].d}</div></div>`).join('') +
     (canPickClass() ? '' : '<div style="grid-column:1/-1;font-size:7px;color:var(--dim)">Сменить класс можно в начале новой жизни (после перерождения)</div>');
   if (ch !== renderAuto.c) { renderAuto.c = ch; $('clsbox').innerHTML = ch; }
 }
-$('autobox').onclick = e => { const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
+$('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) { tSel = +lk.dataset.t; openTree(); return; } const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
 $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (el) setClass(el.dataset.c); };
 let autoT = 0;
 function runAuto() {
@@ -2297,16 +2308,17 @@ const ICONS = {
   crown: ['#.#.#', '#####', '#####', '#####', '.....'], spike: ['#.#.#', '.###.', '#####', '.###.', '#.#.#'],
   fist: ['.###.', '#####', '#####', '.####', '..##.'], cond: ['..#..', '..#..', '..#..', '.....', '..#..'],
   swap: ['.#...', '#####', '.#.#.', '#####', '...#.'],
+  gear: ['.#.#.', '#####', '##.##', '#####', '.#.#.'],
 };
 const ICON_OF = { hit: 'sword', e_dmg: 'sword', e_critd: 'sword', e_crit: 'eye', e_power: 'fist', e_fury: 'fist', hp: 'heart', e_armor: 'shield', e_regen: 'heart', e_dodge: 'wing',
   e_vamp: 'drop', e_thorns: 'spike', e_fire: 'flame', e_shock: 'bolt', e_poison: 'drop', e_range: 'sword', e_cleave: 'sword', e_aspd: 'wing', e_move: 'wing',
   crowd: 'skull', spawn: 'clock', combo_t: 'clock', combo_m: 'star', e_luck: 'clover', rare: 'clover', elite: 'crown', gain: 'crown', e_wis: 'book',
   tap: 'hand', weak: 'eye', ultc: 'star', ultd: 'star', boss_t: 'clock', bossdmg: 'skull', unlock: 'book', evo: 'book', form: 'book', offline: 'clock',
   soul: 'skull', legacy: 'skull' };
-const iconOf = k => k.startsWith('ks') ? 'star' : k.startsWith('c_') ? 'cond' : k.startsWith('x_') ? 'swap' : ICON_OF[k] || 'star';
+const iconOf = k => k.startsWith('auto') ? 'gear' : k.startsWith('ks') ? 'star' : k.startsWith('c_') ? 'cond' : k.startsWith('x_') ? 'swap' : ICON_OF[k] || 'star';
 const nodeSize = nd => nd.id === 0 ? 16 : nd.max ? 14 : nd.alt != null ? 11 : 10;
 const toScr = (x, y) => [(x - cam.x) * cam.z + tW / 2, (y - cam.y) * cam.z + tH / 2];
-const nodeCol = nd => nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff';
+const nodeCol = nd => nd.auto ? '#4fd6e8' : nd.br >= 0 ? BRANCHES[nd.br].c : '#ff44ff';
 const labelPos = bi => { const nd = TN[BRANCHES[bi].main[12]]; return [nd.x * 1.13, nd.y * 1.13]; };
 const nodeBlocked = nd => nd.alt != null && TL(nd.alt) > 0;
 function canBuy(nd) {
@@ -2403,7 +2415,7 @@ function renderTInfo() {
   else if (nodeBlocked(nd)) warn = `Выбран «${TN[nd.alt].n}». Поменять можно в начале новой жизни`;
   else if (!brActive(nd.br) && (S.meta.act || []).length >= 3) warn = 'Уже активны 3 ветви. Сменить набор можно в начале жизни';
   $('tinfo').innerHTML = `<h3 style="color:${col}">${nd.n}${ks ? ' ★' : ''}${nd.alt != null ? ' <span style="color:#f2c94c">⇄ ВЫБОР</span>' : ''}</h3>` +
-    `<span class="k">${tb ? `Ветвь «${BRANCHES[nd.br].n}»: ${tb.pts} очк. · сила ×${bm.toFixed(2)} · ${tb.have}/${tb.n} узлов${tb.full ? ' · созвездие ✦' : ''}` : 'Корень дерева'} · ур. ${l}${nd.max ? '/' + nd.max : ''}</span><br>` +
+    `<span class="k">${tb ? `Ветвь «${BRANCHES[nd.br].n}»: ${tb.pts} очк. · сила ×${bm.toFixed(2)} · ${tb.have}/${tb.n} узлов${tb.full ? ' · созвездие ✦' : ''}` : nd.auto ? 'Автоматика · ' + AUTO[nd.auto].d : 'Корень дерева'} · ур. ${l}${nd.max ? '/' + nd.max : ''}</span><br>` +
     (nd.alt != null ? `<span class="k">или «${TN[nd.alt].n}» — только один из двух</span><br>` : '') +
     `<span class="k">Сейчас:</span> ${l ? d(nd.v * l * mul) : '—'}<br>` +
     (maxed ? '<span class="k">Максимальный уровень</span>' : `<span class="k">След.:</span> ${d(nd.v * (l + 1) * mul)}<br>`) +
@@ -2441,6 +2453,7 @@ function buyNode(nd, all) {
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1));
     }
   });
+  if (nd.auto) { toast('АВТОМАТИКА ОТКРЫТА', AUTO[nd.auto].n + ' — включается во вкладке ДУШИ'); if (S.meta.auto) S.meta.auto[nd.auto] = nd.auto !== 'reb'; }
   refreshTree(); tAnim();
 }
 function tAnim() {
