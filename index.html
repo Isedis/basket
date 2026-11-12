@@ -265,7 +265,7 @@ html,body{font-size:10px}
       <div id="clsbox"></div>
       <div class="gsec" style="margin-top:14px">АВТОМАТИКА <span>меньше тыкать</span></div>
       <div id="autobox"></div>
-      <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Когда герой падает (HP 0), он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
+      <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Обычные враги доводят только до изнеможения, а вожак может убить. Если долго не проходишь зону, вожак приходит сам. Когда герой падает, он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
     </div>
   </div>
   <div id="settings" class="sheet">
@@ -306,7 +306,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112155458';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112161233';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -800,7 +800,7 @@ const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
 const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper')));   // корень: души не разгоняются снежным комом
-const bossSouls = z => (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
+const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
   S.runSf -= n; S.runSouls = (S.runSouls || 0) + n;
@@ -816,7 +816,8 @@ let bossAlive = false, shake = 0, time = 0, tapCd = 0;
 let flashT = 0, slowT = 0, decal = null, decalT = 0;
 let combo = 0, comboT = 0, comboPop = 0;
 let bossT = 0, bossCd = 0, forceBoss = false;
-const BOSS_TIME = 30, WALL_T = 60;   // WALL_T: сколько вожак ждёт, пока герой качается на стене
+const BOSS_TIME = 30;
+const wallT = () => Math.min(300, 40 + 2 * (S.meta.best || 1));   // сколько вожак ждёт на стене: чем дальше рекорд, тем дольше жизнь
 let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
 function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
 function retreat(b, why) {
@@ -1074,11 +1075,11 @@ let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 // рост зоны: в начале круче (герой растёт взрывно), дальше ×1.5 за зону
 const zl = [0];
 function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
-// враги крепнут всё быстрее: к квадрату зоны, а после 50-й — несоизмеримо (стена мира)
-let ZQ = .0125, ZW = 49, ZWK = 25;
-const zoneX = z => ZQ * z * z + ZWK * Math.max(0, z - ZW) ** 2;   // доп. порядки силы врагов
+// враги крепнут всё быстрее: по кубу зоны, а после 50-й — несоизмеримо (стена мира)
+let ZQ = .006, ZC = .0004, ZW = 49, ZWK = 25;
+const zoneX = z => ZQ * z * z + ZC * z * z * z + ZWK * Math.max(0, z - ZW) ** 2;   // доп. порядки силы врагов
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
-const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + zoneX(z));
+const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
@@ -1460,6 +1461,7 @@ function hurtHero(dmg) {
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; hero.hurt = .1;
+  if (hero.hp <= 0 && !bossAlive) hero.hp = 1;   // обычные враги доводят до изнеможения, убить может только вожак
   if (hero.hp <= 0) {
     if (au('reb') && !S.second) { S.second = true; hero.hp = D.maxHP * .5; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'ВТОРОЙ ШАНС!', '#ff44ff', 1.2, 1.2); ring(hero.x, hero.y - 4, 20, '#ff44ff'); flashT = .1; }
     else heroDeath();
@@ -1902,15 +1904,15 @@ function update(dt) {
   if (spawnT <= 0 && mobs.length < want) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .1 : .3) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
-  if (!bossAlive && S.zk >= zoneNeed()) S.wallW = (S.wallW || 0) + dt;
-  if (!bossAlive && S.zk >= zoneNeed() && bossCd <= 0 && (D.ready >= 1 || forceBoss || S.wallW >= WALL_T)) { if (S.wallW >= WALL_T && D.ready < 1 && !forceBoss) feed('Вожак устал ждать и пришёл сам!', '#ff6b6b'); forceBoss = false; S.wallW = 0; spawnMob(true); }
+  if (!bossAlive) S.wallW = (S.wallW || 0) + dt;   // время в зоне: вожак не ждёт вечно
+  if (!bossAlive && bossCd <= 0 && (S.wallW >= wallT() || (S.zk >= zoneNeed() && (D.ready >= 1 || forceBoss)))) { if (S.wallW >= wallT() && D.ready < 1 && !forceBoss) feed('Вожак устал ждать и пришёл сам!', '#ff6b6b'); forceBoss = false; S.wallW = 0; spawnMob(true); }
   if (bossAlive) {
     bossT -= dt;
     const bm = mobs.find(m => m.boss && !m.dead);
     if (bm) { bm.ws.t -= dt; if (bm.ws.t <= 0) moveWS(bm); }
     if (bm && bossT <= 0) {   // время вышло: вожак впадает в ярость, пока кто-то не падёт
-      bossT = 8; bm.dm *= 3; bm.enr = (bm.enr || 0) + 1; shake = 8; flashT = .1;
-      toast('ЯРОСТЬ ВОЖАКА ×' + Math.pow(3, bm.enr), 'добей его, пока он не добил тебя!', 1800); sfx.boss();
+      bossT = 5; bm.dm *= 10; bm.sp = Math.max(bm.sp, 30); bm.enr = (bm.enr || 0) + 1; shake = 8; flashT = .1;
+      toast('ЯРОСТЬ ВОЖАКА ×' + fmt(Math.pow(10, bm.enr)), 'добей его, пока он не добил тебя!', 1800); sfx.boss();
     }
   }
   for (const m of mobs) if (m.ws && !m.boss) { m.ws.t -= dt; if (m.ws.t <= 0) moveWS(m); }
@@ -2439,9 +2441,9 @@ function updateUI() {
     const rd = D.ready;
     zbarI.style.width = Math.min(100, rd * 100) + '%'; zbarI.style.background = rd >= 1 ? '#5cff8a' : '#ff9a3c';
     zbarB.textContent = bossCd > 0 ? 'ПЕРЕДЫШКА ' + Math.ceil(bossCd) + 'с · готовность ' + Math.floor(Math.min(9.99, rd) * 100) + '%'
-      : rd >= 1 ? 'ВОЖАК ИДЁТ!' : 'ГОТОВНОСТЬ ' + Math.floor(rd * 100) + '% · вожак через ' + Math.max(0, Math.ceil(WALL_T - (S.wallW || 0))) + 'с';
+      : rd >= 1 ? 'ВОЖАК ИДЁТ!' : 'ГОТОВНОСТЬ ' + Math.floor(rd * 100) + '% · вожак через ' + Math.max(0, Math.ceil(wallT() - (S.wallW || 0))) + 'с';
   }
-  else { zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = '#7a5cff'; zbarB.textContent = S.zk + ' / ' + need; }
+  else { zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = '#7a5cff'; const wl = Math.ceil(wallT() - (S.wallW || 0)); zbarB.textContent = S.zk + ' / ' + need + (wl < 30 ? ' · вожак через ' + Math.max(0, wl) + 'с' : ''); }
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
   hpB.textContent = 'HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
