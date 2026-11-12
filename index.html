@@ -47,7 +47,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #phead{padding:6px 8px 4px;flex:none}
 #sum{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
 #sum span b{color:var(--text);font-weight:normal}
-#slist{overflow-y:auto;flex:1;min-height:0;padding:0 4px 8px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#slist,#ylist{overflow-y:auto;flex:1;min-height:0;padding:0 4px 8px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .row{display:grid;grid-template-columns:8px 1fr auto auto;gap:6px;align-items:center;padding:3px 4px;border-bottom:1px solid #201b30;font-size:8px}
 .row i{width:8px;height:8px;display:block;border:1px solid #000}
 .row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -57,6 +57,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 .row.fl .val{color:var(--good)}
 .row.new{animation:nw 1.2s steps(6)}
 @keyframes nw{0%,50%{background:#f2c94c;color:#000}100%{background:transparent}}
+[hidden]{display:none!important}
+.tab{font:inherit;font-size:8px;color:var(--dim);background:none;border:0;padding:2px 0;cursor:pointer}
+.tab.on{color:var(--text);text-decoration:underline;text-underline-offset:3px}
+.tab b{color:var(--zone);font-weight:normal}
+.syn{padding:5px 4px;border-bottom:1px solid #201b30;font-size:8px}
+.syn .sd{font-size:7px;color:var(--dim);margin-top:3px;white-space:normal;line-height:1.6}
+.syn.lk{opacity:.55}
 #modal{position:fixed;inset:0;background:rgba(5,4,10,.86);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #modal[hidden]{display:none}
 #mbox{background:var(--panel);border:3px solid #f2c94c;padding:14px;max-width:340px;width:100%;text-align:center;line-height:1.9}
@@ -76,11 +83,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><div id="toast"></div></div>
   <div id="panel">
     <div id="phead">
-      <div class="r"><span>СТАТЫ: <b id="scount" style="color:var(--zone);font-weight:normal">3</b></span><span id="snext" style="color:var(--dim)"></span><button class="btn" id="ptog">▼</button></div>
-      <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#5cff8a"></i></div>
+      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button></span><button class="btn" id="ptog">▼</button></div>
+      <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
     </div>
     <div id="sum"></div>
     <div id="slist"></div>
+    <div id="ylist" hidden></div>
   </div>
 </div>
 <div id="modal" hidden><div id="mbox"><h2 id="mt"></h2><p id="mp"></p><button class="btn" id="mok">В БОЙ!</button></div></div>
@@ -165,12 +173,74 @@ const NPAIR = NOUNS.length * GENS.length;
 
 function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return (n ^ (n >>> 15)) >>> 0; }
 function makeStat(n) {
-  if (n < NE) return { n, name: EFF[n].n, e: n, w: 1, v: 0, g: 0, at: 0 };
-  const i = n - NE;
-  const p = (i * 7919) % NPAIR, tier = Math.floor(i / NPAIR);
-  const name = NOUNS[p % NOUNS.length] + ' ' + GENS[Math.floor(p / NOUNS.length)] + (tier ? ' ' + roman(tier + 1) : '');
-  return { n, name, e: hash(i + 7) % NE, w: Math.pow(1.5, i / 10 + 1), v: 0, g: 0, at: 0 };
+  let bn, e, w0;
+  if (n < NE) { bn = EFF[n].n; e = n; w0 = 1; }
+  else {
+    const i = n - NE;
+    const p = (i * 7919) % NPAIR, tier = Math.floor(i / NPAIR);
+    bn = NOUNS[p % NOUNS.length] + ' ' + GENS[Math.floor(p / NOUNS.length)] + (tier ? ' (' + (tier + 1) + ')' : '');
+    e = hash(i + 7) % NE; w0 = Math.pow(1.5, i / 10 + 1);
+  }
+  const s = { n, bn, e, w0, lvl: 0, v: 0, g: 0, at: 0 }; setLvl(s, 0); return s;
 }
+// эволюция: стат перерастает порог и превращается в более сильную версию (вес ×4)
+function setLvl(s, l) { s.lvl = l; s.w = s.w0 * Math.pow(4, l); s.name = s.bn + (l ? ' ' + roman(l + 1) : ''); }
+const evoAt = s => 1000 * Math.pow(1000, s.lvl);
+let evoToastT = 0;
+function tryEvolve(s, silent) {
+  let up = 0; while (s.v >= evoAt(s)) { setLvl(s, s.lvl + 1); up++; }
+  if (!up) return 0;
+  D.dirty = true;
+  if (s.el) { s.el.children[1].textContent = s.name; s.el.children[2].textContent = '×' + fmt(s.w); s.el.classList.remove('new'); void s.el.offsetWidth; s.el.classList.add('new'); }
+  if (!silent) { ftext(hero.x, hero.y - 16, 'ЭВОЛЮЦИЯ: ' + s.name, EFF[s.e].c, .9, 1.4); }
+  if (!silent && performance.now() > evoToastT) { evoToastT = performance.now() + 6000; toast('ЭВОЛЮЦИЯ!', s.bn + ' → ' + s.name + ' (вес ×' + fmt(s.w) + ')'); sfx.evo(); flashT = Math.max(flashT, .08); burst(hero.x, hero.y - 4, EFF[s.e].c, 24, 45); }
+  return up;
+}
+
+/* ---------- синергии ---------- */
+const SYN = [
+  { n: 'Плазма',          a: 'fire',  b: 'shock',  d: 'взрывы бьют молниями' },
+  { n: 'Чума',            a: 'poison',b: 'cleave', d: 'яд перекидывается на соседей' },
+  { n: 'Кровавая жатва',  a: 'vamp',  b: 'crit',   d: 'криты лечат и бьют сильнее' },
+  { n: 'Крепость',        a: 'armor', b: 'thorns', d: 'шипы сильнее и бьют вокруг' },
+  { n: 'Ураган',          a: 'aspd',  b: 'move',   d: '+15% скорости атаки за уровень' },
+  { n: 'Фортуна',         a: 'luck',  b: 'wis',    d: 'редкие враги чаще и щедрее' },
+  { n: 'Берсерк',         a: 'fury',  b: 'power',  d: 'ярость намного сильнее' },
+  { n: 'Бессмертие',      a: 'regen', b: 'hp',     d: '+50% регенерации за уровень' },
+  { n: 'Танец теней',     a: 'dodge', b: 'move',   d: 'уворот даёт контрудар' },
+  { n: 'Гроза',           a: 'shock', b: 'range',  d: 'цепь молний длиннее' },
+  { n: 'Огненный шторм',  a: 'fire',  b: 'range',  d: 'радиус взрывов больше' },
+  { n: 'Палач',           a: 'critd', b: 'dmg',    d: '+50% силы крита за уровень' },
+].map(y => ({ ...y, a: EFF.findIndex(e => e.k === y.a), b: EFF.findIndex(e => e.k === y.b) }));
+const SYN_TH = 50;
+let synNew = [];
+const sy = i => (S.syn && S.syn[i]) || 0;
+function updSyn(R) {
+  if (!S.syn) S.syn = [];
+  SYN.forEach((y, i) => {
+    const m = Math.min(R[EFF[y.a].k], R[EFF[y.b].k]);
+    const l = m >= SYN_TH ? Math.floor(Math.log10(m / SYN_TH) / 2) + 1 : 0;
+    const was = S.syn[i] || 0;
+    if (l > was) { S.syn[i] = l; synNew.push([i, was]); }   // уровень синергии никогда не падает
+  });
+}
+
+/* ---------- аффиксы мобов ---------- */
+const AFF = [
+  { n: 'Бронированный', c: '#aabbcc' }, { n: 'Быстрый', c: '#66ccff' }, { n: 'Взрывной', c: '#ff6622' }, { n: 'Вампир', c: '#cc2244' },
+  { n: 'Делящийся', c: '#88ee22' }, { n: 'Гигант', c: '#ffdd44' }, { n: 'Регенерирующий', c: '#44ee66' }, { n: 'Призрачный', c: '#bb88ff' },
+];
+const popc = a => { let c = 0; while (a) { c += a & 1; a >>= 1; } return c; };
+function rollAff(boss) {
+  const max = Math.min(AFF.length, 1 + Math.floor(S.zone / 8));
+  let n = 0;
+  if (boss) n = S.zone < 6 ? 0 : Math.min(max, Math.floor(S.zone / 12) + 1);
+  else { const p = Math.min(.85, .08 + S.zone * .012); while (n < max && rnd() < p) n++; }
+  let af = 0, guard = 0;
+  while (popc(af) < n && guard++ < 50) { const i = Math.floor(rnd() * AFF.length); if (boss && i === 5) continue; af |= 1 << i; }
+  return af;
+}
+const affNames = af => AFF.filter((a, i) => af >> i & 1).map(a => a.n).join(', ');
 const unlockKills = n => n < 3 ? 0 : Math.round(6 * Math.pow(n - 2, 1.6));
 
 /* ---------- биомы ---------- */
@@ -243,6 +313,11 @@ let D = {};          // производные значения
 const hero = { x: 50, y: 60, hp: 50, face: 1, cd: 0, swing: 0, swingA: 0, hurt: 0, tx: 0, ty: 0 };
 let mobs = [], parts = [], texts = [], bolts = [];
 let bossAlive = false, shake = 0, time = 0, tapCd = 0;
+let flashT = 0, slowT = 0, decal = null, decalT = 0;
+let combo = 0, comboT = 0, comboPop = 0;
+const COMBO_T = 2.5;
+const comboM = () => 1 + .25 * Math.log2(1 + combo / 5);
+const COMBO_MS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
 function zs() { return Math.pow(1.08, S.zone - 1); }
 function zoneNeed() { return 12 + S.zone * 2; }
@@ -252,29 +327,30 @@ function recalc() {
   for (const s of stats) T[s.e] += s.v * s.w;
   const z = zs(), r = i => T[i] / z;
   const R = {}; EFF.forEach((e, i) => R[e.k] = r(i));
+  updSyn(R);
   D.T = T; D.R = R;
   D.maxHP = 50 + 8 * T[1];
-  let aps = 1.2 * (1 + 0.7 * lg(R.aspd));
+  let aps = 1.2 * (1 + 0.7 * lg(R.aspd)) * (1 + .15 * sy(4));
   let over = 1; if (aps > 10) { over = aps / 10; aps = 10; }
   D.aps = aps;
   D.power = 1 + lg(R.power);
   D.hit = (4 + T[0]) * D.power * over;
   D.crit = 0.05 + 0.7 * sat(R.crit, 40);
-  D.critM = 2 + Math.log2(1 + R.critd / 5);
+  D.critM = (2 + Math.log2(1 + R.critd / 5)) * (1 + .5 * sy(11));
   D.vamp = 0.07 * sat(R.vamp, 60);
-  D.regen = 0.02 + 0.07 * sat(R.regen, 60);
+  D.regen = (0.02 + 0.07 * sat(R.regen, 60)) * (1 + .5 * sy(7));
   D.armor = 0.9 * sat(R.armor, 80);
   D.dodge = 0.6 * sat(R.dodge, 120);
-  D.rare = 0.02 + 0.06 * sat(R.luck, 100);
+  D.rare = 0.02 + 0.06 * sat(R.luck, 100) + Math.min(.1, .01 * sy(5));
   D.gainMult = (1 + 0.6 * lg(R.wis)) * (1 + 0.4 * lg(R.luck));
   D.move = 22 * (1 + 0.4 * lg(R.move));
   D.range = Math.min(40, 8 + 5 * lg(R.range));
   D.cleave = Math.floor(Math.log2(1 + R.cleave / 15));
-  D.fire = 0.6 * sat(R.fire, 80); D.fireR = 6 + 3 * lg(R.fire);
+  D.fire = 0.6 * sat(R.fire, 80); D.fireR = Math.min(34, (6 + 3 * lg(R.fire)) * (1 + .3 * sy(10)));
   D.poison = 0.8 * sat(R.poison, 80);
-  D.shock = 0.5 * sat(R.shock, 100);
-  D.thorns = 1.5 * sat(R.thorns, 80);
-  D.furyK = 2 * sat(R.fury, 50);
+  D.shock = Math.min(.85, 0.5 * sat(R.shock, 100) + .05 * sy(9)); D.chain = 3 + 2 * sy(9);
+  D.thorns = 1.5 * sat(R.thorns, 80) * (1 + 2 * sy(3));
+  D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
 const exMult = () => S.hpf >= .35 ? 1 : .3 + .7 * S.hpf / .35;
@@ -296,6 +372,7 @@ function checkUnlocks(silent) {
   while (unlockKills(stats.length) <= S.kills) {
     const s = makeStat(stats.length);
     if (S.vals[s.n] !== undefined) s.v = S.vals[s.n];
+    if (S.lv && S.lv[s.n]) setLvl(s, S.lv[s.n]);
     stats.push(s); addStatRow(s, !silent); added++;
     if (!silent && added <= 2) { toast('НОВЫЙ СТАТ!', `${s.name} → ${EFF[s.e].n}${s.w > 1 ? ' ×' + fmt(s.w) : ''}`); sfx.unlock(); }
   }
@@ -336,6 +413,7 @@ function buildGround() {
     const x = sr() * W | 0, y = sr() * H | 0; g.fillStyle = b.g[2];
     g.fillRect(x, y, 1, 1); if (sr() < .5) { g.fillRect(x - 1, y + 1, 1, 1); g.fillRect(x + 1, y + 1, 1, 1); }
   }
+  decal = document.createElement('canvas'); decal.width = W; decal.height = H;
   for (let i = 0; i < W * H * .002; i++) {
     const x = sr() * W | 0, y = sr() * H | 0; g.fillStyle = shade(b.g[1], -.3);
     g.fillRect(x, y, 2, 2); g.fillStyle = shade(b.g[2], .2); g.fillRect(x, y, 1, 1);
@@ -366,6 +444,11 @@ const sfx = {
   unlock: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .12, 'square', .04, 0, i * .07)),
   boss: () => [196, 185, 175, 165].forEach((f, i) => tone(f, .22, 'sawtooth', .04, 0, i * .18)),
   zone: () => [392, 523, 659, 784, 659, 1047].forEach((f, i) => tone(f, .14, 'square', .045, 0, i * .09)),
+  evo: () => [262, 392, 523, 784, 1047, 1568].forEach((f, i) => tone(f, .1, 'triangle', .06, 0, i * .05)),
+  syn: () => { [523, 659, 784].forEach(f => tone(f, .5, 'square', .025)); [1047, 1319].forEach((f, i) => tone(f, .3, 'triangle', .04, 0, .25 + i * .1)); },
+  combo: () => [880, 1175].forEach((f, i) => tone(f, .07, 'square', .035, 0, i * .05)),
+  ultra: () => { tone(1400, .25, 'sawtooth', .05, 60); tone(90, .3, 'square', .05, 40); },
+  boom: () => tone(140, .22, 'sawtooth', .05, 35, 0, 'boom', .08),
 };
 
 /* ---------- UI-уведомления ---------- */
@@ -398,16 +481,42 @@ function spawnMob(boss) {
   if (side === 0) { x = rnd() * W; y = -6; } else if (side === 1) { x = W + 6; y = rnd() * H; }
   else if (side === 2) { x = rnd() * W; y = H + 6; } else { x = -6; y = rnd() * H; }
   const rare = !boss && rnd() < D.rare;
-  const hp = D.hit * (.8 + rnd() * 1.4) * (1 + Math.min(1.5, S.zone / 15)) * (1 + D.crit * (D.critM - 1) * .5) * M.hp * (rare ? 3 : 1) * (boss ? 8 + Math.min(20, S.zone) : 1);
-  mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : 1,
-    sp: 14 * M.s * (boss ? .7 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 : 1) * (rare ? 1.5 : 1),
+  const af = rollAff(boss), na = popc(af);
+  const hp = D.hit * (.8 + rnd() * 1.4) * (1 + Math.min(1.5, S.zone / 15)) * (1 + D.crit * (D.critM - 1) * .5) * M.hp * (rare ? 3 : 1) * (boss ? 8 + Math.min(20, S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1);
+  mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
+    sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
-  if (boss) { bossAlive = true; toast('ВОЖАК: ' + M.n.toUpperCase() + '!', 'Убей его, чтобы пройти дальше'); sfx.boss(); shake = 6; }
+  if (boss) { bossAlive = true; toast('ВОЖАК: ' + M.n.toUpperCase() + '!', na ? affNames(af) : 'Убей его, чтобы пройти дальше'); sfx.boss(); shake = 6; }
+}
+function spawnMini(m) {
+  for (let i = 0; i < 2; i++) {
+    const hp = m.max * .3;
+    mobs.push({ t: m.t, x: m.x + (rnd() - .5) * 6, y: m.y + (rnd() - .5) * 4, h: m.h, hp, max: hp, rare: false, boss: false, sz: .75, af: 0, na: 0, mini: true,
+      sp: m.sp * 1.2, dm: m.dm * .4, cd: .8, fl: 0, kx: (rnd() - .5) * 70, ky: (rnd() - .5) * 70, psn: 0, psnT: 0, dead: false });
+  }
+}
+function explode(m) {
+  const r = 14 * Math.max(1, m.sz);
+  burst(m.x, m.y - 3, '#ff6622', 26, 55); burst(m.x, m.y - 3, '#ffdd44', 12, 40);
+  shake = Math.max(shake, 4); sfx.boom();
+  for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < r) hitMob(o, D.hit * 1.5, false, false, '#ff6622');
+  if (Math.hypot(hero.x - m.x, hero.y - m.y) < r && rnd() >= D.dodge) {
+    const dmg = 2.2 * zs() * S.pressure * m.dm * 1.5 * (1 - D.armor);
+    hero.hp = Math.max(1, hero.hp - dmg); hero.hurt = .15; ftext(hero.x, hero.y - 10, '-' + fmt(dmg), '#ff6622', .9, .7);
+  }
+}
+function splat(m) {
+  const g = decal.getContext('2d'), n = m.boss ? 40 : 8 * m.sz;
+  g.fillStyle = shade(m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48), -.45);
+  for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
+  g.globalAlpha = 1;
 }
 function crowd() { return Math.min(4 + Math.floor(S.zone / 2), 36); }
 
 function hitMob(m, dmg, crit, show, col) {
   if (m.dead) return;
+  if (m.af & 128 && rnd() < .3) { if (show) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
+  if (m.af & 1) dmg *= .5;
   m.hp -= dmg; m.fl = .07;
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = m.boss ? .4 : 1.6; m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
@@ -420,21 +529,30 @@ let killWindow = 0;
 function killMob(m) {
   S.kills++; killWindow++;
   if (!m.boss) S.zk++;
+  combo++; comboT = COMBO_T; comboPop = .15;
+  if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
+  if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { toast('КОМБО ' + combo + '!', 'награды ×' + comboM().toFixed(2)); sfx.combo(); flashT = Math.max(flashT, .05); }
+  splat(m);
   const c = m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48);
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
   if (m.boss || m.rare) shake = Math.max(shake, m.boss ? 8 : 3);
   const cnt = 2 + Math.floor(rnd() * 3) + (m.rare ? 3 : 0) + (m.boss ? 8 : 0);
-  const base = zs() * D.gainMult * exMult() * (m.rare ? 8 : 1) * (m.boss ? 25 : 1);
+  const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM();
   const now = performance.now();
   for (let i = 0; i < cnt; i++) {
     const s = pickStat(), amt = base * (.5 + rnd());
-    s.v += amt; s.g = amt; s.at = now;
+    s.v += amt; s.g = amt; s.at = now; tryEvolve(s);
     if (i < (m.boss ? 4 : m.rare ? 2 : texts.length < 18 ? 1 : 0)) ftext(m.x, m.y - 12 * m.sz - i * 5, '+' + fmt(amt) + ' ' + s.name, EFF[s.e].c, .85, 1.3);
   }
   D.dirty = true;
-  if (m.rare) { sfx.rare(); ftext(m.x, m.y - 20, 'РЕДКИЙ!', '#ffd84a', 1.3, 1.2); } else sfx.kill();
+  if (m.rare) { sfx.rare(); if (texts.length < 20) ftext(m.x, m.y - 20, 'РЕДКИЙ!', '#ffd84a', 1.3, 1.2); } else sfx.kill();
+  if (m.af & 4) explode(m);
+  if (m.af & 16) spawnMini(m);
+  if (sy(1) && m.psnT > 0) for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 16) {
+    o.psn = Math.max(o.psn, m.psn * (1 + .5 * sy(1))); o.psnT = 3; burst(o.x, o.y - 3, '#88ee22', 2, 15);
+  }
   checkUnlocks(false);
-  if (m.boss) { bossAlive = false; nextZone(); }
+  if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; nextZone(); }
 }
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
@@ -449,23 +567,28 @@ function nextZone() {
 
 /* ---------- атака героя ---------- */
 function heroAttack(t) {
-  const crit = rnd() < D.crit;
-  const dmg = D.hit * (crit ? D.critM : 1) * (.9 + rnd() * .2) * furyM();
+  const crit = rnd() < D.crit, ultra = crit && rnd() < .04;
+  const dmg = D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1);
+  if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
   hero.swing = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1;
   hitMob(t, dmg, crit, true);
+  if (ultra) { ftext(t.x, t.y - 18, 'УЛЬТРА!', '#ff44ff', 1.8, 1.1); flashT = .12; slowT = .25; shake = 8; sfx.ultra(); }
   crit ? (sfx.crit(), shake = Math.max(shake, 2)) : sfx.hit();
   if (D.cleave > 0) {
     const others = mobs.filter(m => m !== t && !m.dead && Math.hypot(m.x - hero.x, m.y - hero.y) < D.range + 7)
       .sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, D.cleave);
-    for (const o of others) hitMob(o, dmg * .6, crit, false);
+    for (const o of others) { hitMob(o, dmg * .6, crit, false); if (sy(1) && D.poison > .02) { o.psn = Math.max(o.psn, dmg * D.poison * .5); o.psnT = 3; } }
   }
   if (D.fire > .02) {
-    for (const o of mobs) if (!o.dead && o !== t && Math.hypot(o.x - t.x, o.y - t.y) < D.fireR) hitMob(o, dmg * D.fire, false, false, '#ff6622');
+    for (const o of mobs) if (!o.dead && o !== t && Math.hypot(o.x - t.x, o.y - t.y) < D.fireR) {
+      hitMob(o, dmg * D.fire, false, false, '#ff6622');
+      if (sy(0) && rnd() < .35 && !o.dead) { bolts.push({ x1: t.x, y1: t.y - 3, x2: o.x, y2: o.y - 3, l: .1, c: '#d9a0ff' }); hitMob(o, dmg * .3 * sy(0), false, false, '#d9a0ff'); }
+    }
     burst(t.x, t.y - 3, '#ff6622', 4, 30); burst(t.x, t.y - 3, '#ffcc33', 2, 20);
   }
   if (rnd() < D.shock) {
     let from = t; const hitSet = new Set([t]);
-    for (let j = 0; j < 3; j++) {
+    for (let j = 0; j < D.chain; j++) {
       let best = null, bd = 30;
       for (const o of mobs) { if (o.dead || hitSet.has(o)) continue; const d = Math.hypot(o.x - from.x, o.y - from.y); if (d < bd) { bd = d; best = o; } }
       if (!best) break;
@@ -539,15 +662,18 @@ function update(dt) {
     m.x += m.kx * dt; m.y += m.ky * dt; m.kx *= Math.pow(.001, dt); m.ky *= Math.pow(.001, dt);
     m.fl -= dt; m.cd -= dt;
     if (d <= reach + 1 && m.cd <= 0) {
-      m.cd = 1 + rnd() * .3;
-      if (rnd() < D.dodge) ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6);
+      m.cd = (1 + rnd() * .3) * (m.af & 2 ? .6 : 1);
+      if (rnd() < D.dodge) { ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
       else {
         const dmg = mdmg * m.dm * (1 - D.armor);
         hero.hp = Math.max(1, hero.hp - dmg); hero.hurt = .1; sfx.hurt();
+        if (m.af & 8) { m.hp = Math.min(m.max, m.hp + m.max * .15); burst(m.x, m.y - 4, '#cc2244', 3, 15); }
         if (rnd() < .35) ftext(hero.x + (rnd() - .5) * 6, hero.y - 9, '-' + fmt(dmg), '#ff6b6b', .8, .6);
         if (D.thorns > .02) hitMob(m, D.hit * D.thorns, false, false, '#cc9966');
+        if (sy(3)) for (const o of mobs) if (o !== m && !o.dead && Math.hypot(o.x - hero.x, o.y - hero.y) < 12) hitMob(o, D.hit * D.thorns * .5, false, false, '#cc9966');
       }
     }
+    if (m.af & 64 && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * (m.boss ? .01 : .04) * dt);
     if (m.psnT > 0 && !m.dead) {
       m.psnT -= dt; m.hp -= m.psn * dt;
       if (rnd() < dt * 6) parts.push({ x: m.x + (rnd() - .5) * 6, y: m.y - 4, vx: 0, vy: -12, l: .4, c: '#88ee22' });
@@ -567,6 +693,10 @@ function update(dt) {
   texts = texts.filter(t => t.t < t.life);
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
   shake = Math.max(0, shake - dt * 25);
+  comboPop = Math.max(0, comboPop - dt);
+  if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
+  decalT -= dt;
+  if (decalT <= 0) { decalT = 1.5; const g = decal.getContext('2d'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
   // аура высоких рангов
   const rk = heroRank();
   if (rk >= 12 && rnd() < dt * (4 + rk / 3)) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 8, vx: 0, vy: -15, l: .5, c: ARMOR[(rk + 3) % ARMOR.length] });
@@ -591,6 +721,7 @@ function render() {
   const sx = shake ? Math.round((rnd() - .5) * shake) : 0, sy = shake ? Math.round((rnd() - .5) * shake) : 0;
   ctx.setTransform(1, 0, 0, 1, sx, sy);
   ctx.drawImage(ground, 0, 0);
+  ctx.drawImage(decal, 0, 0);
   const rk = heroRank();
   // аура
   if (rk >= 4) {
@@ -608,6 +739,7 @@ function render() {
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(x + 1, Math.round(o.y) - 1, s - 2, 1);
     const bob = Math.sin(time * 10 + o.x) > .6 ? -1 : 0;
     ctx.drawImage(mobSprite(o, o.fl > 0), x, y + bob, s, s);
+    if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
     if (o.psnT > 0) pix(o.x, y - 1, '#88ee22');
     if (o.hp < o.max && !o.boss) {
@@ -626,6 +758,7 @@ function render() {
     ctx.fillStyle = '#ff2a2a'; ctx.fillRect(5, 3, Math.max(0, Math.round((W - 10) * boss.hp / boss.max)), 2);
   }
   // мерцание при изнеможении
+  if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.hpf < .35) { ctx.fillStyle = `rgba(120,0,0,${.12 + .08 * Math.sin(time * 6)})`; ctx.fillRect(-4, -4, W + 8, H + 8); }
 
   // текст на hi-res слое
@@ -650,6 +783,21 @@ function render() {
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
     const s = 'ВОЖАК: ' + MOBS[boss.t].n + ' ' + fmt(Math.max(0, boss.hp));
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
+  }
+  if (combo >= 3) {
+    const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
+    const fs = Math.round(base * (1.1 + comboPop * 3) / DPR) * DPR, fs2 = Math.round(base * .75 / DPR) * DPR;
+    const cx = 4 * k, cy = (boss ? 15 : 5) * k + fs / 2;
+    fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
+    fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = col;
+    fctx.strokeText('КОМБО ' + combo, cx, cy); fctx.fillText('КОМБО ' + combo, cx, cy);
+    fctx.font = `${fs2}px "Press Start 2P", monospace`; fctx.lineWidth = Math.max(2, fs2 / 3);
+    const s2 = 'награды ×' + comboM().toFixed(2);
+    fctx.strokeText(s2, cx, cy + fs * .9 + 2 * DPR); fctx.fillText(s2, cx, cy + fs * .9 + 2 * DPR);
+    const bw = 30 * k, by = cy + fs * .9 + fs2 + 2 * DPR;
+    fctx.fillStyle = '#000'; fctx.fillRect(cx, by, bw, 2 * DPR + 2);
+    fctx.fillStyle = col; fctx.fillRect(cx + 1, by + 1, (bw - 2) * clamp(comboT / COMBO_T, 0, 1), 2 * DPR);
+    fctx.textAlign = 'center';
   }
 }
 function drawHero(rk) {
@@ -700,8 +848,14 @@ function updateUI() {
   if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = 'НАГРАДА ×' + exMult().toFixed(2); } else ex.style.display = 'none';
   // статы
   $('scount').textContent = stats.length;
+  if (synNew.length) {
+    for (const [i, was] of synNew.slice(-2)) toast(was ? 'СИНЕРГИЯ УСИЛЕНА!' : 'СИНЕРГИЯ ОТКРЫТА!', SYN[i].n + ' · ур. ' + sy(i) + ' · ' + SYN[i].d);
+    sfx.syn(); flashT = Math.max(flashT, .1); synNew = [];
+  }
+  $('ycount').textContent = SYN.filter((y, i) => sy(i)).length + '/' + SYN.length;
+  if (tab === 'Y') renderSyn();
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
-  $('snext').textContent = 'новый через ' + fmt(nk - S.kills);
+  $('snext').textContent = 'новый стат через ' + fmt(nk - S.kills) + ' уб.';
   ubarI.style.width = clamp((S.kills - pk) / (nk - pk) * 100, 0, 100) + '%';
   const now = performance.now();
   for (const s of stats) {
@@ -714,12 +868,27 @@ function updateUI() {
     `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>`;
 }
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = S.mute ? '♪ ВЫКЛ' : '♪ ВКЛ'; audio(); };
+let tab = 'S';
+function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
+$('tabS').onclick = () => setTab('S'); $('tabY').onclick = () => setTab('Y');
+function renderSyn() {
+  const R = D.R || {}; let h = '';
+  SYN.forEach((y, i) => {
+    const l = sy(i), A = EFF[y.a], B = EFF[y.b];
+    if (l) h += `<div class="syn"><div class="r"><span style="color:${A.c}">${y.n}</span><span style="color:#a58bff">ур. ${l}</span></div><div class="sd"><span style="color:${A.c}">${A.n}</span> + <span style="color:${B.c}">${B.n}</span> · ${y.d}</div></div>`;
+    else {
+      const ka = (R[A.k] || 0) >= SYN_TH / 4, kb = (R[B.k] || 0) >= SYN_TH / 4;
+      h += `<div class="syn lk"><div class="r"><span>???</span><span>скрыто</span></div><div class="sd">${ka ? A.n : '?'} + ${kb ? B.n : '?'} · прокачай оба</div></div>`;
+    }
+  });
+  $('ylist').innerHTML = h;
+}
 $('ptog').onclick = () => { S.panelSmall = !S.panelSmall; applyPanel(); };
 function applyPanel() { $('panel').classList.toggle('small', S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼'; setTimeout(resize, 220); }
 
 /* ---------- сохранение и офлайн-прогресс ---------- */
 function save() {
-  S.vals = stats.map(s => s.v); S.t = Date.now(); S.hpf = hero.hp / D.maxHP;
+  S.vals = stats.map(s => s.v); S.lv = stats.map(s => s.lvl); S.t = Date.now(); S.hpf = hero.hp / D.maxHP;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
 }
 function load() {
@@ -730,23 +899,24 @@ function offline(sec) {
   const kills = Math.floor(sec * Math.max(.1, S.kps) * .5);
   if (kills < 1) return;
   const z0 = S.zone, s0 = stats.length, k0 = S.kills;
-  let left = kills, it = 0;
+  let left = kills, it = 0, evos = 0;
   mobs = []; bossAlive = false;
   while (left > 0 && it < 200000) {
     if (it++ % 25 === 0) recalc();
     const k = Math.max(1, Math.min(left, zoneNeed() - S.zk));
     const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7);
     const picks = Math.min(stats.length, 12);
-    for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); }
+    for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
     S.kills += k; S.zk += k; left -= k;
     if (S.zk >= zoneNeed()) { S.zone++; S.zk = 0; }
     checkUnlocks(true);
   }
   recalc(); buildGround();
+  const nsyn = synNew.length; synNew = [];
   const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
   $('mt').textContent = 'ПОКА ТЕБЯ НЕ БЫЛО';
   $('mp').innerHTML = `Прошло: ${h ? h + 'ч ' : ''}${m}м<br>Герой дрался дальше:<br><br>+${fmt(S.kills - k0)} убийств<br>` +
-    `Зона ${z0} → <span style="color:#f2c94c">${S.zone}</span><br>Новых статов: <span style="color:#5cff8a">${stats.length - s0}</span>`;
+    `Зона ${z0} → <span style="color:#f2c94c">${S.zone}</span><br>Новых статов: <span style="color:#5cff8a">${stats.length - s0}</span><br>Эволюций: <span style="color:#bb88ff">${evos}</span>${nsyn ? '<br>Синергий: <span style="color:#ff44ff">+' + nsyn + '</span>' : ''}`;
   $('modal').hidden = false;
 }
 $('mok').onclick = () => { $('modal').hidden = true; audio(); };
@@ -761,7 +931,7 @@ window.addEventListener('resize', () => setTimeout(resize, 50));
 
 /* ---------- старт ---------- */
 load();
-for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; stats.push(s); addStatRow(s, false); }
+for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
 if (!S.vals.length) { stats[0].v = 2; stats[1].v = 3; stats[2].v = 1; }
 checkUnlocks(true);
 recalc();
@@ -772,13 +942,14 @@ resize();
 hero.x = W / 2; hero.y = H / 2;
 const away = (Date.now() - (S.t || Date.now())) / 1000;
 if (S.kills > 0 && away > 20) offline(away);
-else if (S.kills === 0) { $('mt').textContent = 'БЕСКОНЕЧНАЯ ДРАКА'; $('mp').innerHTML = 'Герой дерётся сам.<br>Каждое убийство даёт статы.<br>Статы бесконечны.<br><br><span style="color:#fff8a0">Тапай по врагам</span> — бей молнией с неба!<br><br><span style="color:#8a83a6">Низкое HP = меньше наград.</span>'; $('modal').hidden = false; }
+else if (S.kills === 0) { $('mt').textContent = 'БЕСКОНЕЧНАЯ ДРАКА'; $('mp').innerHTML = 'Герой дерётся сам.<br>Каждое убийство даёт статы.<br>Статы бесконечны.<br><br><span style="color:#fff8a0">Тапай по врагам</span> — бей молнией с неба!<br><br>Держи <span style="color:#ffdd44">комбо</span>, качай пары статов ради <span style="color:#ff44ff">синергий</span>.<br><br><span style="color:#8a83a6">Низкое HP = меньше наград.</span>'; $('modal').hidden = false; }
 document.fonts && document.fonts.ready.then(() => updateUI());
 
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
-  update(dt); render();
+  const real = Math.min(.05, (now - last) / 1000); last = now;
+  slowT -= real; flashT -= real;
+  update(slowT > 0 ? real * .3 : real); render();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
