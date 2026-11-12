@@ -32,6 +32,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 .bar>b{position:absolute;inset:0;text-align:center;font-weight:normal;font-size:7px;line-height:10px;color:#fff;text-shadow:1px 1px 0 #000}
 #hpbar{background:var(--hpbg)} #hpbar>i{background:var(--hp)}
 #zbar>i{background:#7a5cff}
+#zbar{cursor:pointer}
 .btn{font:inherit;font-size:8px;color:var(--text);background:#2b2540;border:2px solid #000;padding:3px 6px;cursor:pointer}
 .btn:active{transform:translateY(1px)}
 #ex{color:var(--bad);display:none}
@@ -390,12 +391,45 @@ let mobs = [], parts = [], texts = [], bolts = [];
 let bossAlive = false, shake = 0, time = 0, tapCd = 0;
 let flashT = 0, slowT = 0, decal = null, decalT = 0;
 let combo = 0, comboT = 0, comboPop = 0;
+let bossT = 0, bossCd = 0, forceBoss = false;
+const BOSS_TIME = 30;
+let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
+function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
+function retreat(b, why) {
+  b.dead = true; bossAlive = false; bossCd = 12;
+  burst(b.x, b.y - 8, '#ffffff', 20, 40);
+  hero.hp = D.maxHP; hero.shield = 0;
+  combo = 0;
+  toast('ОТСТУПЛЕНИЕ', why + ' · готовность ' + Math.floor(Math.min(9.99, D.ready) * 100) + '% · копим силу');
+  tone(330, .15, 'square', .04, 0); tone(220, .3, 'square', .04, 0, .15);
+}
 const COMBO_T = 2.5;
 const comboM = () => 1 + .25 * Math.log2(1 + combo / 5);
 const COMBO_MS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
 function zs() { return Math.pow(1.08, S.zone - 1); }
 function zoneNeed() { return 12 + S.zone * 2; }
+// сила зоны фиксирована и не зависит от героя: сначала тяжело, потом разносишь
+let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
+// рост зоны: в начале круче (герой растёт взрывно), дальше ×1.5 за зону
+const zl = [0];
+function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
+const zoneHP = z => ZB * Math.pow(10, zoneLog(z));
+const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP));
+const isLegend = z => z % 10 === 0;
+const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
+const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
+// готовность к вожаку: успеет ли герой убить его, пока сам держится
+function readiness() {
+  const z = S.zone;
+  const bh = zoneHP(z) * 1.15 * 1.1 * bossMult(z) * (1 + .6 * bossAffN(z));
+  const dps = D.hit * D.aps * (1 + D.crit * (D.critM - 1)) * 1.15;
+  const killT = bh / dps;
+  const inc = zoneDmg(z) * (2 * (isLegend(z) ? 1.5 : 1) + 2.5) * (1 - D.armor) * (1 - D.dodge);
+  const heal = D.maxHP * D.regen + D.maxHP * D.vamp * D.aps;
+  const surv = inc <= heal ? 1e9 : D.maxHP * .85 / (inc - heal);
+  return Math.min(22 / killT, surv / killT);
+}
 
 function recalc() {
   const T = new Float64Array(NE);
@@ -629,11 +663,16 @@ function spawnMob(boss) {
   else if (side === 2) { x = rnd() * W; y = H + 6; } else { x = -6; y = rnd() * H; }
   const rare = !boss && rnd() < D.rare;
   const af = rollAff(boss), na = popc(af);
-  const hp = D.hit * (.8 + rnd() * 1.4) * (1 + Math.min(1.5, S.zone / 15)) * (1 + D.crit * (D.critM - 1) * .5) * M.hp * (rare ? 3 : 1) * (boss ? 8 + Math.min(20, S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1);
+  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1);
   mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
-    sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 : 1) * (rare ? 1.5 : 1),
+    sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
-  if (boss) { bossAlive = true; toast('ВОЖАК: ' + M.n.toUpperCase() + '!', na ? affNames(af) : 'Убей его, чтобы пройти дальше'); sfx.boss(); shake = 6; }
+  if (boss) {
+    const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
+    bossAlive = true; bossT = BOSS_TIME; S.tries = (S.tries || 0) + 1;
+    toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
+    sfx.boss(); shake = 6;
+  }
 }
 function spawnMini(m) {
   for (let i = 0; i < 2; i++) {
@@ -648,7 +687,7 @@ function explode(m) {
   shake = Math.max(shake, 4); sfx.boom();
   for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < r) hitMob(o, D.hit * 1.5, false, false, '#ff6622');
   if (Math.hypot(hero.x - m.x, hero.y - m.y) < r && rnd() >= D.dodge) {
-    const dmg = 2.2 * zs() * S.pressure * m.dm * 1.5 * (1 - D.armor);
+    const dmg = zoneDmg(S.zone) * m.dm * 1.5 * (1 - D.armor);
     hurtHero(dmg); ftext(hero.x, hero.y - 10, '-' + fmt(dmg), '#ff6622', .9, .7);
   }
 }
@@ -683,7 +722,7 @@ let killWindow = 0;
 function killMob(m) {
   S.kills++; killWindow++;
   if (!m.boss) S.zk++;
-  combo++; comboT = COMBO_T; comboPop = .15;
+  combo++; comboT = COMBO_T; comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008);
   if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
   if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { toast('КОМБО ' + combo + '!', 'награды ×' + comboM().toFixed(2)); sfx.combo(); flashT = Math.max(flashT, .05); }
   splat(m);
@@ -715,7 +754,7 @@ function killMob(m) {
     o.psn = Math.max(o.psn, m.psn * (1 + .5 * sy(1))); o.psnT = 3; burst(o.x, o.y - 3, '#88ee22', 2, 15);
   }
   checkUnlocks(false);
-  if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; nextZone(); }
+  if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; if ((S.tries || 1) > 1) toast('ПРОРЫВ!', 'вожак пал с ' + S.tries + '-й попытки'); S.tries = 0; nextZone(); }
 }
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
@@ -778,19 +817,53 @@ function heroAttack(t) {
 }
 
 /* ---------- тап: удар молнии с неба ---------- */
+function addUlt(v) {
+  if (ult >= 1) return;
+  ult = Math.min(1, ult + v);
+  if (ult >= 1) { ultReadyT = 0; toast('УЛЬТА ГОТОВА!', 'тапни по экрану'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
+}
+function fireUlt() {
+  ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
+  ftext(hero.x, hero.y - 22, 'УЛЬТИМЕЙТ!', '#ff44ff', 2, 1.4);
+  const dmg = D.hit * 15 * (1 + D.crit * (D.critM - 1)) * comboM();
+  for (const m of mobs.slice()) if (!m.dead) {
+    bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: -4, x2: m.x, y2: m.y - 3, l: .3, c: '#ff88ff' });
+    hitMob(m, dmg, true, true, '#ff88ff');
+  }
+  ring(hero.x, hero.y - 3, Math.max(W, H), '#ff88ff');
+  tone(80, .6, 'sawtooth', .06, 30); tone(1600, .5, 'square', .03, 200); tone(400, .4, 'triangle', .05, 1200, .1);
+}
 function onTap(e) {
   audio();
   const r = fx.getBoundingClientRect();
   const x = (e.clientX - r.left) / SC, y = (e.clientY - r.top) / SC;
   if (tapCd > 0) return;
-  tapCd = .14;
+  tapCd = .12;
+  const nowT = performance.now() / 1000;
+  tapStreak = nowT - lastTap < .45 ? tapStreak + 1 : 0; lastTap = nowT;
+  if (ult >= 1) { fireUlt(); return; }
+  // слабое место вожака
+  const b = mobs.find(m => m.boss && !m.dead);
+  if (b && Math.hypot(b.x + b.ws.ox - x, b.y + b.ws.oy - y) < 6) {
+    const d = D.hit * 12 * (1 + D.crit * (D.critM - 1)) * comboM();
+    hitMob(b, d, true, false, '#ffee66');
+    ftext(b.x, b.y - 22, 'СЛАБОЕ МЕСТО! ' + fmt(d), '#ffee66', 1.3, 1);
+    burst(b.x + b.ws.ox, b.y + b.ws.oy, '#ffee66', 18, 50); flashT = Math.max(flashT, .06); slowT = Math.max(slowT, .12); shake = Math.max(shake, 5);
+    tone(1200, .08, 'square', .05, 500); tone(1800, .12, 'triangle', .04, 0, .05);
+    addUlt(.08); if (combo) comboT = COMBO_T;
+    if (!b.dead) moveWS(b);
+    return;
+  }
   bolts.push({ x1: x + (rnd() - .5) * 10, y1: -2, x2: x, y2: y, l: .14, c: '#fff8a0' });
   burst(x, y, '#fff8a0', 8, 35);
   let hit = false;
   for (const m of mobs) if (!m.dead && Math.hypot(m.x - x, m.y - 3 * m.sz - y) < 9 + 4 * m.sz) {
-    const crit = rnd() < D.crit; hitMob(m, D.hit * .8 * (crit ? D.critM : 1), crit, true, '#fff8a0'); hit = true;
+    const crit = rnd() < D.crit;
+    hitMob(m, D.hit * 1.2 * (1 + .05 * Math.min(40, tapStreak)) * comboM() * (crit ? D.critM : 1), crit, true, tapStreak >= 10 ? '#ffaa33' : '#fff8a0'); hit = true;
   }
-  sfx.tap(); if (hit) shake = Math.max(shake, 1.5);
+  sfx.tap();
+  if (hit) { shake = Math.max(shake, 1.5); addUlt(.015); if (combo) comboT = Math.min(COMBO_T, comboT + .5); }
+  if (tapStreak >= 5 && tapStreak % 5 === 0 && texts.length < 30) ftext(x, y - 8, 'ТАП ×' + (1 + .05 * Math.min(40, tapStreak)).toFixed(2), '#ffaa33', .9, .6);
 }
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
@@ -843,12 +916,19 @@ function update(dt) {
   spawnT -= dt;
   const want = bossAlive ? Math.ceil(crowd() / 2) : crowd();
   if (spawnT <= 0 && mobs.length < want) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = mobs.length < want / 2 ? .1 : .3; }
-  if (!bossAlive && S.zk >= zoneNeed()) spawnMob(true);
+  if (S.zk > zoneNeed()) S.zk = zoneNeed();
+  bossCd -= dt;
+  if (!bossAlive && S.zk >= zoneNeed() && bossCd <= 0 && (D.ready >= 1 || forceBoss)) { forceBoss = false; spawnMob(true); }
+  if (bossAlive) {
+    bossT -= dt;
+    const bm = mobs.find(m => m.boss && !m.dead);
+    if (bm) { bm.ws.t -= dt; if (bm.ws.t <= 0) moveWS(bm); }
+    if (bm && (hero.hp < D.maxHP * .15 || bossT <= 0)) retreat(bm, bossT <= 0 ? 'не хватило урона' : 'герой на пределе');
+  }
   // регенерация, давление
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
   S.hpf = clamp(hero.hp / D.maxHP, 0, 1);
   pressT -= dt;
-  if (pressT <= 0) { pressT = .5; if (S.hpf > .85) S.pressure *= 1.03; else if (S.hpf < .5) S.pressure *= .9; S.pressure = clamp(S.pressure, 1e-6, 1e15); }
   kpsT += dt;
   if (kpsT >= 5) { S.kps = S.kps * .8 + .2 * (killWindow / kpsT); killWindow = 0; kpsT = 0; }
 
@@ -870,7 +950,7 @@ function update(dt) {
   effMech(dt);
 
   // мобы
-  const mdmg = 2.2 * z * S.pressure;
+  const mdmg = zoneDmg(S.zone);
   for (const m of mobs) {
     if (m.dead) continue;
     const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1;
@@ -911,6 +991,8 @@ function update(dt) {
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
   shake = Math.max(0, shake - dt * 25);
   comboPop = Math.max(0, comboPop - dt);
+  ultT -= dt;
+  if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20) fireUlt(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
   decalT -= dt;
   if (decalT <= 0) { decalT = 1.5; const g = decal.getContext('2d'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
@@ -979,6 +1061,16 @@ function render() {
     ctx.fillStyle = '#5a0a0a'; ctx.fillRect(5, 3, W - 10, 2);
     ctx.fillStyle = '#ff2a2a'; ctx.fillRect(5, 3, Math.max(0, Math.round((W - 10) * boss.hp / boss.max)), 2);
   }
+  // слабое место вожака
+  if (boss) {
+    const wx = Math.round(boss.x + boss.ws.ox), wy = Math.round(boss.y + boss.ws.oy), pu = Math.sin(time * 14) > 0;
+    ctx.fillStyle = pu ? '#ffee66' : '#ffffff'; ctx.fillRect(wx - 1, wy - 1, 2, 2);
+    const rr = 4 + (pu ? 1 : 0); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28 + time * 3; pix(wx + Math.cos(a) * rr, wy + Math.sin(a) * rr, '#ffee66'); }
+  }
+  // полоса ульты
+  const ub = H - 3; ctx.fillStyle = '#000'; ctx.fillRect(2, ub, W - 4, 2);
+  ctx.fillStyle = ult >= 1 ? (Math.sin(time * 12) > 0 ? '#ff88ff' : '#ffffff') : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
+  if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.hpf < .35) { ctx.fillStyle = `rgba(120,0,0,${.12 + .08 * Math.sin(time * 6)})`; ctx.fillRect(-4, -4, W + 8, H + 8); }
@@ -1003,8 +1095,13 @@ function render() {
   if (boss) {
     fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`;
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
-    const s = 'ВОЖАК: ' + MOBS[boss.t].n + ' ' + fmt(Math.max(0, boss.hp));
+    const s = (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + MOBS[boss.t].n + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
+  }
+  if (ult >= 1) {
+    fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
+    fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
+    fctx.strokeText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k); fctx.fillText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k);
   }
   if (combo >= 3) {
     const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
@@ -1080,10 +1177,17 @@ const zbarI = $('zbar').firstElementChild, zbarB = $('zbar').lastElementChild;
 const hpI = $('hpbar').firstElementChild, shI = $('hpbar').children[1], hpB = $('hpbar').lastElementChild;
 const ubarI = $('ubar').firstElementChild;
 function updateUI() {
+  D.ready = readiness();
   const b = biomeOf(S.zone);
   $('zname').textContent = b.name; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
-  if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = 'ВОЖАК!'; }
+  if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
+  else if (S.zk >= need) {
+    const rd = D.ready;
+    zbarI.style.width = Math.min(100, rd * 100) + '%'; zbarI.style.background = rd >= 1 ? '#5cff8a' : '#ff9a3c';
+    zbarB.textContent = bossCd > 0 ? 'ПЕРЕДЫШКА ' + Math.ceil(bossCd) + 'с · готовность ' + Math.floor(Math.min(9.99, rd) * 100) + '%'
+      : rd >= 1 ? 'ВОЖАК ИДЁТ!' : 'ГОТОВНОСТЬ ' + Math.floor(rd * 100) + '% · ТАП = БОЙ';
+  }
   else { zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = '#7a5cff'; zbarB.textContent = S.zk + ' / ' + need; }
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
@@ -1129,6 +1233,7 @@ function updateUI() {
     `<span>Удар <b>${fmt(D.hit * furyM())}</b></span><span>Ат/с <b>${D.aps.toFixed(2)}</b></span><span>Крит <b>${pct(D.crit)}</b></span><span>КритУ <b>×${fmt(D.critM)}</b></span>` +
     `<span>Броня <b>${pct(D.armor)}</b></span><span>Увор <b>${pct(D.dodge)}</b></span><span>Вамп <b>${pct(D.vamp)}</b></span><span>Награ <b>×${fmt(zs() * D.gainMult)}</b></span>`;
 }
+$('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = S.mute ? '♪ ВЫКЛ' : '♪ ВКЛ'; audio(); };
 let tab = 'S', lastSpec;
 function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
@@ -1164,13 +1269,17 @@ function offline(sec) {
   let left = kills, it = 0, evos = 0;
   mobs = []; bossAlive = false;
   while (left > 0 && it < 200000) {
-    if (it++ % 25 === 0) recalc();
-    const k = Math.max(1, Math.min(left, zoneNeed() - S.zk));
+    if (it++ % 10 === 0) recalc();
+    let k;
+    if (S.zk >= zoneNeed()) {
+      recalc();
+      if (readiness() >= 1) { S.zone++; S.zk = 0; continue; }
+      k = Math.min(left, 150);          // стена: герой фармит, пока не станет готов
+    } else k = Math.max(1, Math.min(left, zoneNeed() - S.zk));
     const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3;
     const picks = Math.min(stats.length, 12);
     for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
-    S.kills += k; S.zk += k; left -= k;
-    if (S.zk >= zoneNeed()) { S.zone++; S.zk = 0; }
+    S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
     checkUnlocks(true);
   }
   recalc(); buildGround();
