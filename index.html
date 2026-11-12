@@ -146,6 +146,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #obtns .btn{font-size:9px;padding:9px 12px;background:#6a4a1a}
 #spdb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));top:30px;z-index:4;font-size:10px;padding:5px 8px;background:#2b2540}
 #spdb.on{background:#2f8a4f;color:#fff;box-shadow:0 0 0 2px #5cff8a}
+#clsbox{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cls{border:2px solid #2b2540;background:#16131f;padding:7px;font-size:7px;line-height:1.7;cursor:pointer;display:flex;gap:6px;align-items:flex-start}
+.cls b{font-size:8px;font-weight:normal;display:block}
+.cls.on{border-color:#f2c94c;background:#2c2346}
+.cls.lock{opacity:.55;cursor:default}
+.cls img{width:24px;height:24px;image-rendering:pixelated;flex:none}
+.aut{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #201b30;font-size:8px;cursor:pointer}
+.aut i{width:12px;height:12px;border:2px solid #000;background:#221d33;flex:none}
+.aut.on i{background:#5cff8a}
+.aut small{display:block;color:var(--dim);font-size:7px}
 #modal{position:fixed;inset:0;background:rgba(5,4,10,.86);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #modal[hidden]{display:none}
 #mbox{background:var(--panel);border:3px solid #f2c94c;padding:14px;max-width:340px;width:100%;text-align:center;line-height:1.9}
@@ -179,6 +189,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
       <div id="dfore"></div>
       <button class="btn big" id="rbtn">ПЕРЕРОДИТЬСЯ</button>
       <button class="btn big" id="tbtn">ДЕРЕВО ТАЛАНТОВ</button>
+      <div class="gsec" style="margin-top:14px">КЛАСС ГЕРОЯ</div>
+      <div id="clsbox"></div>
+      <div class="gsec" style="margin-top:14px">АВТОМАТИКА <span>меньше тыкать</span></div>
+      <div id="autobox"></div>
       <div class="dim">Перерождение сбрасывает зону и статы. Души остаются навсегда — трать их в дереве талантов на вечные бонусы. Чем дальше зашёл, тем больше душ.</div>
     </div>
   </div>
@@ -678,6 +692,18 @@ const comboTime = () => 2.5 + ta('combo_t');
 const comboM = () => 1 + .25 * (1 + ta('combo_m')) * Math.log2(1 + combo / 5);
 const COMBO_MS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
+/* ---------- классы героя ---------- */
+const CLASSES = {
+  war: { n: 'Воин', c: '#c9ced6', d: 'ближний бой: волна клинка, +30% HP, +1 цель рассечения' },
+  arch: { n: 'Лучник', c: '#5cff8a', d: 'стреляет издалека: +40% скорости атаки, +15% крита, −20% HP' },
+  mage: { n: 'Маг', c: '#c06bff', d: 'огненные шары взрываются по площади: +30% урона, −30% скорости атаки' },
+  necro: { n: 'Некромант', c: '#7affb0', d: 'тёмные сгустки; убитые враги встают скелетами-союзниками; −20% урона' },
+};
+const cls = () => S.cls || 'war';
+let allies = [];
+const canPickClass = () => !S.meta.clsPicked || (S.zone <= 1 && S.kills < 200);
+function setClass(k) { if (!canPickClass() && k !== cls()) { toast('Класс меняется в начале жизни', 'после перерождения, на 1-й зоне'); return; } S.cls = k; S.meta.clsPicked = true; allies = []; D.dirty = true; recalc(); renderSouls(); toast('КЛАСС: ' + CLASSES[k].n.toUpperCase(), CLASSES[k].d); }
+
 function zs() { return Math.pow(1.08, S.zone - 1); }
 function zoneNeed() { return 12 + S.zone * 2; }
 // сила зоны фиксирована и не зависит от героя: сначала тяжело, потом разносишь
@@ -745,6 +771,11 @@ function recalc() {
   D.spirits = Math.min(6, Math.floor(Math.log2(1 + R.spirit / 10)));
   D.greed = Math.min(10, Math.floor(Math.log2(1 + R.greed / 15)));
   D.barrier = .3 * sat(R.barrier, 60);
+  // бонусы класса
+  if (cls() === 'war') { D.maxHP *= 1.3; D.cleave += 1; }
+  if (cls() === 'arch') { D.aps = Math.min(14, D.aps * 1.4); D.crit = Math.min(.95, D.crit + .15); D.maxHP *= .8; }
+  if (cls() === 'mage') { D.hit *= 1.3; D.aps *= .7; }
+  if (cls() === 'necro') { D.hit *= .8; }
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -1090,6 +1121,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
+  if (cls() === 'necro' && !m.boss && !m.goblin && allies.length < 8 && rnd() < .3) { allies.push({ x: m.x, y: m.y, t: 10, cd: .5, face: 1 }); burst(m.x, m.y - 3, '#7affb0', 8, 25); fxLabel('Восстань!', m.x, m.y - 12, '#7affb0'); }
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -1126,6 +1158,13 @@ let waves = [];
 function heroAttack(t) {
   const d = Math.hypot(t.x - hero.x, t.y - hero.y) - (t.sz - 1) * 4;
   hero.face = t.x >= hero.x ? 1 : -1;
+  if (cls() !== 'war') {   // классы дальнего боя: снаряд
+    const a = Math.atan2(t.y - 4 - (hero.y - 4), t.x - hero.x), kind = { arch: 'arrow', mage: 'fire', necro: 'dark' }[cls()];
+    hero.cast = .12; hero.swingA = a;
+    waves.push({ x: hero.x + Math.cos(a) * 5, y: hero.y - 4 + Math.sin(a) * 5, t, sp: kind === 'arrow' ? 280 : 170, a, l: 1.4, kind });
+    tone(kind === 'arrow' ? 1100 : kind === 'fire' ? 300 : 200, .05, kind === 'arrow' ? 'triangle' : 'sawtooth', .02, kind === 'arrow' ? 1600 : 120, 0, 'shot', .05);
+    return;
+  }
   if (d <= MELEE) return heroStrike(t, false);
   hero.swing = .13; hero.swType = 0; hero.swDur = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x);
   waves.push({ x: hero.x + Math.cos(hero.swingA) * 6, y: hero.y - 4 + Math.sin(hero.swingA) * 6, t, sp: 200, a: hero.swingA, l: 1.2, fin: hero.chain % 3 === 2 });
@@ -1144,7 +1183,8 @@ function updWaves(dt) {
     const dx = w.t.x - w.x, dy = w.t.y - 4 * w.t.sz - w.y, d = Math.hypot(dx, dy) || 1;
     w.a = Math.atan2(dy, dx);
     const st = Math.min(d, w.sp * dt); w.x += dx / d * st; w.y += dy / d * st;
-    if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, w.bounce ? '#ffe08a' : '#ffffff', 4, 30);
+    if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, w.bounce ? '#ffe08a' : w.kind === 'fire' ? '#ff8a3c' : w.kind === 'dark' ? '#7affb0' : '#ffffff', w.kind === 'fire' ? 14 : 4, 30);
+      if (w.kind === 'fire') { ring(w.t.x, w.t.y - 3, 11, '#ff8a3c'); hitAround(w.t.x, w.t.y, 11, D.hit * .7, '#ff9a3c', w.t); }
       if (w.bounce) { const tg = w.t; hitMob(tg, w.dmg, false, false, '#ffe08a'); fxLabel('Рикошет', tg.x, tg.y - 12, '#ffe08a'); if (w.left > 0) bounceFrom(tg, w.dmg * .8, w.left); } else heroStrike(w.t, true); }
   }
   waves = waves.filter(w => w.l > 0);
@@ -1263,7 +1303,7 @@ function onTap(e) {
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
 
 /* ---------- понятность боя: источники урона, подписи эффектов ---------- */
-const SRC_BY_COL = { '#ffe08a': 'Рикошет', '#7affd8': 'Духи', '#9a7aff': 'Притяжение', '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
+const SRC_BY_COL = { '#7affb0': 'Союзники', '#ffe08a': 'Рикошет', '#7affd8': 'Духи', '#9a7aff': 'Притяжение', '#ff6622': 'Огонь', '#ff9a3c': 'Огонь', '#d9a0ff': 'Плазма', '#99eeff': 'Молния', '#ccf6ff': 'Молния', '#cc9966': 'Шипы', '#ff88ff': 'Ульта',
   '#ff8877': 'Сокрушение', '#66ccff': 'Скорость', '#ff9988': 'Рассечение', '#ff5544': 'Мясник', '#ffffff': 'Финишер', '#ffee66': 'Слабое место', '#fff8a0': 'Тап', '#ffaa33': 'Тап' };
 const SRC_COL = { 'Удар': '#e9e4ff', 'Яд': '#88ee22', 'Кровотечение': '#ff3355', 'Казнь': '#f0f0f0' };
 for (const c in SRC_BY_COL) SRC_COL[SRC_BY_COL[c]] = SRC_COL[SRC_BY_COL[c]] || c;
@@ -1382,6 +1422,13 @@ function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Ma
 function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
+  for (const al of allies) {
+    al.t -= dt; al.cd -= dt;
+    let best = null, bd = 1e9; for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - al.x, m.y - al.y); if (d < bd) { bd = d; best = m; } }
+    if (best) { al.face = best.x >= al.x ? 1 : -1; if (bd > 6) { al.x += (best.x - al.x) / bd * 30 * dt; al.y += (best.y - al.y) / bd * 30 * dt; } else if (al.cd <= 0) { al.cd = .8; hitMob(best, D.hit * .5, false, false, '#7affb0'); } }
+    if (al.t <= 0) burst(al.x, al.y - 3, '#7affb0', 6, 20);
+  }
+  allies = allies.filter(al => al.t > 0);
   if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
       let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
       if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
@@ -1464,7 +1511,7 @@ function update(dt) {
   let tgt = null, td = 1e9;
   for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
   if (tgt) td = Math.hypot(tgt.x - hero.x, tgt.y - hero.y) - (tgt.sz - 1) * 4;
-  hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
+  hero.cast = (hero.cast || 0) - dt; hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
   if (hero.chainT <= 0) hero.chain = 0;
   if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
   updTele(dt); updWaves(dt);
@@ -1475,7 +1522,7 @@ function update(dt) {
   else if (!bossAlive && S.zone >= 3) { evNext -= dt; if (evNext <= 0) { evNext = 90 + rnd() * 70; startEvent(); } }
   if (tgt) {
     hero.face = tgt.x >= hero.x ? 1 : -1;
-    const reachH = Math.max(D.range, tgt.role === 'archer' || tgt.role === 'shaman' || tgt.goblin ? 40 : 0);
+    const reachH = Math.max(D.range, { arch: 48, mage: 40, necro: 32 }[cls()] || 0, tgt.role === 'archer' || tgt.role === 'shaman' || tgt.goblin ? 40 : 0);
     if (td > reachH) {
       const dx = tgt.x - hero.x, dy = tgt.y - hero.y, d = Math.hypot(dx, dy) || 1;
       const mv = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1); hero.x += dx / d * mv * dt; hero.y += dy / d * mv * dt;
@@ -1656,6 +1703,9 @@ function render() {
   ctx.globalAlpha = 1;
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
+    if (w.kind === 'arrow') { const ca = Math.cos(w.a), sa = Math.sin(w.a); for (let j = 0; j < 6; j++) pix(w.x - ca * j, w.y - sa * j, j === 0 ? '#ffffff' : j > 4 ? '#5cff8a' : '#c9a36a'); continue; }
+    if (w.kind === 'fire') { ctx.fillStyle = '#ffcc33'; ctx.fillRect(Math.round(w.x) - 1, Math.round(w.y) - 1, 3, 3); pix(w.x, w.y, '#ffffff'); ctx.globalAlpha = .5; for (let j = 1; j <= 4; j++) pix(w.x - Math.cos(w.a) * j * 1.5 + (rnd() - .5), w.y - Math.sin(w.a) * j * 1.5 + (rnd() - .5), '#ff6622'); ctx.globalAlpha = 1; continue; }
+    if (w.kind === 'dark') { ctx.fillStyle = '#2a0a3a'; ctx.fillRect(Math.round(w.x) - 1, Math.round(w.y) - 1, 3, 3); pix(w.x, w.y, '#7affb0'); ctx.globalAlpha = .5; for (let j = 1; j <= 3; j++) pix(w.x - Math.cos(w.a) * j * 2, w.y - Math.sin(w.a) * j * 2, '#9a4aff'); ctx.globalAlpha = 1; continue; }
     const ca = Math.cos(w.a), sa = Math.sin(w.a), wc = w.bounce ? '#ffe08a' : w.fin ? '#ffffff' : (S.meta.gear && S.meta.gear.eq.w ? RAR[S.meta.gear.eq.w.rar].c : F(EI.range) >= 2 ? '#ffffaa' : '#dddd88'), half = w.fin ? 6 : 4;
     for (let i = -half; i <= half; i++) { const bend = (half - Math.abs(i)) * .7; for (const th of [0, -1]) pix(w.x - sa * i + ca * (bend + th), w.y + ca * i + sa * (bend + th), Math.abs(i) < 2 ? '#ffffff' : wc); }
     ctx.globalAlpha = .4; for (let j = 1; j <= 3; j++) pix(w.x - ca * j * 2, w.y - sa * j * 2, wc); ctx.globalAlpha = 1;
@@ -1807,6 +1857,9 @@ function drawHero(rk) {
   if (F(EI.armor)) { const ph = (time * (.6 + F(EI.armor) * .1)) % 2; if (ph < .35) { const gx = x + Math.floor(ph / .35 * 9); pix(gx, y + 2, '#ffffff'); pix(gx - 1, y + 3, '#ffffff'); } }
   // щит
   if (hero.shield > 0) { ctx.globalAlpha = .5; for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28 + time; pix(hero.x + Math.cos(a) * 7, hero.y - 4 + Math.sin(a) * 6, '#9fe8ff'); } ctx.globalAlpha = 1; }
+  // союзники некроманта
+  for (const al of allies) { const sp2 = sprite(MOBS[2].p, { 1: '#bfe8d0', 2: '#4a8a6a', 3: '#7affb0' }, 'ally'); ctx.globalAlpha = al.t < 1 ? al.t : .9;
+    ctx.save(); if (al.face < 0) { ctx.translate(Math.round(al.x - 4) * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(sp2, Math.round(al.x - 4), Math.round(al.y - 8)); ctx.restore(); ctx.globalAlpha = 1; }
   // духи-клинки
   for (let i = 0; i < (D.spirits || 0); i++) { const a = time * 2.5 + i * 6.28 / D.spirits, sx2 = Math.round(hero.x + Math.cos(a) * 10), sy2 = Math.round(hero.y - 5 + Math.sin(a) * 6); pix(sx2, sy2 - 1, '#7affd8'); pix(sx2 - 1, sy2, '#7affd8'); pix(sx2 + 1, sy2, '#7affd8'); pix(sx2, sy2 + 1, '#ffffff'); }
   // шаровые молнии
@@ -1846,6 +1899,16 @@ function drawHero(rk) {
       const a = hero.swingA + (p - .5) * 2.2 + s * .12;
       for (let r = 2; r < len; r++) pix(hero.x + Math.cos(a) * r, hero.y - 4 + Math.sin(a) * r, s === 0 ? '#fff' : swingC);
     }
+  } else if (cls() === 'arch') {   // лук
+    const bx = Math.round(hero.x + hero.face * 4); for (let i = 0; i < 6; i++) pix(bx + hero.face * (i === 0 || i === 5 ? 0 : 1), y + 1 + i, '#c9a36a'); for (let i = 1; i < 5; i++) pix(bx, y + 1 + i, '#e6e6e6');
+    pix(hero.x - hero.face * 2, y + 1, '#2f8a4f'); pix(hero.x - hero.face * 1, y, '#2f8a4f');
+  } else if (cls() === 'mage') {   // шляпа и посох
+    for (let i = 0; i < 7; i++) pix(hero.x + hero.face * 4, y - 1 + i, '#8a5a2a'); ctx.fillStyle = hero.cast > 0 ? '#ffffff' : '#ff9a3c'; ctx.fillRect(Math.round(hero.x + hero.face * 4) - 1, y - 3, 3, 3);
+    pix(hero.x - 2, y - 1, '#7a3aaa'); pix(hero.x - 1, y - 1, '#7a3aaa'); pix(hero.x, y - 1, '#7a3aaa'); pix(hero.x + 1, y - 1, '#7a3aaa'); pix(hero.x - 1, y - 2, '#7a3aaa'); pix(hero.x, y - 2, '#7a3aaa'); pix(hero.x, y - 3, '#7a3aaa'); pix(hero.x + hero.face, y - 4, '#7a3aaa');
+  } else if (cls() === 'necro') {   // коса и тёмный капюшон
+    for (let i = 0; i < 8; i++) pix(hero.x + hero.face * 4, y - 1 + i, '#5a4a6a'); for (let i = 0; i < 4; i++) pix(hero.x + hero.face * (4 - i), y - 1 - (i > 2 ? 1 : 0), '#c9ced6');
+    pix(hero.x - 2, y, '#1a0a2a'); pix(hero.x + 1, y, '#1a0a2a'); pix(hero.x - 1, y - 1, '#1a0a2a'); pix(hero.x, y - 1, '#1a0a2a');
+    if (Math.sin(time * 4) > 0) { pix(hero.x - 1, y + 1, '#7affb0'); pix(hero.x + 1, y + 1, '#7affb0'); }
   } else {
     const fx2 = hero.x + hero.face * 3;
     for (let i = 0; i < 4; i++) pix(fx2 + hero.face * (i > 1 ? 1 : 0), y + 1 + i, swordC);
@@ -1861,6 +1924,7 @@ const ubarI = $('ubar').firstElementChild;
 let dsT = 0;
 function updateUI() {
   D.ready = readiness();
+  if (time > autoT) { autoT = time + 1; runAuto(); }
   { const can = S.zone < S.meta.best, sb = $('spdb');
     sb.hidden = !can; sb.classList.toggle('on', !!S.fast && can); sb.textContent = S.fast && can ? '×2 ▶▶' : '×2';
     if (can) tip('fast', 'Ускорение ×2', 'Эту зону ты уже проходил: кнопка ×2 справа вверху ускоряет игру, пока не дойдёшь до рекорда (' + S.meta.best + ').');
@@ -1953,9 +2017,60 @@ function renderSyn() {
 $('ptog').onclick = () => { S.panelSmall = !S.panelSmall; applyPanel(); };
 function applyPanel() { $('panel').classList.toggle('small', S.panelSmall); $('ptog').textContent = S.panelSmall ? '▲' : '▼'; setTimeout(resize, 220); }
 
+/* ---------- автоматика прокачки ---------- */
+const AUTO = {
+  tal: { n: 'Авто-таланты', d: 'души сами тратятся на лучшие узлы (кроме развилок)' },
+  chest: { n: 'Авто-сундуки', d: 'сундуки открываются сразу, лучшее надевается, хлам — в пыль' },
+  up: { n: 'Авто-улучшение', d: 'пыль сама тратится на улучшение надетых вещей' },
+  reb: { n: 'Авто-перерождение', d: 'если герой упёрся в стену на 90с после 30-й зоны' },
+};
+const au = k => { if (!S.meta.auto) S.meta.auto = { tal: true, chest: true, up: true, reb: false }; return S.meta.auto[k]; };
+function renderAuto() {
+  const ah = Object.keys(AUTO).map(k => `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`).join('');
+  if (ah !== renderAuto.a) { renderAuto.a = ah; $('autobox').innerHTML = ah; }
+  const ch = Object.keys(CLASSES).map(k => `<div class="cls${cls() === k ? ' on' : ''}${!canPickClass() && cls() !== k ? ' lock' : ''}" data-c="${k}"><div><b style="color:${CLASSES[k].c}">${CLASSES[k].n}</b>${CLASSES[k].d}</div></div>`).join('') +
+    (canPickClass() ? '' : '<div style="grid-column:1/-1;font-size:7px;color:var(--dim)">Сменить класс можно в начале новой жизни (после перерождения)</div>');
+  if (ch !== renderAuto.c) { renderAuto.c = ch; $('clsbox').innerHTML = ch; }
+}
+$('autobox').onclick = e => { const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
+$('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (el) setClass(el.dataset.c); };
+let autoT = 0;
+function runAuto() {
+  const g = G();
+  if (au('chest')) {
+    let n = 0, best = null;
+    for (const t of ['e', 'r', 'c']) while (g.chests[t] > 0 && n < 50) { g.chests[t]--; const r = rollRar(t), sl = Object.keys(SLOTS)[Math.floor(rnd() * 4)], it = makeItem(sl, r, ilvlNow()); addItem(it); n++; if (!best || it.rar > best.rar) best = it; }
+    if (n) { for (const it of g.inv) g.dust += dustOf(it); g.inv = [];
+      feed('Открыто сундуков: ' + n + ' · лучшее: ' + best.name, RAR[best.rar].c); if (best.rar >= 4) toast('ЛЕГЕНДАРНЫЙ ПРЕДМЕТ!', best.name); gearChanged(); }
+  }
+  if (au('up')) {
+    let n = 0;
+    while (n < 100) { let cheap = null; for (const sl in g.eq) { const it = g.eq[sl]; if (it && (!cheap || upCost(it) < upCost(cheap))) cheap = it; } if (!cheap || g.dust < upCost(cheap)) break; g.dust -= upCost(cheap); cheap.up++; n++; }
+    if (n) { feed('Улучшено вещей: +' + n, '#9fd8ff'); gearChanged(); }
+  }
+  if (au('tal')) {
+    let n = 0;
+    while (n < 300) {
+      calcRec();
+      let pick = TN.find(nd => tRec.has(nd.id) && nd.alt == null && canBuy(nd));
+      if (!pick) { let c = null; for (const nd of TN) if (nd.alt == null && canBuy(nd) && brActive(nd.br) && (!c || tCost(nd, TL(nd.id)) < tCost(c, TL(c.id)))) c = nd; pick = c; }
+      if (!pick) { for (const nd of TN) if (nd.alt == null && canBuy(nd) && (!pick || tCost(nd, TL(nd.id)) < tCost(pick, TL(pick.id)))) pick = nd; }
+      if (!pick) break;
+      if (pick.br >= 0 && !brActive(pick.br)) S.meta.act.push(pick.br);
+      S.meta.souls -= tCost(pick, TL(pick.id)); S.meta.nodes[pick.id] = TL(pick.id) + 1; n++; calcTal();
+    }
+    if (n) { feed('Таланты: куплено уровней ' + n, '#ff44ff'); D.dirty = true; save(); }
+  }
+  if (au('reb') && S.zone >= 30) {
+    if (S.zk >= zoneNeed() && (D.ready || 0) < .6) S.wallT = (S.wallT || 0) + 1; else S.wallT = 0;
+    if (S.wallT >= 90 && soulsFor(S.zone) > 0) { S.wallT = 0; feed('Авто-перерождение', '#ff44ff'); rebirth(); }
+  }
+}
+
 /* ---------- перерождение ---------- */
 let rConfirm = 0;
 function renderSouls() {
+  renderAuto();
   const M = S.meta, g = soulsFor(S.zone);
   $('dsouls').textContent = fmt(M.souls); $('dreb').textContent = M.rebirths; $('dbest').textContent = Math.max(M.best, S.zone);
   $('dfore').innerHTML = S.zone >= 30 ? 'Если переродиться сейчас: <span style="color:#5cff8a">+' + fmt(g) + ' душ</span><br><span class="k" style="color:var(--dim)">на зоне ' + (S.zone + 5) + ' будет +' + fmt(soulsFor(S.zone + 5)) + '</span>'
@@ -1972,10 +2087,10 @@ function rebirth() {
   const g = soulsFor(S.zone), M = S.meta;
   M.souls += g; M.total += g; M.rebirths++; M.best = Math.max(M.best, S.zone);
   const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => st.v * keepF) : [];
-  const keep = { fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
+  const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  mobs = []; parts = []; orbs = []; allies = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
