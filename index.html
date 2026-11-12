@@ -306,7 +306,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112154301';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261112155318';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -773,7 +773,8 @@ AUTO_NODES.forEach(([k, n, cost], i) => {
 const autoOpen = k => (S.meta.nodes[TN.find(nd => nd.auto === k).id] || 0) > 0;
 const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
-const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((nd.max ? 5 : 1) * (1 + nd.d * .35) * Math.pow(1.45, l));
+const nMax = nd => nd.max || 50;   // обычный талант — до 50 уровней
+const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((nd.max ? 5 * Math.pow(1.45, l) : Math.pow(1 + .5 * l, 2.2)) * (1 + nd.d * .35));
 const brActive = bi => bi < 0 || (S.meta.act || []).includes(bi);
 const startOfLife = () => S.zone <= 1 && S.kills < 200;
 let TAL = {}, TB = [], KSL = [];
@@ -784,7 +785,7 @@ function calcTal() {
   }
   TAL = {}; TB = BRANCHES.map(() => ({ pts: 0, ms: 0, full: false, bm: 1, n: 0, have: 0 }));
   for (const nd of TN) if (nd.br >= 0) { const b = TB[nd.br], l = TL(nd.id); b.pts += l; if (nd.alt == null || nd.alt > nd.id) { b.n++; if (l > 0 || (nd.alt != null && TL(nd.alt) > 0)) b.have++; } }
-  TB.forEach(b => { b.ms = b.pts < 25 ? 0 : Math.floor(Math.log2(b.pts / 25)) + 1; b.full = b.have >= b.n; b.bm = (1 + .01 * b.pts) * Math.pow(1.25, b.ms) * (b.full ? 2 : 1); });
+  TB.forEach(b => { b.ms = b.pts < 25 ? 0 : Math.floor(Math.log2(b.pts / 25)) + 1; b.full = b.have >= b.n; b.bm = (1 + .004 * b.pts) * Math.pow(1.15, b.ms) * (b.full ? 1.5 : 1); });
   KSL = BRANCHES.map((b, bi) => b.ksId.map(id => brActive(bi) ? Math.min(5, TL(id)) : 0));
   for (const nd of TN) {
     const l = TL(nd.id); if (!l || nd.k.startsWith('ks') || !brActive(nd.br)) continue;
@@ -798,8 +799,8 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => (1 + ta('soul')) * (1 + ta('x_reaper'));
-const bossSouls = z => (1 + z / 5) * Math.pow(1 + z / 50, 2) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper')));   // корень: души не разгоняются снежным комом
+const bossSouls = z => (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
   S.runSf -= n; S.runSouls = (S.runSouls || 0) + n;
@@ -1073,12 +1074,11 @@ let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 // рост зоны: в начале круче (герой растёт взрывно), дальше ×1.5 за зону
 const zl = [0];
 function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
-// предел души: дальше этой зоны враги резко крепнут; каждый уровень таланта отодвигает предел
-let LIM_B = 8, LIM_K = 4, LIM_HP = 4, LIM_DM = 6;
-const soulLimit = () => Math.floor(LIM_B + LIM_K * Math.sqrt(TAL.lv || 0));
-const overZ = z => { const o = Math.max(0, z - soulLimit()); return o * (1 + o / 8); };   // за пределом рост ускоряется
-const zoneHP = z => ZB * Math.pow(10, zoneLog(z)) * Math.pow(LIM_HP, overZ(z));
-const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP)) * Math.pow(LIM_DM, overZ(z));
+// враги крепнут всё быстрее: к квадрату зоны, а после 50-й — несоизмеримо (стена мира)
+let ZQ = .0125, ZW = 49, ZWK = 10;
+const zoneX = z => ZQ * z * z + ZWK * Math.max(0, z - ZW) ** 2;   // доп. порядки силы врагов
+const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
+const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + zoneX(z));
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
@@ -1557,7 +1557,6 @@ function giveBurst(total) {
 function nextZone() {
   const oldB = biomeOf(S.zone).name;
   S.zone++; S.zk = 0; S.wallW = 0;
-  if (S.zone === soulLimit() + 1) toast('ЗА ПРЕДЕЛОМ ДУШИ', 'враги резко крепнут · таланты отодвинут предел', 2600);
   { const keys = Object.keys(ZMODS); S.zmod = S.zone >= 5 && !isLegend(S.zone) && rnd() < .4 ? keys[Math.floor(rnd() * keys.length)] : null; }
   S.meta.best = Math.max(S.meta.best, S.zone);
   if (S.zone >= 2) tip('souls', 'Души забега', 'За врагов и вожаков копятся души (✦ вверху справа). Когда герой падёт, он переродится в новом случайном классе, а души останутся навсегда — трать их в дереве талантов.');
@@ -2433,7 +2432,7 @@ function updateUI() {
   if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
-  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone + ' / ' + soulLimit(); $('znum').style.color = S.zone > soulLimit() ? '#ff6b6b' : '';
+  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
   else if (S.zk >= need) {
@@ -2460,7 +2459,7 @@ function updateUI() {
   if (tab === 'Y') renderSyn();
   if (tab === 'D') renderSouls();
   $('dcount').textContent = fmt(S.meta.souls) + (S.runSouls ? ' +' + fmt(S.runSouls) : '');
-  const canBuy = TN.some(nd => tOpen(nd) && (!nd.max || TL(nd.id) < nd.max) && S.meta.souls >= tCost(nd, TL(nd.id)));
+  const canBuy = TN.some(nd => tOpen(nd) && TL(nd.id) < nMax(nd) && S.meta.souls >= tCost(nd, TL(nd.id)));
   $('tabD').classList.toggle('glow', tab !== 'D' && (S.zone >= 30 || canBuy));
   $('treeb').style.color = canBuy ? '#ff44ff' : '';
   { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; $('gearb').classList.toggle('glow', n > 0); }
@@ -2609,7 +2608,7 @@ function renderSouls() {
   renderAuto();
   const M = S.meta, g = S.runSouls || 0;
   $('dsouls').textContent = fmt(M.souls); $('dreb').textContent = M.rebirths; $('dbest').textContent = Math.max(M.best, S.zone);
-  $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br>Предел души: <span style="color:#ff44ff">зона ' + soulLimit() + '</span> — дальше враги резко крепнут. Таланты отодвигают предел.<br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
+  $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
 }
 function rebirth() {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
@@ -2843,7 +2842,7 @@ const labelPos = bi => { const nd = TN[BRANCHES[bi].main[12]]; return [nd.x * 1.
 const nodeBlocked = nd => nd.alt != null && TL(nd.alt) > 0;
 function canBuy(nd) {
   const l = TL(nd.id);
-  return tOpen(nd) && !nodeBlocked(nd) && (!nd.max || l < nd.max) && S.meta.souls >= tCost(nd, l) && (brActive(nd.br) || (S.meta.act || []).length < 3);
+  return tOpen(nd) && !nodeBlocked(nd) && l < nMax(nd) && S.meta.souls >= tCost(nd, l) && (brActive(nd.br) || (S.meta.act || []).length < 3);
 }
 // совет: какие узлы помогут прямо сейчас
 const REC = {
@@ -2863,7 +2862,6 @@ function renderHint() {
     : D.lim === 'surv' ? 'вожак убивает героя — узлы с <b style="color:#5cff8a">!</b> добавят живучести'
     : 'стены нет — узлы с <b style="color:#5cff8a">!</b> ускорят рост';
   $('thint').innerHTML = `Активные ветви (${(S.meta.act || []).length}/3): ${act}${startOfLife() ? ' · <b style="color:#f2c94c">тапни название ветви, чтобы вкл/выкл</b>' : ' · сменить можно в начале жизни'}<br>Совет: ${tip}` +
-    `<br>Предел души: <b style="color:#ff44ff">зона ${soulLimit()}</b> · каждый уровень таланта отодвигает его` +
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
 function drawTree() {
@@ -2930,7 +2928,7 @@ function drawTree() {
 }
 function renderTInfo() {
   const nd = TN[tSel], l = TL(nd.id), open = tOpen(nd), col = nodeCol(nd);
-  const maxed = nd.max && l >= nd.max, cost = tCost(nd, l), d = TK[nd.k][2], ks = nd.k.startsWith('ks');
+  const maxed = l >= nMax(nd), cost = tCost(nd, l), d = TK[nd.k][2], ks = nd.k.startsWith('ks');
   const bm = nd.br >= 0 && TB[nd.br] ? TB[nd.br].bm : 1, mul = ks ? 1 : bm;
   const tb = nd.br >= 0 ? TB[nd.br] : null;
   let warn = '';
@@ -2938,7 +2936,7 @@ function renderTInfo() {
   else if (nodeBlocked(nd)) warn = `Выбран «${TN[nd.alt].n}». Поменять можно в начале новой жизни`;
   else if (!brActive(nd.br) && (S.meta.act || []).length >= 3) warn = 'Уже активны 3 ветви. Сменить набор можно в начале жизни';
   $('tinfo').innerHTML = `<h3 style="color:${col}">${nd.n}${ks ? ' ★' : ''}${nd.alt != null ? ' <span style="color:#f2c94c">⇄ ВЫБОР</span>' : ''}</h3>` +
-    `<span class="k">${tb ? `Ветвь «${BRANCHES[nd.br].n}»: ${tb.pts} очк. · сила ×${bm.toFixed(2)} · ${tb.have}/${tb.n} узлов${tb.full ? ' · созвездие ✦' : ''}<br>Классы ветви: ${CLS_KEYS.filter(k => CLASSES[k].br === nd.br).map(k => CLASSES[k].n).join(', ')} · мастерство +2% за очко` : nd.auto ? 'Автоматика · ' + AUTO[nd.auto].d : 'Корень дерева'} · ур. ${l}${nd.max ? '/' + nd.max : ''}</span><br>` +
+    `<span class="k">${tb ? `Ветвь «${BRANCHES[nd.br].n}»: ${tb.pts} очк. · сила ×${bm.toFixed(2)} · ${tb.have}/${tb.n} узлов${tb.full ? ' · созвездие ✦' : ''}<br>Классы ветви: ${CLS_KEYS.filter(k => CLASSES[k].br === nd.br).map(k => CLASSES[k].n).join(', ')} · мастерство +2% за очко` : nd.auto ? 'Автоматика · ' + AUTO[nd.auto].d : 'Корень дерева'} · ур. ${l}/${nMax(nd)}</span><br>` +
     (nd.alt != null ? `<span class="k">или «${TN[nd.alt].n}» — только один из двух</span><br>` : '') +
     `<span class="k">Сейчас:</span> ${l ? d(nd.v * l * mul) : '—'}<br>` +
     (maxed ? '<span class="k">Максимальный уровень</span>' : `<span class="k">След.:</span> ${d(nd.v * (l + 1) * mul)}<br>`) +
@@ -2956,7 +2954,7 @@ function buyNode(nd, all) {
   if (nd.br >= 0 && !brActive(nd.br)) S.meta.act.push(nd.br);
   const before = TB.map(b => b ? [b.ms, b.full] : [0, false]);
   let n = 0;
-  while (canBuy(nd) && (!nd.max || TL(nd.id) < nd.max)) {
+  while (canBuy(nd) && TL(nd.id) < nMax(nd)) {
     S.meta.souls -= tCost(nd, TL(nd.id)); S.meta.nodes[nd.id] = TL(nd.id) + 1; n++;
     if (!all || n > 500) break;
   }
@@ -2971,7 +2969,7 @@ function buyNode(nd, all) {
     if (!b) return;
     if (b.ms > before[bi][0]) { toast('РУБЕЖ ВЕТВИ «' + BRANCHES[bi].n.toUpperCase() + '»', b.pts + ' очков · вся ветвь ×' + b.bm.toFixed(2)); [523, 659, 784].forEach((f, i) => tone(f, .15, 'square', .04, 0, i * .08)); }
     if (b.full && !before[bi][1]) {
-      toast('СОЗВЕЗДИЕ «' + BRANCHES[bi].n.toUpperCase() + '»!', 'ветвь заполнена: сила ×2 и все награды ×1.25');
+      toast('СОЗВЕЗДИЕ «' + BRANCHES[bi].n.toUpperCase() + '»!', 'ветвь заполнена: сила ×1.5 и все награды ×1.25');
       for (const n2 of TN) if (n2.br === bi) for (let i = 0; i < 3; i++) tParts.push({ x: n2.x, y: n2.y, vx: (rnd() - .5) * 30, vy: (rnd() - .5) * 30, l: 1 + rnd(), c: '#ffe08a' });
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1));
     }
