@@ -561,7 +561,7 @@ const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1
 function soulsFor(z) { return z < 30 ? 0 : Math.floor((5 * Math.pow(1.12, z - 30) + (z - 30)) * (1 + ta('soul')) * (1 + ta('x_reaper'))); }
 let stats = [];
 let D = {};          // производные значения
-const hero = { x: 50, y: 60, hp: 50, face: 1, cd: 0, swing: 0, swingA: 0, hurt: 0, tx: 0, ty: 0, shield: 0, tint: '#fff', tintT: 0, atkN: 0, trail: [], trailT: 0 };
+const hero = { x: 50, y: 60, hp: 50, face: 1, cd: 0, swing: 0, swingA: 0, hurt: 0, tx: 0, ty: 0, shield: 0, tint: '#fff', tintT: 0, atkN: 0, trail: [], trailT: 0, chain: 0, chainT: 0, swType: 0, swDur: .13, iframe: 0, dashT: 0, dashCd: 0, lastDash: -9, counter: 0, dvx: 0, dvy: 0 };
 let orbs = [], rings = [], clouds = [], ghosts = [];
 const PT = { fire: 0, met: 0, orb: 0, sky: 0, nova: 0 };
 let mobs = [], parts = [], texts = [], bolts = [];
@@ -574,7 +574,7 @@ let ult = 0, ultReadyT = 0, ultT = 0, tapStreak = 0, lastTap = 0, wsHintT = 0;
 function moveWS(b) { b.ws.ox = Math.round((rnd() - .5) * 10); b.ws.oy = -Math.round(3 + rnd() * 11); b.ws.t = 1.6 + rnd(); }
 function retreat(b, why) {
   if (ksL(1, 1)) S.siege = Math.min(.9, 1 - (1 - (S.siege || 0)) * (1 - (1 - Math.max(0, b.hp) / b.max) * Math.min(1, .2 * ksL(1, 1))));
-  b.dead = true; bossAlive = false; bossCd = 12;
+  b.dead = true; bossAlive = false; bossCd = 12; tele = [];
   burst(b.x, b.y - 8, '#ffffff', 20, 40);
   hero.hp = D.maxHP; hero.shield = 0;
   combo = 0;
@@ -866,6 +866,10 @@ function spawnMob(boss) {
   mobs.push({ t, x, y, h: b.h[k] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
+  { const nm = mobs[mobs.length - 1];
+    if (ev && ev.type === 'moon') { nm.hp *= 1.5; nm.max *= 1.5; }
+    if (!boss) { const role = rollRole(); if (role) { nm.role = role; if (role === 'bomber') nm.sp *= 1.8; if (role === 'shield') { nm.hp *= 1.5; nm.max *= 1.5; }
+      tip('roles', 'Роли врагов', 'Значок над врагом: жёлтый — лучник, зелёный — шаман (лечит, бей первым), синий — щитоносец, красный — камикадзе, фиолетовый — призыватель.'); } } }
   if (na && !boss) tip('aff', 'Особые враги', 'Цветные точки над врагом — его особенности: броня, скорость, взрыв, вампиризм. Такие враги дают больше наград.');
   if (!boss && na >= 2 && ksL(5, 0)) { const me = mobs[mobs.length - 1]; me.ws = { ox: 0, oy: -6, t: 0 }; moveWS(me); }
   if (boss) {
@@ -915,9 +919,10 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
   if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
+  if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   m.hp -= dmg; m.fl = .07;
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
-  const kb = m.boss ? .4 : 1.6; m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
+  const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
   if (show && texts.length < (crit ? 14 : 7)) ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.5 : 1);
   if (m.hp <= 0) { m.dead = true; killMob(m); }
@@ -938,7 +943,7 @@ function killMob(m) {
   const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1)
     * (1 + ta('x_greed')) * (on('x_scholar') || on('x_reaper') ? .8 : 1) * (on('x_gamble') && !m.rare ? .8 : 1)
     * (m.rare ? (1 + ta('c_rare')) * (on('x_gamble') ? 1 + ta('x_gamble') : 1) : 1) * (isLegend(S.zone) ? 1 + ta('c_legend') : 1)
-    * (mobs.length >= 15 ? 1 + ta('c_crowd') : 1) * Math.pow(1.25, TAL.constel || 0);
+    * (mobs.length >= 15 ? 1 + ta('c_crowd') : 1) * Math.pow(1.25, TAL.constel || 0) * evGain();
   const now = performance.now();
   const fav = biomeOf(S.zone).fav, dbl = Math.min(.5, .05 * (F(EI.wis) - 1));
   for (let i = 0; i < cnt; i++) {
@@ -962,6 +967,7 @@ function killMob(m) {
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
   if (ksL(7, 0) && m.boss && S.zone >= 30) { const g = ksL(7, 0) * Math.max(1, Math.round(soulsFor(S.zone) / 40)); S.meta.souls += g; S.meta.total += g; feed('+' + fmt(g) + ' душ', '#ff44ff'); }
   if (m.boss) S.siege = 0;
+  if (m.goblin) { giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
   if (sy(1) && m.psnT > 0) for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 16) {
@@ -991,10 +997,17 @@ function nextZone() {
 /* ---------- атака героя ---------- */
 function heroAttack(t) {
   const crit = rnd() < D.crit, ultra = crit && rnd() < .04;
-  const dmg = D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t);
+  const ci = hero.chain % 3; hero.chain++; hero.chainT = 1.2; hero.swType = ci; hero.swDur = ci === 2 ? .2 : .13;
+  const dmg = [1, 1.15, 2.5][ci] * (hero.counter > 0 ? 3 : 1) * D.hit * (crit ? D.critM * (1 + .2 * sy(2)) : 1) * (.9 + rnd() * .2) * furyM() * (ultra ? 5 : 1) * condDmg(t);
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
-  hero.swing = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1;
+  hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1;
+  if (ci === 2) hero.kbBoost = 3.5;
   hitMob(t, dmg * (1 + ta('x_focus')), crit, true);
+  if (ci === 2) {   // финишер: удар с прыжка, волна, всех разбрасывает
+    ring(t.x, t.y - 2, 12, '#ffffff'); hitAround(t.x, t.y, 12, dmg * .4, '#ffffff', t); hitStop = Math.max(hitStop, .05); shake = Math.max(shake, 3);
+    tone(90, .15, 'square', .05, 50);
+  }
+  hero.kbBoost = 1;
   if (ksL(3, 0) && hero.atkN % 3 === 0) { const rr = D.range * 2 + 4; ring(hero.x, hero.y - 4, rr, '#66ccff'); hitAround(hero.x, hero.y, rr, dmg * .5 * ksL(3, 0), '#66ccff', t); }
   hero.atkN++;
   const fd = F(EI.dmg);
@@ -1063,6 +1076,7 @@ function onTap(e) {
   tapCd = .12;
   const nowT = performance.now() / 1000;
   tapStreak = nowT - lastTap < .45 ? tapStreak + 1 : 0; lastTap = nowT;
+  if (Math.hypot(hero.x - x, hero.y - 4 - y) < 9) { heroDash(); return; }
   if (ult >= 1) { fireUlt(); return; }
   // слабое место вожака
   const b = mobs.find(m => m.ws && !m.dead && Math.hypot(m.x + m.ws.ox - x, m.y + m.ws.oy - y) < 6);
@@ -1089,6 +1103,95 @@ function onTap(e) {
   if (tapStreak >= 5 && tapStreak % 5 === 0 && texts.length < 30) ftext(x, y - 8, 'ТАП ×' + (1 + .05 * Math.min(40, tapStreak)).toFixed(2), '#ffaa33', .9, .6);
 }
 fx.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e); });
+
+/* ---------- бой: атаки вожаков, роли врагов, события ---------- */
+let pix2 = [], tele = [], proj = [], hitStop = 0, ev = null, evNext = 100;
+const EVS = {
+  inv: { n: 'НАШЕСТВИЕ', d: 30, g: 3, c: '#ff9a3c', sub: 'втрое больше врагов · награды ×3' },
+  gob: { n: 'ЗОЛОТОЙ ГОБЛИН', d: 15, g: 1, c: '#ffd84a', sub: 'он убегает с сундуком — догони и добей тапами!' },
+  moon: { n: 'КРОВАВАЯ ЛУНА', d: 40, g: 5, c: '#ff2a4a', sub: 'враги сильнее · награды ×5' },
+};
+const evGain = () => ev ? EVS[ev.type].g : 1;
+function startEvent() {
+  const types = ['inv', 'gob', 'moon'], type = types[Math.floor(rnd() * types.length)];
+  ev = { type, t: EVS[type].d };
+  toast(EVS[type].n + '!', EVS[type].sub); tone(220, .2, 'square', .05, 440); tone(330, .3, 'square', .05, 660, .15);
+  tip('ev', 'События', 'Иногда случаются события: нашествие, золотой гоблин, кровавая луна. Награды в это время намного больше.');
+  if (type === 'gob') spawnGoblin();
+}
+function spawnGoblin() {
+  const hp = zoneHP(S.zone) * 35;
+  mobs.push({ t: 3, x: rnd() < .5 ? -4 : W + 4, y: H * (.3 + rnd() * .4), h: 48, hp, max: hp, rare: true, boss: false, sz: 1.25, af: 0, na: 0, goblin: true,
+    sp: 26, dm: 0, cd: 99, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
+}
+// роли обычных врагов
+const ROLES = {
+  archer: { z: 3, c: '#ffdd44', n: 'Лучник' }, bomber: { z: 4, c: '#ff3322', n: 'Камикадзе' }, shaman: { z: 5, c: '#44ee66', n: 'Шаман' },
+  shield: { z: 6, c: '#66aaff', n: 'Щитоносец' }, summoner: { z: 8, c: '#bb66ff', n: 'Призыватель' },
+};
+function rollRole() {
+  if (S.zone < 3 || rnd() > Math.min(.4, .1 + S.zone * .01)) return null;
+  const ok = Object.keys(ROLES).filter(r => S.zone >= ROLES[r].z);
+  return ok[Math.floor(rnd() * ok.length)];
+}
+function shooter(m, dt, mdmg) {
+  m.rt = (m.rt || 1.5) - dt;
+  if (m.role === 'archer' && m.rt <= 0) {
+    m.rt = 2.2; const dx = hero.x - m.x, dy = hero.y - 4 - (m.y - 4), d = Math.hypot(dx, dy) || 1;
+    proj.push({ x: m.x, y: m.y - 4, vx: dx / d * 48, vy: dy / d * 48, t: 3, dmg: mdmg * m.dm * 1.2 });
+  }
+  if (m.role === 'shaman' && m.rt <= 0) {
+    m.rt = 3; ring(m.x, m.y - 3, 20, '#44ee66');
+    for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 20) { o.hp = Math.min(o.max, o.hp + o.max * .15); burst(o.x, o.y - 4, '#44ee66', 2, 12); }
+  }
+  if (m.role === 'summoner' && m.rt <= 0) { m.rt = 5; if (mobs.length < 70) { spawnMini(m); ring(m.x, m.y - 3, 10, '#bb66ff'); } }
+}
+// атаки вожака с предупреждением
+function bossAI(bm, dt) {
+  bm.atkT = (bm.atkT === undefined ? 3 : bm.atkT) - dt;
+  if (bm.atkT > 0 || tele.some(t => t.b === bm)) return;
+  const iv = 5 * (bm.phase === 2 ? .5 : bm.phase === 1 ? .7 : 1); bm.atkT = iv * (.8 + rnd() * .4);
+  const types = ['jump', 'dash', 'ring', 'summon'], type = types[Math.floor(rnd() * types.length)];
+  const dmg = zoneDmg(S.zone) * bm.dm * 3;
+  tip('tele', 'Красная зона!', 'Вожак готовит удар. Тапни по герою — он отпрыгнет. Увернулся — 3 секунды тройного урона.');
+  if (type === 'jump') tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 16, t: 1.1, max: 1.1, dmg, act: 'jump' });
+  else if (type === 'ring') tele.push({ k: 'c', b: bm, x: bm.x, y: bm.y, r: 26, t: 1.2, max: 1.2, dmg, act: 'ring' });
+  else if (type === 'dash') { const dx = hero.x - bm.x, dy = hero.y - bm.y, d = Math.hypot(dx, dy) || 1; tele.push({ k: 'l', b: bm, x: bm.x, y: bm.y, x2: clamp(bm.x + dx / d * 80, 4, W - 4), y2: clamp(bm.y + dy / d * 80, 8, H - 2), r: 6, t: 1, max: 1, dmg, act: 'dash' }); }
+  else { ring(bm.x, bm.y - 6, 18, '#bb66ff'); for (let i = 0; i < (bm.phase ? 4 : 3); i++) spawnMob(false); feed('Вожак зовёт подмогу!', '#bb66ff'); }
+}
+const segDist = (px, py, t) => { const vx = t.x2 - t.x, vy = t.y2 - t.y, l2 = vx * vx + vy * vy || 1, u = clamp(((px - t.x) * vx + (py - t.y) * vy) / l2, 0, 1); return Math.hypot(px - t.x - vx * u, py - t.y - vy * u); };
+const inTele = t => t.k === 'c' ? Math.hypot(hero.x - t.x, hero.y - t.y) < t.r : segDist(hero.x, hero.y, t) < t.r;
+function updTele(dt) {
+  for (const t of tele) {
+    t.t -= dt; if (inTele(t)) t.threat = true;
+    if (t.t > 0) continue;
+    t.done = true; const b = t.b;
+    if (t.act === 'jump' && !b.dead) { b.x = t.x; b.y = t.y; }
+    if (t.act === 'dash' && !b.dead) { b.x = t.x2; b.y = t.y2; for (let i = 0; i < 6; i++) ghosts.push({ x: t.x + (t.x2 - t.x) * i / 6, y: t.y + (t.y2 - t.y) * i / 6, l: .25, face: 1 }); }
+    ring(t.k === 'c' ? t.x : t.x2, t.k === 'c' ? t.y : t.y2, t.r + 4, '#ff3322'); shake = Math.max(shake, 5); sfx.boom();
+    if (inTele(t) && hero.iframe <= 0) { const d = hurtHero(t.dmg * (1 - D.armor)); ftext(hero.x, hero.y - 12, '-' + fmt(d), '#ff3322', 1.1, .8); flashT = Math.max(flashT, .05); }
+    else if (t.threat && hero.lastDash > time - t.max - .2) { hero.counter = 3; ftext(hero.x, hero.y - 16, 'УВОРОТ! ×3', '#5cff8a', 1.3, 1); hitStop = .08; tone(880, .1, 'square', .05, 1320); }
+  }
+  tele = tele.filter(t => !t.done && !t.b.dead);
+}
+function heroDash() {
+  if (hero.dashCd > 0) return;
+  let ax = 0, ay = 0;
+  const t = tele.find(t => inTele(t));
+  if (t) { if (t.k === 'c') { ax = hero.x - t.x; ay = hero.y - t.y; } else { const vx = t.x2 - t.x, vy = t.y2 - t.y; ax = -vy; ay = vx; if ((hero.x - t.x) * ax + (hero.y - t.y) * ay < 0) { ax = -ax; ay = -ay; } } }
+  else { let n = null, nd = 1e9; for (const m of mobs) { const d = Math.hypot(m.x - hero.x, m.y - hero.y); if (d < nd) { nd = d; n = m; } } if (n) { ax = hero.x - n.x; ay = hero.y - n.y; } else ax = 1; }
+  const d = Math.hypot(ax, ay) || 1; hero.dvx = ax / d * 150; hero.dvy = ay / d * 150; hero.dashT = .16; hero.iframe = .4; hero.dashCd = .7; hero.lastDash = time;
+  for (let i = 0; i < 3; i++) ghosts.push({ x: hero.x, y: hero.y, l: .25 + i * .05, face: hero.face });
+  tone(500, .08, 'triangle', .05, 1100);
+}
+function bossPhase(m) {
+  const f = m.hp / m.max;
+  if (m.phase !== 2 && f < .2 && m.phase === 1) { m.phase = 2; m.atkT = Math.min(m.atkT || 0, 1); toast('ПОСЛЕДНИЙ РЫВОК!', 'вожак атакует без передышки'); shake = 8; flashT = .1; }
+  else if (!m.phase && f < .5) {
+    m.phase = 1; m.sp *= 1.4; m.atkT = Math.min(m.atkT || 0, 1.2); toast('ВОЖАК В ЯРОСТИ!', 'быстрее и злее'); shake = 8; flashT = .1; tone(110, .4, 'sawtooth', .05, 60);
+    if (m.t === 0 && isLegend(S.zone)) { for (let i = 0; i < 2; i++) spawnMini(m); feed('Король слизней делится!', '#5cff8a'); }
+  }
+}
 
 /* ---------- механики и визуал эффектов ---------- */
 function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Math.floor(rnd() * a.length)] : null; }
@@ -1139,7 +1242,7 @@ function update(dt) {
   const z = zs();
   // спавн
   spawnT -= dt;
-  const want = bossAlive ? Math.ceil(crowd() / 2) : crowd();
+  const want = Math.floor((bossAlive ? Math.ceil(crowd() / 2) : crowd()) * (ev && ev.type === 'inv' ? 2.5 : 1));
   if (spawnT <= 0 && mobs.length < want) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .1 : .3) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
@@ -1162,8 +1265,17 @@ function update(dt) {
 
   // герой: цель
   let tgt = null, td = 1e9;
-  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4; if (d < td) { td = d; tgt = m; } }
-  hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt;
+  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
+  if (tgt) td = Math.hypot(tgt.x - hero.x, tgt.y - hero.y) - (tgt.sz - 1) * 4;
+  hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
+  if (hero.chainT <= 0) hero.chain = 0;
+  if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
+  updTele(dt);
+  for (const pr of proj) { pr.x += pr.vx * dt; pr.y += pr.vy * dt; pr.t -= dt;
+    if (Math.hypot(pr.x - hero.x, pr.y - (hero.y - 4)) < 3.5) { pr.t = 0; if (hero.iframe <= 0 && rnd() >= D.dodge) { const pd = hurtHero(pr.dmg * (1 - D.armor)); if (texts.length < 7) ftext(hero.x, hero.y - 10, '-' + fmt(pd), '#ffdd44', .8, .6); } } }
+  proj = proj.filter(pr => pr.t > 0 && pr.x > -10 && pr.x < W + 10 && pr.y > -10 && pr.y < H + 10);
+  if (ev) { ev.t -= dt; if (ev.t <= 0) { if (ev.type === 'gob') { const g = mobs.find(m => m.goblin); if (g) { g.dead = true; burst(g.x, g.y - 3, '#ffd84a', 12, 30); feed('Гоблин сбежал...', '#aaaaaa'); } } else feed(EVS[ev.type].n + ' закончилось', '#aaaaaa'); ev = null; } }
+  else if (!bossAlive && S.zone >= 3) { evNext -= dt; if (evNext <= 0) { evNext = 90 + rnd() * 70; startEvent(); } }
   if (tgt) {
     hero.face = tgt.x >= hero.x ? 1 : -1;
     if (td > D.range) {
@@ -1178,18 +1290,38 @@ function update(dt) {
   effMech(dt);
 
   // мобы
-  const mdmg = zoneDmg(S.zone) * (on('x_swarm') ? 1.2 : 1);
+  const mdmg = zoneDmg(S.zone) * (on('x_swarm') ? 1.2 : 1) * (ev && ev.type === 'moon' ? 1.5 : 1);
   for (const m of mobs) {
     if (m.dead) continue;
     const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1;
-    const reach = 5 + m.sz * 2;
-    if (d > reach) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; }
-    m.x += m.kx * dt; m.y += m.ky * dt; m.kx *= Math.pow(.001, dt); m.ky *= Math.pow(.001, dt);
+    const reach = 5 + m.sz * 2, ranged = m.role === 'archer' || m.role === 'shaman';
+    if (m.goblin) { m.x -= dx / d * m.sp * dt; m.y -= dy / d * m.sp * dt; m.x = clamp(m.x, 5, W - 5); m.y = clamp(m.y, 10, H - 3); if (rnd() < dt * 8) parts.push({ x: m.x, y: m.y - 2, vx: 0, vy: 0, l: .4, c: '#ffd84a', f: 1 }); }
+    else if (ranged) { const want = m.role === 'archer' ? 34 : 28; if (d > want + 6) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; } else if (d < want - 6) { m.x -= dx / d * m.sp * .8 * dt; m.y -= dy / d * m.sp * .8 * dt; } m.x = clamp(m.x, -4, W + 4); m.y = clamp(m.y, 4, H + 2); shooter(m, dt, mdmg); }
+    else if (d > reach) { m.x += dx / d * m.sp * dt; m.y += dy / d * m.sp * dt; }
+    if (m.role === 'summoner') shooter(m, dt, mdmg);
+    if (m.boss) { bossAI(m, dt); bossPhase(m); }
+    if (m.role === 'bomber' && d <= reach + 1) {
+      m.dead = true; burst(m.x, m.y - 3, '#ff3322', 22, 55); ring(m.x, m.y - 3, 16, '#ff3322'); sfx.boom(); shake = Math.max(shake, 5);
+      if (hero.iframe <= 0 && rnd() >= D.dodge) { const bd = hurtHero(mdmg * m.dm * 3 * (1 - D.armor)); ftext(hero.x, hero.y - 12, '-' + fmt(bd), '#ff3322', 1, .7); }
+      hitAround(m.x, m.y, 16, D.hit * 2, '#ff6622', m); killMob(m); continue;
+    }
+    // отбрасывание: отскок от краёв и столкновения с другими врагами
+    const kv = Math.hypot(m.kx, m.ky);
+    m.x += m.kx * dt; m.y += m.ky * dt;
+    if (kv > 25) {
+      if ((m.x < 3 && m.kx < 0) || (m.x > W - 3 && m.kx > 0)) m.kx *= -.6;
+      if ((m.y < 8 && m.ky < 0) || (m.y > H - 2 && m.ky > 0)) m.ky *= -.6;
+    }
+    if (kv > 70) for (const o of mobs) if (o !== m && !o.dead && !o.boss && Math.hypot(o.x - m.x, o.y - m.y) < 6 * Math.max(1, o.sz)) {
+      o.kx += m.kx * .5; o.ky += m.ky * .5; m.kx *= .5; m.ky *= .5; hitMob(o, D.hit * .15, false, false, '#ffffff'); burst((o.x + m.x) / 2, (o.y + m.y) / 2 - 3, '#ffffff', 3, 25); break;
+    }
+    m.kx *= Math.pow(.004, dt); m.ky *= Math.pow(.004, dt);
     m.fl -= dt; m.cd -= dt;
-    if (d <= reach + 1 && m.cd <= 0) {
+    if (!ranged && !m.goblin && d <= reach + 1 && m.cd <= 0) {
       m.cd = (1 + rnd() * .3) * (m.af & 2 ? .6 : 1);
       if (rnd() < D.dodge) { if (texts.length < 7) ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
       else {
+        if (hero.iframe > 0) continue;
         const dmg = mdmg * m.dm * (1 - D.armor);
         hurtHero(dmg); sfx.hurt();
         if (m.af & 8) { m.hp = Math.min(m.max, m.hp + m.max * .15); burst(m.x, m.y - 4, '#cc2244', 3, 15); }
@@ -1252,6 +1384,25 @@ function render() {
   ctx.drawImage(decal, 0, 0);
   for (const c of clouds) { ctx.globalAlpha = Math.min(.5, c.t * .3); const n = Math.floor(c.r * 1.5); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = rnd() * c.r; pix(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .6, i % 2 ? '#88ee22' : '#4a8a12'); } }
   ctx.globalAlpha = 1;
+  // красные зоны атак вожака: заливка в шахматку + яркая мигающая граница
+  for (const t of tele) {
+    const f = 1 - t.t / t.max, edge = Math.sin(time * (12 + f * 30)) > 0 ? '#ffffff' : '#ff2222';
+    ctx.fillStyle = '#ff2222';
+    if (t.k === 'c') {
+      ctx.globalAlpha = .28 + .3 * f;
+      for (let yy = -t.r; yy <= t.r; yy += 1) for (let xx = -t.r; xx <= t.r; xx += 1) if ((xx + yy + Math.floor(time * 8)) % 2 === 0 && (xx * xx) / (t.r * t.r) + (yy * yy) / (t.r * t.r * .36) <= 1) ctx.fillRect(Math.round(t.x + xx), Math.round(t.y + yy * .6), 1, 1);
+      ctx.globalAlpha = 1; const n = Math.floor(t.r * 4);
+      for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(t.x + Math.cos(a) * t.r, t.y + Math.sin(a) * t.r * .6, edge); }
+      const ir = t.r * f; for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(t.x + Math.cos(a) * ir, t.y + Math.sin(a) * ir * .6, '#ffaa66'); }
+    } else {
+      const L = Math.hypot(t.x2 - t.x, t.y2 - t.y) || 1, n = Math.floor(L), nx = -(t.y2 - t.y) / L, ny = (t.x2 - t.x) / L;
+      for (let i = 0; i <= n; i++) { const u = i / n, cx = t.x + (t.x2 - t.x) * u, cy = t.y + (t.y2 - t.y) * u;
+        ctx.globalAlpha = .28 + .3 * f; for (let w = -t.r + 1; w < t.r; w++) if ((i + w + Math.floor(time * 8)) % 2 === 0) ctx.fillRect(Math.round(cx + nx * w), Math.round(cy + ny * w), 1, 1);
+        ctx.globalAlpha = 1; pix(cx + nx * t.r, cy + ny * t.r, edge); pix(cx - nx * t.r, cy - ny * t.r, edge); if (u < f) pix(cx, cy, '#ffaa66'); }
+    }
+    ctx.fillStyle = '#ff2222';
+  }
+  ctx.globalAlpha = 1;
   const rk = heroRank();
   // аура
   if (rk >= 4) {
@@ -1274,6 +1425,14 @@ function render() {
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
     if (o.psnT > 0) pix(o.x, y - 1, '#88ee22');
+    if (o.role) { const rc = ROLES[o.role].c, mx = Math.round(o.x), my = y - 6 + bob;
+      if (o.role === 'archer') { pix(mx, my - 1, rc); pix(mx - 1, my, rc); pix(mx + 1, my, rc); }
+      else if (o.role === 'shaman') { pix(mx, my - 1, rc); pix(mx - 1, my, rc); pix(mx, my, rc); pix(mx + 1, my, rc); pix(mx, my + 1, rc); }
+      else if (o.role === 'shield') { ctx.fillStyle = rc; ctx.fillRect(mx - 1, my - 1, 3, 3); ctx.globalAlpha = .25; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28 + time; pix(o.x + Math.cos(a) * 14, o.y + Math.sin(a) * 8, rc); } ctx.globalAlpha = 1; }
+      else if (o.role === 'bomber') { if (Math.sin(time * 16) > 0) { ctx.fillStyle = rc; ctx.fillRect(mx - 1, my - 1, 2, 2); } }
+      else { pix(mx - 1, my, rc); pix(mx + 1, my, rc); pix(mx, my - 1, rc); pix(mx, my + 1, rc); } }
+    if (o.boss && o.phase) { ctx.globalAlpha = .25 + .2 * Math.sin(time * 12); ctx.drawImage(sprite(MOBS[o.t].p, { 1: '#ff0000', 2: '#ff0000', 3: '#ffffff' }, 'mr' + o.t), x, y + bob, s, s); ctx.globalAlpha = 1; }
+    if (o.goblin) { ctx.fillStyle = '#ffd84a'; ctx.fillRect(Math.round(o.x) + 3, y + 4 + bob, 3, 3); pix(o.x + 4, y + 4 + bob, '#b07a10'); }
     if (o.hp < o.max && !o.boss) {
       ctx.fillStyle = '#300'; ctx.fillRect(x, y - 2, s, 1);
       ctx.fillStyle = o.rare ? '#ffd84a' : '#e33'; ctx.fillRect(x, y - 2, Math.max(1, Math.round(s * o.hp / o.max)), 1);
@@ -1284,6 +1443,8 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(1, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
+  for (const pr of proj) { pix(pr.x, pr.y, '#ffdd44'); pix(pr.x - pr.vx * .03, pr.y - pr.vy * .03, '#aa8822'); }
+  for (const [qx, qy] of pix2) { ctx.fillStyle = '#66aaff'; ctx.fillRect(Math.round(qx) - 1, Math.round(qy), 3, 1); } pix2 = [];
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
   // полоса вожака
   const boss = mobs.find(m => m.boss);
@@ -1304,6 +1465,7 @@ function render() {
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
+  if (ev && ev.type === 'moon') { ctx.fillStyle = 'rgba(140,0,20,.16)'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.hpf < .35) { ctx.fillStyle = `rgba(120,0,0,${.12 + .08 * Math.sin(time * 6)})`; ctx.fillRect(-4, -4, W + 8, H + 8); }
 
   // текст на hi-res слое
@@ -1346,6 +1508,15 @@ function render() {
     fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
     fctx.strokeText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k); fctx.fillText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k);
   }
+  if (ev) {
+    const E = EVS[ev.type], fsE = Math.round(base * .8 / DPR) * DPR, yy = (boss ? 15 : 5) * k;
+    fctx.font = `${fsE}px "Press Start 2P", monospace`; fctx.textAlign = 'center'; fctx.lineWidth = Math.max(2, fsE / 3); fctx.strokeStyle = '#000'; fctx.fillStyle = E.c;
+    const es = E.n + ' · ' + Math.ceil(ev.t) + 'с' + (E.g > 1 ? ' · награды ×' + E.g : ''); fctx.strokeText(es, fx.width / 2, yy); fctx.fillText(es, fx.width / 2, yy);
+  }
+  if (hero.counter > 0) {
+    const fsC = Math.round(base * .8 / DPR) * DPR; fctx.font = `${fsC}px "Press Start 2P", monospace`; fctx.textAlign = 'center'; fctx.lineWidth = Math.max(2, fsC / 3); fctx.strokeStyle = '#000'; fctx.fillStyle = '#5cff8a';
+    const cs = 'КОНТРАТАКА ×3 · ' + hero.counter.toFixed(1); fctx.strokeText(cs, (hero.x + sx) * k, (hero.y - 20 + sy) * k); fctx.fillText(cs, (hero.x + sx) * k, (hero.y - 20 + sy) * k);
+  }
   if (combo >= 3) {
     const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
     const fs = Math.round(base * (.9 + comboPop * 2) / DPR) * DPR, fs2 = Math.round(base * .7 / DPR) * DPR;
@@ -1367,6 +1538,8 @@ function drawHero(rk) {
   // светлое кольцо под ногами — героя видно всегда
   ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
   const moving = hero.swing <= 0 && Math.sin(time * 14) > 0;
+  const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0;
+  if (hero.iframe > 0 && Math.sin(time * 40) > 0) ctx.globalAlpha = .5;
   const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
   const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate(X * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X, Y); ctx.restore(); };
   // послеобразы скорости
@@ -1377,11 +1550,11 @@ function drawHero(rk) {
   if (fp) { ctx.globalAlpha = Math.min(.6, .15 + fp * .1) * (.7 + .3 * Math.sin(time * 6)); const sil = silhouette(EFF[EI.power].c); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(sil, x + ox, y + oy, hero.face); ctx.globalAlpha = 1; }
   // плащ второго по силе эффекта
   if (D.top && D.R[EFF[D.top[1]].k] >= 3) { const cc = EFF[D.top[1]].c, bx = hero.x - hero.face * 3, fl = Math.sin(time * 9) > 0 ? 1 : 0; for (let i = 0; i < 4; i++) pix(bx - hero.face * (i > 1 ? fl + 1 : 0), y + 3 + i, i % 2 ? shade(cc, -.25) : cc); }
-  const hol = silhouette('#000'); for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y - (moving ? 1 : 0) + dy, hero.face);
+  const hol = silhouette('#000'); for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y + hop - (moving ? 1 : 0) + dy, hero.face);
   ctx.save();
   if (hero.face < 0) { ctx.translate(x * 2 + 8, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(spr, x, y - (moving ? 1 : 0));
-  ctx.restore();
+  ctx.drawImage(spr, x, y + hop - (moving ? 1 : 0));
+  ctx.restore(); ctx.globalAlpha = 1;
   const ac = ARMOR[(rk + 4) % ARMOR.length];
   // шипы
   const fth = F(EI.thorns);
@@ -1413,7 +1586,13 @@ function drawHero(rk) {
   // меч
   const sw = hero.swing > 0;
   const swordC = rk >= 8 ? ac : '#e6e6f0';
-  if (sw) {
+  if (sw && hero.swType === 1) {   // укол
+    const p = 1 - hero.swing / hero.swDur, len = Math.min(18, 6 + D.range * .3) * (.5 + p), ca = Math.cos(hero.swingA), sa = Math.sin(hero.swingA);
+    for (let r = 2; r < len; r++) { pix(hero.x + ca * r, hero.y - 4 + sa * r, r > len - 3 ? '#ffffff' : swordC); pix(hero.x + ca * r - sa, hero.y - 4 + sa * r + ca, swordC); }
+  } else if (sw && hero.swType === 2) {   // удар с прыжка: дуга сверху вниз
+    const p = 1 - hero.swing / hero.swDur, len = Math.min(16, 6 + D.range * .25);
+    for (let s2 = 0; s2 < 9; s2++) { const a = -Math.PI / 2 + hero.face * (s2 / 8) * Math.PI * Math.min(1, p * 1.5); for (let r = 3; r < len; r++) pix(hero.x + Math.cos(a) * r, hero.y - 6 + hop + Math.sin(a) * r, s2 === 8 ? '#ffffff' : swordC); }
+  } else if (sw) {
     const p = 1 - hero.swing / .13, len = Math.min(16, 4 + D.range * .25 + Math.min(6, F(EI.dmg))), wd = 2 + Math.min(4, F(EI.cleave)) + Math.min(2, F(EI.aspd) >> 1);
     const swingC = F(EI.fire) >= 2 ? '#ff9a3c' : swordC;
     for (let s = -wd; s <= wd; s++) {
@@ -1837,7 +2016,8 @@ let last = performance.now();
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
-  update(slowT > 0 ? real * .3 : real); render();
+  if (hitStop > 0) hitStop -= real; else update(slowT > 0 ? real * .3 : real);
+  render();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
