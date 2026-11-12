@@ -861,7 +861,7 @@ let W = 100, H = 120, SC = 4, DPR = 1, AW = 220, AH = 240, camX = 0, camY = 0, c
 let ground = null;
 function resize() {
   const cw = game.clientWidth, ch = game.clientHeight;
-  SC = Math.max(2, Math.floor(cw / 96));
+  SC = Math.max(2, Math.floor(cw / 128));   // ~130 пикселей мира по ширине телефона
   W = Math.ceil(cw / SC); H = Math.ceil(ch / SC);
   AW = Math.round(W * 2.2); AH = Math.round(H * 2);
   cv.width = W; cv.height = H; cv.style.width = W * SC + 'px'; cv.style.height = H * SC + 'px';
