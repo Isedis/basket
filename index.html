@@ -144,6 +144,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #ocard .nm{font-size:11px;margin:4px 0}
 #obtns{display:flex;gap:8px}
 #obtns .btn{font-size:9px;padding:9px 12px;background:#6a4a1a}
+#spdb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));top:30px;z-index:4;font-size:10px;padding:5px 8px;background:#2b2540}
+#spdb.on{background:#2f8a4f;color:#fff;box-shadow:0 0 0 2px #5cff8a}
 #modal{position:fixed;inset:0;background:rgba(5,4,10,.86);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px}
 #modal[hidden]{display:none}
 #mbox{background:var(--panel);border:3px solid #f2c94c;padding:14px;max-width:340px;width:100%;text-align:center;line-height:1.9}
@@ -160,7 +162,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
     <div class="r"><span id="rank">Новобранец</span><span id="zmodl"></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
   </div>
-  <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><div id="toast"></div></div>
+  <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><div id="toast"></div></div>
   <div id="panel">
     <div id="phead">
       <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><button class="btn" id="ptog">▼</button></div>
@@ -1844,6 +1846,10 @@ const ubarI = $('ubar').firstElementChild;
 let dsT = 0;
 function updateUI() {
   D.ready = readiness();
+  { const can = S.zone < S.meta.best, sb = $('spdb');
+    sb.hidden = !can; sb.classList.toggle('on', !!S.fast && can); sb.textContent = S.fast && can ? '×2 ▶▶' : '×2';
+    if (can) tip('fast', 'Ускорение ×2', 'Эту зону ты уже проходил: кнопка ×2 справа вверху ускоряет игру, пока не дойдёшь до рекорда (' + S.meta.best + ').');
+    if (!can && S.fast) { S.fast = false; feed('Рекорд зоны — скорость снова ×1', '#5cff8a'); } }
   if (time > dsT) { dsT = time + 1; renderDS(); }
   if (!bossAlive && S.zk >= zoneNeed() && D.ready < 1) tip('ready', 'Вожак сильнее героя', 'Герой фармит и становится сильнее. Шкала зоны — готовность. Можно тапнуть по ней и рискнуть.');
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
@@ -1912,6 +1918,7 @@ function updateUI() {
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'ЭФФ'; $('fxb').style.opacity = S.fxLow ? .45 : 1; }
 $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
+$('spdb').onclick = () => { S.fast = !S.fast; updateUI(); tone(S.fast ? 880 : 440, .08, 'square', .04, S.fast ? 1320 : 330); };
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = '♪'; $('mute').style.opacity = S.mute ? .4 : 1; audio(); };
 let tab = 'S', lastSpec;
 function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('dlist').hidden = t !== 'D'; $('tabD').classList.toggle('on', t === 'D'); if (t === 'D') renderSouls(); $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
@@ -1950,7 +1957,7 @@ function rebirth() {
   const g = soulsFor(S.zone), M = S.meta;
   M.souls += g; M.total += g; M.rebirths++; M.best = Math.max(M.best, S.zone);
   const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => st.v * keepF) : [];
-  const keep = { meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
+  const keep = { fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
   mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
@@ -2442,7 +2449,7 @@ let last = performance.now();
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
-  if (hitStop > 0) hitStop -= real; else update(slowT > 0 ? real * .3 : real);
+  if (hitStop > 0) hitStop -= real; else { const d = slowT > 0 ? real * .3 : real; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
   render();
   requestAnimationFrame(frame);
 }
