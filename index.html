@@ -443,7 +443,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113062418';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113062957';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1148,7 +1148,7 @@ function ntTick(dt) {
     if (T('ntBall', 1)) { const o = nearMobs(ox, oy, 30)[0]; if (o) { bolts.push({ x1: ox, y1: oy, x2: o.x, y2: o.y - 3, l: .1, c: '#7ad8ff' }); hitMob(o, D.hit * .5 * L, false, false, '#99eeff'); } } }
   if ((L = ntL(2, 2)) && T('ntStar', 8) && mobs.length) { ring(hero.x, hero.y - 3, 24, '#a8e8ff'); for (const m of live2()) if (Math.hypot(m.x - hero.x, m.y - hero.y) < 24 && !m.boss) m.frz = Math.max(m.frz || 0, .5 * L); fxLabel('Ледяная звезда', hero.x, hero.y - 18, '#a8e8ff'); }
   if ((L = ntL(3, 1)) && T('ntDash', 6)) { const o = nearMobs(hero.x, hero.y, 50)[0]; if (o) { const x0 = hero.x, y0 = hero.y, a = Math.atan2(o.y - y0, o.x - x0), tx = clamp(o.x + Math.cos(a) * 10, 4, AW - 4), ty = clamp(o.y + Math.sin(a) * 10, 8, AH - 1);
-      for (let i = 0; i < 5; i++) ghosts.push({ x: x0 + (tx - x0) * i / 5, y: y0 + (ty - y0) * i / 5, l: .3, face: hero.face }); for (const m of live2()) if (segDist(m.x, m.y, { x: x0, y: y0, x2: tx, y2: ty }) < 8) hitMob(m, D.hit * L, false, true, '#8affc8'); hero.x = tx; hero.y = ty; fxLabel('Рывок', hero.x, hero.y - 18, '#8affc8'); } }
+      for (let i = 0; i < 5; i++) ghosts.push({ x: x0 + (tx - x0) * i / 5, y: y0 + (ty - y0) * i / 5, l: .3, face: hero.face }); for (const m of live2()) if (segDist(m.x, m.y, { x: x0, y: y0, x2: tx, y2: ty }) < 8) hitMob(m, D.hit * L, false, true, '#8affc8'); dashTo(tx, ty); fxLabel('Рывок', hero.x, hero.y - 18, '#8affc8'); } }
   if ((L = ntL(5, 0)) && T('ntSmite', 5)) { const o = live2().sort((a, b) => b.hp - a.hp)[0]; if (o) { bolts.push({ x1: o.x, y1: camY, x2: o.x, y2: o.y - 3, l: .2, c: '#fff2a0' }); bolts.push({ x1: o.x + 1, y1: camY, x2: o.x + 1, y2: o.y - 3, l: .15, c: '#ffffff' }); hitMob(o, D.hit * 2 * L, true, true, '#fff6c0'); fxLabel('Божья кара', o.x, o.y - 16, '#fff2a0'); } }
   if ((L = ntL(6, 1)) && T('ntInsight', 30)) { giveBurst(zs() * D.gainMult * 5 * L); feed('Озарение! Всплеск наград', '#ffd84a'); }
   if ((L = ntL(7, 1))) { const want = Math.ceil(L / 2); hero.guards = hero.guards || []; while (hero.guards.length < want) hero.guards.push({ a: hero.guards.length * 3.14, cd: 0 });
@@ -1287,7 +1287,7 @@ const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
   S.runSf -= n; S.runSouls = (S.runSouls || 0) + n;
-  if (m) { fxLabel('+' + fmt(n) + ' душ', m.x, m.y - 16, '#ff44ff'); if (m.boss) feed('+' + fmt(n) + ' душ забега (всего ' + fmt(S.runSouls) + ')', '#ff44ff'); }
+  if (m) { if (m.boss || time > (addSouls.t || 0)) { addSouls.t = time + .8; ftext(m.x, m.y - 16, '+' + fmt(n) + ' душ', '#ff44ff', .8, .9); } if (m.boss) feed('+' + fmt(n) + ' душ забега (всего ' + fmt(S.runSouls) + ')', '#ff44ff'); }
 }
 let stats = [];
 let D = {};          // производные значения
@@ -2188,10 +2188,12 @@ function shoot(t, kind, sp, ex) {
   waves.push(Object.assign({ x: hero.x + Math.cos(a) * 5, y: hero.y - 4 + Math.sin(a) * 5, t, sp, a, l: 1.4, kind }, ex || {}));
 }
 const nearMobs = (x, y, r, skip) => mobs.filter(o => !o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+// быстрый видимый рывок вместо мгновенного телепорта
+function dashTo(x, y) { const dx = x - hero.x, dy = y - hero.y, d = Math.hypot(dx, dy); if (d < 2) return; const T = clamp(d / 450, .05, .13); hero.dvx = dx / T; hero.dvy = dy / T; hero.dashT = T; }
 function blinkTo(t, back) {
   for (let i = 0; i < 4; i++) ghosts.push({ x: hero.x + (t.x - hero.x) * i / 4, y: hero.y + (t.y - hero.y) * i / 4, l: .25, face: hero.face });
   const f = t.x >= hero.x ? 1 : -1;
-  hero.x = clamp(t.x + (back ? f * 6 : -f * 6), 4, AW - 4); hero.y = clamp(t.y, 8, AH - 1); hero.face = t.x >= hero.x ? 1 : -1;
+  dashTo(clamp(t.x + (back ? f * 6 : -f * 6), 10, AW - 10), clamp(t.y, 14, AH - 6)); hero.face = f;
 }
 // атака класса; true — атака обработана
 function clsAttack(t, d) {
@@ -2669,12 +2671,17 @@ function tip(key, title, text) {
 // лента событий в левом нижнем углу: прирост, эволюции, формы
 let feedArr = [], gainFeedT = 0;
 function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
+const ftWordT = {};
 function ftext(x, y, s, c, size = 1, life = .9) {
-  if (texts.length > 45) texts.shift();
+  // словесные надписи (не числа): каждая не чаще раза в 6с, чтобы бой не тонул в тексте
+  if (!/^[-+0-9×]/.test(s) && size < 1.5) { if (time < (ftWordT[s] || 0)) return; ftWordT[s] = time + 6; }
+  if (texts.length > 30) texts.shift();
   texts.push({ x, y, s, c, size, life, t: 0, vx: (rnd() - .5) * 6 });
 }
+const mvCap = v => 170 * (1 - Math.exp(-v / 170));   // бег быстрый, но глазом видно
 function burst(x, y, c, n, sp = 30) {
   if (S.fxLow) n = Math.ceil(n * .3);
+  n = Math.ceil(n * Math.min(1, 150 / (parts.length + 1)));   // чем больше на экране, тем меньше новых искр
   for (let i = 0; i < n; i++) {
     if (parts.length > 500) parts.shift();
     const a = rnd() * Math.PI * 2, v = sp * (.3 + rnd());
@@ -2807,7 +2814,7 @@ function hitMob(m, dmg, crit, show, col) {
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
-  if (show && texts.length < (crit ? 14 : 7)) ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.5 : 1);
+  if (show && (D.aps < 5 || crit) && texts.length < (D.aps < 5 ? 10 : 5) && time > (hitMob.nt || 0)) { if (D.aps >= 5) hitMob.nt = time + .12; ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.3 : 1); }
   if (m.hp <= 0) { m.dead = true; killMob(m); }
 }
 
@@ -3386,7 +3393,7 @@ function renderDS() {
 }
 // короткая подпись эффекта героя при срабатывании (не чаще раза в 15с на эффект)
 const lblT = {};
-function fxLabel(key, x, y, c) { if (time - (lblT[key] ?? -99) < 15) return; lblT[key] = time; ftext(x, y, key, c, .85, 1.3); }
+function fxLabel(key, x, y, c) { if (time - (lblT[key] ?? -99) < 15) return; lblT[key] = time; const L = S.meta.lbl || (S.meta.lbl = {}); if ((L[key] = (L[key] || 0) + 1) > 3) return; ftext(x, y, key, c, .85, 1.3); }   // название эффекта показываем первые 3 раза — потом игрок его знает
 const RING_LABEL = { '#ff6622': 'Огненное кольцо', '#ff9a3c': 'Метеор', '#cc9966': 'Терновая волна', '#66ccff': 'Вихрь', '#ff9988': 'Вихрь клинков', '#ff5544': 'Мясник', '#aabbcc': 'Второе дыхание' };
 let hurtV = 0;
 const seenRole = {};
@@ -3531,7 +3538,7 @@ function effMech(dt) {
     o.x += o.vx * dt; o.y += o.vy * dt;
     if (d < 3 || o.t > 2) { o.done = true; if (hero.tintT < -.12) { hero.tint = o.c; hero.tintT = .06; } if (parts.length < 500) parts.push({ x: hero.x, y: hero.y - 4, vx: (rnd() - .5) * 30, vy: -20, l: .25, c: o.c, f: 1 }); }
   }
-  orbs = orbs.filter(o => !o.done);
+  orbs = orbs.filter(o => !o.done); if (orbs.length > 40) orbs.splice(0, orbs.length - 40);
   hero.tintT -= dt;
   hero.trailT -= dt; if (hero.trailT <= 0) { hero.trailT = .06; hero.trail.push({ x: hero.x, y: hero.y, face: hero.face }); if (hero.trail.length > 4) hero.trail.shift(); }
   // частицы-следы статов
@@ -3582,12 +3589,12 @@ function update(dt) {
 
   // герой: цель
   let tgt = null, td = 1e9;
-  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
-  if (tgt) td = Math.hypot(tgt.x - hero.x, tgt.y - hero.y) - (tgt.sz - 1) * 4;
+  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0) + .5 * Math.hypot(m.x - AW / 2, m.y - AH / 2) - (m === hero.lastT ? 12 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
+  if (tgt) td = Math.hypot(tgt.x - hero.x, tgt.y - hero.y) - (tgt.sz - 1) * 4; hero.lastT = tgt;
   if (deathT > 0) { deathT -= dt; hero.hp = 0; hero.cd = 1; hero.dashT = 0; if (deathT <= 0) { rebirth(); return; } }
   hero.cast = (hero.cast || 0) - dt; hero.spin = (hero.spin || 0) - dt; hero.sweep = (hero.sweep || 0) - dt; hero.fists = (hero.fists || 0) - dt; hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
   if (hero.chainT <= 0) hero.chain = 0;
-  if (hero.dashT > 0) { hero.dashT -= dt; hero.x += hero.dvx * dt; hero.y += hero.dvy * dt; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
+  if (hero.dashT > 0) { const st = Math.min(dt, hero.dashT); hero.dashT -= dt; hero.x += hero.dvx * st; hero.y += hero.dvy * st; if (rnd() < .5) ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); }
   updTele(dt); updWaves(dt); updUltQ(dt); updUfx(dt); if (hero.stopT > 0) hero.stopT -= dt;
   for (const e of echoes) { e.t -= dt; if (e.t <= 0) { ring(e.x, e.y - 3, 9, '#ccccff'); hitAround(e.x, e.y, 9, e.dmg, '#ccccff'); fxLabel('Эхо', e.x, e.y - 12, '#ccccff'); } } echoes = echoes.filter(e => e.t > 0);
   if (D.trail > .01) {
@@ -3607,14 +3614,15 @@ function update(dt) {
     const reachH = Math.max(clsReach(), tgt.role === 'archer' || tgt.role === 'shaman' || tgt.goblin ? 40 : 0);
     if (td > reachH) {
       const dx = tgt.x - hero.x, dy = tgt.y - hero.y, d = Math.hypot(dx, dy) || 1;
-      if (D.blink > .01 && rnd() < D.blink * dt) { for (let i = 0; i < 4; i++) ghosts.push({ x: hero.x + (tgt.x - hero.x) * i / 4, y: hero.y + (tgt.y - hero.y) * i / 4, l: .25, face: hero.face }); const bd = Math.max(1, Math.hypot(tgt.x - hero.x, tgt.y - hero.y)); hero.x = tgt.x - (tgt.x - hero.x) / bd * 6; hero.y = tgt.y - (tgt.y - hero.y) / bd * 6; fxLabel('Скачок', hero.x, hero.y - 16, '#66ffff'); tone(1300, .06, 'triangle', .03, 600, 0, 'blink', .2); }
-      const mv = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1); hero.x += dx / d * mv * dt; hero.y += dy / d * mv * dt;
-    } else if (hero.cd <= 0) { hero.cd = 1 / (D.aps * (1 + (hero.rage || 0) * (D.rageK || 0)) * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
+      if (D.blink > .01 && td > 40 && time > (hero.blinkT || 0) && rnd() < D.blink * dt) { hero.blinkT = time + 1.5; for (let i = 0; i < 4; i++) ghosts.push({ x: hero.x + (tgt.x - hero.x) * i / 4, y: hero.y + (tgt.y - hero.y) * i / 4, l: .25, face: hero.face }); const bd = Math.max(1, Math.hypot(tgt.x - hero.x, tgt.y - hero.y)); dashTo(tgt.x - (tgt.x - hero.x) / bd * 6, tgt.y - (tgt.y - hero.y) / bd * 6); fxLabel('Скачок', hero.x, hero.y - 16, '#66ffff'); tone(1300, .06, 'triangle', .03, 600, 0, 'blink', .2); }
+      const mv0 = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1), mv = mvCap(mv0); hero.x += dx / d * Math.min(mv * dt, d); hero.y += dy / d * Math.min(mv * dt, d);
+    } else { const cx = AW / 2 - hero.x, cy = AH / 2 - hero.y, cd = Math.hypot(cx, cy); if (cd > 30) { hero.x += cx / cd * 22 * dt; hero.y += cy / cd * 22 * dt; } }
+    if (td <= reachH && hero.cd <= 0) { hero.cd = 1 / (D.aps * (1 + (hero.rage || 0) * (D.rageK || 0)) * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
   } else {
-    const dx = 0, dy = 0, d = 0;
-    if (d > 2) { hero.x += dx / d * D.move * .5 * dt; hero.y += dy / d * D.move * .5 * dt; }
+    const dx = AW / 2 - hero.x, dy = AH / 2 - hero.y, d = Math.hypot(dx, dy);
+    if (d > 8) { hero.x += dx / d * mvCap(D.move) * .5 * dt; hero.y += dy / d * mvCap(D.move) * .5 * dt; }
   }
-  hero.x = clamp(hero.x, 4, AW - 4); hero.y = clamp(hero.y, 8, AH - 1);
+  hero.x = clamp(hero.x, 10, AW - 10); hero.y = clamp(hero.y, 14, AH - 6);
   { const tx = clamp(hero.x - W / 2, 0, Math.max(0, AW - W)), ty = clamp(hero.y - H / 2, 0, Math.max(0, AH - H));
     camFX += (tx - camFX) * Math.min(1, dt * 6); camFY += (ty - camFY) * Math.min(1, dt * 6); camX = Math.round(camFX); camY = Math.round(camFY); }
   effMech(dt);
@@ -3684,7 +3692,8 @@ function update(dt) {
   mobs = mobs.filter(m => !m.dead);
 
   for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.f ? 0 : 60) * dt; p.vx *= .96; p.l -= dt; }
-  parts = parts.filter(p => p.l > 0);
+  parts = parts.filter(p => p.l > 0); if (parts.length > 320) parts.splice(0, parts.length - 320);
+  if (rings.length > 18) rings.splice(0, rings.length - 18);
   for (const t of texts) { t.t += dt; t.x += t.vx * dt; t.y -= 14 * dt; }
   texts = texts.filter(t => t.t < t.life);
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
