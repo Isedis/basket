@@ -257,6 +257,12 @@ html,body{font-size:10px}
 .ctn.max{border-color:var(--cc);background:#221b33}
 .ctn.lock{opacity:.4}
 .ctn.top{border-width:3px}
+.pinfo{font-size:8px;line-height:1.8;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-top:6px}
+.pinfo h3{font-size:9px;font-weight:normal}
+.pinfo .k{color:var(--dim)}
+.pinfo .row2{display:flex;gap:8px;margin-top:6px}
+.pinfo .row2 .btn{flex:1;padding:8px;font-size:8px;background:#7a2a8a}
+.pinfo .row2 .btn[disabled]{opacity:.4}
 .cthero{display:flex;gap:10px;align-items:flex-start;background:#141024;border:1px solid #2a2440;border-radius:6px;padding:8px}
 .cthero canvas{flex:none;width:110px;height:110px;image-rendering:pixelated}
 #cthi{flex:1;min-width:0;font-size:7px;line-height:1.7}
@@ -382,7 +388,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113021505';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113022920';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -693,19 +699,20 @@ const CLS_SPR = {
   necro: { p: ["..2222..", ".222222.", ".253352.", ".255552.", ".244442.", ".222222.", ".2.22.2.", "..2..2.."], pal: { 2: '#1c2a22', 5: '#d8e8d8' } },
   reap:  { p: ["..2222..", ".222222.", ".223322.", ".222222.", "2224222.", ".222222.", "2.2..2.2", "........"], pal: { 2: '#1a1020', 3: '#ff44ff' } },
 };
-const heroPat = () => framePat(CLS_SPR[cls()].p, heroFrame);
+const heroPat = () => framePat(evoPat(cls(), shownForm(cls())), heroFrame);
 /* ---------- кадры анимации героя ---------- */
 // из одного спрайта класса строим кадры: шаг (ноги врозь), замах (корпус вперёд), удар по герою (откат), вдох
 let heroFrame = 'idle';
 const frameCache = {};
-function shiftRow(r, d) { return d > 0 ? '.'.repeat(d) + r.slice(0, 8 - d) : r.slice(-d) + '.'.repeat(-d); }
+function shiftRow(r, d) { const n = r.length; return d > 0 ? '.'.repeat(d) + r.slice(0, n - d) : r.slice(-d) + '.'.repeat(-d); }
 function framePat(P, f) {
   const key = P.join('') + f; if (frameCache[key]) return frameCache[key];
   let o = P.slice();
-  if (f === 'walk') { let L = 7; while (L > 4 && !/[^.]/.test(P[L])) L--; const legs = [...P[L]]; const spread = Array(8).fill('.'); legs.forEach((ch, i) => { if (ch === '.') return; const ni = clamp(i < 4 ? i - 1 : i + 1, 0, 7); spread[ni] = ch; }); o[L] = spread.join(''); }
-  if (f === 'atk') for (let r = 0; r < 6; r++) o[r] = shiftRow(P[r], 1);
-  if (f === 'hurt') for (let r = 0; r < 6; r++) o[r] = shiftRow(P[r], -1);
-  if (f === 'breath') { o = ['........', ...P.slice(0, 4), P[5], P[6], P[7]]; }
+  const N = P.length, Wd = P[0].length, mid = Wd / 2;
+  if (f === 'walk') { let L = N - 1; while (L > N - 4 && !/[^.]/.test(P[L])) L--; const legs = [...P[L]]; const spread = Array(Wd).fill('.'); legs.forEach((ch, i) => { if (ch === '.') return; const ni = clamp(i < mid ? i - 1 : i + 1, 0, Wd - 1); spread[ni] = ch; }); o[L] = spread.join(''); }
+  if (f === 'atk') for (let r = 0; r < N - 2; r++) o[r] = shiftRow(P[r], 1);
+  if (f === 'hurt') for (let r = 0; r < N - 2; r++) o[r] = shiftRow(P[r], -1);
+  if (f === 'breath') { o = ['.'.repeat(Wd), ...P.slice(0, N - 4), ...P.slice(N - 3)]; }
   return frameCache[key] = o;
 }
 function pickHeroFrame() {
@@ -781,12 +788,12 @@ function runCard(cv, mode, getK, alive) {
     for (const p of ps) { p.y += p.vy / 60; p.l -= 1 / 60; x.globalAlpha = Math.max(0, p.l); x.fillStyle = Math.random() < .5 ? C.c : '#ffffff'; x.fillRect(Math.round(p.x), Math.round(p.y), 3, 3); }
     for (let i = ps.length - 1; i >= 0; i--) if (ps[i].l <= 0) ps.splice(i, 1);
     x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
-    const P = framePat(CLS_SPR[k].p, mode === 'dead' ? 'hurt' : Math.floor(t * 1.6) % 2 ? 'breath' : 'idle');
-    const cols = mode === 'dead' ? { 1: '#ff3355', 2: '#aa2233', 3: '#ffffff', 4: '#ff5577', 5: '#ff8899' } : { 1: CLS_SPR[k].pal?.[1] || '#c9ced6', 2: CLS_SPR[k].pal?.[2] || '#3a3450', 3: CLS_SPR[k].pal?.[3] || '#ffe08a', 4: C.c, 5: CLS_SPR[k].pal?.[5] || '#f0c090' };
+    const P = framePat(evoPat(k, formOf(k)), mode === 'dead' ? 'hurt' : Math.floor(t * 1.6) % 2 ? 'breath' : 'idle');
+    const cols = mode === 'dead' ? { 1: '#ff3355', 2: '#aa2233', 3: '#ffffff', 4: '#ff5577', 5: '#ff8899', 6: '#ff5577', 7: '#ff8899' } : heroCols(k, 2, '#ffe08a');
     const spr = sprite(P, cols, 'card' + k + mode + P.join(''));
-    const S2 = 8, off = mode === 'dead' ? Math.min(12, t * 8) : 0;
+    const S2 = Math.floor(64 / P.length), off = mode === 'dead' ? Math.min(12, t * 8) : 0;
     x.fillStyle = '#000'; x.globalAlpha *= .4; x.beginPath(); x.ellipse(cx, cy + 32, 22, 5, 0, 0, 6.283); x.fill(); x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
-    x.drawImage(spr, cx - 4 * S2, cy - 4 * S2 + off, 8 * S2, 8 * S2);
+    x.drawImage(spr, cx - P[0].length * S2 / 2, cy + 4 * 8 - P.length * S2 + off, P[0].length * S2, P.length * S2);
     x.globalAlpha = 1;
     cv._raf = requestAnimationFrame(loop);
   };
@@ -816,9 +823,10 @@ const MOBS = [
 const sprCache = new Map();
 function sprite(pat, cols, key) {
   let c = sprCache.get(key); if (c) return c;
-  c = document.createElement('canvas'); c.width = c.height = 8;
+  const PW = pat[0].length, PH = pat.length;
+  c = document.createElement('canvas'); c.width = PW; c.height = PH; c.ox = (PW - 8) / 2; c.oy = PH - 8;
   const x = c.getContext('2d');
-  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+  for (let j = 0; j < PH; j++) for (let i = 0; i < PW; i++) {
     const ch = pat[j][i]; if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); }
   }
   if (sprCache.size > 600) sprCache.clear();
@@ -837,14 +845,15 @@ function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
 function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
 function heroSprite(r, flash, ex) {
   const P = heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;
-  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa' }, 'hf' + k + heroFrame);
-  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3) }, 'ht' + k + heroFrame + hero.tint);
+  const fm = shownForm(k);
+  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa', 6: '#ff8888', 7: '#ffffff' }, 'hf' + k + fm + heroFrame);
+  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3), 6: hero.tint, 7: '#ffffff' }, 'ht' + k + fm + heroFrame + hero.tint);
   let a = ARMOR[r % ARMOR.length], v = r >= 6 ? '#77ffff' : '#ffe08a';
   if (D.top && D.R[EFF[D.top[0]].k] >= 3) { a = shade(EFF[D.top[0]].c, -.1); v = EFF[D.top[2]].c; }
   const c1 = cp[1] || (ex ? shade(a, -.35) : a);
-  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090' }, 'h' + k + heroFrame + c1 + v + (ex ? 'e' : ''));
+  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' }, 'h' + k + fm + heroFrame + c1 + v + (ex ? 'e' : ''));
 }
-const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c }, 'hs' + cls() + heroFrame + c);
+const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c }, 'hs' + cls() + shownForm(cls()) + heroFrame + c);
 
 /* ---------- состояние ---------- */
 const SAVE_KEY = 'inf_brawl_save_v1';
@@ -1302,7 +1311,7 @@ const CT = [
   { id: 'S', x: 1, y: 4, max: 3, req: ['A2|U2|B2', 'A2|U2|B2'] },
   { id: 'V', x: 1, y: 5, max: 1, req: ['A3', 'U3', 'B3', 'S'] },
 ];
-const CT_TOTAL = CT.reduce((a, n) => a + n.max, 0);
+const CT_TOTAL = 27;
 function ctNode(k, id) {
   const C = CLASSES[k], st = C.st;
   switch (id) {
@@ -1321,13 +1330,13 @@ function ctNode(k, id) {
   }
 }
 const ctL = (id, k) => { const c = cm(k || cls()); return (c.ct && c.ct[id]) || 0; };
-const ctSpent = k => { const c = cm(k); let s = 0; if (c.ct) for (const id in c.ct) s += c.ct[id]; return s; };
+const ctSpent = k => { const c = cm(k); let s = 0; if (c.cp) for (const id in c.cp) s += c.cp[id]; return s; };   // очки, вложенные в путь класса
 const ctPts = k => Math.max(0, cm(k).lv - ctSpent(k));
-const ctFull = k => CT.every(n => ctL(n.id, k) >= n.max);
+const ctFull = k => tierDone(k, 3);   // пробуждение: 3-я ступень пути
 const sty = () => S.cstyle || 0;                            // 0 или 1
-const stf = () => .5 + .5 * ctL('S');                       // сила стиля
+const stf = () => .5 + .5 * formOf(cls());                 // сила стиля растёт с эволюцией
 const isSty = (k, i) => cls() === k && sty() === i;
-const capOn = k => cls() === k && ctL('V') > 0;
+const capOn = k => cls() === k && awake(k);
 function ctReqOk(k, n) {
   if (n.id === 'S') return ['A2', 'U2', 'B2'].filter(x => ctL(x, k) > 0).length >= 2;
   return n.req.every(r => ctL(r, k) > 0);
@@ -1377,15 +1386,15 @@ function openCT(k) { if (k !== ctK) ctHeroK = null; ctK = k; $('ctree').hidden =
 let ctTab = 'tree', ctHeroK = null;
 const sprURL = {};
 function clsSprURL(k, known) {
-  const key = k + known; if (sprURL[key]) return sprURL[key];
-  const C = CLASSES[k], P = CLS_SPR[k], cv2 = document.createElement('canvas'); cv2.width = cv2.height = 8; const x = cv2.getContext('2d');
-  const cols = known ? { 1: P.pal?.[1] || '#c9ced6', 2: P.pal?.[2] || '#3a3450', 3: P.pal?.[3] || '#ffe08a', 4: C.c, 5: P.pal?.[5] || '#f0c090' } : { 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450' };
-  P.p.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
+  const key = k + known + formOf(k); if (sprURL[key]) return sprURL[key];
+  const C = CLASSES[k], P = CLS_SPR[k], EP = evoPat(k, formOf(k)), cv2 = document.createElement('canvas'); cv2.width = EP[0].length; cv2.height = EP.length; const x = cv2.getContext('2d');
+  const cols = known ? heroCols(k, 2, '#ffe08a') : { 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450', 6: '#3a3450', 7: '#3a3450' };
+  EP.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
   return sprURL[key] = cv2.toDataURL();
 }
 function renderCT() {
   const k = ctK, C = CLASSES[k], c = cm(k), pts = ctPts(k), cur = k === cls(), full = ctFull(k), tr = tierOf(c.lv);
-  $('cthead').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}${cur ? ' <small style="color:var(--dim)">· твой класс</small>' : ''}</span><span>Очки: <b>${pts}</b></span><button class="btn" id="ctclose">✕</button>`;
+  $('cthead').innerHTML = `<span style="color:${C.c}">${evoName(k, formOf(k)).toUpperCase()}${cur ? ' <small style="color:var(--dim)">· твой класс</small>' : ''}</span><span>Очки: <b>${pts}</b></span><button class="btn" id="ctclose">✕</button>`;
   $('ctclose').onclick = () => { $('ctree').hidden = true; navOn('nFight'); };
   // герой: большая анимированная фигурка (создаётся один раз на класс)
   if (ctHeroK !== k || !$('cthc')) {
@@ -1404,15 +1413,7 @@ function renderCT() {
   const tabs = `<div class="trow" style="margin:8px 0"><button class="tch${ctTab === 'tree' ? ' on' : ''}" data-ct="tree">ВЕТКА${pts ? ' · +' + pts : ''}</button><button class="tch${ctTab === 'all' ? ' on' : ''}" data-ct="all">КОЛЛЕКЦИЯ ${Object.keys(S.meta.seen || {}).length}/16</button></div>`;
   let h = tabs;
   if (ctTab === 'tree') {
-    h += `<div class="ctsum">Каждый уровень мастерства = 1 очко · вложено ${ctSpent(k)} / ${CT_TOTAL}${cur ? '' : ' · бонусы работают, когда играешь этим классом'}</div><div class="ctgrid">`;
-    for (const n of CT) {
-      const l = ctL(n.id, k), [nm, d] = ctNode(k, n.id), ok = ctReqOk(k, n), mx = l >= n.max, can = ok && !mx && pts > 0;
-      let extra = '';
-      if (n.id === 'S') extra = CSTY[k].slice(0, 2).map((s2, i) => `<i class="${cur && sty() === i ? 'on' : ''}">${s2[0]}: ${s2[1]}</i>`).join('');
-      h += `<button class="ctn${mx ? ' max' : ''}${can ? ' can' : ''}${ok ? '' : ' lock'}${n.id === 'V' ? ' top' : ''}" data-n="${n.id}" style="grid-column:${n.x + 1};grid-row:${n.y + 1};--cc:${C.c}">` +
-        `<b>${nm}</b><small>${l ? d(l) : d(1)}</small><em>${l}/${n.max}</em>${extra}</button>`;
-    }
-    h += '</div>';
+    h += `<div class="ctsum">Путь класса: 3 ступени · каждый уровень мастерства = 1 очко · вложено ${pSpent(k)} / ${P_TOTAL}${cur ? '' : ' · работает, когда играешь этим классом'}</div><canvas id="ptc" style="width:100%;height:${PTH}px;display:block;border-radius:6px"></canvas><div id="pinfo" class="pinfo"></div>`;
   } else {
     const seen = S.meta.seen || {};
     h += '<div class="ctcol">' + CLS_KEYS.map(k2 => { const c2 = CLASSES[k2], kn = !!seen[k2], m2 = cm(k2), p2 = ctPts(k2);
@@ -1420,12 +1421,310 @@ function renderCT() {
         `<small>${BRANCHES[c2.br].n}${kn ? '<br>ур. ' + m2.lv + ' · ' + ctSpent(k2) + '/' + CT_TOTAL + (awake(k2) ? ' ★' : '') : ''}</small>${p2 && kn ? `<em>+${p2}</em>` : ''}</button>`; }).join('') + '</div>';
   }
   $('ctdyn').innerHTML = h;
+  if (ctTab === 'tree') { renderPInfo(); if (!pRaf) pRaf = requestAnimationFrame(drawPath);
+    if (renderCT.sc !== k) { renderCT.sc = k; const cv = $('ptc'), f = formOf(k); setTimeout(() => { $('ctbody').scrollTop = cv.offsetTop + (PTH - 70 - (f - 1) * 172) - $('ctbody').clientHeight + 60; }, 30); } }
 }
 $('ctbody').addEventListener('click', e => {
+  if (e.target.id === 'ptc') { const r = e.target.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = null, bd = 30;
+    for (const p of pathLayout(r.width)) if (p.kind === 'node') { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
+    if (best) { pSel = { t: best.t, id: best.id }; renderPInfo(); } return; }
   const t = e.target.closest('[data-ct]'); if (t) { ctTab = t.dataset.ct; renderCT(); return; }
   const ck = e.target.closest('[data-ck]'); if (ck) { const k2 = ck.dataset.ck; if (!(S.meta.seen || {})[k2]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[CLASSES[k2].br].n + '»'); return; } ctHeroK = null; ctK = k2; ctTab = 'tree'; renderCT(); }
 });
 function openClassTab(k) { showSheet('none'); $('tree').hidden = true; $('gear').hidden = true; navOn('nCls'); openCT(k || cls()); }
+
+/* ---------- ПУТЬ КЛАССА: 3 ступени, эволюция облика, узлы-механики ---------- */
+// облики: [имя 2-й ступени, имя 3-й], украшения на 2-й и 3-й ступени
+const EVO = {
+  war:   [['Рыцарь клинка', 'Король мечей'], ['cape', 'pads'], ['cape', 'pads', 'crown']],
+  bers:  [['Мясник', 'Владыка войны'], ['horns', 'pads'], ['horns', 'cape', 'flame']],
+  pal:   [['Храмовник', 'Светоносец'], ['cape', 'halo'], ['wings', 'halo', 'pads']],
+  guard: [['Бастион', 'Несокрушимый'], ['pads', 'crest'], ['pads', 'crest', 'cape']],
+  mage:  [['Архимаг', 'Повелитель огня'], ['hat', 'cape'], ['flame', 'cape', 'orbs']],
+  sham:  [['Громовержец', 'Владыка бурь'], ['feathers', 'cape'], ['feathers', 'wings', 'orbs']],
+  arch:  [['Следопыт', 'Звёздный стрелок'], ['cape', 'feathers'], ['cape', 'star', 'wings']],
+  assa:  [['Тень', 'Жнец теней'], ['cape', 'horns'], ['cape', 'wings', 'horns']],
+  gamb:  [['Игрок', 'Повелитель удачи'], ['hat', 'cape'], ['crown', 'cape', 'orbs']],
+  alch:  [['Мастер зелий', 'Великий алхимик'], ['pads', 'cape'], ['orbs', 'cape', 'hat']],
+  priest:[['Епископ', 'Святой'], ['mitre', 'cape'], ['halo', 'wings', 'mitre']],
+  monk:  [['Мастер', 'Просветлённый'], ['halo', 'pads'], ['halo', 'flame', 'orbs']],
+  chrono:[['Часовщик', 'Владыка времени'], ['crest', 'cape'], ['halo', 'cape', 'orbs']],
+  rune:  [['Рунный мастер', 'Архирунник'], ['orbs', 'cape'], ['orbs', 'wings', 'crest']],
+  necro: [['Лорд костей', 'Король-лич'], ['pads', 'cape'], ['crown', 'pads', 'wings']],
+  reap:  [['Пожиратель душ', 'Ангел смерти'], ['cape', 'horns'], ['wings', 'cape', 'halo']],
+};
+// украшения рисуются в увеличенной сетке: 4 — цвет класса, 6 — золото/отделка, 7 — свечение
+function decorate(g, kind, big) {
+  const W = g[0].length, H = g.length, set = (r, c, ch) => { if (r >= 0 && r < H && c >= 0 && c < W && g[r][c] === '.') g[r][c] = ch; };
+  const top = big ? 4 : 2, L = big ? 2 : 1, R = L + 7;   // где лежит базовый спрайт
+  switch (kind) {
+    case 'cape': for (let r = top + 3; r < H; r++) { set(r, L, '4'); if (r > top + 4) set(r, L - 1, '4'); if (big && r > top + 5) set(r, L - 2, '4'); } break;
+    case 'pads': set(top + 4, L, '6'); set(top + 4, R, '6'); set(top + 3, L, '6'); set(top + 3, R, '6'); if (big) { set(top + 4, L - 1, '6'); set(top + 4, R + 1, '6'); } break;
+    case 'crown': for (let c = L + 2; c <= L + 5; c++) set(top - 1, c, '6'); set(top - 2, L + 2, '6'); set(top - 2, L + 4, '7'); set(top - 2, L + 5, '6'); break;
+    case 'horns': set(top, L + 1, '6'); set(top - 1, L, '6'); set(top, R - 1, '6'); set(top - 1, R, '6'); if (big) { set(top - 2, L, '6'); set(top - 2, R, '6'); } break;
+    case 'halo': for (let c = L + 2; c <= L + 5; c++) set(top - (big ? 3 : 2), c, '7'); set(top - (big ? 2 : 1), L + 1, '7'); set(top - (big ? 2 : 1), L + 6, '7'); break;
+    case 'wings': { const len = big ? [2, 3, 3, 2, 2, 1] : [1, 2, 2, 1]; len.forEach((n, i) => { const r = top + i; for (let j = 0; j < n; j++) { const ch = j === n - 1 ? '7' : '4'; set(r, L - 1 - j, ch); set(r, R + 1 + j, ch); } }); break; }
+    case 'flame': for (let c = L + 1; c <= L + 6; c++) { set(top - 1, c, c % 2 ? '4' : '6'); if (c % 2) set(top - 2, c, '7'); } break;
+    case 'hat': for (let c = L + 1; c <= L + 6; c++) set(top - 1, c, '4'); for (let c = L + 2; c <= L + 5; c++) set(top - 2, c, '4'); set(top - 3, L + 4, '6'); break;
+    case 'mitre': for (let c = L + 2; c <= L + 5; c++) { set(top - 1, c, '7'); set(top - 2, c, c === L + 3 || c === L + 4 ? '6' : '7'); } set(top - 3, L + 3, '7'); set(top - 3, L + 4, '7'); break;
+    case 'crest': for (let r = top - 2; r < top; r++) set(r, L + 3, '4'), set(r, L + 4, '4'); set(top - 2, L + 5, '6'); break;
+    case 'feathers': set(top - 1, L + 1, '4'); set(top - 2, L + 1, '7'); set(top - 1, L + 3, '6'); set(top - 2, L + 3, '6'); set(top - 3, L + 3, '4'); set(top - 1, R - 1, '4'); set(top - 2, R - 1, '7'); break;
+    case 'orbs': set(top + 2, L - 1, '7'); set(top + 5, R + 1, '7'); if (big) { set(top, R + 1, '6'); set(top + 7, L - 1, '6'); } break;
+    case 'star': set(top - 2, R, '7'); set(top - 3, R, '6'); set(top - 2, R + 1, '6'); set(top - 2, R - 1, '6'); set(top - 1, R, '6'); break;
+  }
+}
+const evoCache = {};
+function evoPat(k, form) {
+  const key = k + form; if (evoCache[key]) return evoCache[key];
+  const P = CLS_SPR[k].p; if (form <= 1) return evoCache[key] = P;
+  const big = form >= 3, W = big ? 12 : 10, H = big ? 12 : 10, L = big ? 2 : 1, T = big ? 4 : 2;
+  const g = Array.from({ length: H }, () => Array(W).fill('.'));
+  P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') g[T + j][L + i] = ch; }));
+  for (const d of EVO[k][form - 1]) decorate(g, d, big);
+  return evoCache[key] = g.map(r => r.join(''));
+}
+// узлы пути: [имя, тип, параметр] — по ступеням [A, B, развилка X, развилка Y]
+const PATH = {
+  war:   [[['Широкий замах', 'nova', 4], ['Закалённая сталь', 'tough'], ['Кровавое лезвие', 'leech'], ['Дуэлянт', 'crit']], [['Летящие клинки', 'volley', 5], ['Парирование', 'shield', 8], ['Вихрь мечей', 'orbit'], ['Казнь', 'exec']], [['Меч правосудия', 'sky', 6], ['Неудержимый', 'fury'], ['Армия клинков', 'summon', 1], ['Последний бастион', 'revive']]],
+  bers:  [[['Боевой рёв', 'pulse', 6], ['Жажда крови', 'leech'], ['Безумие', 'fury'], ['Раскол', 'nova', 3]], [['Метательные топоры', 'volley', 4], ['Кровь врага', 'boom'], ['Слепая ярость', 'double'], ['Палач', 'exec']], [['Удар титана', 'sky', 5], ['Шкура зверя', 'tough'], ['Кровавая луна', 'chain'], ['Неумирающий', 'revive']]],
+  pal:   [[['Святой удар', 'nova', 4], ['Благодать', 'shield', 7], ['Крестоносец', 'giant'], ['Милосердие', 'leech']], [['Освящение', 'trail'], ['Божий свет', 'sky', 6], ['Каратель', 'mark'], ['Стойкость веры', 'tough']], [['Сияние', 'pulse', 5], ['Ангелы', 'summon', 1], ['Суд', 'exec'], ['Воскрешение', 'revive']]],
+  guard: [[['Шипы щита', 'pulse', 5], ['Каменная стена', 'tough'], ['Таран', 'nova', 4], ['Отражение', 'shield', 6]], [['Метательный щит', 'bounce'], ['Оглушающий гул', 'slow'], ['Броня предков', 'tough'], ['Контратака', 'double']], [['Падающая крепость', 'sky', 6], ['Стражи', 'summon', 1], ['Неприступность', 'shield', 4], ['Вечный страж', 'revive']]],
+  mage:  [[['Отскок', 'bounce'], ['Горящая земля', 'trail'], ['Огненный шквал', 'volley', 4], ['Концентрация', 'giant']], [['Огненное кольцо', 'orbit'], ['Взрывная волна', 'nova', 4], ['Метеор', 'sky', 5], ['Феникс', 'revive']], [['Солнце', 'pulse', 7], ['Элементали', 'summon', 1], ['Пожар', 'chain'], ['Плазма', 'crit']]],
+  sham:  [[['Разряд', 'chain'], ['Дух ветра', 'fury'], ['Тотем грома', 'pulse', 6], ['Целебный дождь', 'leech']], [['Шаровые молнии', 'orbit'], ['Гром небес', 'sky', 5], ['Буря', 'volley', 4], ['Духи предков', 'summon', 1]], [['Ураган', 'slow'], ['Электрошок', 'mark'], ['Гнев небес', 'nova', 3], ['Перерождение', 'revive']]],
+  arch:  [[['Двойная стрела', 'double'], ['Меткость', 'crit'], ['Рикошет', 'bounce'], ['Взрывные стрелы', 'nova', 4]], [['Ливень', 'volley', 4], ['Метка охотника', 'mark'], ['Ястреб', 'summon', 1], ['Ловушки', 'trail']], [['Звёздная стрела', 'sky', 5], ['Попутный ветер', 'fury'], ['Пронзатель', 'exec'], ['Тень лучника', 'orbit']]],
+  assa:  [[['Ядовитый след', 'trail'], ['Скрытность', 'crit'], ['Двойные клинки', 'double'], ['Кровопускание', 'leech']], [['Метательные ножи', 'volley', 4], ['Метка смерти', 'mark'], ['Убийца', 'exec'], ['Дымовая бомба', 'slow']], [['Танец клинков', 'orbit'], ['Удар из тени', 'sky', 5], ['Клоны', 'summon', 1], ['Неуловимый', 'revive']]],
+  gamb:  [[['Крупная ставка', 'giant'], ['Счастливая карта', 'crit'], ['Колода', 'volley', 4], ['Удвоение', 'double']], [['Рулетка', 'nova', 5], ['Золотая жила', 'boom'], ['Кости судьбы', 'chain'], ['Блеф', 'shield', 7]], [['Джекпот', 'sky', 6], ['Карточный вихрь', 'orbit'], ['Тузы', 'summon', 1], ['Второй шанс', 'revive']]],
+  alch:  [[['Кислотный след', 'trail'], ['Эликсир', 'leech'], ['Взрывчатка', 'nova', 4], ['Летучая смесь', 'bounce']], [['Ядовитое облако', 'pulse', 6], ['Склянки', 'volley', 4], ['Разъедание', 'mark'], ['Мутаген', 'tough']], [['Гомункулы', 'summon', 1], ['Философский камень', 'boom'], ['Цепная реакция', 'chain'], ['Эликсир жизни', 'revive']]],
+  priest:[[['Молитва', 'ultc'], ['Исцеление', 'leech'], ['Кара', 'nova', 4], ['Щит веры', 'shield', 7]], [['Луч света', 'sky', 5], ['Нимбы', 'orbit'], ['Изгнание', 'exec'], ['Благословение', 'tough']], [['Святое сияние', 'pulse', 5], ['Ангелы-хранители', 'summon', 1], ['Гнев небес', 'chain'], ['Чудо', 'revive']]],
+  monk:  [[['Шквал', 'double'], ['Ци', 'fury'], ['Ладонь', 'nova', 4], ['Медитация', 'shield', 7]], [['Волна ци', 'volley', 4], ['Железное тело', 'tough'], ['Удар дракона', 'sky', 5], ['Точка давления', 'mark']], [['Аура', 'pulse', 5], ['Сферы ци', 'orbit'], ['Тысяча ладоней', 'chain'], ['Нирвана', 'revive']]],
+  chrono:[[['Замедление', 'slow'], ['Ускорение', 'fury'], ['Временная бомба', 'nova', 4], ['Песочные часы', 'shield', 7]], [['Шестерни', 'orbit'], ['Эхо времени', 'double'], ['Стрелки', 'volley', 4], ['Распад', 'mark']], [['Остановка', 'pulse', 6], ['Двойники', 'summon', 1], ['Конец времён', 'sky', 5], ['Откат', 'revive']]],
+  rune:  [[['Огненная руна', 'nova', 4], ['Защитная руна', 'shield', 7], ['Руна молнии', 'chain'], ['Руна жизни', 'leech']], [['Руны вокруг', 'orbit'], ['Рунный след', 'trail'], ['Руна смерти', 'exec'], ['Руна силы', 'giant']], [['Великая печать', 'pulse', 6], ['Големы', 'summon', 1], ['Рунный дождь', 'volley', 3], ['Руна возрождения', 'revive']]],
+  necro: [[['Костяной шип', 'volley', 5], ['Высасывание', 'leech'], ['Трупный взрыв', 'boom'], ['Проклятие', 'mark']], [['Легион', 'summon', 2], ['Тёмная аура', 'pulse', 6], ['Чума', 'chain'], ['Костяной щит', 'shield', 7]], [['Черепа', 'orbit'], ['Жатва', 'exec'], ['Тьма с небес', 'sky', 5], ['Филактерия', 'revive']]],
+  reap:  [[['Широкий взмах', 'nova', 4], ['Сбор душ', 'leech'], ['Стремительность', 'fury'], ['Метка жнеца', 'mark']], [['Души вокруг', 'orbit'], ['Казнь', 'exec'], ['Летящая коса', 'volley', 4], ['Тень жнеца', 'double']], [['Призраки', 'summon', 2], ['Час смерти', 'sky', 5], ['Чума душ', 'chain'], ['Бессмертие', 'revive']]],
+};
+const PFX = {   // описание эффекта по уровню L и параметру p
+  nova: (L, p) => `каждый ${p}-й удар — взрыв ×${(.8 + .6 * L).toFixed(1)} по площади`, chain: L => `шанс ${10 * L}%: разряд по ${2 + L} врагам`,
+  bounce: L => `удар перескакивает ещё на ${L} врага`, orbit: L => `${L} сферы кружат вокруг и бьют врагов`, trail: L => `след жжёт врагов: ${pct(.25 * L)} удара/с`,
+  pulse: (L, p) => `каждые ${p}с волна ×${1 + L} вокруг героя`, sky: (L, p) => `каждые ${p}с удар с неба по сильнейшему ×${2 + 2 * L}`,
+  summon: (L, p) => `до ${p + L} союзников сражаются рядом`, boom: L => `шанс ${5 * L}%: убитый взрывается ×2`, leech: L => `убийство лечит ${(.5 * L).toFixed(1)}% HP`,
+  shield: (L, p) => `каждые ${p}с щит ${6 * L}% HP`, exec: L => `враги ниже ${8 * L}% HP гибнут от удара`, mark: L => `удары метят врагов: по ним +${10 * L}% урона`,
+  slow: L => `враги рядом замедлены и получают +${5 * L}% урона`, volley: (L, p) => `каждый ${p}-й удар — залп из ${2 + L} снарядов`, fury: L => `+${6 * L}% скорости атаки`,
+  crit: L => `+${4 * L}% крита и +${10 * L}% силы крита`, tough: L => `+${10 * L}% HP и +${3 * L}% брони`, revive: L => `раз за жизнь встаёт с ${30 * L}% HP`,
+  ultc: L => `ульта копится на ${15 * L}% быстрее`, double: L => `шанс ${5 * L}% ударить дважды`, giant: L => `+${12 * L}% урона`,
+};
+const PICON = { nova: 'star', chain: 'bolt', bounce: 'swap', orbit: 'eye', trail: 'flame', pulse: 'spike', sky: 'bolt', summon: 'skull', boom: 'flame', leech: 'drop', shield: 'shield', exec: 'sword',
+  mark: 'eye', slow: 'clock', volley: 'sword', fury: 'wing', crit: 'eye', tough: 'heart', revive: 'heart', ultc: 'star', double: 'fist', giant: 'fist' };
+const PIDS = ['A', 'B', 'X', 'Y'];
+const P_MAX = 3, P_TOTAL = 27;
+const pL = (k, t, id) => { const c = cm(k); return (c.cp && c.cp[t + id]) || 0; };
+const pSpent = k => { const c = cm(k); let s = 0; if (c.cp) for (const i in c.cp) s += c.cp[i]; return s; };
+const pPts = k => Math.max(0, cm(k).lv - pSpent(k));
+const pFork = (k, t) => pL(k, t, 'X') ? 'X' : pL(k, t, 'Y') ? 'Y' : null;
+const tierDone = (k, t) => pL(k, t, 'A') >= P_MAX && pL(k, t, 'B') >= P_MAX && (pL(k, t, 'X') >= P_MAX || pL(k, t, 'Y') >= P_MAX);
+const formOf = k => tierDone(k, 1) ? (tierDone(k, 2) ? 3 : 2) : 1;
+const evoName = (k, f) => f <= 1 ? CLASSES[k].n : EVO[k][0][f - 2];
+const tierOpen = (k, t) => t === 1 || tierDone(k, t - 1);
+function pCanBuy(k, t, id) {
+  if (!tierOpen(k, t) || pPts(k) < 1 || pL(k, t, id) >= P_MAX) return false;
+  if ((id === 'X' && pL(k, t, 'Y')) || (id === 'Y' && pL(k, t, 'X'))) return false;
+  return true;
+}
+// активные эффекты пути текущего класса
+let PFXL = [];
+function calcPath() {
+  const k = cls(); PFXL = [];
+  for (let t = 1; t <= 3; t++) PIDS.forEach((id, j) => { const L = pL(k, t, id); if (L) { const [n, ty, p] = PATH[k][t - 1][j]; PFXL.push({ n, ty, p: p || 0, L, t, id }); } });
+}
+const pfx = ty => PFXL.filter(e => e.ty === ty);
+/* механики узлов пути: общий движок, цвет — цвет класса */
+let pals = [], pHitN = 0;
+function pathMods() {
+  for (const e of PFXL) { const L = e.L;
+    if (e.ty === 'fury') D.aps = Math.min(14, D.aps * (1 + .06 * L));
+    if (e.ty === 'crit') { D.crit = Math.min(.95, D.crit + .04 * L); D.critM *= 1 + .1 * L; }
+    if (e.ty === 'tough') { D.maxHP *= 1 + .1 * L; D.armor = Math.min(.95, D.armor + .03 * L); }
+    if (e.ty === 'giant') D.hit *= 1 + .12 * L; }
+  const f = formOf(cls()); D.hit *= 1 + .15 * (f - 1); D.maxHP *= 1 + .15 * (f - 1);   // каждая эволюция: +15% урона и HP
+}
+function pathHit(t, dmg, crit) {
+  if (!PFXL.length || t.dead) return; pHitN++; const c = CL().c;
+  for (const e of PFXL) { const L = e.L;
+    switch (e.ty) {
+      case 'nova': if (pHitN % e.p === 0) { const r = 12 + 3 * L; ring(t.x, t.y - 2, r, c); hitAround(t.x, t.y, r, dmg * (.8 + .6 * L), c); if (rnd() < .3) fxLabel(e.n, t.x, t.y - 16, c); } break;
+      case 'chain': if (rnd() < .1 * L) { let from = t; const hs = new Set([t]); for (let j = 0; j < 2 + L; j++) { const o = nearMobs(from.x, from.y, 34).find(m => !hs.has(m)); if (!o) break; hs.add(o); bolts.push({ x1: from.x, y1: from.y - 3, x2: o.x, y2: o.y - 3, l: .1, c }); hitMob(o, dmg * .6, false, false, c); from = o; } } break;
+      case 'bounce': { let from = t; const hs = new Set([t]); for (let j = 0; j < L; j++) { const o = nearMobs(from.x, from.y, 36).find(m => !hs.has(m)); if (!o) break; hs.add(o); waves.push({ x: from.x, y: from.y - 4, t: o, sp: 240, a: 0, l: 1, pv: 1, c, dmg: dmg * .6 }); from = o; } break; }
+      case 'exec': if (!t.boss && !t.dead && t.hp < t.max * .08 * L) { trackDmg('Казнь', t.hp); hitMob(t, t.hp + 1, false, false, c); fxLabel(e.n, t.x, t.y - 16, c); } break;
+      case 'mark': t.pmk = time + 3; t.pmkV = .1 * L; break;
+      case 'double': if (!hero.pdbl && rnd() < .05 * L && !t.dead) { hero.pdbl = 1; ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); heroStrike(t, true); hero.pdbl = 0; } break;
+      case 'volley': if (pHitN % e.p === 0) { const all = mobs.filter(m => !m.dead); for (let j = 0; j < 2 + L && all.length; j++) { const o = all[Math.floor(rnd() * all.length)]; waves.push({ x: hero.x, y: hero.y - 5, t: o, sp: 200, a: 0, l: 1.4, pv: 1, c, dmg: dmg * .7 }); } } break;
+      case 'ultc': if (ult < 1 && ultCd <= 0) ult = Math.min(1, ult + .002 * L); break;
+    } }
+}
+function pathKill(m) {
+  for (const e of PFXL) { const L = e.L, c = CL().c;
+    if (e.ty === 'boom' && !m.boss && rnd() < .05 * L) { ring(m.x, m.y - 3, 16, c); hitAround(m.x, m.y, 16, D.hit * 2, c, m); fxLabel(e.n, m.x, m.y - 14, c); }
+    if (e.ty === 'leech') hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .005 * L); }
+}
+function pathTick(dt) {
+  if (!PFXL.length) return;
+  const c = CL().c, T = (key, per) => { PT[key] = (PT[key] ?? per) - dt; if (PT[key] <= 0) { PT[key] = per; return true; } return false; };
+  for (const e of PFXL) { const L = e.L, key = 'p' + e.t + e.id;
+    switch (e.ty) {
+      case 'orbit': for (let i = 0; i < L; i++) { const a = time * 2.6 + i * 6.283 / L + e.t, ox = hero.x + Math.cos(a) * 16, oy = hero.y - 4 + Math.sin(a) * 10;
+        for (const m of mobs) if (!m.dead && Math.hypot(m.x - ox, m.y - 3 - oy) < 6 && time > (m['po' + key] || 0)) { m['po' + key] = time + .4; hitMob(m, D.hit * .5, false, false, c); } } break;
+      case 'trail': if (T(key, .45) && clouds.length < 34) clouds.push({ x: hero.x, y: hero.y, r: 7, dps: D.hit * .25 * L, t: 2.2, col: c }); break;
+      case 'pulse': if (T(key, e.p) && mobs.length) { const r = 20 + 4 * L; ring(hero.x, hero.y - 3, r, c); ring(hero.x, hero.y - 3, r * .6, '#ffffff'); hitAround(hero.x, hero.y, r, D.hit * (1 + L), c); fxLabel(e.n, hero.x, hero.y - 20, c); } break;
+      case 'sky': if (T(key, e.p)) { const o = mobs.filter(m => !m.dead).sort((a, b) => b.hp - a.hp)[0]; if (o) { bolt3(o.x, camY - 4, o.x, o.y - 3, c, 1); ring(o.x, o.y - 2, 14, c); hitMob(o, D.hit * (2 + 2 * L), true, true, c); groundMark(o.x, o.y + 2, 12, '#ffffff'); fxLabel(e.n, o.x, o.y - 18, c); shake = Math.max(shake, 3); } } break;
+      case 'summon': if (T(key, 4) && mobs.length && pals.filter(p2 => p2.key === key).length < e.p + L) { const a = rnd() * 6.283; pals.push({ key, x: hero.x + Math.cos(a) * 10, y: hero.y + Math.sin(a) * 6, t: 12, cd: .4, face: 1 }); burst(hero.x + Math.cos(a) * 10, hero.y + Math.sin(a) * 6 - 3, c, 8, 25); } break;
+      case 'shield': if (T(key, e.p)) { hero.shield = Math.max(hero.shield, D.maxHP * .06 * L); ring(hero.x, hero.y - 4, 10, c); } break;
+      case 'slow': for (const m of mobs) if (!m.dead && Math.hypot(m.x - hero.x, m.y - hero.y) < 28) { m.slowT = Math.max(m.slowT || 0, .1); m.pmk = Math.max(m.pmk || 0, time + .2); m.pmkV = Math.max(m.pmkV || 0, .05 * L); } break;
+    } }
+  for (const al of pals) {
+    al.t -= dt; al.cd -= dt;
+    let best = null, bd = 1e9; for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - al.x, m.y - al.y); if (d < bd) { bd = d; best = m; } }
+    if (best) { al.face = best.x >= al.x ? 1 : -1; if (bd > 6) { al.x += (best.x - al.x) / bd * 34 * dt; al.y += (best.y - al.y) / bd * 34 * dt; } else if (al.cd <= 0) { al.cd = .7; hitMob(best, D.hit * .6, false, false, c); } }
+    if (al.t <= 0) burst(al.x, al.y - 3, c, 6, 20);
+  }
+  pals = pals.filter(al => al.t > 0);
+}
+// воскрешение пути (раз за жизнь)
+function pathRevive() { const e = pfx('revive')[0]; if (!e || S.pRev) return false; S.pRev = 1; hero.hp = D.maxHP * Math.min(1, .3 * e.L); hero.iframe = 2; ftext(hero.x, hero.y - 16, e.n.toUpperCase() + '!', CL().c, 1.2, 1.2); ring(hero.x, hero.y - 4, 26, CL().c); burst(hero.x, hero.y - 4, CL().c, 30, 60); return true; }
+function drawPathFx() {
+  if (!PFXL.length) return;
+  const c = CL().c;
+  for (const e of pfx('orbit')) for (let i = 0; i < e.L; i++) { const a = time * 2.6 + i * 6.283 / e.L + e.t, ox = Math.round(hero.x + Math.cos(a) * 16), oy = Math.round(hero.y - 4 + Math.sin(a) * 10); ctx.fillStyle = c; ctx.fillRect(ox - 1, oy - 1, 3, 3); pix(ox, oy, '#ffffff'); ctx.globalAlpha = .4; pix(ox - Math.round(Math.cos(a + 1.57) * 2), oy - Math.round(Math.sin(a + 1.57) * 2), c); ctx.globalAlpha = 1; }
+  for (const al of pals) { const sp2 = sprite(MOBS[4].p, { 1: c, 2: shade(c, -.5), 3: '#ffffff' }, 'pal' + c); ctx.globalAlpha = al.t < 1 ? al.t : .85;
+    ctx.save(); if (al.face < 0) { ctx.translate(Math.round(al.x - 4) * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(sp2, Math.round(al.x - 4), Math.round(al.y - 8)); ctx.restore(); ctx.globalAlpha = 1; }
+}
+/* ---------- сцена эволюции ---------- */
+let EV = null;
+function evolveStart(k, form, label) {
+  EV = { t: 0, k, form, old: Math.max(1, form - (label ? 0 : 1)), label: label || 'ЭВОЛЮЦИЯ', name: label ? AWK[k][0] : evoName(k, form), shown: false };
+  hero.iframe = Math.max(hero.iframe, 4);
+  [262, 330, 392, 523, 659, 784].forEach((f, i) => tone(f, .25, 'triangle', .035, 0, i * .26));
+  tone(80, 1.7, 'sawtooth', .04, 200);
+}
+function evFrame(real) {
+  if (!EV) return 1; EV.t += real;
+  if (EV.t >= 1.7 && !EV.shown) { EV.shown = true; evolveBurst(); }
+  if (EV.t >= 3.4) { EV = null; return 1; }
+  return EV.t < 2.3 ? .04 : .5;
+}
+const shownForm = k => EV && EV.k === k && EV.t < 1.7 ? (Math.floor(EV.t * 4) % 2 && EV.t > 1.1 ? EV.form : EV.old) : formOf(k);
+function evolveBurst() {
+  const c = CL().c; shake = 14; flashT = .2;
+  for (let i = 0; i < 4; i++) ring(hero.x, hero.y - 5, 14 + i * 16, i % 2 ? '#ffffff' : c);
+  for (let i = 0; i < 80 && parts.length < 650; i++) { const a = rnd() * 6.283, v = 50 + rnd() * 110; parts.push({ x: hero.x, y: hero.y - 6, vx: Math.cos(a) * v, vy: Math.sin(a) * v * .7 - 20, l: .7 + rnd() * .5, c: rnd() < .4 ? '#ffffff' : c }); }
+  groundMark(hero.x, hero.y + 2, 26, '#ffe08a');
+  [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .35, 'square', .04, 0, i * .07)); tone(1047, .9, 'triangle', .05, 0, .4);
+}
+function drawEvolveWorld() {
+  if (!EV) return;
+  const t = EV.t, c = CL().c, hx = hero.x, hy = hero.y - 5, a = t < 1.7 ? Math.min(1, t / .6) : Math.max(0, 1 - (t - 1.7) / 1.4);
+  tint('#05000f', .55 * a);
+  ctx.globalAlpha = .6 * a; const w = 3 + Math.round(3 * Math.min(1, t)); ctx.fillStyle = c; ctx.fillRect(Math.round(hx - w / 2) - 1, camY - 6, w + 2, Math.round(hy - camY + 8)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(hx) - 1, camY - 6, 2, Math.round(hy - camY + 8)); ctx.globalAlpha = 1;
+  if (t < 1.7) { const R = 34 - 18 * Math.min(1, t / 1.6); ctx.globalAlpha = .9; circ(hx, hero.y, R, c, 48, .5, t * 3); circ(hx, hero.y, R * .7, '#ffffff', 30, .5, -t * 4);
+    for (let i = 0; i < 8; i++) { const an = i / 8 * 6.283 + t * 2, gx = hx + Math.cos(an) * R, gy = hero.y + Math.sin(an) * R * .5; pix(gx, gy - 1, '#ffffff'); pix(gx - 1, gy, c); pix(gx + 1, gy, c); pix(gx, gy + 1, '#ffffff'); }
+    for (let i = 0; i < 18; i++) { const an = i * 1.7 + i, ph = (t * 1.6 + i * .09) % 1, r = 60 * (1 - ph); pix(hx + Math.cos(an) * r, hy + Math.sin(an) * r * .7, ph > .7 ? '#ffffff' : c); }
+    ctx.globalAlpha = 1; }
+}
+function drawEvoBanner(k) {
+  if (!EV || EV.t < 1.7) return;
+  const t = EV.t - 1.7, w = fx.width, h = fx.height, a = t < .15 ? t / .15 : t > 1.3 ? Math.max(0, 1 - (t - 1.3) / .4) : 1;
+  if (a <= 0) return;
+  const c = CLASSES[EV.k].c, cy = h * .25, bh = h * .2, slide = (1 - Math.min(1, t / .2)) * w;
+  fctx.save(); fctx.globalAlpha = a; fctx.translate(w / 2 + slide, cy);
+  fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh); fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
+  const P = evoPat(EV.k, EV.form), n = P.length, sc = Math.floor(bh * .85 / n), cols = heroCols(EV.k, 6, '#ffe08a'), spr = sprite(P, cols, 'evb' + EV.k + EV.form);
+  fctx.imageSmoothingEnabled = false; fctx.drawImage(spr, -w * .36, -sc * n / 2, sc * P[0].length, sc * n);
+  const fs = Math.round(bh * .19); fctx.textAlign = 'left'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000';
+  const tx = -w * .36 + sc * P[0].length + 10 * DPR;
+  fctx.font = `${Math.round(fs * .55)}px "Press Start 2P", monospace`; fctx.fillStyle = '#a59fc0'; fctx.strokeText(EV.label, tx, -fs * .9); fctx.fillText(EV.label, tx, -fs * .9);
+  fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = c; const name = EV.name.toUpperCase(), mw = w * .55 - 10 * DPR, tw = fctx.measureText(name).width, k2 = tw > mw ? mw / tw : 1;
+  fctx.save(); fctx.translate(tx, fs * .35); fctx.scale(k2, 1); fctx.strokeText(name, 0, 0); fctx.fillText(name, 0, 0); fctx.restore();
+  fctx.restore(); fctx.textBaseline = 'alphabetic'; fctx.textAlign = 'center';
+}
+// палитра героя для крупных картинок
+function heroCols(k, rk, v) {
+  const cp = CLS_SPR[k].pal || {}, a = ARMOR[rk % ARMOR.length], cc = CLASSES[k].c;
+  return { 1: cp[1] || a, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' };
+}
+
+/* ---------- экран пути класса: дерево снизу вверх ---------- */
+let pSel = null, pRaf = 0;
+const PTH = 620;
+function pathLayout(W) {
+  const pos = [], base = t => PTH - 70 - (t - 1) * 172;
+  for (let t = 1; t <= 3; t++) { const by = base(t);
+    pos.push({ kind: 'plat', t, x: W / 2, y: by });
+    pos.push({ kind: 'node', t, id: 'A', x: W * .2, y: by - 52 }, { kind: 'node', t, id: 'B', x: W * .8, y: by - 52 });
+    pos.push({ kind: 'node', t, id: 'X', x: W * .3, y: by - 116 }, { kind: 'node', t, id: 'Y', x: W * .7, y: by - 116 }); }
+  pos.push({ kind: 'crown', t: 4, x: W / 2, y: base(3) - 172 });
+  return pos;
+}
+function drawPath() {
+  const cv = $('ptc'); if (!cv || $('ctree').hidden) { pRaf = 0; return; }
+  const k = ctK, C = CLASSES[k], W = cv.clientWidth, dpr = Math.min(3, devicePixelRatio || 1);
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(PTH * dpr); }
+  const c = cv.getContext('2d'), T = performance.now() / 1000; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
+  const g = c.createLinearGradient(0, 0, 0, PTH); g.addColorStop(0, '#120a22'); g.addColorStop(1, '#07050e'); c.fillStyle = g; c.fillRect(0, 0, W, PTH);
+  for (let i = 0; i < 50; i++) { const sx = (i * 97) % W, sy = (i * 53) % PTH; c.globalAlpha = .25 + .25 * Math.sin(T * 1.2 + i); c.fillStyle = '#fff'; c.fillRect(sx, sy, 1, 1); } c.globalAlpha = 1;
+  const L = pathLayout(W), P = (t, id) => L.find(p => p.t === t && (id ? p.id === id : p.kind !== 'node'));
+  const line = (a, b, on, avail) => { c.strokeStyle = on ? C.c : avail ? shade(C.c, -.45) : '#2a2440'; c.lineWidth = on ? 3 : 2; c.globalAlpha = on ? 1 : .8; if (on) { c.save(); c.globalAlpha = .25; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.restore(); }
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.globalAlpha = 1; if (on) { const f = (T * .5 + a.x * .01) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1, a.y + (b.y - a.y) * f - 1, 2, 2); } };
+  for (let t = 1; t <= 3; t++) { const pl = P(t), op = tierOpen(k, t), A = P(t, 'A'), B = P(t, 'B'), X = P(t, 'X'), Y = P(t, 'Y'), nx = P(t + 1) || L.find(p => p.kind === 'crown');
+    line(pl, A, pL(k, t, 'A') > 0, op); line(pl, B, pL(k, t, 'B') > 0, op); line(A, X, pL(k, t, 'X') > 0, op); line(B, Y, pL(k, t, 'Y') > 0, op);
+    line(X, nx, tierDone(k, t) && pFork(k, t) === 'X', op); line(Y, nx, tierDone(k, t) && pFork(k, t) === 'Y', op); }
+  // платформы-облики
+  for (const p of L) if (p.kind === 'plat' || p.kind === 'crown') {
+    const f = p.kind === 'crown' ? 3 : p.t, got = p.kind === 'crown' ? tierDone(k, 3) : f === 1 || tierDone(k, f - 1), cur = p.kind !== 'crown' && formOf(k) === f;
+    const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 60); gr.addColorStop(0, (got ? C.c : '#3a3260') + (cur ? '66' : '33')); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - 60, p.y - 60, 120, 120);
+    c.fillStyle = got ? shade(C.c, -.3) : '#1e1830'; c.beginPath(); c.ellipse(p.x, p.y + 14, 34, 8, 0, 0, 6.283); c.fill(); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.stroke();
+    if (p.kind === 'crown') { c.fillStyle = got ? C.c : '#3a3260'; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 - 1.57, rr = i % 2 ? 9 : 20; c.lineTo(p.x + Math.cos(a) * rr, p.y - 8 + Math.sin(a) * rr); } c.closePath(); c.fill(); c.beginPath();
+      c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = got ? '#fff' : '#5a5470'; c.fillText('ПРОБУЖДЕНИЕ', p.x, p.y + 34); c.fillStyle = got ? C.c : '#5a5470'; c.fillText('«' + AWK[k][0] + '»', p.x, p.y + 45); continue; }
+    const pat = evoPat(k, f), sc = 4, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got);
+    const bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0; c.drawImage(spr, Math.round(p.x - pat[0].length * sc / 2), Math.round(p.y + 12 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc);
+    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = got ? (cur ? '#fff' : C.c) : '#5a5470'; c.fillText((cur ? '► ' : '') + evoName(k, f), p.x, p.y + 34);
+  }
+  // узлы
+  for (const p of L) if (p.kind === 'node') {
+    const [nm, ty] = PATH[k][p.t - 1][PIDS.indexOf(p.id)], lv = pL(k, p.t, p.id), op = tierOpen(k, p.t), can = pCanBuy(k, p.t, p.id), blk = (p.id === 'X' && pL(k, p.t, 'Y')) || (p.id === 'Y' && pL(k, p.t, 'X')), r = 17;
+    if (lv) { const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4); gr.addColorStop(0, C.c + '77'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - r * 2.4, p.y - r * 2.4, r * 4.8, r * 4.8); }
+    if (can) { c.globalAlpha = .55 + .45 * Math.sin(T * 3); c.strokeStyle = '#5cff8a'; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, r + 5, 0, 6.283); c.stroke(); c.globalAlpha = 1; }
+    c.beginPath(); if (p.id === 'X' || p.id === 'Y') { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; c.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); } c.closePath(); } else c.arc(p.x, p.y, r, 0, 6.283);
+    c.fillStyle = lv ? C.c : op ? '#1e1830' : '#100c1a'; c.fill(); c.strokeStyle = lv ? '#ffffff' : op ? shade(C.c, -.2) : '#2a2440'; c.lineWidth = 2; c.stroke();
+    const ic = ICONS[PICON[ty]], ps = 4; c.fillStyle = lv ? 'rgba(0,0,0,.75)' : op ? C.c : '#3a3260'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(p.x - 10 + i * ps, p.y - 10 + j * ps, ps, ps);
+    for (let i = 0; i < P_MAX; i++) { c.fillStyle = i < lv ? '#ffe08a' : '#2a2440'; c.fillRect(p.x - 8 + i * 6, p.y + r + 3, 4, 4); }
+    c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = lv ? '#fff' : op ? '#a59fc0' : '#4a4470'; c.fillText(nm, p.x, p.y + r + 16);
+    if (blk) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(p.x - 9, p.y - 9); c.lineTo(p.x + 9, p.y + 9); c.moveTo(p.x + 9, p.y - 9); c.lineTo(p.x - 9, p.y + 9); c.stroke(); }
+    if (pSel && pSel.t === p.t && pSel.id === p.id) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.setLineDash([4, 3]); c.lineDashOffset = T * 12; c.beginPath(); c.arc(p.x, p.y, r + 9, 0, 6.283); c.stroke(); c.setLineDash([]); }
+    if ((p.id === 'X') && op) { c.font = '6px "Press Start 2P", monospace'; c.fillStyle = '#f2c94c'; c.fillText('ИЛИ', (p.x + L.find(q => q.t === p.t && q.id === 'Y').x) / 2, p.y + 3); }
+  }
+  pRaf = requestAnimationFrame(drawPath);
+}
+function renderPInfo() {
+  const k = ctK, C = CLASSES[k], el = $('pinfo'); if (!el) return;
+  if (!pSel) { el.innerHTML = `<span class="k">Тапни узел. Заполни ступень (оба узла и одну ветку развилки на 3/3) — герой эволюционирует.</span>`; return; }
+  const { t, id } = pSel, j = PIDS.indexOf(id), [nm, ty, p] = PATH[k][t - 1][j], lv = pL(k, t, id), can = pCanBuy(k, t, id);
+  const other = id === 'X' ? 'Y' : id === 'Y' ? 'X' : null, op = tierOpen(k, t);
+  el.innerHTML = `<h3 style="color:${C.c}">${nm}${other ? ' <span style="color:#f2c94c">⇄ ВЫБОР</span>' : ''}</h3><span class="k">Ступень ${t} · ур. ${lv}/${P_MAX}</span><br>` +
+    `<span class="k">Сейчас:</span> ${lv ? PFX[ty](lv, p) : '—'}<br>` + (lv < P_MAX ? `<span class="k">След.:</span> ${PFX[ty](lv + 1, p)}<br>` : '') +
+    (other ? `<span class="k">или «${PATH[k][t - 1][PIDS.indexOf(other)][0]}» — ${PFX[PATH[k][t - 1][PIDS.indexOf(other)][1]](1, PATH[k][t - 1][PIDS.indexOf(other)][2])}</span><br>` : '') +
+    (!op ? `<span style="color:#ff6b6b">Сначала заверши ступень ${t - 1}</span>` : '') +
+    `<div class="row2"><button class="btn" id="pb1"${can ? '' : ' disabled'}>+1 · очко (${pPts(k)})</button>` + (other && lv && startOfLife() ? '<button class="btn" id="pbr" style="background:#5a3a2a">СБРОС</button>' : '') + '</div>';
+  if ($('pb1')) $('pb1').onclick = () => pBuy(k, t, id);
+  if ($('pbr')) $('pbr').onclick = () => { cm(k).cp[t + id] = 0; D.dirty = true; calcPath(); recalc(); save(); renderCT(); };
+}
+function pBuy(k, t, id) {
+  if (!pCanBuy(k, t, id)) return;
+  const f0 = formOf(k), a0 = tierDone(k, 3), c = cm(k); if (!c.cp) c.cp = {};
+  c.cp[t + id] = (c.cp[t + id] || 0) + 1; calcPath(); D.dirty = true; recalc(); save();
+  tone(660, .06, 'square', .03); tone(990, .08, 'square', .03, 0, .06);
+  const f1 = formOf(k), a1 = tierDone(k, 3);
+  if ((f1 > f0 || (a1 && !a0)) && k === cls()) { $('ctree').hidden = true; navOn('nFight'); setTimeout(() => evolveStart(k, f1, a1 && !a0 ? 'ПРОБУЖДЕНИЕ' : null), 250); return; }
+  if (f1 > f0) toast('ЭВОЛЮЦИЯ: ' + evoName(k, f1).toUpperCase(), 'новый облик появится, когда выпадет ' + CLASSES[k].n, 3000);
+  renderCT();
+}
 
 // множитель урона удара от класса
 function clsDM(t) {
@@ -1699,8 +1998,9 @@ function recalc() {
   D.blink = .6 * sat(R.blink, 80);
   D.dust = .25 * sat(R.dust, 60);
   D.quake = sat(R.quake, 60);
+  calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods();
+  ntMods(); pathMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -2013,6 +2313,7 @@ function hurtHero(dmg) {
     if (au('reb') && !S.second) { S.second = true; hero.hp = D.maxHP * .5; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'ВТОРОЙ ШАНС!', '#ff44ff', 1.2, 1.2); ring(hero.x, hero.y - 4, 20, '#ff44ff'); flashT = .1; }
     else if (aw() && cls() === 'priest' && time > (hero.angT || 0)) { hero.angT = time + 30; hero.hp = D.maxHP; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'АНГЕЛ-ХРАНИТЕЛЬ!', '#fff6c0', 1.2, 1.2); ring(hero.x, hero.y - 4, 24, '#fff6c0'); flashT = .15; }
     else if (aw() && cls() === 'chrono' && !S.loop) { S.loop = true; hero.hp = D.maxHP; hero.iframe = 2; ftext(hero.x, hero.y - 16, 'ПЕТЛЯ ВРЕМЕНИ!', '#88aaff', 1.2, 1.2); ring(hero.x, hero.y - 4, 30, '#88aaff'); flashT = .2; for (const m of mobs) if (!m.dead) m.frz = Math.max(m.frz || 0, 1.5); }
+    else if (pathRevive()) {}
     else heroDeath();
   }
   return dmg;
@@ -2025,6 +2326,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (!col && D.mark > .01) m.mark = 3;
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
+  if (m.pmk > time) dmg *= 1 + (m.pmkV || 0);   // метка пути класса
   if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)); else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
@@ -2090,7 +2392,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); ntKill(m, base); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
+  clsKill(m, base); ntKill(m, base); pathKill(m); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -2149,7 +2451,7 @@ function updWaves(dt) {
     w.a = Math.atan2(dy, dx);
     const st = Math.min(d, w.sp * dt); w.x += dx / d * st; w.y += dy / d * st;
     if (d < 4 + 2 * w.t.sz) { w.l = 0; burst(w.x, w.y, w.bounce ? '#ffe08a' : WCOL[w.kind] || '#ffffff', w.kind === 'fire' ? 14 : 4, 30);
-      if (w.bounce) { const tg = w.t; hitMob(tg, w.dmg, false, false, '#ffe08a'); fxLabel('Рикошет', tg.x, tg.y - 12, '#ffe08a'); if (w.left > 0) bounceFrom(tg, w.dmg * .8, w.left); } else if (!clsWaveHit(w)) heroStrike(w.t, true); }
+      if (w.pv) { hitMob(w.t, w.dmg, false, false, w.c); burst(w.x, w.y, w.c, 4, 25); } else if (w.bounce) { const tg = w.t; hitMob(tg, w.dmg, false, false, '#ffe08a'); fxLabel('Рикошет', tg.x, tg.y - 12, '#ffe08a'); if (w.left > 0) bounceFrom(tg, w.dmg * .8, w.left); } else if (!clsWaveHit(w)) heroStrike(w.t, true); }
   }
   waves = waves.filter(w => w.l > 0);
 }
@@ -2213,7 +2515,7 @@ function heroStrike(t, fromWave) {
   }
   if (D.poison > .02) { t.psn = Math.max(t.psn, D.hit * D.poison); t.psnT = 3; }
   if (D.vamp > 0) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.vamp);
-  ntHit(t, dmg, crit);
+  ntHit(t, dmg, crit); pathHit(t, dmg, crit);
 }
 
 /* ---------- тап: удар молнии с неба ---------- */
@@ -2374,7 +2676,7 @@ function drawCutIn(k) {
   fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh);
   fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
   fctx.globalAlpha = a * .25; for (let i = 0; i < 14; i++) { const lx = ((i * 97 + t * 900) % (w * 2)) - w; fctx.fillRect(lx, -bh / 2, 2 * DPR, bh); } fctx.globalAlpha = a;   // полосы скорости
-  const sc = Math.floor(bh / 9), spr = sprite(framePat(CLS_SPR[k].p, 'atk'), { 1: CLS_SPR[k].pal?.[1] || '#c9ced6', 2: CLS_SPR[k].pal?.[2] || '#3a3450', 3: '#ffffff', 4: c, 5: CLS_SPR[k].pal?.[5] || '#f0c090' }, 'cut' + k);
+  const CP = framePat(evoPat(k, formOf(k)), 'atk'), sc = Math.floor(bh / (CP.length + 1)), spr = sprite(CP, heroCols(k, 2, '#ffffff'), 'cut' + k + CP.length);
   fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR;
   fctx.globalAlpha = a * .5; fctx.drawImage(silhouette(c), px - sc, -sc * 4.5, sc * 8, sc * 8); fctx.globalAlpha = a;
   fctx.drawImage(spr, px, -sc * 4.5 + sc * .5, sc * 8, sc * 8);
@@ -2722,7 +3024,7 @@ function effMech(dt) {
     if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if ((aw() && cls() === 'necro') || isSty('necro', 1)) { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
   }
   allies = allies.filter(al => al.t > 0);
-  clsTick(dt); awkTick(dt); ntTick(dt);
+  clsTick(dt); awkTick(dt); ntTick(dt); pathTick(dt);
   if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
       let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
       if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
@@ -2951,7 +3253,7 @@ function render() {
   ctx.fillStyle = '#05040a'; ctx.fillRect(camX - 6, camY - 6, W + 12, H + 12);
   ctx.drawImage(ground, 0, 0);
   ctx.drawImage(decal, 0, 0);
-  for (const c of clouds) { ctx.globalAlpha = Math.min(.5, c.t * .3); const n = Math.floor(c.r * 1.5); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = rnd() * c.r; pix(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .6, c.acid ? (i % 2 ? '#b6ff3c' : '#e8ff8a') : c.fire ? (i % 2 ? '#ff7a30' : '#ffcc33') : i % 2 ? '#88ee22' : '#4a8a12'); } }
+  for (const c of clouds) { ctx.globalAlpha = Math.min(.5, c.t * .3); const n = Math.floor(c.r * 1.5); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = rnd() * c.r; pix(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .6, c.acid ? (i % 2 ? '#b6ff3c' : '#e8ff8a') : c.col ? (i % 2 ? c.col : '#ffffff') : c.fire ? (i % 2 ? '#ff7a30' : '#ffcc33') : i % 2 ? '#88ee22' : '#4a8a12'); } }
   drawClsWorld();
   ctx.globalAlpha = 1;
   // красные зоны атак вожака: заливка в шахматку + яркая мигающая граница
@@ -3016,7 +3318,7 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
-  drawUfx(); drawUltCharge();
+  drawUfx(); drawUltCharge(); drawEvolveWorld();
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
     if (drawClsWave(w)) continue;
@@ -3107,7 +3409,7 @@ function render() {
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
   }
-  drawUltBanner(k); drawCutIn(US ? US.k : cls());
+  drawUltBanner(k); drawCutIn(US ? US.k : cls()); drawEvoBanner();
   if (ult >= .999 && ult < 1 && ultCd > 0) { fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000'; fctx.fillStyle = '#a59fc0'; const tt = 'УЛЬТА ЧЕРЕЗ ' + Math.ceil(ultCd) + 'С'; fctx.strokeText(tt, fx.width / 2, (H - 9) * k); fctx.fillText(tt, fx.width / 2, (H - 9) * k); }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
@@ -3149,7 +3451,7 @@ function render() {
 }
 function drawHero(rk) {
   const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8 - (hero.lift || 0));
-  if (deathT > 0) { heroFrame = 'hurt'; ctx.globalAlpha = Math.min(1, deathT / 1.4); ctx.drawImage(silhouette('#ff3355'), x, y + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
+  if (deathT > 0) { heroFrame = 'hurt'; ctx.globalAlpha = Math.min(1, deathT / 1.4); const ds = silhouette('#ff3355'); ctx.drawImage(ds, x - (ds.ox || 0), y - (ds.oy || 0) + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
   // светлое кольцо под ногами — героя видно всегда
   ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
   heroFrame = pickHeroFrame();
@@ -3157,7 +3459,7 @@ function drawHero(rk) {
   const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0;
   if (hero.iframe > 0 && Math.sin(time * 40) > 0) ctx.globalAlpha = .5;
   const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
-  const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate(X * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X, Y); ctx.restore(); };
+  const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate((X + 4) * 2, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X - (img.ox || 0), Y - (img.oy || 0)); ctx.restore(); };   // крупные облики центрируются по ногам
   // послеобразы скорости
   if (F(EI.move) >= 2) { ctx.globalAlpha = .18; for (const t of hero.trail) if (Math.hypot(t.x - hero.x, t.y - hero.y) > 1.5) flip(silhouette(EFF[EI.move].c), Math.round(t.x - 4), Math.round(t.y - 8), t.face); ctx.globalAlpha = 1; }
   for (const g of ghosts) { ctx.globalAlpha = g.l * 2; flip(silhouette('#66ccff'), Math.round(g.x - 4), Math.round(g.y - 8), g.face); } ctx.globalAlpha = 1;
@@ -3171,10 +3473,8 @@ function drawHero(rk) {
       if (rnd() < .4 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 9, vx: 0, vy: -18, l: .5, c: rnd() < .5 ? CL().c : '#ffffff', f: 1 }); }
     if (tr) { ctx.globalAlpha = .9; const sl = silhouette(tr[0] === 30 ? hsl2hex(Math.floor(time * 4) % 12 * 30, 90, 65) : tr[1]); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(sl, x + ox, y0 + oy, hero.face); ctx.globalAlpha = 1; } }
   const hol = silhouette('#000'); if (!tierOf(clsLv())) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y + hop - (moving ? 1 : 0) + dy, hero.face);
-  ctx.save();
-  if (hero.face < 0) { ctx.translate(x * 2 + 8, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(spr, x, y + hop - (moving ? 1 : 0));
-  ctx.restore(); ctx.globalAlpha = 1;
+  flip(spr, x, y + hop - (moving ? 1 : 0), hero.face); ctx.globalAlpha = 1;
+  drawPathFx();
   const ac = ARMOR[(rk + 4) % ARMOR.length];
   // шипы
   const fth = F(EI.thorns);
@@ -3282,6 +3582,7 @@ function drawClsWorld() {
 }
 // снаряды классов
 function drawClsWave(w) {
+  if (w.pv) { const x = Math.round(w.x), y = Math.round(w.y); ctx.fillStyle = w.c; ctx.fillRect(x - 1, y - 1, 3, 3); pix(x, y, '#ffffff'); ctx.globalAlpha = .45; for (let j = 1; j <= 3; j++) pix(x - Math.cos(w.a) * j * 2, y - Math.sin(w.a) * j * 2, w.c); ctx.globalAlpha = 1; return true; }
   const x = Math.round(w.x), y = Math.round(w.y), ca = Math.cos(w.a), sa = Math.sin(w.a), sp = time * 25;
   switch (w.kind) {
     case 'axe': case 'scythe': case 'hammer': case 'shield': {
@@ -3503,7 +3804,7 @@ function rebirth() {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); holy = []; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; pals = []; EV = null; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
@@ -4193,6 +4494,7 @@ load();
 if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
 ntMigrate();
+if (!S.meta.pathMig) { S.meta.pathMig = 1; let had = 0; for (const k in (S.meta.cl || {})) { if (S.meta.cl[k].ct && Object.keys(S.meta.cl[k].ct).length) had = 1; S.meta.cl[k].ct = {}; } if (had) setTimeout(() => toast('ПУТЬ КЛАССА', 'ветки классов переделаны · очки мастерства возвращены', 4000), 2500); }
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
@@ -4217,7 +4519,7 @@ requestAnimationFrame(frame);
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
-  const us = ultFrame(real);
+  const us = ultFrame(real) * evFrame(real);
   if (hitStop > 0) hitStop -= real; else { const d = (slowT > 0 ? real * .3 : real) * us; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
   render();
   requestAnimationFrame(frame);
