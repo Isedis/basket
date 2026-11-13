@@ -263,6 +263,14 @@ html,body{font-size:10px}
 .pinfo .row2{display:flex;gap:8px;margin-top:6px}
 .pinfo .row2 .btn{flex:1;padding:8px;font-size:8px;background:#7a2a8a}
 .pinfo .row2 .btn[disabled]{opacity:.4}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cst{padding:6px;background:#141024;border:1px solid #2a2440;border-top:3px solid var(--cc);border-radius:4px;font-size:7px;line-height:1.7}
+.cst.on{background:#1c1630}
+.cst b{display:block;font-weight:normal;color:var(--cc)}
+.cst img{width:22px;height:22px;image-rendering:pixelated;opacity:.35;margin-right:2px}
+.cst img.aw{opacity:1;filter:drop-shadow(0 0 3px var(--cc))}
+.cst small{display:block;font-size:6px;color:#5a5470}
+.cst small.got{color:#e9e4ff}
 .cthero{display:flex;gap:10px;align-items:flex-start;background:#141024;border:1px solid #2a2440;border-radius:6px;padding:8px}
 .cthero canvas{flex:none;width:110px;height:110px;image-rendering:pixelated}
 #cthi{flex:1;min-width:0;font-size:7px;line-height:1.7}
@@ -339,6 +347,7 @@ html,body{font-size:10px}
       <div id="dfore"></div>
       <button class="btn big" id="tbtn">ДЕРЕВО ТАЛАНТОВ</button>
       <button class="btn big" id="clsopen" style="margin-top:10px">КЛАСС И КОЛЛЕКЦИЯ</button>
+      <div id="ascbox"></div>
       <div id="clsbox" hidden></div>
       <div class="gsec" style="margin-top:14px">АВТОМАТИКА <span>меньше тыкать</span></div>
       <div id="autobox"></div>
@@ -388,7 +397,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113023236';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113025716';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1107,7 +1116,7 @@ const autoOpen = k => (S.meta.nodes[TN.find(nd => nd.auto === k).id] || 0) > 0;
 const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
 const nMax = nd => nd.max || 50;   // обычный талант — до 50 уровней
-const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((nd.max ? 5 * Math.pow(1.45, l) : Math.pow(1 + .5 * l, 2.2)) * (1 + nd.d * .35));
+const tCost = (nd, l) => nd.fixed ? nd.fixed : Math.ceil((1 - .05 * ascL('cheap')) * (nd.max ? 5 * Math.pow(1.45, l) : Math.pow(1 + .5 * l, 2.2)) * (1 + nd.d * .35));
 const brActive = bi => true;   // все ветви работают одновременно
 const startOfLife = () => S.zone <= 1 && S.kills < 200;
 let TAL = {}, TB = [], KSL = [];
@@ -1133,7 +1142,7 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2));   // корень: души не разгоняются снежным комом
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls'));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
@@ -1799,6 +1808,89 @@ function pBuy(k, t, id) {
   renderCT();
 }
 
+/* ---------- ЭТАП 2: созвездия, Страж стены, Вознесение, Искры ---------- */
+const CONST = [
+  { n: 'Сталь', c: '#c9ced6', ks: ['war', 'bers', 'pal', 'guard'], b: ['+20% HP всем классам', '+50% HP и +5% брони'] },
+  { n: 'Стихии', c: '#ff8a3c', ks: ['mage', 'sham', 'alch', 'chrono'], b: ['+15% урона', '+40% урона, эффекты стихий сильнее'] },
+  { n: 'Тени', c: '#9a7aff', ks: ['assa', 'gamb', 'necro', 'reap'], b: ['+5% крита', '+12% крита и +30% силы крита'] },
+  { n: 'Дух', c: '#fff2a0', ks: ['priest', 'monk', 'rune', 'arch'], b: ['ульта копится на 20% быстрее', 'ульта на 50% быстрее, регенерация ×1.5'] },
+];
+const constStars = ci => CONST[ci].ks.filter(k => awake(k)).length;
+const starsTotal = () => CONST.reduce((a, c, i) => a + constStars(i), 0);
+const constTier = ci => { const n = constStars(ci); return n >= 4 ? 2 : n >= 2 ? 1 : 0; };
+function constMods() {
+  let t;
+  if ((t = constTier(0))) { D.maxHP *= t === 2 ? 1.5 : 1.2; if (t === 2) D.armor = Math.min(.95, D.armor + .05); }
+  if ((t = constTier(1))) D.hit *= t === 2 ? 1.4 : 1.15;
+  if ((t = constTier(2))) { D.crit = Math.min(.95, D.crit + (t === 2 ? .12 : .05)); if (t === 2) D.critM *= 1.3; }
+  if ((t = constTier(3)) === 2) D.regen *= 1.5;
+  const a = ascL('power'); if (a) { D.hit *= Math.pow(10, .5 * a); D.maxHP *= Math.pow(10, .5 * a); }   // звёздная мощь
+}
+const constUlt = () => { const t = constTier(3); return t === 2 ? 1.5 : t ? 1.2 : 1; };
+// дерево Вознесения (за Искры, конечное)
+const ASC = [
+  { k: 'power', n: 'Звёздная мощь', max: 40, c0: 1, d: L => 'урон и HP ×' + fmt(Math.pow(10, .5 * L)) },
+  { k: 'path', n: 'Звёздный путь', max: 3, c0: 3, d: L => 'жизнь начинается с ' + (10 * L) + '-й зоны (не дальше рекорда −5)' },
+  { k: 'souls', n: 'Память душ', max: 10, c0: 2, d: L => 'души ×' + (1 + .5 * L).toFixed(1) },
+  { k: 'cheap', n: 'Лёгкое дерево', max: 10, c0: 2, d: L => 'таланты дешевле на ' + 5 * L + '%' },
+  { k: 'legacy', n: 'Наследие', max: 5, c0: 4, d: L => 'после смерти остаётся часть статов (' + 5 * L + '%)' },
+  { k: 'xp', n: 'Опыт веков', max: 8, c0: 2, d: L => 'опыт мастерства ×' + (1 + .25 * L).toFixed(2) },
+  { k: 'world', n: 'Стойкость к мирам', max: 10, c0: 3, d: L => 'урон врагов за 50-й зоной −' + 5 * L + '%' },
+];
+const ascL = k => ((S.meta.asn || {})[k]) || 0;
+const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(1.6, L));
+function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
+const wallZ = () => (S.meta.asc ? 100 : 50);
+const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); return Math.floor(Math.sqrt(cyc / 50) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 10)); };
+// Страж стены: огромный, почти неуязвим без звёзд созвездий
+const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
+const guardDef = () => 1 - guardMul();
+function makeGuardian(m) {
+  Object.assign(m, { guard: true, t: 7, sz: 3.2, h: 45, name: 'Страж стены', sp: m.sp * .6 });
+  m.hp *= 1e10; m.max = m.hp;   // рассчитан на героя с полным деревом: без звёзд непробиваем, с 8★ — около 10–30 секунд
+  toast('СТРАЖ СТЕНЫ!', 'защита ' + (guardDef() * 100).toFixed(1) + '% · звёзды созвездий ломают её (8★ — полностью)', 3500);
+  shake = 12; [98, 73, 55].forEach((f, i) => tone(f, .5, 'sawtooth', .06, 0, i * .25));
+}
+function guardianDown() {
+  const M = S.meta; M.guard = 1;
+  bossAlive = false;
+  if (M.asc) { feed('Страж стены повержен — Вознесение снова доступно', '#ffd84a'); nextZone(); save(); return; } slowT = 1; flashT = .2; shake = 16;
+  for (let i = 0; i < 4; i++) ring(hero.x, hero.y - 4, 20 + i * 18, i % 2 ? '#ffffff' : '#ffd84a');
+  [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .3, 'triangle', .05, 0, i * .1));
+  setTimeout(() => { $('mt').textContent = 'СТЕНА ПАЛА!'; $('mp').innerHTML = 'Страж стены повержен.<br><br>Открыто <span style="color:#ffd84a">ВОЗНЕСЕНИЕ</span> — вкладка ДУШИ.<br><br>Оно сбросит дерево и души, но даст <span style="color:#7ad8ff">Искры</span> для Дерева Вознесения, а стена уйдёт на 100-ю зону.'; $('modal').hidden = false; }, 1200);
+  save();
+}
+// само Вознесение
+let ascConfirm = 0;
+function ascend() {
+  const M = S.meta, g = sparksFor();
+  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0;   // в новом цикле Стража нужно победить снова
+  M.best = Math.max(M.best, S.zone);
+  // дерево талантов и души сгорают, автоматика остаётся
+  const keepN = {}; for (const nd of TN) if (nd.auto && TL(nd.id)) keepN[nd.id] = TL(nd.id);
+  M.nodes = keepN; M.souls = 0;
+  S.runSouls = 0; S.meta = M;
+  rebirth(true); ascScene(g);
+}
+function ascScene(g) {
+  EV = { t: 0, k: cls(), form: formOf(cls()), old: formOf(cls()), label: 'ВОЗНЕСЕНИЕ #' + S.meta.asc, name: '+' + fmt(g) + ' искр', shown: false };
+  [262, 392, 523, 784, 1047, 1568].forEach((f, i) => tone(f, .4, 'triangle', .05, 0, i * .2));
+}
+function renderAsc() {
+  const M = S.meta, el = $('ascbox'); if (!el) return;
+  const st = starsTotal();
+  let h = `<div class="gsec">СОЗВЕЗДИЯ <span>звезда = пробуждённый класс · всего ${st}/16</span></div><div class="cgrid">` + CONST.map((c, ci) => { const n = constStars(ci), t = constTier(ci);
+    return `<div class="cst${t ? ' on' : ''}" style="--cc:${c.c}"><b>${c.n} · ${n}/4</b>` + c.ks.map(k => `<img src="${clsSprURL(k, !!(M.seen || {})[k])}" class="${awake(k) ? 'aw' : ''}" title="${CLASSES[k].n}">`).join('') +
+      `<small class="${t >= 1 ? 'got' : ''}">2★ ${c.b[0]}</small><small class="${t >= 2 ? 'got' : ''}">4★ ${c.b[1]}</small></div>`; }).join('') + '</div>';
+  const can = !!M.guard, g = sparksFor();
+  h += `<div class="gsec" style="margin-top:12px">ВОЗНЕСЕНИЕ <span>Искры: <b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b> · вознесений: ${M.asc || 0}</span></div>` +
+    `<div class="dim" style="margin-bottom:6px">${can ? 'Стена пала. Вознесение сожжёт дерево талантов и души, но даст Искры. Классы, вещи и созвездия остаются. Стена уходит на 100-ю зону.' : `Победи <b style="color:#ffd84a">Стража стены</b> на ${wallZ()}-й зоне. Его защита ${(guardDef() * 100).toFixed(1)}% — звёзды созвездий ломают её, с 8★ она пропадает.`}</div>` +
+    `<button class="btn big" id="ascb" style="background:#1e5a8a"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ (+' + fmt(g) + ' искр)'}</button>`;
+  if ((M.asc || 0) > 0 || M.sparks) h += `<div class="gsec" style="margin-top:12px">ДЕРЕВО ВОЗНЕСЕНИЯ</div>` + ASC.map(n => { const L = ascL(n.k), c = ascCost(n, L), mx = L >= n.max;
+    return `<div class="tcard${!mx && (M.sparks || 0) >= c ? ' can' : ''}" style="--nc:#7ad8ff"><div class="tcm"><b>${n.n}</b><small>${L ? 'сейчас: ' + n.d(L) : n.d(1)}${L && !mx ? '<br>след.: ' + n.d(L + 1) : ''}</small></div><div class="tcb"><span>${L}/${n.max}</span>${mx ? '<small>максимум</small>' : `<button class="btn" data-asc="${n.k}" style="background:#1e5a8a"${(M.sparks || 0) >= c ? '' : ' disabled'}>+1 · ${fmt(c)}✦</button>`}</div></div>`; }).join('');
+  if (h !== renderAsc.h) { renderAsc.h = h; el.innerHTML = h; }
+}
+
 // множитель урона удара от класса
 function clsDM(t) {
   return clsDM0(t) * ctDM(t);
@@ -1993,10 +2085,12 @@ let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 const zl = [0];
 function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i - 1] + Math.log10(ZHP + ZK * Math.exp(-i / ZT))); } return zl[z - 1]; }
 // враги крепнут всё быстрее: по кубу зоны, а после 50-й — несоизмеримо (стена мира)
-let ZQ = .006, ZC = .0004, ZW = 49, ZWK = 25;
-const zoneX = z => ZQ * z * z + ZC * z * z * z + ZWK * Math.max(0, z - ZW) ** 2;   // доп. порядки силы врагов
+let ZQ = .006, ZC = .0004, ZWK = 25;
+const zx1 = z => ZQ * z * z + ZC * z * z * z;
+// этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
+const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + 1.2 * (z - 50) + .015 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0) ** 2; };
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
-const zoneDmg = z => 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
+const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
@@ -2073,7 +2167,7 @@ function recalc() {
   D.quake = sat(R.quake, 60);
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods(); pathMods();
+  ntMods(); pathMods(); constMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -2333,9 +2427,10 @@ function spawnMob(boss) {
   if (!boss && na >= 2 && ksL(5, 0)) { const me = mobs[mobs.length - 1]; me.ws = { ox: 0, oy: -6, t: 0 }; moveWS(me); }
   if (boss) {
     const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
+    if (S.zone === 50 && !S.meta.guard) makeGuardian(mm);
     if (S.siege > 0) feed('Осада: вожак уже ранен на ' + pct(S.siege), '#aabbcc');
     bossAlive = true; bossT = BOSS_TIME + ta('boss_t'); S.tries = (S.tries || 0) + 1;
-    toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
+    if (!mm.guard) toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
     sfx.boss(); shake = 6;
     tip('weak', 'Слабое место', 'Жёлтая мигающая точка на вожаке — тапай по ней: ×12 урона. У вожака 30 секунд, иначе отступление.');
   }
@@ -2399,6 +2494,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (!col && D.mark > .01) m.mark = 3;
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
+  if (m.guard) dmg *= guardMul();   // Страж стены: защиту ломают звёзды созвездий
   if (m.pmk > time) dmg *= 1 + (m.pmkV || 0);   // метка пути класса
   if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)); else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
@@ -2465,14 +2561,15 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); ntKill(m, base); pathKill(m); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
+  clsKill(m, base); ntKill(m, base); pathKill(m); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
   if (sy(1) && m.psnT > 0) for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 16) {
-    o.psn = Math.max(o.psn, m.psn * (1 + .5 * sy(1))); o.psnT = 3; burst(o.x, o.y - 3, '#88ee22', 2, 15);
+    o.psn = Math.max(o.psn, Math.min(m.psn * (1 + .5 * sy(1)), D.hit * Math.max(D.poison, .1) * 3)); o.psnT = 3;   // без роста по цепочке burst(o.x, o.y - 3, '#88ee22', 2, 15);
   }
   checkUnlocks(false);
+  if (m.guard) { S.siege = 0; S.tries = 0; guardianDown(); return; }
   if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; if ((S.tries || 1) > 1) toast('ПРОРЫВ!', 'вожак пал с ' + S.tries + '-й попытки'); S.tries = 0; nextZone(); }
 }
 function giveBurst(total) {
@@ -2594,7 +2691,7 @@ function heroStrike(t, fromWave) {
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
-  v *= (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
+  v *= constUlt() * (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
   if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
@@ -3120,7 +3217,7 @@ function effMech(dt) {
   if (ft >= 3) { PT.nova -= dt; if (PT.nova <= 0) { PT.nova = 4; ring(hero.x, hero.y - 3, 14, '#cc9966'); hitAround(hero.x, hero.y, 14, D.hit * D.thorns * (1 + .5 * (ft - 3)), '#cc9966'); } }
   if (fr >= 2 && hero.hp >= D.maxHP * .999) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
   // ядовитые облака
-  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { if (c.acid && aw() && cls() === 'alch') m.slowT = Math.max(m.slowT || 0, .2); trackDmg(c.acid ? 'Кислота' : c.fire ? 'Огонь' : 'Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt; if (m.hp <= 0) { m.dead = true; killMob(m); } } }
+  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { if (c.acid && aw() && cls() === 'alch') m.slowT = Math.max(m.slowT || 0, .2); trackDmg(c.acid ? 'Кислота' : c.fire ? 'Огонь' : 'Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt * (m.guard ? guardMul() : 1); if (m.hp <= 0) { m.dead = true; killMob(m); } } }
   clouds = clouds.filter(c => c.t > 0);
   for (const r of rings) { r.l -= dt; r.r += (r.max - r.r) * Math.min(1, dt * 18); } rings = rings.filter(r => r.l > 0);
   for (const g of ghosts) g.l -= dt; ghosts = ghosts.filter(g => g.l > 0);
@@ -3236,7 +3333,7 @@ function update(dt) {
     if (m.af & 512) { m.tp = (m.tp ?? 2 + rnd() * 2) - dt; if (m.tp <= 0) { m.tp = 3; burst(m.x, m.y - 3, '#ff88ff', 8, 30); const a = rnd() * 6.28; m.x = clamp(hero.x + Math.cos(a) * 14, 4, AW - 4); m.y = clamp(hero.y + Math.sin(a) * 10, 8, AH - 2); burst(m.x, m.y - 3, '#ff88ff', 8, 30); } }
     if (m.mark > 0) m.mark -= dt;
     if (m.frz > 0) { m.frz -= dt; m.x = ox0; m.y = oy0; m.cd = Math.max(m.cd, .3); }
-    if (m.blT > 0 && !m.dead) { m.blT -= dt; trackDmg('Кровотечение', Math.min(m.bl * dt, Math.max(0, m.hp))); m.hp -= m.bl * dt; if (rnd() < dt * 5 && parts.length < 500) parts.push({ x: m.x + (rnd() - .5) * 5, y: m.y - 4, vx: 0, vy: 15, l: .4, c: '#ff3355' }); if (m.hp <= 0) { m.dead = true; killMob(m); continue; } }
+    if (m.blT > 0 && !m.dead) { m.blT -= dt; trackDmg('Кровотечение', Math.min(m.bl * dt, Math.max(0, m.hp))); m.hp -= m.bl * dt * (m.guard ? guardMul() : 1); if (rnd() < dt * 5 && parts.length < 500) parts.push({ x: m.x + (rnd() - .5) * 5, y: m.y - 4, vx: 0, vy: 15, l: .4, c: '#ff3355' }); if (m.hp <= 0) { m.dead = true; killMob(m); continue; } }
     if (S.zmod === 'curse' && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * .03 * dt);
     if (m.role === 'summoner') shooter(m, dt, mdmg);
     if (m.boss) { bossAI(m, dt); bossPhase(m); }
@@ -3274,7 +3371,7 @@ function update(dt) {
     }
     if (m.af & 64 && !m.dead) m.hp = Math.min(m.max, m.hp + m.max * (m.boss ? .01 : .04) * dt);
     if (m.psnT > 0 && !m.dead) {
-      m.psnT -= dt; trackDmg('Яд', Math.min(m.psn * dt, Math.max(0, m.hp))); m.hp -= m.psn * dt;
+      m.psnT -= dt; trackDmg('Яд', Math.min(m.psn * dt, Math.max(0, m.hp))); m.hp -= m.psn * dt * (m.guard ? guardMul() : 1);
       if (rnd() < dt * 6) parts.push({ x: m.x + (rnd() - .5) * 6, y: m.y - 4, vx: 0, vy: -12, l: .4, c: '#88ee22' });
       if (m.hp <= 0) { m.dead = true; killMob(m); }
     }
@@ -3467,7 +3564,7 @@ function render() {
   if (boss) {
     fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`;
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
-    const s = (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + MOBS[boss.t].n + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
+    const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + MOBS[boss.t].n) + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
   }
   // лента событий
@@ -3807,6 +3904,8 @@ $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) {
 $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } openCT(el.dataset.c); };
 $('clsc').onclick = () => openClassTab();
 $('clsopen').onclick = () => openClassTab();
+$('ascbox').onclick = e => { const b = e.target.closest('[data-asc]'); if (b) { ascBuy(b.dataset.asc); return; }
+  if (e.target.id === 'ascb' && S.meta.guard) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0];
@@ -3867,15 +3966,15 @@ function runAuto() {
 
 /* ---------- перерождение ---------- */
 function renderSouls() {
-  renderAuto();
+  renderAuto(); renderAsc();
   const M = S.meta, g = S.runSouls || 0;
   $('dsouls').textContent = fmt(M.souls); $('dreb').textContent = M.rebirths; $('dbest').textContent = Math.max(M.best, S.zone);
   $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
 }
-function rebirth() {
+function rebirth(fromAsc) {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
-  M.souls += g; M.total += g; M.rebirths++; M.best = Math.max(M.best, S.zone);
-  const keepF = Math.min(.3, .03 * ksL(7, 1)), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
+  M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone);
+  const keepF = Math.min(.5, .03 * ksL(7, 1) + .05 * ascL('legacy')), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
@@ -3884,10 +3983,12 @@ function rebirth() {
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
+  { const sz = Math.min(10 * ascL('path'), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
   calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
   flashT = .5; slowT = .6; shake = 10;
-  toast('ПЕРЕРОЖДЕНИЕ #' + M.rebirths, '+' + fmt(g) + ' душ · открой дерево талантов', 2400);
+  if (fromAsc) toast('ВОЗНЕСЕНИЕ #' + M.asc, 'стена теперь на 100-й зоне · дерево Вознесения во вкладке ДУШИ', 4000);
+  else toast('ПЕРЕРОЖДЕНИЕ #' + M.rebirths, '+' + fmt(g) + ' душ · открой дерево талантов', 2400);
   clsReveal();
   [262, 330, 392, 523, 659, 784, 1047].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .08));
 }
