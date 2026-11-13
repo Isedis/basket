@@ -397,7 +397,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113025716';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113030138';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -682,6 +682,7 @@ const BIOMES = [
 ];
 const ZONES_PER_BIOME = 5;
 function biomeOf(z) {
+  if (z > 50 && typeof WORLDS !== 'undefined') return worldBiome(z);
   const bi = Math.floor((z - 1) / ZONES_PER_BIOME);
   const b = BIOMES[bi % BIOMES.length], cyc = Math.floor(bi / BIOMES.length);
   const sh = cyc * 53;
@@ -829,6 +830,99 @@ const MOBS = [
   { n: 'Череп',     s: 1.7, hp: .5,  dm: .8,  p: ["........",".11111..","1131311.","1111111.",".11211..","..1.1...","........","........"] },
   { n: 'Тролль',    s: .8,  hp: 1.8, dm: 1.6, p: [".11111..","1131311.","1111111.",".12221..","1111111.","1.111.1.",".11.11..",".11.11.."] },
 ];
+/* ---------- МИРЫ ЗА 50-Й ЗОНОЙ: 5 миров по 10 зон ---------- */
+const WMOBS = [
+  // Пепельные пустоши
+  { n: 'Огненный голем', s: .7, hp: 2, dm: 1.4, p: ["..1111..", ".131131.", "11111111", "12211221", "11111111", ".11..11.", ".11..11.", "11....11"] },
+  { n: 'Лавовый червь', s: 1.1, hp: 1.2, dm: 1.2, p: ["........", "...111..", "..13311.", "..111.1.", ".111....", "111.....", "1211....", ".2211..."] },
+  { n: 'Пепельный бес', s: 1.6, hp: .8, dm: 1.1, p: ["1......1", "11.11.11", ".111111.", ".131131.", "..1111..", ".12..21.", ".1....1.", "........"] },
+  { n: 'Угольный пёс', s: 1.7, hp: .9, dm: 1.2, p: ["........", "1.....1.", "11...11.", "1111111.", "13111111", ".111111.", ".1.1.1.1", ".1.1.1.1"] },
+  { n: 'Птенец феникса', s: 1.4, hp: .9, dm: 1.3, p: ["...11...", "..1331..", "1.1111.1", "11111111", ".111111.", "..1221..", "...22...", "..2..2.."] },
+  // Небесный град
+  { n: 'Грифон', s: 1.5, hp: 1, dm: 1.2, p: ["11......", "131.....", ".1111111", "..111111", ".1211211", "11111111", ".1.1..1.", ".1.1..1."] },
+  { n: 'Ангел-страж', s: 1, hp: 1.4, dm: 1.3, p: ["..3333..", "...11...", "1.1331.1", "11111111", "1.1111.1", "..1221..", "..1111..", "..1..1.."] },
+  { n: 'Облачный дух', s: 1.2, hp: 1.1, dm: 1, p: ["........", "..1111..", ".111111.", "11311311", "11111111", ".111111.", "1.1.1.1.", "........"] },
+  { n: 'Небесный рыцарь', s: .9, hp: 1.6, dm: 1.4, p: ["...3....", "..111...", ".13131..", ".11111..", "1122211.", "1.222.1.", "..2.2...", ".11.11.."] },
+  { n: 'Гарпия', s: 1.8, hp: .7, dm: 1.1, p: ["1......1", "11.11.11", "1111111.", "..1331..", "..1111..", "...22...", "..2..2..", ".2....2."] },
+  // Механическая цитадель
+  { n: 'Автоматон', s: .8, hp: 1.8, dm: 1.3, p: [".111111.", ".131131.", ".111111.", "22222222", "21111112", "2.1111.2", "..1..1..", ".11..11."] },
+  { n: 'Турель', s: .3, hp: 1.4, dm: 1.6, p: ["........", "...11...", "..1331..", "..111111", "..1111..", ".222222.", "22222222", "2......2"] },
+  { n: 'Паровой рыцарь', s: .9, hp: 1.7, dm: 1.4, p: ["..111...", ".11311..", ".11111.2", "2111112.", "2.111.2.", ".22222..", ".2...2..", ".11.11.."] },
+  { n: 'Дрон', s: 1.6, hp: .8, dm: 1.1, p: ["1.1..1.1", ".111111.", "11133111", ".113311.", "11111111", ".111111.", "1.1..1.1", "........"] },
+  { n: 'Механопаук', s: 1.5, hp: 1, dm: 1.2, p: ["........", "1..11..1", ".1.11.1.", "..1331..", "22222222", "..1111..", ".1.11.1.", "1......1"] },
+  // Бездна
+  { n: 'Тень', s: 1.3, hp: 1, dm: 1.3, p: ["..1111..", ".111111.", ".131131.", ".111111.", "..1111..", ".1.11.1.", "1..11..1", "..1..1.."] },
+  { n: 'Щупальце', s: .6, hp: 1.8, dm: 1.5, p: ["...1....", "..11....", "..1.1...", "...11...", "..11.1..", ".11..1..", ".1...11.", "111.1111"] },
+  { n: 'Пожиратель', s: 1, hp: 1.6, dm: 1.4, p: [".111111.", "11111111", "13111131", "11111111", "12222221", "12.22.21", "11111111", ".1....1."] },
+  { n: 'Глаз бездны', s: .9, hp: 1.3, dm: 1.6, p: ["1..11..1", ".111111.", "11222211", "12233221", "12233221", "11222211", ".111111.", "1..11..1"] },
+  { n: 'Безликий', s: 1.2, hp: 1.2, dm: 1.3, p: ["..1111..", ".111111.", ".111111.", "..1111..", ".222222.", "2.2222.2", "..2..2..", ".2....2."] },
+  // Пустота
+  { n: 'Звёздная тварь', s: 1.4, hp: 1.1, dm: 1.4, p: ["1..1..1.", ".1.1.1..", "..131...", "1113111.", "..131...", ".1.1.1..", "1..1..1.", "........"] },
+  { n: 'Осколок', s: 1.7, hp: .8, dm: 1.3, p: ["...1....", "..131...", "..111...", ".11311..", ".11111..", "..131...", "...1....", "........"] },
+  { n: 'Эхо героя', s: 1.2, hp: 1.3, dm: 1.5, p: ["..111...", ".11331..", ".11111..", "..222...", ".12221..", ".1.2.1..", "..2.2...", "..1.1..."] },
+  { n: 'Пустотник', s: 1.1, hp: 1.4, dm: 1.4, p: ["..1..1..", ".111111.", "11311311", ".111111.", "..1111..", ".11..11.", "11....11", "1......1"] },
+  { n: 'Сингулярность', s: .5, hp: 2.2, dm: 1.7, p: ["..1111..", ".122221.", "12233221", "12333321", "12333321", "12233221", ".122221.", "..1111.."] },
+];
+const WM0 = MOBS.length; MOBS.push(...WMOBS);
+const WORLDS = [
+  { n: 'Пепельные пустоши', g: ['#3a2a24', '#2e211c', '#7a3a1a'], h: [15, 25, 5, 0, 35], f: ['fire', 'regen'], rule: 'heat', rd: 'жар жжёт героя: −1% HP в секунду', titan: 'Владыка пепла', c: '#ff7a30' },
+  { n: 'Небесный град', g: ['#8a9ab8', '#7a8aa8', '#d8e2f2'], h: [200, 50, 210, 45, 30], f: ['range', 'aspd'], rule: 'fly', rd: 'враги в небе: ближние удары слабее на 40%', titan: 'Небесный исполин', c: '#d8e2f2' },
+  { n: 'Механическая цитадель', g: ['#3a4048', '#30353c', '#6a7078'], h: [200, 30, 180, 190, 210], f: ['crit', 'critd'], rule: 'shield', rd: 'щиты врагов держат удары, их пробивают криты', titan: 'Колосс цитадели', c: '#7ad8ff' },
+  { n: 'Бездна', g: ['#1a1028', '#140c20', '#3a1a5a'], h: [280, 300, 270, 320, 260], f: ['shock', 'mark'], rule: 'phase', rd: 'враги уходят в тень и на миг неуязвимы', titan: 'Око Бездны', c: '#b06aff' },
+  { n: 'Пустота', g: ['#0a0814', '#06050e', '#2a1a4a'], h: [260, 300, 180, 240, 290], f: ['grav', 'power'], rule: 'grav', rd: 'разломы тянут всех к себе, враги злее', titan: 'Пожиратель звёзд', c: '#ff44ff' },
+];
+const worldIdx = z => z > 50 ? Math.min(4, Math.floor((z - 51) / 10)) : -1;
+const curWorld = () => { const i = worldIdx(S.zone); return i >= 0 ? WORLDS[i] : null; };
+const wRule = r => { const w = curWorld(); return !!w && w.rule === r; };
+function worldBiome(z) {
+  const wi = worldIdx(z), w = WORLDS[wi], sub = (z - 51) % 10;
+  return { name: w.n + ' ' + (sub + 1) + '/10', g: w.g, m: [0, 1, 2, 3, 4].map(i => WM0 + wi * 5 + i), h: w.h, cyc: 0, fav: w.f.map(k => EI[k]), world: wi };
+}
+// оформление земли миров
+function worldGround(g, wi, sr) {
+  const W2 = AW, H2 = AH;
+  if (wi === 0) { g.strokeStyle = '#b84a12'; g.globalAlpha = .55; for (let i = 0; i < 40; i++) { let x = sr() * W2, y = sr() * H2; g.beginPath(); g.moveTo(x, y); for (let s = 0; s < 6; s++) { x += (sr() - .5) * 14; y += (sr() - .5) * 8; g.lineTo(x, y); } g.stroke(); } }
+  if (wi === 1) { g.fillStyle = '#ffffff'; for (let i = 0; i < 30; i++) { const x = sr() * W2, y = sr() * H2; g.globalAlpha = .18; for (let j = 0; j < 6; j++) g.fillRect(Math.round(x + (sr() - .5) * 16), Math.round(y + (sr() - .5) * 6), 6, 3); } }
+  if (wi === 2) { g.strokeStyle = '#22262c'; g.globalAlpha = .6; for (let x = 0; x < W2; x += 16) { g.beginPath(); g.moveTo(x + .5, 0); g.lineTo(x + .5, H2); g.stroke(); } for (let y = 0; y < H2; y += 16) { g.beginPath(); g.moveTo(0, y + .5); g.lineTo(W2, y + .5); g.stroke(); } g.fillStyle = '#7ad8ff'; g.globalAlpha = .4; for (let i = 0; i < 50; i++) g.fillRect(Math.floor(sr() * W2 / 16) * 16 + 1, Math.floor(sr() * H2 / 16) * 16 + 1, 1, 1); }
+  if (wi === 3) { g.fillStyle = '#b06aff'; for (let i = 0; i < 160; i++) { g.globalAlpha = .2 + sr() * .3; g.fillRect(sr() * W2 | 0, sr() * H2 | 0, 1, 1); } g.strokeStyle = '#3a1a5a'; g.globalAlpha = .5; for (let i = 0; i < 12; i++) { const x = sr() * W2, y = sr() * H2; g.beginPath(); g.arc(x, y, 4 + sr() * 10, 0, 6.28); g.stroke(); } }
+  if (wi === 4) { for (let i = 0; i < 260; i++) { g.globalAlpha = .3 + sr() * .7; g.fillStyle = sr() < .2 ? '#ff88ff' : '#ffffff'; g.fillRect(sr() * W2 | 0, sr() * H2 | 0, 1, 1); } }
+  g.globalAlpha = 1;
+}
+// правила миров
+let rifts = [];
+function worldTick(dt) {
+  const w = curWorld(); if (!w) { rifts = []; return; }
+  const res = 1 - .05 * ascL('world');
+  if (w.rule === 'heat') { if (hero.hp > D.maxHP * .05) hero.hp = Math.max(D.maxHP * .05, hero.hp - D.maxHP * .01 * res * dt); if (rnd() < dt * 20 && parts.length < 600) parts.push({ x: camX + rnd() * W, y: camY, vx: (rnd() - .5) * 8, vy: 25 + rnd() * 20, l: 2, c: rnd() < .5 ? '#ff7a30' : '#ffcc33', f: 1 }); }
+  if (w.rule === 'phase') for (const m of mobs) { if (m.dead || m.boss) continue; m.phT = (m.phT ?? rnd() * 3) - dt; if (m.phT <= 0) { m.ph = !m.ph; m.phT = m.ph ? .9 : 2.5 + rnd() * 1.5; if (m.ph) burst(m.x, m.y - 3, '#b06aff', 3, 15); } }
+  if (w.rule === 'grav') {
+    PT.rift = (PT.rift ?? 6) - dt; if (PT.rift <= 0 && mobs.length) { PT.rift = 7; const a = rnd() * 6.283; rifts.push({ x: clamp(hero.x + Math.cos(a) * 30, 8, AW - 8), y: clamp(hero.y + Math.sin(a) * 20, 12, AH - 4), t: 2.2 }); feed('Разлом пустоты!', '#ff44ff'); }
+    for (const r of rifts) { r.t -= dt; const pull = (o, k) => { const dx = r.x - o.x, dy = r.y - o.y, d = Math.hypot(dx, dy) || 1; if (d < 70 && d > 3) { o.x += dx / d * k * dt; o.y += dy / d * k * dt; } };
+      pull(hero, 22 * res); for (const m of mobs) if (!m.dead && !m.boss) pull(m, 30); }
+    rifts = rifts.filter(r => r.t > 0);
+  }
+}
+function drawWorldFx() {
+  for (const r of rifts) { ctx.globalAlpha = Math.min(1, r.t); for (let i = 0; i < 3; i++) circ(r.x, r.y, 4 + i * 5 + Math.sin(time * 6 + i) * 1.5, i % 2 ? '#ff44ff' : '#5a1a8a', 20, .6, time * (3 - i)); dot(r.x, r.y, 3, '#000'); ctx.globalAlpha = 1; }
+}
+// мировые особенности врагов при появлении
+function worldMob(m) {
+  const w = curWorld(); if (!w) return;
+  if (w.rule === 'shield') m.shd = m.max * (m.boss ? .3 : .45);
+  if (m.boss) {
+    const z = S.zone;
+    if (z % 10 === 0) { Object.assign(m, { titan: true, sz: 4, name: w.titan }); m.hp *= 3; m.max = m.hp; toast('ТИТАН: ' + w.titan.toUpperCase() + '!', 'вожак мира · три фазы · первая победа даёт трофей', 3500); shake = 14; [65, 49, 41].forEach((f, i) => tone(f, .5, 'sawtooth', .06, 0, i * .3)); }
+    else if (z % 5 === 0) { Object.assign(m, { sz: 2.6, name: 'Страж: ' + w.n }); }
+  }
+}
+// трофеи титанов: вечные бонусы
+function titanDown(m) {
+  const M = S.meta, wi = worldIdx(S.zone); if (!M.troph) M.troph = {};
+  if (!M.troph[wi]) { M.troph[wi] = 1; toast('ТРОФЕЙ: ' + WORLDS[wi].titan.toUpperCase(), 'навсегда: урон и HP ×10', 3500); [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1)); D.dirty = true; }
+  if (S.zone >= 100) setTimeout(() => { $('mt').textContent = 'СТЕНА 100'; $('mp').innerHTML = 'Пожиратель звёзд повержен.<br><br>Дальше — <span style="color:#ff44ff">стена 100-й зоны</span>.<br>Её пробьёт третий этап.'; $('modal').hidden = false; }, 1000);
+}
+const trophyMul = () => Math.pow(10, Object.keys(S.meta.troph || {}).length);
+
 const sprCache = new Map();
 function sprite(pat, cols, key) {
   let c = sprCache.get(key); if (c) return c;
@@ -1824,6 +1918,7 @@ function constMods() {
   if ((t = constTier(1))) D.hit *= t === 2 ? 1.4 : 1.15;
   if ((t = constTier(2))) { D.crit = Math.min(.95, D.crit + (t === 2 ? .12 : .05)); if (t === 2) D.critM *= 1.3; }
   if ((t = constTier(3)) === 2) D.regen *= 1.5;
+  { const tm = trophyMul(); if (tm > 1) { D.hit *= tm; D.maxHP *= tm; } }
   const a = ascL('power'); if (a) { D.hit *= Math.pow(10, .5 * a); D.maxHP *= Math.pow(10, .5 * a); }   // звёздная мощь
 }
 const constUlt = () => { const t = constTier(3); return t === 2 ? 1.5 : t ? 1.2 : 1; };
@@ -1838,7 +1933,7 @@ const ASC = [
   { k: 'world', n: 'Стойкость к мирам', max: 10, c0: 3, d: L => 'урон врагов за 50-й зоной −' + 5 * L + '%' },
 ];
 const ascL = k => ((S.meta.asn || {})[k]) || 0;
-const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(1.6, L));
+const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(n.k === 'power' ? 1.25 : 1.6, L));
 function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
 const wallZ = () => (S.meta.asc ? 100 : 50);
 const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); return Math.floor(Math.sqrt(cyc / 50) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 10)); };
@@ -2088,9 +2183,9 @@ function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i 
 let ZQ = .006, ZC = .0004, ZWK = 25;
 const zx1 = z => ZQ * z * z + ZC * z * z * z;
 // этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
-const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + 1.2 * (z - 50) + .015 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0) ** 2; };
+const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .6 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0) ** 2; };
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
-const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
+const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * (worldIdx(z) === 4 ? 1.2 : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
@@ -2326,6 +2421,7 @@ function buildGround() {
     const x = sr() * AW | 0, y = sr() * AH | 0; g.fillStyle = b.g[2];
     g.fillRect(x, y, 1, 1); if (sr() < .5) { g.fillRect(x - 1, y + 1, 1, 1); g.fillRect(x + 1, y + 1, 1, 1); }
   }
+  if (b.world != null) worldGround(g, b.world, sr);
   g.fillStyle = 'rgba(8,6,16,.4)'; g.fillRect(0, 0, AW, AH);   // приглушённый фон, чтобы бой читался
   decal = document.createElement('canvas'); decal.width = AW; decal.height = AH;
   for (let i = 0; i < AW * AH * .002; i++) {
@@ -2424,13 +2520,15 @@ function spawnMob(boss) {
     if (!boss) { const role = rollRole(); if (role) { nm.role = role; if (!seenRole[role]) { seenRole[role] = 1; nm.lblUntil = time + 4; } if (role === 'bomber') nm.sp *= 1.8; if (role === 'shield') { nm.hp *= 1.5; nm.max *= 1.5; }
       tip('roles', 'Роли врагов', 'Значок над врагом: жёлтый — лучник, зелёный — шаман (лечит, бей первым), синий — щитоносец, красный — камикадзе, фиолетовый — призыватель.'); } } }
   if (na && !boss) tip('aff', 'Особые враги', 'Цветные точки над врагом — его особенности: броня, скорость, взрыв, вампиризм. Такие враги дают больше наград.');
+  if (!boss) worldMob(mobs[mobs.length - 1]);
   if (!boss && na >= 2 && ksL(5, 0)) { const me = mobs[mobs.length - 1]; me.ws = { ox: 0, oy: -6, t: 0 }; moveWS(me); }
   if (boss) {
     const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
     if (S.zone === 50 && !S.meta.guard) makeGuardian(mm);
+    worldMob(mm);
     if (S.siege > 0) feed('Осада: вожак уже ранен на ' + pct(S.siege), '#aabbcc');
     bossAlive = true; bossT = BOSS_TIME + ta('boss_t'); S.tries = (S.tries || 0) + 1;
-    if (!mm.guard) toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
+    if (!mm.guard && !mm.titan) toast((isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + M.n.toUpperCase() + '!', (na ? affNames(af) + ' · ' : '') + 'тапай по слабому месту!');
     sfx.boss(); shake = 6;
     tip('weak', 'Слабое место', 'Жёлтая мигающая точка на вожаке — тапай по ней: ×12 урона. У вожака 30 секунд, иначе отступление.');
   }
@@ -2459,7 +2557,8 @@ function splat(m) {
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
   g.globalAlpha = 1;
 }
-function crowd() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
+function crowd() { return Math.min(70, crowd0()); }   // не больше 70 врагов на поле
+function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
 let deathT = 0;
 function heroDeath() {
@@ -2494,6 +2593,8 @@ function hitMob(m, dmg, crit, show, col) {
   if (!col && D.mark > .01) m.mark = 3;
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
+  if (m.ph) { if (show && texts.length < 7 && rnd() < .3) ftext(m.x, m.y - 8 * m.sz, 'тень', '#b06aff', .7, .5); return; }   // Бездна: враг в тени
+  if (m.shd > 0) { if (crit) { m.shd = 0; burst(m.x, m.y - 4, '#7ad8ff', 12, 40); fxLabel('Щит пробит', m.x, m.y - 14, '#7ad8ff'); } else { const a = Math.min(m.shd, dmg); m.shd -= a; dmg -= a; if (dmg <= 0) { if (rnd() < .2) burst(m.x, m.y - 4, '#7ad8ff', 2, 15); return; } } }
   if (m.guard) dmg *= guardMul();   // Страж стены: защиту ломают звёзды созвездий
   if (m.pmk > time) dmg *= 1 + (m.pmkV || 0);   // метка пути класса
   if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)); else if (m.na) dmg *= 1 + ta('elite');
@@ -2570,6 +2671,7 @@ function killMob(m) {
   }
   checkUnlocks(false);
   if (m.guard) { S.siege = 0; S.tries = 0; guardianDown(); return; }
+  if (m.titan) titanDown(m);
   if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; if ((S.tries || 1) > 1) toast('ПРОРЫВ!', 'вожак пал с ' + S.tries + '-й попытки'); S.tries = 0; nextZone(); }
 }
 function giveBurst(total) {
@@ -2588,6 +2690,7 @@ function nextZone() {
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .5);
   recalc(); buildGround();
   sfx.zone(); shake = 10;
+  if (S.zone > 50 && (S.zone - 51) % 10 === 0) { const w = curWorld(); setTimeout(() => toast('МИР: ' + w.n.toUpperCase(), w.rd, 4000), 600); }
   toast(b.name !== oldB ? 'НОВЫЕ ЗЕМЛИ!' : 'ЗОНА ' + S.zone, b.name + (b.name !== oldB ? ' · ×2 к: ' + b.fav.map(e => EFF[e].n).join(', ') : ' · награды ×' + fmt(zs())));
   for (let i = 0; i < 40; i++) burst(camX + rnd() * W, camY + rnd() * H, '#f2c94c', 1, 20);
   if (zm()) { toast('ЗОНА: ' + zm().n.toUpperCase(), zm().d); tip('zmod', 'Особая зона', 'Иногда зона получает модификатор: ночь, гроза, гиганты, рой… Он написан рядом с названием зоны.'); }
@@ -2633,7 +2736,7 @@ function heroStrike(t, fromWave) {
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
   if (!fromWave) { hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1; }
   if (ci === 2) hero.kbBoost = 3.5;
-  hitMob(t, dmg * (1 + ta('x_focus')), crit, true);
+  hitMob(t, dmg * (1 + ta('x_focus')) * flyMul(fromWave), crit, true);
   if (D.bounce > 0) bounceFrom(t, dmg * .6, D.bounce);
   if (D.echo > .01) echoes.push({ x: t.x, y: t.y, t: .45, dmg: dmg * D.echo });
   if (D.quake > .02 && hero.atkN % 6 === 5) { ring(hero.x, hero.y - 2, 18, '#b08a5a'); hitAround(hero.x, hero.y, 18, dmg * D.quake * 1.5, '#b08a5a'); shake = Math.max(shake, 3); fxLabel('Землетрясение', hero.x, hero.y - 18, '#b08a5a'); tone(70, .2, 'square', .05, 40, 0, 'quake', .3); }
@@ -2687,6 +2790,7 @@ function heroStrike(t, fromWave) {
   if (D.vamp > 0) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.vamp);
   ntHit(t, dmg, crit); pathHit(t, dmg, crit);
 }
+const flyMul = fromWave => wRule('fly') && !fromWave ? .6 : 1;
 
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
@@ -3194,7 +3298,7 @@ function effMech(dt) {
     if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if ((aw() && cls() === 'necro') || isSty('necro', 1)) { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
   }
   allies = allies.filter(al => al.t > 0);
-  clsTick(dt); awkTick(dt); ntTick(dt); pathTick(dt);
+  clsTick(dt); awkTick(dt); ntTick(dt); pathTick(dt); worldTick(dt);
   if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
       let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
       if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
@@ -3463,7 +3567,10 @@ function render() {
     const bob = Math.sin(time * 10 + o.x) > .6 ? -1 : 0;
     const ol = sprite(MOBS[o.t].p, { 1: '#000', 2: '#000', 3: '#000' }, 'mo' + o.t), os = s / 8;
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.drawImage(ol, x + dx * Math.max(1, Math.round(os)), y + bob + dy * Math.max(1, Math.round(os)), s, s);
-    ctx.drawImage(mobSprite(o, o.fl > 0), x, y + bob, s, s);
+    const fly = wRule('fly') ? -3 - Math.round(Math.sin(time * 3 + o.x) * 1.5) : 0;
+    if (o.ph) ctx.globalAlpha = .25;
+    ctx.drawImage(mobSprite(o, o.fl > 0), x, y + bob + fly, s, s); ctx.globalAlpha = 1;
+    if (o.shd > 0) { ctx.globalAlpha = .55; circ(o.x, o.y - s / 2, s * .6 + 1, '#7ad8ff', 14, .9, time); ctx.globalAlpha = 1; }
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
     if (o.psnT > 0) pix(o.x, y - 1, '#88ee22');
@@ -3488,7 +3595,7 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
-  drawUfx(); drawUltCharge(); drawEvolveWorld();
+  drawUfx(); drawUltCharge(); drawEvolveWorld(); drawWorldFx();
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
     if (drawClsWave(w)) continue;
@@ -3564,7 +3671,7 @@ function render() {
   if (boss) {
     fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`;
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
-    const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + MOBS[boss.t].n) + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
+    const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : boss.titan ? 'ТИТАН: ' + boss.name : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + (boss.name || MOBS[boss.t].n)) + ' ' + fmt(Math.max(0, boss.hp)) + ' · ' + Math.max(0, Math.ceil(bossT)) + 'с';
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
   }
   // лента событий
@@ -3785,7 +3892,7 @@ function updateUI() {
   if (time > dsT) { dsT = time + 1; renderDS(); }
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
-  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : ''; $('zmodl').style.color = zm() ? zm().c : ''; $('znum').textContent = 'Зона ' + S.zone;
+  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : curWorld() ? '◆ ' + { heat: 'жар', fly: 'небо', shield: 'щиты', phase: 'тени', grav: 'разломы' }[curWorld().rule] : ''; $('zmodl').style.color = zm() ? zm().c : curWorld() ? curWorld().c : ''; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
   else if (S.zk >= need) { zbarI.style.width = '100%'; zbarI.style.background = '#ff9a3c'; zbarB.textContent = 'ВОЖАК ЧЕРЕЗ ' + Math.max(0, Math.ceil(Math.max(bossCd, prepT() - (S.prepW || 0)))) + 'с · ТАП = БОЙ'; }
