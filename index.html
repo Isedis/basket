@@ -313,7 +313,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113010741';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113011307';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1916,9 +1916,112 @@ function drawUltBanner(k) {
   fctx.strokeText(ultBan.name.toUpperCase(), w / 2 + slide, cy); fctx.fillText(ultBan.name.toUpperCase(), w / 2 + slide, cy);
   fctx.restore(); fctx.textBaseline = 'alphabetic';
 }
+/* ---------- эпичная подача ульты: заряд → кат-ин → кадр удара → волна ---------- */
+const US_CHG = .85;          // сколько длится заряд (реальные секунды)
+let US = null;               // идущая ульта
+const zc = document.createElement('canvas'), zx = zc.getContext('2d');
+function ultStart(dmg) {
+  US = { t: 0, k: cls(), dmg, col: CL().c, aw: aw(), fired: false, imp: 0 };
+  hero.iframe = Math.max(hero.iframe, 2);
+  // нарастающий гул заряда
+  tone(110, US_CHG, 'sawtooth', .05, 440); tone(220, US_CHG, 'square', .025, 1320); tone(55, US_CHG + .3, 'triangle', .06, 40);
+}
+function ultRelease() {
+  US.fired = true; US.imp = .09; US.rel = 0;
+  ultT = .9; flashT = .25; shake = 16;
+  const c = US.col;
+  // ударная волна и обломки
+  for (let i = 0; i < 4; i++) ring(hero.x, hero.y - 3, 20 + i * 18, i % 2 ? '#ffffff' : c);
+  for (let i = 0; i < 70 && parts.length < 600; i++) { const a = rnd() * 6.283, v = 60 + rnd() * 120; parts.push({ x: hero.x, y: hero.y - 4, vx: Math.cos(a) * v, vy: Math.sin(a) * v * .7 - 30, l: .6 + rnd() * .5, c: rnd() < .4 ? '#ffffff' : rnd() < .5 ? c : shade(c, -.4) }); }
+  fx1(.7, p => { const r = 6 + p * 90; ctx.globalAlpha = (1 - p) * .9; circ(hero.x, hero.y - 3, r, '#ffffff', 90, .6); circ(hero.x, hero.y - 3, r - 2, c, 90, .6); circ(hero.x, hero.y - 3, r * .6, c, 50, .6); ctx.globalAlpha = 1; });
+  // печать класса на земле
+  fx1(1.6, p => { const R = 34, a = p < .15 ? p / .15 : (1 - p) / .85; ctx.globalAlpha = .7 * a; circ(hero.x, hero.y, R, c, 60, .55, p * 3); circ(hero.x, hero.y, R - 4, '#ffffff', 40, .55, -p * 4); circ(hero.x, hero.y, R * .45, c, 30, .55, p * 6);
+    for (let i = 0; i < 8; i++) { const an = i / 8 * 6.283 + p * 2; for (let j = 0; j < 4; j++) pix(hero.x + Math.cos(an) * (R - 4 + j), hero.y + Math.sin(an) * (R - 4 + j) * .55, j % 2 ? '#ffffff' : c); } ctx.globalAlpha = 1; });
+  groundMark(hero.x, hero.y + 2, 30, '#ff9a3c');
+  // аккорд удара
+  tone(60, .8, 'sawtooth', .07, 25); tone(1800, .5, 'square', .03, 150); [262, 330, 392, 523, 784].forEach((f, i) => tone(f, .5, 'triangle', .04, 0, .05 + i * .04));
+  clsUlt(US.dmg);
+  if (legOn('twin')) later(.9, () => { clsUlt(US.dmg); flashT = .15; shake = 10; });
+}
+// реальное время: заряд почти останавливает мир
+let usReal = 0;
+function ultFrame(real, fromUpd) {
+  if (!US) return 1;
+  if (!fromUpd) usReal = performance.now();
+  US.t += real; if (US.imp > 0) US.imp -= real; if (US.fired) US.rel += real;
+  if (!US.fired && US.t >= US_CHG) ultRelease();
+  if (US.fired && US.rel > 1.2) { US = null; hero.lift = 0; return 1; }
+  if (!US.fired) { hero.lift = Math.round(4 * Math.min(1, US.t / .4)); return .05; }
+  hero.lift = Math.max(0, Math.round(4 * (1 - US.rel / .25)));
+  return US.rel < .35 ? .45 : 1;
+}
+// заряд в мире: энергия стягивается к герою, столб с неба, круг под ногами
+function drawUltCharge() {
+  if (!US || US.fired) return;
+  const p = Math.min(1, US.t / US_CHG), c = US.col, hx = hero.x, hy = hero.y - 4;
+  ctx.fillStyle = 'rgba(5,0,15,' + (.55 * p) + ')'; ctx.fillRect(camX - 6, camY - 6, W + 12, H + 12);
+  for (let i = 0; i < 26; i++) { const a = i / 26 * 6.283 + i * 1.7, ph = (US.t * 2.2 + i * .137) % 1, r = 70 * (1 - ph), L = 6 + 6 * (1 - ph);
+    ctx.globalAlpha = .4 + .6 * ph; for (let j = 0; j < L; j++) pix(hx + Math.cos(a) * (r + j), hy + Math.sin(a) * (r + j) * .7, j === 0 ? '#ffffff' : c); }
+  ctx.globalAlpha = .5 + .4 * p; const w = 1 + Math.round(4 * p); ctx.fillStyle = c; ctx.fillRect(Math.round(hx - w / 2) - 1, Math.round(camY - 6), w + 2, Math.round(hy - camY + 6)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(hx - w / 4), Math.round(camY - 6), Math.max(1, w / 2), Math.round(hy - camY + 6));
+  ctx.globalAlpha = .9; circ(hx, hero.y, 10 + 14 * p, c, 40, .45, US.t * 6); circ(hx, hero.y, 6 + 8 * p, '#ffffff', 24, .45, -US.t * 8); ctx.globalAlpha = 1;
+}
+// экранные эффекты: наезд камеры, «манга»-линии, кадр удара
+function drawUltScreen(sx, sy) {
+  if (!US) return;
+  let z = 1;
+  if (!US.fired) { const p = Math.min(1, US.t / US_CHG); z = 1 + .45 * p * p; }
+  else z = 1 + .2 * Math.max(0, 1 - US.rel / .3);
+  const hx = hero.x - camX + sx, hy = hero.y - 4 - camY + sy;
+  if (z > 1.002) {
+    if (zc.width !== W || zc.height !== H) { zc.width = W; zc.height = H; }
+    zx.imageSmoothingEnabled = false; zx.clearRect(0, 0, W, H); zx.drawImage(cv, 0, 0);
+    const sw = W / z, sh = H / z, x0 = clamp(hx - sw / 2, 0, W - sw), y0 = clamp(hy - sh / 2, 0, H - sh);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(zc, x0, y0, sw, sh, 0, 0, W, H);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (!US.fired) {   // радиальные линии скорости к герою
+    const p = Math.min(1, US.t / US_CHG), cx = W / 2, cy = H / 2;
+    ctx.globalAlpha = .35 + .4 * p;
+    for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283 + Math.floor(US.t * 20) * .37 * (i % 3), R0 = Math.max(W, H) * .75, R1 = R0 * (.55 + .25 * ((i * 7) % 5) / 5);
+      for (let r = R1; r < R0; r += 1.5) pix(cx + Math.cos(a) * r, cy + Math.sin(a) * r, i % 4 ? '#ffffff' : US.col); }
+    ctx.globalAlpha = 1;
+  }
+  if (US.imp > 0) {   // кадр удара: белый экран, чёрные силуэты
+    ctx.fillStyle = US.imp > .045 ? '#ffffff' : US.col; ctx.fillRect(0, 0, W, H);
+    ctx.setTransform(1, 0, 0, 1, sx - camX, sy - camY);
+    for (const m of mobs) if (!m.dead) { const sp = sprite(MOBS[m.t].p, { 1: '#000', 2: '#000', 3: '#000' }, 'mk' + m.t), s = m.sz || 1; ctx.drawImage(sp, Math.round(m.x - 4 * s), Math.round(m.y - 8 * s), 8 * s, 8 * s); }
+    ctx.drawImage(silhouette('#000'), Math.round(hero.x - 4), Math.round(hero.y - 8 - (hero.lift || 0)));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+}
+// кат-ин: косая полоса с огромным портретом героя и названием ульты
+function drawCutIn(k) {
+  if (!US) return;
+  const t = US.t, w = fx.width, h = fx.height, a = t < .12 ? t / .12 : US.fired ? Math.max(0, 1 - US.rel / .25) : 1;
+  if (a <= 0) return;
+  const c = US.col, cy = h * .23, bh = h * .19, slide = (1 - Math.min(1, t / .18)) * w;
+  fctx.save(); fctx.globalAlpha = a;
+  const bars = h * .09 * Math.min(1, t / .15); fctx.fillStyle = '#000'; fctx.fillRect(0, 0, w, bars); fctx.fillRect(0, h - bars, w, bars);   // кинополосы
+  fctx.translate(w / 2 - slide, cy); fctx.rotate(-.12);
+  fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh);
+  fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
+  fctx.globalAlpha = a * .25; for (let i = 0; i < 14; i++) { const lx = ((i * 97 + t * 900) % (w * 2)) - w; fctx.fillRect(lx, -bh / 2, 2 * DPR, bh); } fctx.globalAlpha = a;   // полосы скорости
+  const sc = Math.floor(bh / 9), spr = sprite(framePat(CLS_SPR[k].p, 'atk'), { 1: CLS_SPR[k].pal?.[1] || '#c9ced6', 2: CLS_SPR[k].pal?.[2] || '#3a3450', 3: '#ffffff', 4: c, 5: CLS_SPR[k].pal?.[5] || '#f0c090' }, 'cut' + k);
+  fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR;
+  fctx.globalAlpha = a * .5; fctx.drawImage(silhouette(c), px - sc, -sc * 4.5, sc * 8, sc * 8); fctx.globalAlpha = a;
+  fctx.drawImage(spr, px, -sc * 4.5 + sc * .5, sc * 8, sc * 8);
+  const fs = Math.round(bh * .2), name = (US.aw ? '★ ' : '') + ULTS[k][0].toUpperCase();
+  fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000';
+  const tx = -w * .32 + sc * 9;
+  fctx.fillStyle = '#a59fc0'; fctx.font = `${Math.round(fs * .55)}px "Press Start 2P", monospace`; fctx.strokeText(CLASSES[k].n.toUpperCase(), tx, -fs * .9); fctx.fillText(CLASSES[k].n.toUpperCase(), tx, -fs * .9);
+  fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = Math.sin(t * 40) > 0 || t > .4 ? c : '#ffffff';
+  const mw = w * .62 - sc * 9, tw = fctx.measureText(name).width, k2 = tw > mw ? mw / tw : 1;
+  fctx.save(); fctx.translate(tx, fs * .35); fctx.scale(k2, 1); fctx.strokeText(name, 0, 0); fctx.fillText(name, 0, 0); fctx.restore();
+  fctx.restore(); fctx.textBaseline = 'alphabetic'; fctx.textAlign = 'center';
+}
+
 function clsUlt(dmg) {
   const k = cls(), c = CL().c;
-  ultIntro((aw() ? '★ ' : '') + ULTS[k][0], c);
   switch (k) {
     case 'war':
       fx1(.7, p => { const r = 6 + p * 60; ctx.globalAlpha = 1 - p; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283 + p * 2; for (let j = 0; j < 5; j++) pix(hero.x + Math.cos(a) * (r + j), hero.y - 4 + Math.sin(a) * (r + j) * .7, j > 3 ? '#ffffff' : '#c9ced6'); } ctx.globalAlpha = 1; });
@@ -2002,12 +2105,10 @@ function clsUlt(dmg) {
 }
 
 function fireUlt() {
-  if (ultCd > 0) return;
-  ultCd = ULT_CD; ult = 0; ultT = .9; slowT = .8; flashT = .2; shake = 12;
+  if (ultCd > 0 || US) return;
+  ultCd = ULT_CD; ult = 0;
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
-  clsUlt(dmg * (aw() ? 2 : 1));   // у каждого класса своя ульта; пробуждённая — ×2
-  if (legOn('twin')) later(.9, () => { clsUlt(dmg); flashT = .15; });
-  tone(80, .6, 'sawtooth', .06, 30); tone(1600, .5, 'square', .03, 200); tone(400, .4, 'triangle', .05, 1200, .1);
+  ultStart(dmg * (aw() ? 2 : 1));   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
 function onTap(e) {
   audio();
@@ -2222,6 +2323,7 @@ function effMech(dt) {
 /* ---------- основной цикл ---------- */
 let spawnT = 0, pressT = 0, kpsT = 0, uiT = 0, saveT = 0;
 function update(dt) {
+  if (US && performance.now() - usReal > 250) ultFrame(dt, true);   // окно в фоне или симуляция: ульта идёт по игровому времени
   time += dt; tapCd -= dt;
   const z = zs();
   // спавн
@@ -2465,7 +2567,7 @@ function render() {
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
-  drawUfx();
+  drawUfx(); drawUltCharge();
   // волны клинка: светлый серп поперёк полёта + след
   for (const w of waves) {
     if (drawClsWave(w)) continue;
@@ -2507,6 +2609,7 @@ function render() {
   const ub = H - 3; ctx.fillStyle = '#000'; ctx.fillRect(2, ub, W - 4, 2);
   ctx.fillStyle = ult >= 1 ? (Math.sin(time * 12) > 0 ? '#ff88ff' : '#ffffff') : ultCd > 0 ? '#5a4a6a' : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
   if (ultCd > 0) { ctx.fillStyle = '#ff88ff'; ctx.fillRect(2, ub, Math.round((W - 4) * (1 - ultCd / ULT_CD)), 1); }
+  drawUltScreen(sx, sy); ctx.setTransform(1, 0, 0, 1, sx, sy);
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
   if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
@@ -2554,7 +2657,7 @@ function render() {
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
   }
-  drawUltBanner(k);
+  drawUltBanner(k); drawCutIn(US ? US.k : cls());
   if (ult >= .999 && ult < 1 && ultCd > 0) { fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000'; fctx.fillStyle = '#a59fc0'; const tt = 'УЛЬТА ЧЕРЕЗ ' + Math.ceil(ultCd) + 'С'; fctx.strokeText(tt, fx.width / 2, (H - 9) * k); fctx.fillText(tt, fx.width / 2, (H - 9) * k); }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
@@ -2595,7 +2698,7 @@ function render() {
   }
 }
 function drawHero(rk) {
-  const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8);
+  const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8 - (hero.lift || 0));
   if (deathT > 0) { heroFrame = 'hurt'; ctx.globalAlpha = Math.min(1, deathT / 1.4); ctx.drawImage(silhouette('#ff3355'), x, y + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
   // светлое кольцо под ногами — героя видно всегда
   ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
@@ -2946,7 +3049,7 @@ function rebirth() {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); holy = []; ultQ = []; ufx = []; ultBan = null; ultCd = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
@@ -3534,7 +3637,8 @@ requestAnimationFrame(frame);
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
-  if (hitStop > 0) hitStop -= real; else { const d = slowT > 0 ? real * .3 : real; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
+  const us = ultFrame(real);
+  if (hitStop > 0) hitStop -= real; else { const d = (slowT > 0 ? real * .3 : real) * us; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
   render();
   requestAnimationFrame(frame);
 }
