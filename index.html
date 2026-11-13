@@ -118,20 +118,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #tbtn{background:#2f5a8a}
 #sky{position:fixed;inset:0;z-index:8;background:#03020a;display:flex;flex-direction:column;bottom:var(--navh)}
 #sky[hidden]{display:none}
-#shead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#0c0820;border-bottom:2px solid #2a2050;font-size:9px}
+#shead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#0c0820;border-bottom:3px solid #c9a24a;box-shadow:0 2px 0 #4a3510;font-size:9px;color:#ffe08a}
+
 #shead b{color:#7ad8ff;font-weight:normal}
-#sbar{background:#0a0718;border-bottom:1px solid #2a2050;padding:4px 6px}
+#sbar{background:#0a0718;border-bottom:2px solid #3a2a10;padding:4px 6px}
+#sbar .tch{background:#120c26;border-color:#4a3a20;color:#c9b07a}
+#sbar .tch.on{background:#3a2a10;border-color:#ffe08a;color:#ffe08a}
 #sbar .shint{font-size:7px;color:#8a83b6;padding:3px 2px 1px}
 #sview{position:relative;flex:1;min-height:0;touch-action:none;overflow:hidden;background:#03020a}
 #sview canvas{position:absolute;inset:0}
 #szoom{position:absolute;right:6px;bottom:6px;display:flex;flex-direction:column;gap:4px}
 #szoom .btn{min-width:36px;min-height:36px}
 #slist2{flex:1;min-height:0;overflow-y:auto;padding:6px 8px 16px;background:#03020a}
-#sinfo{flex:none;min-height:124px;padding:8px 10px 10px;background:#0c0820;border-top:2px solid #2a2050;font-size:9px;line-height:1.8}
+#sinfo{flex:none;min-height:124px;padding:8px 10px 10px;background:#0c0820;border-top:3px solid #c9a24a;box-shadow:inset 0 2px 0 #4a3510;font-size:9px;line-height:1.8}
 #sinfo h3{font-size:10px;font-weight:normal}
 #sinfo .k{color:var(--dim)}
 #sinfo .row2{display:flex;gap:8px;margin-top:6px}
-#sinfo .row2 .btn{flex:1;padding:8px;min-height:44px;font-size:10px;background:#1e4a8a}
+#sinfo .row2 .btn{flex:1;padding:8px;min-height:44px;font-size:10px;background:#2a1a5a;color:#ffe08a;border:2px solid #c9a24a;box-shadow:inset 0 0 0 2px #120a30}
 #sinfo .row2 .btn[disabled]{opacity:.4}
 #tree{position:fixed;inset:0;z-index:8;background:var(--bg);display:flex;flex-direction:column;
   padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
@@ -316,8 +319,27 @@ html,body{font-size:10px}
 .pinfo .row2{display:flex;gap:8px;margin-top:6px}
 .pinfo .row2 .btn{flex:1;padding:8px;font-size:8px;background:#7a2a8a}
 .pinfo .row2 .btn[disabled]{opacity:.4}
+.asx{position:relative;margin-top:12px;padding:8px;background:#06041a;border:3px solid #c9a24a;box-shadow:inset 0 0 0 2px #3a2a10,0 0 0 2px #000;
+  background-image:radial-gradient(1px 1px at 12px 18px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 47px 9px,#9a96d0 50%,transparent 51%),radial-gradient(1px 1px at 80px 40px,#fff6d0 50%,transparent 51%),radial-gradient(1px 1px at 30px 55px,#6a66b0 50%,transparent 51%),radial-gradient(1px 1px at 66px 70px,#fff 50%,transparent 51%);background-size:96px 80px}
+.asx .axh{display:flex;justify-content:space-between;gap:6px;font-size:9px;color:#ffe08a;margin-bottom:6px;text-shadow:1px 1px 0 #000}
+.asx .axh span:last-child{color:#c9b07a;font-size:7px;align-self:center}
+.asx .axt{font-size:7px;line-height:1.7;color:#a8a2d0;margin:4px 0 8px}
+.asx .axs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:4px}
+.asx .axs div{background:#0e0a26;border:1px solid #3a2a60;padding:5px 2px;text-align:center}
+.asx .axs small{display:block;font-size:6px;color:#8a83b6}
+.asx .axs b{display:block;font-weight:normal;font-size:12px;margin-top:3px;color:#fff}
+.asx #ascb{background:#3a2a10;color:#ffe08a;border:2px solid #ffe08a;box-shadow:inset 0 0 0 2px #120a30;width:100%;min-height:48px}
+.asx #ascb:not([disabled]){animation:ascg 1.6s steps(2) infinite}
+@keyframes ascg{50%{background:#5a4218}}
+.asx #skyb{background:#2a1a5a;color:#ffe08a;border:2px solid #c9a24a;width:100%;margin-top:6px}
+.asx #skymini{display:block;width:100%;height:auto;image-rendering:pixelated;border:1px solid #3a2a60}
+.asx .axbar{height:4px;background:#1a1438;margin-top:4px}
+.asx .axbar i{display:block;height:100%;background:linear-gradient(90deg,#7ad8ff,#ff44ff,#ffe08a)}
+.cst .pips{float:right}
+.cst .pips i{display:inline-block;width:5px;height:5px;margin-left:2px;background:#2a2450;transform:rotate(45deg)}
+.cst .pips i.on{background:var(--cc);box-shadow:0 0 3px var(--cc)}
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.cst{padding:6px;background:#141024;border:1px solid #2a2440;border-top:3px solid var(--cc);border-radius:4px;font-size:7px;line-height:1.7}
+.cst{padding:6px;background:#0c0822;border:1px solid #2a2450;border-top:3px solid var(--cc);font-size:7px;line-height:1.7}
 .cst.on{background:#1c1630}
 .cst b{display:block;font-weight:normal;color:var(--cc)}
 .cst img{width:22px;height:22px;image-rendering:pixelated;opacity:.35;margin-right:2px}
@@ -474,7 +496,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113225653';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113231925';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2443,71 +2465,110 @@ function sizeSky() { const v = $('sview'), r = v.getBoundingClientRect(); sDPR =
 function reqSky() { if (!sRaf) sRaf = requestAnimationFrame(() => { sRaf = 0; drawSky(); }); }
 const s2x = x => (x - scam.x) * scam.z + sW / 2, s2y = y => (y - scam.y) * scam.z + sH / 2;
 function skyStar(c, x, y, r, col, pts) { c.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = i / (pts * 2) * Math.PI * 2 - Math.PI / 2, rr = i % 2 ? r * .42 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fillStyle = col; c.fill(); }
-const skyGlowC = {};
-function skyGlow(col, r) { const k = col + r; if (skyGlowC[k]) return skyGlowC[k]; const c = document.createElement('canvas'); c.width = c.height = r * 2; const x = c.getContext('2d'), g = x.createRadialGradient(r, r, 0, r, r, r);
-  g.addColorStop(0, col); g.addColorStop(.25, col + 'aa'); g.addColorStop(1, col + '00'); x.fillStyle = g; x.fillRect(0, 0, r * 2, r * 2); return skyGlowC[k] = c; }
-// туманности: по 3 облака цвета ветви в её секторе
-const SKY_NEB = []; SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2; [[170, 70], [330, 95], [500, 120]].forEach(([r, s0], k) => SKY_NEB.push({ x: Math.cos(a + (k - 1) * .08) * r, y: Math.sin(a + (k - 1) * .08) * r, s: s0, c: B.c })); });
+/* ---- пиксельный космос: спрайты звёзд, туманности из точек, планеты ---- */
+const SKY_SPR = {
+  star: ['..#..', '.#o#.', '#ooo#', '.#o#.', '..#..'],
+  fig: ['...#...', '...#...', '..#o#..', '##ooo##', '..#o#..', '...#...', '...#...'],
+  nt: ['....#....', '.#..#..#.', '..#.#.#..', '...#o#...', '####o####', '...#o#...', '..#.#.#..', '.#..#..#.', '....#....'],
+  ks: ['....#....', '...#o#...', '..#ooo#..', '.#ooooo#.', '#ooooooo#', '.#ooooo#.', '..#ooo#..', '...#o#...', '....#....'],
+  root: ['......#......', '..#...#...#..', '...#..#..#...', '....#####....', '...#ooooo#...', '..#ooooooo#..', '####ooooo####', '..#ooooooo#..', '...#ooooo#...', '....#####....', '...#..#..#...', '..#...#...#..', '......#......'],
+};
+const skySprC = {};
+function skySpr(kind, col, mode) {   // mode: 2 зажжена, 1 доступна, 0 тусклая
+  const k = kind + col + mode; if (skySprC[k]) return skySprC[k]; const P = SKY_SPR[kind], c = document.createElement('canvas'); c.width = P[0].length; c.height = P.length; const x = c.getContext('2d');
+  P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '.') return; x.fillStyle = mode === 2 ? (ch === 'o' ? '#ffffff' : col) : mode === 1 ? (ch === 'o' ? '#d8d2ff' : '#8a80c0') : (ch === 'o' ? '#5a5288' : '#352e58'); x.fillRect(i, j, 1, 1); }));
+  return skySprC[k] = c;
+}
+const skyHaloC = {};
+function skyHalo(col) { if (skyHaloC[col]) return skyHaloC[col]; const r = 8, c = document.createElement('canvas'); c.width = c.height = r * 2 + 1; const x = c.getContext('2d'); x.fillStyle = col;
+  for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const d = Math.hypot(i, j) / r; if (d > 1) continue; if ((i + j) % 2 === 0 && d > .35 || d <= .35 && (i % 2 === 0)) { x.globalAlpha = .55 * (1 - d); x.fillRect(i + r, j + r, 1, 1); } } return skyHaloC[col] = c; }
+let skyNebC = null;
+function skyNeb() {   // туманности ветвей из пиксельных точек (мировые координаты)
+  if (skyNebC) return skyNebC; const R = 760, c = document.createElement('canvas'); c.width = c.height = R * 2; const x = c.getContext('2d'); let sd = 7;
+  const rr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2;
+    for (let k = 0; k < 2600; k++) { const rad = 120 + rr() * 560, da = (rr() - .5) * .45 * (1 - rad / 900), px = Math.round(Math.cos(a + da) * rad + (rr() - .5) * 40) + R, py = Math.round(Math.sin(a + da) * rad + (rr() - .5) * 40) + R;
+      x.globalAlpha = .1 + rr() * .22; x.fillStyle = rr() < .15 ? '#ffffff' : B.c; x.fillRect(px - (px % 2), py - (py % 2), 2, 2); } });
+  x.globalAlpha = 1; return skyNebC = c;
+}
+const SKY_PLANETS = [[-700, -420, 26, '#c06bff', 1], [720, 260, 34, '#ff9a3c', 0], [-260, 760, 18, '#7ad8ff', 1], [430, -720, 22, '#7affb0', 0], [-780, 330, 14, '#ff5577', 0], [760, -500, 12, '#ffd84a', 1]];
+const skyPlanC = {};
+function skyPlanet(r, col, ringed) { const k = r + col + ringed; if (skyPlanC[k]) return skyPlanC[k]; const W2 = r * 4, c = document.createElement('canvas'); c.width = W2; c.height = W2; const x = c.getContext('2d'), cx = W2 / 2, cy = W2 / 2;
+  for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const d = Math.hypot(i, j); if (d > r) continue; const lit = (-i - j) / (r * 1.4), band = Math.sin(j * .5) > .6;
+    x.fillStyle = d > r - 1.2 ? '#0a0614' : lit > .35 ? '#ffffff' : lit > -.1 ? col : (i + j) % 2 ? '#1a1030' : col; if (band && lit > -.4 && d <= r - 1.2) x.globalAlpha = .75; x.fillRect(cx + i, cy + j, 1, 1); x.globalAlpha = 1; }
+  if (ringed) { x.fillStyle = '#e8dcb0'; for (let a = 0; a < 6.283; a += .02) { const px = Math.round(cx + Math.cos(a) * r * 1.7), py = Math.round(cy + Math.sin(a) * r * .45); if (Math.sin(a) < 0 && Math.hypot(px - cx, py - cy) < r) continue; x.fillRect(px, py, 1, 1); } }
+  return skyPlanC[k] = c; }
+let skyFogPat = null;
+function pxLine(c, x1, y1, x2, y2, step, sz) { const d = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.floor(d / step)); for (let i = 0; i <= n; i++) { const t = i / n; c.fillRect(Math.round(x1 + (x2 - x1) * t - sz / 2), Math.round(y1 + (y2 - y1) * t - sz / 2), sz, sz); } }
 let skyShoot = null;
 function drawSky() {
-  const c = $('scv').getContext('2d'); c.setTransform(sDPR, 0, 0, sDPR, 0, 0);
+  const c = $('scv').getContext('2d'); c.setTransform(sDPR, 0, 0, sDPR, 0, 0); c.imageSmoothingEnabled = false;
   if (!sBg) { sBg = document.createElement('canvas'); sBg.width = Math.max(1, Math.round(sW)); sBg.height = Math.max(1, Math.round(sH)); const b = sBg.getContext('2d');
-    const g = b.createRadialGradient(sW / 2, sH * .45, 0, sW / 2, sH / 2, Math.max(sW, sH) * .85); g.addColorStop(0, '#160c30'); g.addColorStop(.6, '#080418'); g.addColorStop(1, '#020108'); b.fillStyle = g; b.fillRect(0, 0, sW, sH);
-    b.globalAlpha = .1; for (let i = 0; i < 46; i++) { const t = i / 46, x = t * sW * 1.2 - sW * .1, y = sH * (.15 + .6 * t) + Math.sin(t * 8) * 26; const gg = b.createRadialGradient(x, y, 0, x, y, 70); gg.addColorStop(0, i % 3 ? '#7a6ac0' : '#c08ae0'); gg.addColorStop(1, 'rgba(0,0,0,0)'); b.fillStyle = gg; b.fillRect(x - 70, y - 70, 140, 140); } b.globalAlpha = 1; }
+    b.fillStyle = '#05030e'; b.fillRect(0, 0, sW, sH); const bands = ['#07041a', '#0a0622', '#0d082a']; for (let y = 0; y < sH; y += 4) { b.fillStyle = bands[Math.floor((y / sH) * 3 + ((y / 4) % 2) * .5) % 3]; b.fillRect(0, y, sW, 2); }
+    b.imageSmoothingEnabled = false; const pl = skyPlanet(40, '#3a2a6a', 1); b.globalAlpha = .55; b.drawImage(pl, sW - pl.width * 1.1, sH - pl.height * .9, pl.width * 1.4, pl.height * 1.4); b.globalAlpha = 1; }
   c.drawImage(sBg, 0, 0, sW, sH);
-  const z = scam.z, tm = performance.now() / 1000, far = z < .45;
-  // туманности ветвей (двигаются вместе с картой)
-  c.globalCompositeOperation = 'lighter';
-  for (const n of SKY_NEB) { const x = s2x(n.x), y = s2y(n.y), r = n.s * z * 1.4; if (x < -r || y < -r || x > sW + r || y > sH + r) continue; c.globalAlpha = .13; c.drawImage(skyGlow(n.c, 64), x - r, y - r, r * 2, r * 2); }
-  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  // фоновые мерцающие звёзды (параллакс)
-  for (const s0 of SKY_BG) { const x = (s0.x - scam.x * .3) * Math.max(.4, z * .6) + sW / 2, y = (s0.y - scam.y * .3) * Math.max(.4, z * .6) + sH / 2; if (x < -2 || y < -2 || x > sW + 2 || y > sH + 2) continue; const a = .3 + .35 * Math.sin(tm * 1.3 + s0.t); c.globalAlpha = a; c.fillStyle = s0.r > 1 ? '#fff6e0' : '#cfd6ff'; c.fillRect(x, y, s0.r, s0.r); if (s0.r > 1 && a > .55) { c.globalAlpha = a * .5; c.fillRect(x - 2, y + .3, 5, .6); c.fillRect(x + .3, y - 2, .6, 5); } }
-  c.globalAlpha = 1;
-  // падающая звезда
-  if (!skyShoot && Math.random() < .01) skyShoot = { x: Math.random() * sW, y: Math.random() * sH * .5, t: 0 };
-  if (skyShoot) { const S0 = skyShoot; S0.t += .09; const x = S0.x + S0.t * 120, y = S0.y + S0.t * 60, gr = c.createLinearGradient(x - 40, y - 20, x, y); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,255,255,' + Math.max(0, .8 - S0.t * .6) + ')');
-    c.strokeStyle = gr; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 40, y - 20); c.lineTo(x, y); c.stroke(); if (S0.t > 1.3) skyShoot = null; }
-  // кольца
+  const z = scam.z, tm = performance.now() / 1000, far = z < .22, ps = Math.max(1, Math.round(Math.min(3, z * 2.2)));
+  // фоновые пиксельные звёзды (мигают кадрами)
+  for (const s0 of SKY_BG) { const x = Math.round((s0.x - scam.x * .3) * Math.max(.4, z * .6) + sW / 2), y = Math.round((s0.y - scam.y * .3) * Math.max(.4, z * .6) + sH / 2); if (x < -3 || y < -3 || x > sW + 3 || y > sH + 3) continue;
+    const ph = Math.floor(tm * 2 + s0.t) % 6; c.fillStyle = s0.r > 1 ? '#fff6d0' : ph === 0 ? '#ffffff' : '#7a76b0'; c.fillRect(x, y, 1, 1);
+    if (s0.r > 1 && ph < 2) { c.fillRect(x - 1, y, 3, 1); c.fillRect(x, y - 1, 1, 3); } }
+  // туманности и планеты (мировые)
+  { const N = skyNeb(), R = N.width / 2; c.globalAlpha = .9; c.drawImage(N, s2x(-R), s2y(-R), N.width * z, N.height * z); c.globalAlpha = 1; }
+  for (const [px, py, r, col, rg] of SKY_PLANETS) { const im = skyPlanet(r, col, rg), w = im.width * z; const x = s2x(px) - w / 2, y = s2y(py) - w / 2; if (x > sW || y > sH || x + w < 0 || y + w < 0) continue; c.drawImage(im, Math.round(x), Math.round(y), Math.round(w), Math.round(w)); }
+  // падающая звезда — пиксельный хвост
+  if (!skyShoot && Math.random() < .012) skyShoot = { x: Math.random() * sW, y: Math.random() * sH * .5, t: 0 };
+  if (skyShoot) { const S0 = skyShoot; S0.t += .07; for (let k = 0; k < 10; k++) { const tt = S0.t - k * .025; if (tt < 0) continue; c.globalAlpha = Math.max(0, (1 - k / 10) * (1 - S0.t * .5)); c.fillStyle = k ? '#bfb8ff' : '#ffffff'; c.fillRect(Math.round(S0.x + tt * 140), Math.round(S0.y + tt * 70), k ? 1 : 2, k ? 1 : 2); } c.globalAlpha = 1; if (S0.t > 1.5) skyShoot = null; }
+  // кольца — пиксельный пунктир
   let lr = 0; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r;
-  for (let r = 1; r <= 4; r++) { const op = r <= lr; c.beginPath(); c.arc(s2x(0), s2y(0), SKY_RING[r] * z, 0, Math.PI * 2); c.strokeStyle = op ? 'rgba(170,160,255,.18)' : 'rgba(90,80,140,.25)'; c.setLineDash(op ? [2, 5] : [4, 8]); c.lineWidth = 1; c.stroke(); c.setLineDash([]);
-    if (op && !far) { c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = 'rgba(170,160,255,.35)'; c.fillText(['', 'I', 'II', 'III', 'IV'][r], s2x(0), s2y(0) - SKY_RING[r] * z + 10); } }
-  if (lr < 4) { const R0 = SKY_RING[lr] * z, cx = s2x(0), cy = s2y(0), fg = c.createRadialGradient(cx, cy, R0, cx, cy, R0 + 80 * Math.max(.5, z));
-    fg.addColorStop(0, 'rgba(3,2,10,0)'); fg.addColorStop(1, 'rgba(3,2,10,.78)'); c.save(); c.beginPath(); c.rect(0, 0, sW, sH); c.arc(cx, cy, R0, 0, Math.PI * 2, true); c.fillStyle = fg; c.fill('evenodd'); c.restore();
-    c.font = `${Math.max(8, Math.round(10 * Math.min(1.4, z * 1.6)))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = '#7a72a8'; c.fillText('✦ кольцо ' + ['', 'I', 'II', 'III', 'IV'][lr + 1] + ' — на ' + SKY_NEED[lr + 1] + '-м вознесении', cx, cy - (SKY_RING[lr] + 40) * z); }
-  // связи + бегущий свет по зажжённым
-  c.lineWidth = Math.max(1, 1.3 * z);
+  for (let r = 1; r <= 4; r++) { const op = r <= lr, R = SKY_RING[r] * z, n = Math.max(24, Math.floor(R * 2 * Math.PI / 6)); c.fillStyle = op ? '#4a4290' : '#2a2450';
+    for (let i = 0; i < n; i++) { if (!op && i % 2) continue; const a = i / n * Math.PI * 2; c.fillRect(Math.round(s2x(0) + Math.cos(a) * R), Math.round(s2y(0) + Math.sin(a) * R), 1, 1); }
+    if (op && !far) { c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#6a62b0'; c.fillText(['', 'I', 'II', 'III', 'IV'][r], s2x(0), s2y(0) - R + 10); } }
+  // туман закрытых колец — пиксельная сетка
+  if (lr < 4) { if (!skyFogPat) { const pc = document.createElement('canvas'); pc.width = pc.height = 4; const px = pc.getContext('2d'); px.fillStyle = '#03020a'; [[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3], [0, 1], [2, 3]].forEach(([a, b]) => px.fillRect(a, b, 1, 1)); skyFogPat = c.createPattern(pc, 'repeat'); }
+    const cx = s2x(0), cy = s2y(0), R0 = SKY_RING[lr] * z; c.save(); c.beginPath(); c.rect(0, 0, sW, sH); c.arc(cx, cy, R0 + 6, 0, Math.PI * 2, true); c.fillStyle = skyFogPat; c.fill('evenodd'); c.restore();
+    c.font = `${Math.max(8, Math.round(10 * Math.min(1.4, z * 1.6)))}px "Press Start 2P", monospace`; c.textAlign = 'center'; const lbl = 'КОЛЬЦО ' + ['', 'I', 'II', 'III', 'IV'][lr + 1] + ' · ' + SKY_NEED[lr + 1] + '-Е ВОЗНЕСЕНИЕ', ly = cy - (SKY_RING[lr] + 24) * z - 26;
+    c.fillStyle = '#000'; c.fillText(lbl, cx + 1, ly + 1); c.fillStyle = '#c9b07a'; c.fillText(lbl, cx, ly); }
+  // связи: пиксельный пунктир, зажжённые — сплошные с бегущей искрой
   for (const n of SN) { if (n.p < 0) continue; if (n.tp === 'fig' && SN[n.p].tp === 'fig') continue; const p = SN[n.p], lit = SL(n.id) > 0 && SL(p.id) > 0, op = skyRingOpen(n.ring);
     const x1 = s2x(p.x), y1 = s2y(p.y), x2 = s2x(n.x), y2 = s2y(n.y); if (Math.max(x1, x2) < -10 || Math.min(x1, x2) > sW + 10 || Math.max(y1, y2) < -10 || Math.min(y1, y2) > sH + 10) continue;
-    c.strokeStyle = lit ? SKYB[n.br].c : op ? 'rgba(150,140,210,.2)' : 'rgba(80,70,120,.1)'; c.globalAlpha = lit ? .55 : 1; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
-    if (lit && !far) { const f = (tm * .6 + n.id * .37) % 1; c.globalAlpha = .9; c.fillStyle = '#ffffff'; c.fillRect(x1 + (x2 - x1) * f - 1, y1 + (y2 - y1) * f - 1, 2, 2); } }
+    if (!op) continue;
+    c.fillStyle = lit ? SKYB[n.br].c : '#3a3470'; c.globalAlpha = lit ? .8 : 1; pxLine(c, x1, y1, x2, y2, lit ? 1.5 : 4, lit ? Math.max(1, ps - 1) : 1);
+    if (lit && !far) { const f = (tm * .5 + n.id * .37) % 1; c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x1 + (x2 - x1) * f) - 1, Math.round(y1 + (y2 - y1) * f) - 1, 2, 2); } }
   c.globalAlpha = 1;
-  // рисунки созвездий
-  for (const B of SKYB) { if (!B.figIds) continue; const ids = B.figIds.slice(); if (B.figLoop) ids.push(ids[0]);
-    const path = () => { c.beginPath(); ids.forEach((id, i) => { const n = SN[id]; i ? c.lineTo(s2x(n.x), s2y(n.y)) : c.moveTo(s2x(n.x), s2y(n.y)); }); };
-    if (B.figDone) { c.globalCompositeOperation = 'lighter'; c.strokeStyle = B.c; c.globalAlpha = .25; c.lineWidth = Math.max(4, 7 * z); path(); c.stroke(); c.globalAlpha = .9; c.lineWidth = Math.max(1.5, 2 * z); path(); c.stroke(); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
-    else { const lit = B.figIds.filter(id => SL(id) > 0).length; c.strokeStyle = lit ? B.c : 'rgba(200,190,255,.3)'; c.globalAlpha = lit ? .45 : 1; c.setLineDash([3, 4]); c.lineWidth = Math.max(1, z); path(); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
-    if (!far) { const m = SN[B.figIds[3]]; c.font = `${Math.round(Math.max(7, 9 * z * 1.4))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = B.figDone ? B.c : 'rgba(200,190,255,.45)'; c.fillText(B.fig + (B.figDone ? ' ✦' : ''), s2x(m.x), s2y(m.y) - 22 * z - 6); } }
-  // названия ветвей — по краю открытого неба
-  c.textAlign = 'center';
-  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[Math.max(1, lr)] + 22; c.font = `${Math.round(Math.max(7, 9 * Math.min(1.3, z * 1.6)))}px "Press Start 2P", monospace`; c.fillStyle = B.c; c.globalAlpha = .9; c.fillText(B.n, s2x(Math.cos(a) * r), s2y(Math.sin(a) * r)); });
-  c.globalAlpha = 1;
-  // звёзды
-  for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -24 || y < -24 || x > sW + 24 || y > sH + 24) continue;
-    const L = SL(n.id), op = skyRingOpen(n.ring), can = skyCan(n), open = skyOpen(n) && !skyBlocked(n), col = n.br < 0 ? '#fff6e0' : SKYB[n.br].c;
-    const base = n.tp === 'root' ? 11 : n.tp === 'ks' ? 8 : n.tp === 'nt' ? 7 : n.tp === 'fig' ? 4.5 : 3.6, r = Math.max(far ? 1.3 : 2, base * Math.min(1.6, z * 1.5));
-    if (!op) { c.fillStyle = 'rgba(90,80,130,.45)'; c.fillRect(x - .8, y - .8, 1.6, 1.6); continue; }
-    if (far) { if (L) { c.globalAlpha = .5; c.drawImage(skyGlow(col, 16), x - r * 2, y - r * 2, r * 4, r * 4); c.globalAlpha = 1; } c.fillStyle = L ? col : can ? '#ffffff' : 'rgba(170,160,220,.45)'; c.fillRect(x - r / 2, y - r / 2, r, r); continue; }
-    const tw = .85 + .15 * Math.sin(tm * 2.4 + n.id * 1.3);
-    if (L) { const gr = r * (n.tp === 'star' || n.tp === 'fig' ? 3 : 4.5) * tw; c.globalCompositeOperation = 'lighter'; c.globalAlpha = .55; c.drawImage(skyGlow(col, 32), x - gr, y - gr, gr * 2, gr * 2); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
-    if (n.tp === 'root') { c.save(); c.translate(x, y); c.rotate(tm * .2); c.globalAlpha = .5; c.fillStyle = '#fff6e0'; for (let k = 0; k < 8; k++) { c.rotate(Math.PI / 4); c.fillRect(-.8, r * .8, 1.6, r * (1.2 + .3 * Math.sin(tm * 2 + k))); } c.restore(); c.globalAlpha = 1; }
-    if (n.tp === 'ks') { c.save(); c.translate(x, y); c.rotate(Math.PI / 4 + (L ? tm * .3 : 0)); c.fillStyle = L ? col : skyBlocked(n) ? '#241c30' : '#151022'; c.fillRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.strokeStyle = L || can ? '#ffffff' : 'rgba(200,190,255,.5)'; c.lineWidth = 1.5; c.strokeRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.restore();
-      if (skyBlocked(n)) { c.strokeStyle = 'rgba(255,80,80,.6)'; c.beginPath(); c.moveTo(x - r * .6, y - r * .6); c.lineTo(x + r * .6, y + r * .6); c.stroke(); } }
-    else skyStar(c, x, y, r * (L ? tw : 1), L ? col : open ? 'rgba(225,220,255,.6)' : 'rgba(140,130,190,.32)', n.tp === 'nt' || n.tp === 'root' ? 8 : 4);
-    if (L && (n.tp !== 'ks')) { c.fillStyle = '#ffffff'; c.globalAlpha = .9; c.fillRect(x - .8, y - .8, 1.6, 1.6); if (n.tp === 'nt' || n.tp === 'root') { c.globalAlpha = .6 * tw; c.fillRect(x - r * 1.6, y - .4, r * 3.2, .8); c.fillRect(x - .4, y - r * 1.6, .8, r * 3.2); } c.globalAlpha = 1; }
-    if (n.tp === 'nt' && !L) { c.beginPath(); c.arc(x, y, r + 3, 0, Math.PI * 2); c.strokeStyle = can ? 'rgba(255,255,255,.9)' : 'rgba(200,190,255,.3)'; c.lineWidth = 1; c.stroke(); }
-    if (can) { const pr = r + 2.5 + 1.5 * Math.sin(tm * 4 + n.id); c.globalAlpha = .35 + .3 * Math.sin(tm * 4 + n.id); c.drawImage(skyGlow('#5cff8a', 16), x - pr * 1.6, y - pr * 1.6, pr * 3.2, pr * 3.2); c.globalAlpha = 1; }
-    if (n.id === sSel) { c.save(); c.translate(x, y); c.rotate(tm * 1.2); c.strokeStyle = '#ffe08a'; c.lineWidth = 1.6; c.setLineDash([4, 3]); c.beginPath(); c.arc(0, 0, r + 7, 0, Math.PI * 2); c.stroke(); c.restore(); c.setLineDash([]); }
-    if (L && n.max > 1 && z > 1.6) { c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#fff'; c.fillText(L, x, y + r + 9); } }
+  // рисунки созвездий: пиксельные линии, готовые — двойные с сиянием
+  for (const B of SKYB) { if (!B.figIds) continue; const ids = B.figIds.slice(); if (B.figLoop) ids.push(ids[0]); const lit = B.figIds.filter(id => SL(id) > 0).length;
+    for (let i = 1; i < ids.length; i++) { const a = SN[ids[i - 1]], b = SN[ids[i]], x1 = s2x(a.x), y1 = s2y(a.y), x2 = s2x(b.x), y2 = s2y(b.y);
+      if (B.figDone) { c.globalAlpha = .35; c.fillStyle = B.c; pxLine(c, x1, y1, x2, y2, 1, ps + 2); c.globalAlpha = 1; c.fillStyle = Math.floor(tm * 3 + i) % 4 ? B.c : '#ffffff'; pxLine(c, x1, y1, x2, y2, 1, Math.max(1, ps)); }
+      else { c.fillStyle = lit ? B.c : '#6a62a8'; c.globalAlpha = lit ? .7 : .6; pxLine(c, x1, y1, x2, y2, 3, 1); c.globalAlpha = 1; } }
+    if (z >= .6) { const m = SN[B.figIds[3]], fs = Math.round(Math.max(7, 8 * Math.min(1.6, z * 1.3))); c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const t = B.fig + (B.figDone ? ' !' : ''), tx = s2x(m.x), ty = s2y(m.y) - 22 * z - 6;
+      c.fillStyle = '#000'; c.fillText(t, tx + 1, ty + 1); c.fillStyle = B.figDone ? B.c : '#8a82c0'; c.fillText(t, tx, ty); } }
+  // названия ветвей — золотые таблички по краю открытого неба
+  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[Math.max(1, lr)] + 24, fs = Math.round(Math.max(7, 8 * Math.min(1.3, z * 1.6)));
+    c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const tx = Math.round(s2x(Math.cos(a) * r)), ty = Math.round(s2y(Math.sin(a) * r)), w = c.measureText(B.n).width + 8;
+    c.fillStyle = '#0a0618'; c.fillRect(tx - w / 2, ty - fs - 3, w, fs + 7); c.fillStyle = B.c; c.fillRect(tx - w / 2, ty - fs - 3, w, 1); c.fillRect(tx - w / 2, ty + 3, w, 1); c.fillText(B.n, tx, ty); });
+  // звёзды-спрайты
+  for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -30 || y < -30 || x > sW + 30 || y > sH + 30) continue;
+    const L = SL(n.id), op = skyRingOpen(n.ring), can = skyCan(n), open = skyOpen(n) && !skyBlocked(n), col = n.br < 0 ? '#fff6d0' : SKYB[n.br].c;
+    if (!op) { c.fillStyle = '#2a2450'; c.fillRect(Math.round(x), Math.round(y), 1, 1); continue; }
+    if (far && n.tp !== 'root') { c.fillStyle = L ? col : can ? '#ffffff' : '#4a4290'; const q = L ? 2 : 1; c.fillRect(Math.round(x) - (q >> 1), Math.round(y) - (q >> 1), q, q); continue; }
+    const kind = n.tp === 'root' ? 'root' : n.tp === 'ks' ? 'ks' : n.tp === 'nt' ? 'nt' : n.tp === 'fig' ? 'fig' : 'star';
+    const blink = L && Math.floor(tm * 1.5 + n.id * .61) % 7 === 0, sc = Math.max(1, ps) + (L && n.tp !== 'star' && n.tp !== 'fig' ? 1 : 0);
+    if ((L && z >= .5) || n.tp === 'root') { const h = skyHalo(col), hs = h.width * sc * (n.tp === 'star' || n.tp === 'fig' ? 1 : 1.6); c.drawImage(h, Math.round(x - hs / 2), Math.round(y - hs / 2), Math.round(hs), Math.round(hs)); }
+    const im = skySpr(kind, col, L || n.tp === 'root' ? 2 : open ? 1 : 0), w = im.width * sc, hgt = im.height * sc;
+    if (blink) { c.fillStyle = '#ffffff'; c.fillRect(Math.round(x) - sc * 3, Math.round(y), sc * 6 + 1, sc); c.fillRect(Math.round(x), Math.round(y) - sc * 3, sc, sc * 6 + 1); }
+    c.drawImage(im, Math.round(x - w / 2), Math.round(y - hgt / 2), w, hgt);
+    if (skyBlocked(n)) { c.fillStyle = '#ff4466'; for (let k = -4; k <= 4; k++) c.fillRect(Math.round(x + k * sc / 1.2), Math.round(y + k * sc / 1.2), sc, sc); }
+    if (can) { const on = Math.floor(tm * 3 + n.id) % 2; c.fillStyle = on ? '#5cff8a' : '#2a8a4a'; const o = Math.round(w / 2 + 3); c.fillRect(Math.round(x) - o, Math.round(y) - o, 2, 2); c.fillRect(Math.round(x) + o - 1, Math.round(y) - o, 2, 2); c.fillRect(Math.round(x) - o, Math.round(y) + o - 1, 2, 2); c.fillRect(Math.round(x) + o - 1, Math.round(y) + o - 1, 2, 2); }
+    if (n.id === sSel) { const o = Math.round(w / 2 + 6), t = Math.floor(tm * 6) % 2; c.fillStyle = '#ffe08a';
+      for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const cx = Math.round(x) + dx * o, cy = Math.round(y) + dy * o; c.fillRect(cx - (dx > 0 ? 3 : 0) + (t ? -dx : 0), cy, 4, 1); c.fillRect(cx, cy - (dy > 0 ? 3 : 0) + (t ? -dy : 0), 1, 4); } }
+    if (L && n.max > 1 && z > 1.6) { c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#000'; c.fillText(L, x + 1, y + hgt / 2 + 10); c.fillStyle = '#fff'; c.fillText(L, x, y + hgt / 2 + 9); } }
+}
+// мини-карта неба для вкладки Души
+function skyMini(cv) {
+  const W2 = cv.width, H2 = cv.height, c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.fillStyle = '#05030e'; c.fillRect(0, 0, W2, H2);
+  for (let i = 0; i < 70; i++) { c.fillStyle = i % 9 ? '#4a4690' : '#ffffff'; c.fillRect((i * 97) % W2, (i * 53) % H2, 1, 1); }
+  let lr = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; const k = (Math.min(W2, H2) / 2 - 4) / SKY_RING[lr], cx = W2 / 2, cy = H2 / 2;
+  for (const n of SN) { if (!skyRingOpen(n.ring) || n.ring > lr) continue; const L = SL(n.id); c.fillStyle = L ? (n.br < 0 ? '#ffffff' : SKYB[n.br].c) : skyCan(n) ? '#5cff8a' : '#2e2860'; const q = L && n.tp !== 'star' ? 2 : 1; c.fillRect(Math.round(cx + n.x * k) - (q >> 1), Math.round(cy + n.y * k) - (q >> 1), q, q); }
 }
 function skyNodeDesc(n, L) {
   if (n.tp === 'root') return 'начало Небосвода';
@@ -2619,18 +2680,22 @@ function ascScene(g) {
 }
 function renderAsc() {
   const M = S.meta, el = $('ascbox'); if (!el) return;
-  const st = starsTotal();
-  let h = `<div class="gsec">СОЗВЕЗДИЯ <span>звезда = пробуждённый класс · всего ${st}/16</span></div><div class="cgrid">` + CONST.map((c, ci) => { const n = constStars(ci), t = constTier(ci);
-    return `<div class="cst${t ? ' on' : ''}" style="--cc:${c.c}"><b>${c.n} · ${n}/4</b>` + c.ks.map(k => `<img src="${clsSprURL(k, !!(M.seen || {})[k])}" class="${awake(k) ? 'aw' : ''}" title="${CLASSES[k].n}">`).join('') +
-      `<small class="${t >= 1 ? 'got' : ''}">2★ ${c.b[0]}</small><small class="${t >= 2 ? 'got' : ''}">4★ ${c.b[1]}</small></div>`; }).join('') + '</div>';
-  const can = !!M.guard, g = sparksFor();
-  h += `<div class="gsec" style="margin-top:12px">ВОЗНЕСЕНИЕ <span>Искры: <b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b> · вознесений: ${M.asc || 0}</span></div>` +
-    `<div class="dim" style="margin-bottom:6px">${can ? 'Стена пала. Вознесение сожжёт дерево талантов и души, но даст Искры. Классы, вещи и созвездия остаются. Стена уходит на 100-ю зону.' : `Победи <b style="color:#ffd84a">Стража стены</b> на ${wallZ()}-й зоне. Его защита ${(guardDef() * 100).toFixed(1)}% — звёзды созвездий ломают её, с 8★ она пропадает.`}</div>` +
-    `<button class="btn big" id="ascb" style="background:#1e5a8a"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ (+' + fmt(g) + ' искр)'}</button>`;
-  if ((M.asc || 0) > 0 || M.sparks) { const cn = SN.filter(skyCan).length;
-    h += `<div class="gsec" style="margin-top:12px">НЕБОСВОД <span>${ascTitle()} · созвездий ${SKYB.filter(B => B.figDone).length}/12</span></div>` +
-      `<button class="btn big" id="skyb" style="background:#2a1a5a">✦ ОТКРЫТЬ НЕБОСВОД${cn ? ' · можно зажечь: ' + cn : ''}</button>`; }
-  if (h !== renderAsc.h) { renderAsc.h = h; el.innerHTML = h; }
+  const st = starsTotal(), can = !!M.guard, g = sparksFor(), nextG = Math.floor(Math.sqrt(((M.soulsCyc || 0) + (S.runSouls || 0) + ((M.lastLife && M.lastLife.s) || 0)) / 50) * (1 + .1 * st) * (1 + Math.max(0, M.best - 50) / 10) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1));
+  const pip = n => Array.from({ length: 4 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+  let h = `<div class="asx"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} СОЗВЕЗДИЯ КЛАССОВ</span><span>${st}/16</span></div><div class="axt">звезда — пробуждённый класс · 2 и 4 звезды дают бонус и ломают защиту Стража</div><div class="cgrid">` +
+    CONST.map((c, ci) => { const n = constStars(ci), t = constTier(ci);
+      return `<div class="cst${t ? ' on' : ''}" style="--cc:${c.c}"><b>${c.n}<span class="pips">${pip(n)}</span></b>` + c.ks.map(k => `<img src="${clsSprURL(k, !!(M.seen || {})[k])}" class="${awake(k) ? 'aw' : ''}" title="${CLASSES[k].n}">`).join('') +
+        `<small class="${t >= 1 ? 'got' : ''}">2${pxImg('star', '#ffe08a', 7)} ${c.b[0]}</small><small class="${t >= 2 ? 'got' : ''}">4${pxImg('star', '#ffe08a', 7)} ${c.b[1]}</small></div>`; }).join('') + '</div></div>';
+  h += `<div class="asx asc2"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} ВОЗНЕСЕНИЕ</span><span>${ascTitle()}</span></div>` +
+    `<div class="axs"><div><small>ИСКРЫ</small><b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b></div><div><small>ВОЗНЕСЕНИЙ</small><b>${M.asc || 0}</b></div><div><small>ЗА ВОЗНЕСЕНИЕ</small><b style="color:#ffe08a">+${fmt(g)}</b></div></div>` +
+    (can ? `<div class="axt">Стена пала. Дерево талантов и души сгорят${skyV('echo') > 0 ? ' (Эхо вернёт ' + pct(Math.min(.5, skyV('echo'))) + ')' : ''}, классы, вещи и Небосвод останутся.${nextG > g ? ' Ещё одна жизнь ≈ +' + fmt(nextG) + ' искр.' : ''}</div>`
+      : `<div class="axt">Чтобы вознестись, победи Стража стены на ${S.meta.asc ? 100 : 50}-й зоне. Звёзды созвездий ломают его защиту.</div>`) +
+    `<button class="btn big" id="ascb"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ · +' + fmt(g) + ' ИСКР'}</button></div>`;
+  if ((M.asc || 0) > 0 || M.sparks) { const cn = SN.filter(skyCan).length, lit = SN.filter(n => SL(n.id)).length;
+    h += `<div class="asx"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} НЕБОСВОД</span><span>${lit}/${SN.length} · созвездий ${SKYB.filter(B => B.figDone).length}/12</span></div>` +
+      `<canvas id="skymini" width="300" height="140"></canvas><div class="axbar"><i style="width:${(lit / SN.length * 100).toFixed(1)}%"></i></div>` +
+      `<button class="btn big" id="skyb">ОТКРЫТЬ НЕБОСВОД${cn ? ' · можно зажечь: ' + cn : ''}</button></div>`; }
+  if (h !== renderAsc.h) { renderAsc.h = h; el.innerHTML = h; const mc = $('skymini'); if (mc) skyMini(mc); }
 }
 
 // множитель урона удара от класса
