@@ -402,7 +402,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113032734';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113032801';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4107,7 +4107,9 @@ function clsReveal() {
   const C = CL(), k = cls(), tr = tierOf(clsLv());
   el.innerHTML = `<span style="font-size:8px;color:var(--dim)">НОВЫЙ КЛАСС</span><canvas id="crc" width="120" height="120"></canvas><span id="crn"></span><small id="crs"></small>`;
   runCard($('crc'), 'roll', () => rk);
-  const iv = setInterval(() => {
+  clearInterval(clsReveal.iv);
+  const iv = clsReveal.iv = setInterval(() => {
+    if (!$('crn') || !$('crs')) { clearInterval(iv); return; }   // карточку уже заменили (новая смерть)
     n++;
     if (n < 18) { rk = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; $('crn').innerHTML = `<span style="color:${CLASSES[rk].c}">${CLASSES[rk].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
     clearInterval(iv); rk = k; runCard($('crc'), 'show', () => k);
