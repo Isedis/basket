@@ -208,7 +208,23 @@ html,body{font-size:10px}
 .setb{display:flex;flex-direction:column;gap:10px;padding:6px 12px 16px;overflow-y:auto}
 .btn.big2{min-height:52px;font-size:11px;background:#2b2540;text-align:left;padding:10px 14px}
 #buildl{font-size:8px;color:var(--dim);margin-top:4px}
-#gear,#tree{bottom:var(--navh)}
+#gear,#tree,#ctree{bottom:var(--navh)}
+#ctree{position:fixed;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#cthead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:2px solid var(--line);font-size:9px}
+#cthead b{color:#f2c94c;font-weight:normal}
+#ctbody{flex:1;min-height:0;overflow-y:auto;padding:8px 8px 16px;-webkit-overflow-scrolling:touch}
+.ctsum{font-size:7px;line-height:1.8;color:var(--dim);margin-bottom:8px;text-align:center}
+.ctgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.ctn{position:relative;border:2px solid #2b2540;background:#16131f;color:#e9e4ff;font:inherit;font-size:7px;line-height:1.6;padding:6px 4px 14px;text-align:center;cursor:pointer;min-height:64px}
+.ctn b{display:block;font-weight:normal;font-size:7px;color:var(--cc);margin-bottom:3px}
+.ctn small{display:block;color:var(--dim);font-size:6px}
+.ctn em{position:absolute;bottom:3px;left:0;right:0;font-style:normal;font-size:7px;color:#e9e4ff}
+.ctn i{display:block;font-style:normal;font-size:6px;color:#5a5470;margin-top:4px;text-align:left}
+.ctn i.on{color:var(--cc)}
+.ctn.can{border-color:#5cff8a;box-shadow:0 0 0 1px #5cff8a inset}
+.ctn.max{border-color:var(--cc);background:#221b33}
+.ctn.lock{opacity:.4}
+.ctn.top{border-width:3px}
 .btn{font-size:10px;min-height:34px;padding:6px 10px}
 .tab{font-size:10px;padding:8px 0}
 #phead{padding:8px 10px 6px}
@@ -303,6 +319,7 @@ html,body{font-size:10px}
   </div>
 </div>
 <div id="opening" hidden><canvas id="ocv"></canvas><div id="ocard"></div><div id="obtns"><button class="btn" id="otake">ЗАБРАТЬ</button><button class="btn" id="oall">ОТКРЫТЬ ВСЕ</button></div></div>
+<div id="ctree" hidden><div id="cthead"></div><div id="ctbody"></div></div>
 <div id="tree" hidden>
   <div id="thead"><span>ДЕРЕВО ТАЛАНТОВ</span><span>Души: <b id="tsouls">0</b></span><button class="btn" id="tclose">✕ ЗАКРЫТЬ</button></div>
   <div id="thint"></div>
@@ -313,7 +330,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113012219';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113014050';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -993,7 +1010,7 @@ let allies = [], totems = [], runes = [];
 function rollClass() {
   const pool = CLS_KEYS.filter(k => k !== S.cls);
   const k = pool[Math.floor(rnd() * pool.length)];
-  S.cls = k; S.cst = [0, 0]; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[k] = (S.meta.seen[k] || 0) + 1;
+  S.cls = k; S.cstyle = rnd() < .5 ? 0 : 1; S.cst = [0, 0]; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[k] = (S.meta.seen[k] || 0) + 1;
   allies = []; totems = []; runes = []; hero.souls = 0;
   return k;
 }
@@ -1002,6 +1019,7 @@ function clsGain(a) { if (!S.cst) S.cst = [0, 0]; const p = clsPow(); S.cst[0] +
 function clsMods() {
   const z = zs(), p = clsPow(), pw = Math.sqrt(p), c0 = S.cst ? S.cst : [0, 0];
   D.cp = p; D.cq = [sat(lg(c0[0] / z / 1000), 4), sat(lg(c0[1] / z / 1000), 4)];   // логарифм: растёт бесконечно, но всё медленнее
+  ctMods();   // ветка класса и стиль боя
   const q0 = D.cq[0], q1 = D.cq[1];
   const ml = 1 + .04 * clsLv(); D.hit *= pw * ml; D.maxHP *= pw * ml;
   if (aw() && cls() === 'monk') D.dodge = Math.min(.9, D.dodge + .15);
@@ -1046,10 +1064,10 @@ const AWK = {
   reap:  ['Пожиратель душ', '+20 душ максимум; при полном запасе — взрыв душ по всем'],
 };
 const TIERS = [[5, '#c08040', 'бронза'], [10, '#d8e0ea', 'серебро'], [20, '#ffd84a', 'золото'], [30, '#ff66ff', 'радуга']];
-const cxpNeed = l => Math.floor(150 * Math.pow(1.3, l));
+const cxpNeed = l => Math.floor(100 * Math.pow(l + 1, 1.5));
 function cm(k) { const M = S.meta; if (!M.cl) M.cl = {}; if (!M.cl[k]) M.cl[k] = { xp: 0, lv: 0 }; return M.cl[k]; }
 const clsLv = k => cm(k || cls()).lv;
-const awake = k => { k = k || cls(); return clsLv(k) >= AWAKE_LV && !!(TB[CLASSES[k].br] || {}).full; };
+const awake = k => ctFull(k || cls());   // пробуждение: вся ветка класса заполнена
 const aw = () => awake();
 const tierOf = l => { let t = null; for (const x of TIERS) if (l >= x[0]) t = x; return t; };
 function clsXP(v) {
@@ -1058,10 +1076,8 @@ function clsXP(v) {
   if (!up) return;
   D.dirty = true; const C = CL();
   const tr = TIERS.find(x => x[0] === c.lv);
-  if (c.lv === AWAKE_LV) toast('МАСТЕРСТВО ' + C.n.toUpperCase() + ' ' + c.lv, aw() ? 'ПРОБУЖДЕНИЕ: ' + AWK[cls()][0] + '!' : 'пробуждение откроется, когда ветвь «' + BRANCHES[C.br].n + '» заполнится', 3200);
-  else toast('МАСТЕРСТВО ' + C.n.toUpperCase() + ' ' + c.lv, '+4% урона и HP этому классу навсегда' + (tr ? ' · облик: ' + tr[2] : ''), 2200);
+  toast('МАСТЕРСТВО ' + C.n.toUpperCase() + ' ' + c.lv, '+1 очко в ветку класса · +4% урона и HP' + (tr ? ' · облик: ' + tr[2] : ''), 2400);
   ring(hero.x, hero.y - 4, 18, C.c); burst(hero.x, hero.y - 4, C.c, 20, 50); [523, 784, 1047].forEach((f, i) => tone(f, .12, 'triangle', .04, 0, i * .07));
-  if (c.lv === AWAKE_LV && aw()) awakenFx();
 }
 function awakenFx() { const C = CL(); flashT = .3; shake = 10; for (let i = 0; i < 3; i++) ring(hero.x, hero.y - 4, 20 + i * 12, i % 2 ? '#ffffff' : C.c); burst(hero.x, hero.y - 4, C.c, 50, 80); }
 // способности пробуждения, работающие по таймеру
@@ -1075,8 +1091,130 @@ function awkTick(dt) {
   holy = holy.filter(z => z.t > 0);
 }
 let holy = [];
+/* ---------- ветка прокачки класса (очки за уровни мастерства) ---------- */
+// у каждого класса: 2 стиля боя (один выпадает случайно вместе с классом) и вершина
+const CSTY = {
+  war:   [['Защитник', 'вампиризм +1% и броня +5% за силу стиля'], ['Мечник', 'урон ударов +25% и «Размах» сильнее'], ['Владыка клинков', '+2 цели рассечения, урон ×1.25']],
+  bers:  [['Мясник', 'каждое убийство лечит 1% HP за силу стиля'], ['Вихрь', 'скорость атаки +10% за силу стиля'], ['Бессмертная ярость', 'при HP ниже 30% входящий урон вдвое меньше']],
+  pal:   [['Крестоносец', 'святая волна каждый 3-й удар, а не 4-й'], ['Хранитель', 'регенерация +1% HP/с за силу стиля'], ['Свет во тьме', 'святая волна лечит 15% HP, броня +5%']],
+  guard: [['Бастион', '«Блок» намного сильнее'], ['Таран', 'урон ударов щитом +30% за силу стиля'], ['Крепость', 'HP ×1.5, броня до 97%']],
+  mage:  [['Пироман', '«Пламя» намного сильнее'], ['Архимаг', 'каждый 5-й шар огромный: урон ×(2 + сила стиля)'], ['Метеорит', '+15% шанс метеора']],
+  sham:  [['Громовержец', '«Цепь» намного сильнее'], ['Тотемист', '«Тотемы» намного сильнее'], ['Око бури', 'каждые 10с молния бьёт всех врагов']],
+  arch:  [['Снайпер', 'урон стрел +30% за силу стиля'], ['Шквал', '«Залп» намного сильнее'], ['Ястребиный глаз', 'крит +15%, сила крита ×1.3']],
+  assa:  [['Призрак', 'уворот +5% за силу стиля'], ['Палач', '«Удар в спину» намного сильнее'], ['Тень смерти', 'после убийства следующий удар ×3']],
+  gamb:  [['Счастливчик', 'золотые враги чаще: +20% за силу стиля'], ['Крапленый', '«Крап» намного сильнее'], ['Вечный джокер', 'джокер выпадает втрое чаще']],
+  alch:  [['Отравитель', '«Кислота» намного сильнее'], ['Взрывник', 'колбы взрываются по площади'], ['Великое делание', '«Трансмутация» сильнее, награды ×1.2']],
+  priest:[['Целитель', 'столпы лечат больше: ×(1 + сила стиля)'], ['Каратель', '«Свет» намного сильнее'], ['Чудо', 'регенерация ×2']],
+  monk:  [['Ветер', 'скорость атаки +10% за силу стиля'], ['Кулак горы', 'урон ударов +25% за силу стиля'], ['Просветление', 'уворот +15%, урон ×1.2']],
+  chrono:[['Замедлитель', '«Замедление» намного сильнее'], ['Бомбист', '«Отсрочка» намного сильнее'], ['Вечность', 'по замедленным врагам урон ×1.3']],
+  rune:  [['Резонатор', '«Резонанс» намного сильнее'], ['Великий рунник', '«Сила рун» намного сильнее'], ['Рунная буря', 'каждая атака ставит 2-ю руну рядом']],
+  necro: [['Повелитель', '«Тлен» намного сильнее'], ['Чумной', 'исчезая, скелеты взрываются'], ['Бессмертная армия', '+6 скелетов, шанс подъёма +30%']],
+  reap:  [['Жнец', '«Жатва» намного сильнее'], ['Собиратель', '«Души» намного сильнее'], ['Смерть', 'каждое убийство лечит 1% HP']],
+};
+// какие стили усиливают уникальные статы класса: [индекс стата] по стилю
+const STY_Q = { 'guard0': 0, 'mage0': 0, 'sham0': 0, 'sham1': 1, 'arch1': 0, 'assa1': 0, 'gamb1': 1, 'alch0': 0, 'priest1': 0, 'chrono0': 0, 'chrono1': 1, 'rune0': 1, 'rune1': 0, 'necro0': 1, 'reap0': 0, 'reap1': 1, 'war1': 1 };
+// форма ветки: id, путь, макс. уровень, требования
+const CT = [
+  { id: 'R', x: 1, y: 0, max: 3, req: [] },
+  { id: 'A1', x: 0, y: 1, max: 3, req: ['R'] }, { id: 'U1', x: 1, y: 1, max: 3, req: ['R'] }, { id: 'B1', x: 2, y: 1, max: 3, req: ['R'] },
+  { id: 'A2', x: 0, y: 2, max: 3, req: ['A1'] }, { id: 'U2', x: 1, y: 2, max: 3, req: ['U1'] }, { id: 'B2', x: 2, y: 2, max: 3, req: ['B1'] },
+  { id: 'A3', x: 0, y: 3, max: 1, req: ['A2'] }, { id: 'U3', x: 1, y: 3, max: 1, req: ['U2'] }, { id: 'B3', x: 2, y: 3, max: 1, req: ['B2'] },
+  { id: 'S', x: 1, y: 4, max: 3, req: ['A2|U2|B2', 'A2|U2|B2'] },
+  { id: 'V', x: 1, y: 5, max: 1, req: ['A3', 'U3', 'B3', 'S'] },
+];
+const CT_TOTAL = CT.reduce((a, n) => a + n.max, 0);
+function ctNode(k, id) {
+  const C = CLASSES[k], st = C.st;
+  switch (id) {
+    case 'R': return ['Основа: ' + C.n, l => '+' + 6 * l + '% урона и HP'];
+    case 'A1': return [st[0][0] + ' I', l => '«' + st[0][0] + '» сильнее на ' + 10 * l + '%'];
+    case 'A2': return [st[0][0] + ' II', l => '«' + st[0][0] + '» сильнее ещё на ' + 10 * l + '%'];
+    case 'A3': return ['Предел: ' + st[0][0], () => '«' + st[0][0] + '» +15 пунктов силы'];
+    case 'B1': return [st[1][0] + ' I', l => '«' + st[1][0] + '» сильнее на ' + 10 * l + '%'];
+    case 'B2': return [st[1][0] + ' II', l => '«' + st[1][0] + '» сильнее ещё на ' + 10 * l + '%'];
+    case 'B3': return ['Предел: ' + st[1][0], () => '«' + st[1][0] + '» +15 пунктов силы'];
+    case 'U1': return ['Мощь ульты', l => 'урон ульты +' + 15 * l + '%'];
+    case 'U2': return ['Заряд ульты', l => 'ульта копится на ' + 20 * l + '% быстрее'];
+    case 'U3': return ['Эхо ульты', () => 'после ульты возвращается 30% заряда'];
+    case 'S': return ['Стиль боя', l => 'сила стиля ' + (.5 + .5 * l).toFixed(1) + ' (стиль выпадает с классом)'];
+    case 'V': return [CSTY[k][2][0], () => CSTY[k][2][1]];
+  }
+}
+const ctL = (id, k) => { const c = cm(k || cls()); return (c.ct && c.ct[id]) || 0; };
+const ctSpent = k => { const c = cm(k); let s = 0; if (c.ct) for (const id in c.ct) s += c.ct[id]; return s; };
+const ctPts = k => Math.max(0, cm(k).lv - ctSpent(k));
+const ctFull = k => CT.every(n => ctL(n.id, k) >= n.max);
+const sty = () => S.cstyle || 0;                            // 0 или 1
+const stf = () => .5 + .5 * ctL('S');                       // сила стиля
+const isSty = (k, i) => cls() === k && sty() === i;
+const capOn = k => cls() === k && ctL('V') > 0;
+function ctReqOk(k, n) {
+  if (n.id === 'S') return ['A2', 'U2', 'B2'].filter(x => ctL(x, k) > 0).length >= 2;
+  return n.req.every(r => ctL(r, k) > 0);
+}
+function ctBuy(k, id) {
+  const n = CT.find(x => x.id === id), c = cm(k);
+  if (!n || ctL(id, k) >= n.max || ctPts(k) < 1 || !ctReqOk(k, n)) return false;
+  if (!c.ct) c.ct = {}; c.ct[id] = (c.ct[id] || 0) + 1; D.dirty = true; recalc(); save();
+  tone(660, .06, 'square', .03); tone(990, .08, 'square', .03, 0, .06);
+  return true;
+}
+// бонусы ветки и стиля к характеристикам (из clsMods)
+function ctMods() {
+  const k = cls(), f = stf();
+  const r = 1 + .06 * ctL('R'); D.hit *= r; D.maxHP *= r;
+  const qb = [(1 + .1 * (ctL('A1') + ctL('A2'))), (1 + .1 * (ctL('B1') + ctL('B2')))];
+  D.cq[0] = D.cq[0] * qb[0] + (ctL('A3') ? .15 : 0); D.cq[1] = D.cq[1] * qb[1] + (ctL('B3') ? .15 : 0);
+  const sq = STY_Q[k + sty()]; if (sq !== undefined) D.cq[sq] += .15 * f;
+  D.cq = D.cq.map(q => Math.min(1.5, q));
+  if (isSty('war', 0)) { D.vamp += .01 * f; D.armor = Math.min(.95, D.armor + .05 * f); }
+  if (isSty('bers', 1) || isSty('monk', 0)) D.aps = Math.min(14, D.aps * (1 + .1 * f));
+  if (isSty('pal', 1)) D.regen += .01 * f;
+  if (isSty('assa', 0)) D.dodge = Math.min(.9, D.dodge + .05 * f);
+  if (isSty('gamb', 0)) D.rare = Math.min(.7, D.rare * (1 + .2 * f));
+  if (capOn('war')) { D.cleave += 2; D.hit *= 1.25; }
+  if (capOn('pal')) D.armor = Math.min(.95, D.armor + .05);
+  if (capOn('guard')) { D.maxHP *= 1.5; D.armor = Math.min(.97, D.armor + .1); }
+  if (capOn('arch')) { D.crit = Math.min(.95, D.crit + .15); D.critM *= 1.3; }
+  if (capOn('alch')) D.gainMult *= 1.2;
+  if (capOn('priest')) D.regen *= 2;
+  if (capOn('monk')) { D.dodge = Math.min(.9, D.dodge + .15); D.hit *= 1.2; }
+}
+// множитель урона удара от стиля и вершины
+function ctDM(t) {
+  const f = stf(); let m = 1;
+  if (isSty('war', 1) || isSty('monk', 1)) m *= 1 + .25 * f;
+  if (isSty('guard', 1)) m *= 1 + .3 * f;
+  if (isSty('arch', 0)) m *= 1 + .3 * f;
+  if (capOn('chrono') && t.slowT > 0) m *= 1.3;
+  if (capOn('assa') && hero.tsd) { hero.tsd = 0; m *= 3; fxLabel('Тень смерти', t.x, t.y - 14, '#9a7aff'); }
+  return m;
+}
+
+/* интерфейс ветки класса */
+let ctK = null;
+function openCT(k) { ctK = k; $('ctree').hidden = false; renderCT(); }
+function renderCT() {
+  const k = ctK, C = CLASSES[k], c = cm(k), pts = ctPts(k), cur = k === cls();
+  $('cthead').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}</span><span>Очки: <b>${pts}</b></span><button class="btn" id="ctclose">✕ ЗАКРЫТЬ</button>`;
+  $('ctclose').onclick = () => { $('ctree').hidden = true; };
+  const full = ctFull(k);
+  let h = `<div class="ctsum">Мастерство <b style="color:${C.c}">${c.lv}</b> · вложено ${ctSpent(k)} / ${CT_TOTAL} · каждый уровень мастерства = 1 очко<br>${full ? `<span style="color:${C.c}">★ ВЕТКА ЗАПОЛНЕНА — КЛАСС ПРОБУЖДЁН: ${AWK[k][0]}</span>` : `Заполни ветку целиком — класс пробудится: «${AWK[k][0]}»`}</div><div class="ctgrid">`;
+  for (const n of CT) {
+    const l = ctL(n.id, k), [nm, d] = ctNode(k, n.id), ok = ctReqOk(k, n), mx = l >= n.max, can = ok && !mx && pts > 0;
+    let extra = '';
+    if (n.id === 'S') extra = CSTY[k].slice(0, 2).map((s2, i) => `<i class="${cur && sty() === i ? 'on' : ''}">${s2[0]}: ${s2[1]}</i>`).join('');
+    h += `<button class="ctn${mx ? ' max' : ''}${can ? ' can' : ''}${ok ? '' : ' lock'}${n.id === 'V' ? ' top' : ''}" data-n="${n.id}" style="grid-column:${n.x + 1}${n.id === 'R' || n.id === 'S' || n.id === 'V' ? ' / span 1' : ''};grid-row:${n.y + 1};--cc:${C.c}">` +
+      `<b>${nm}</b><small>${l ? d(l) : d(1)}</small><em>${l}/${n.max}</em>${extra}</button>`;
+  }
+  $('ctbody').innerHTML = h + '</div>' + (cur ? '' : '<div class="ctsum" style="opacity:.7">Бонусы ветки работают, когда играешь этим классом.</div>');
+}
+
 // множитель урона удара от класса
 function clsDM(t) {
+  return clsDM0(t) * ctDM(t);
+}
+function clsDM0(t) {
   switch (cls()) {
     case 'bers': return (1 + cq(1) * (1 + 3 * (1 - S.hpf))) * (aw() && S.hpf < .5 ? 2 : 1);
     case 'guard': return t.frz > 0 ? 1 + 2 * cq(1) : 1;
@@ -1133,7 +1271,7 @@ function clsAttack(t, d) {
       heroStrike(t, false); return true;
     case 'gamb': {
       const n = 1 + Math.floor(3 * cq(1)), tg = [t, ...nearMobs(t.x, t.y, 40, t).slice(0, n - 1)];
-      tg.forEach((o, i) => shoot(o, 'card', 230, { suit: Math.floor(rnd() * 4), main: i === 0, joker: rnd() < .15 * cq(0) }));
+      tg.forEach((o, i) => shoot(o, 'card', 230, { suit: Math.floor(rnd() * 4), main: i === 0, joker: rnd() < .15 * cq(0) * (capOn('gamb') ? 3 : 1) }));
       tone(1800, .03, 'triangle', .02, 2400, 0, 'card', .05); return true;
     }
     case 'alch': shoot(t, 'flask', 120, { l: 2, ox: hero.x, oy: hero.y }); tone(500, .05, 'sine', .02, 800, 0, 'shot', .05); return true;
@@ -1141,7 +1279,7 @@ function clsAttack(t, d) {
       hero.cast = .15; const r = 6 + 12 * cq(0);
       bolts.push({ x1: t.x, y1: t.y - 60, x2: t.x, y2: t.y - 3, l: .14, c: '#fff6c0' }); bolts.push({ x1: t.x + 1, y1: t.y - 60, x2: t.x + 1, y2: t.y - 3, l: .1, c: '#ffffff' });
       ring(t.x, t.y - 2, r, '#fff6c0'); heroStrike(t, true); hitAround(t.x, t.y, r, D.hit * .6, '#fff6c0', t);
-      hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (.01 + .03 * cq(0)));
+      hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (.01 + .03 * cq(0)) * (isSty('priest', 0) ? 1 + stf() : 1));
       tone(880, .08, 'sine', .02, 1320, 0, 'holy', .1); return true;
     }
     case 'monk': {
@@ -1153,6 +1291,7 @@ function clsAttack(t, d) {
     case 'chrono': shoot(t, 'time', 200); tone(600, .06, 'sine', .02, 300, 0, 'shot', .06); return true;
     case 'rune':
       hero.cast = .15; runes.push({ x: t.x, y: t.y, t: .45, m: t, r: 10 + 10 * cq(0), res: true });
+      if (capOn('rune')) { const o2 = nearMobs(t.x, t.y, 40, t)[0]; if (o2) runes.push({ x: o2.x, y: o2.y, t: .55, m: o2, r: 10 + 10 * cq(0), res: false }); }
       tone(400, .05, 'square', .015, 600, 0, 'rune', .08); return true;
     case 'necro': shoot(t, 'dark', 170); tone(200, .05, 'sawtooth', .02, 120, 0, 'shot', .05); return true;
     case 'reap': {
@@ -1166,9 +1305,9 @@ function clsAttack(t, d) {
   return false;
 }
 function palWave(t) {
-  hero.palN = (hero.palN || 0) + 1; if (hero.palN % 4) return;
+  hero.palN = (hero.palN || 0) + 1; if (hero.palN % (isSty('pal', 0) ? 3 : 4)) return;
   ring(t.x, t.y - 2, 20, '#fff2a8'); hitAround(t.x, t.y, 20, D.hit * 1.2, '#fff2a8');
-  hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .05);
+  hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (capOn('pal') ? .15 : .05));
   if (aw() && holy.length < 4) holy.push({ x: t.x, y: t.y, t: 4, cd: 0 });
   if (cq(1) > .01) hero.shield = Math.max(hero.shield, D.maxHP * .3 * cq(1));
   fxLabel('Святой молот', t.x, t.y - 14, '#fff2a8'); tone(523, .12, 'triangle', .03, 784);
@@ -1181,8 +1320,8 @@ function guardBash(t) {
 function clsWaveHit(w) {
   const t = w.t;
   switch (w.kind) {
-    case 'fire': { const r = 11 + 14 * cq(0); ring(t.x, t.y - 3, r, '#ff8a3c'); hitAround(t.x, t.y, r, D.hit * (.7 + cq(0)), '#ff9a3c', t);
-      if (rnd() < .25 * cq(1)) { bolts.push({ x1: t.x + 18, y1: t.y - 50, x2: t.x, y2: t.y - 3, l: .15, c: '#ff9a3c' }); ring(t.x, t.y - 2, 18, '#ff9a3c'); hitAround(t.x, t.y, 18, D.hit * 3, '#ff9a3c'); shake = Math.max(shake, 3); sfx.boom(); }
+    case 'fire': { hero.amN = (hero.amN || 0) + 1; const big = isSty('mage', 1) && hero.amN % 5 === 0, r = (11 + 14 * cq(0)) * (big ? 2 : 1); if (big) { fxLabel('Архимаг', t.x, t.y - 14, '#c06bff'); shake = Math.max(shake, 4); } ring(t.x, t.y - 3, r, '#ff8a3c'); hitAround(t.x, t.y, r, D.hit * (.7 + cq(0)) * (big ? 2 + stf() : 1), '#ff9a3c', t);
+      if (rnd() < .25 * cq(1) + (capOn('mage') ? .15 : 0)) { bolts.push({ x1: t.x + 18, y1: t.y - 50, x2: t.x, y2: t.y - 3, l: .15, c: '#ff9a3c' }); ring(t.x, t.y - 2, 18, '#ff9a3c'); hitAround(t.x, t.y, 18, D.hit * 3, '#ff9a3c'); shake = Math.max(shake, 3); sfx.boom(); }
       break; }
     case 'arrow':
       if (w.dmg) { hitMob(t, w.dmg, false, false, '#5cff8a'); return true; }
@@ -1200,6 +1339,7 @@ function clsWaveHit(w) {
       break; }
     case 'flask': {
       const r = 10 + 6 * cq(0); burst(t.x, t.y - 2, '#b6ff3c', 10, 35);
+      if (isSty('alch', 1)) { ring(t.x, t.y - 2, 14, '#b6ff3c'); hitAround(t.x, t.y, 14, D.hit * (.5 + .5 * stf()), '#b6ff3c', t); }
       if (clouds.length < 24) clouds.push({ x: t.x, y: t.y - 1, r: aw() ? r * 2 : r, dps: D.hit * (.3 + 1.2 * cq(0)), t: 3, acid: true });
       tone(900, .04, 'square', .015, 300, 0, 'glass', .06); break; }
     case 'time':
@@ -1214,6 +1354,7 @@ function clsWaveHit(w) {
 // постоянные эффекты класса
 function clsTick(dt) {
   const k = cls();
+  if (capOn('sham')) { PT.eye = (PT.eye ?? 10) - dt; if (PT.eye <= 0 && mobs.length) { PT.eye = 10; for (const m of mobs) if (!m.dead) { bolts.push({ x1: m.x + (rnd() - .5) * 10, y1: camY, x2: m.x, y2: m.y - 3, l: .15, c: '#ccf6ff' }); hitMob(m, D.hit * 2, false, false, '#ccf6ff'); } fxLabel('Око бури', hero.x, hero.y - 20, '#99eeff'); shake = Math.max(shake, 5); } }
   if (k === 'pal' && cq(0) > .01) { PT.pal = (PT.pal || 0) - dt; if (PT.pal <= 0) { PT.pal = .5; hitAround(hero.x, hero.y, 18, D.hit * .3 * cq(0), '#ffe9a0'); } }
   if (k === 'sham') {
     PT.tot = (PT.tot || 0) - dt;
@@ -1241,12 +1382,16 @@ function clsTick(dt) {
 // убийство: эффекты класса
 function clsKill(m, base) {
   const k = cls();
-  if (k === 'necro' && !m.boss && !m.goblin && allies.length < 4 + Math.floor(12 * cq(0)) + (aw() ? 6 : 0) && rnd() < .2 + .5 * cq(0)) { allies.push({ x: m.x, y: m.y, t: 10 + 10 * cq(1), cd: .5, face: 1 }); burst(m.x, m.y - 3, '#7affb0', 8, 25); fxLabel('Восстань!', m.x, m.y - 12, '#7affb0'); }
+  if (isSty('bers', 0)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .01 * stf());
+  if (capOn('reap')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .01);
+  if (capOn('assa')) hero.tsd = 1;
+  if (k === 'necro' && !m.boss && !m.goblin && allies.length < 4 + Math.floor(12 * cq(0)) + (aw() ? 6 : 0) + (capOn('necro') ? 6 : 0) && rnd() < .2 + .5 * cq(0) + (capOn('necro') ? .3 : 0)) { allies.push({ x: m.x, y: m.y, t: 10 + 10 * cq(1), cd: .5, face: 1 }); burst(m.x, m.y - 3, '#7affb0', 8, 25); fxLabel('Восстань!', m.x, m.y - 12, '#7affb0'); }
   if (k === 'reap') { hero.souls = Math.min(5 + Math.floor(25 * cq(1)) + (aw() ? 20 : 0), (hero.souls || 0) + 1); hero.soulT = 4; orbs.push({ x: m.x, y: m.y - 3, vx: 0, vy: -40, c: '#ff44ff', t: 0 }); }
   if (k === 'alch' && cq(1) > .01 && clouds.some(c => c.acid && Math.hypot(c.x - m.x, c.y - m.y) < c.r) && rnd() < .2 * cq(1)) { giveBurst(base * 5); fxLabel('Трансмутация', m.x, m.y - 12, '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 10, 35); }
 }
 // блок стража
 function clsBlock(dmg) {
+  if (capOn('bers') && S.hpf < .3) dmg *= .5;
   if (cls() === 'guard' && rnd() < .5 * cq(0)) { if (texts.length < 7 && rnd() < .5) ftext(hero.x, hero.y - 10, 'блок', '#8fb0d0', .8, .6); burst(hero.x + hero.face * 4, hero.y - 4, '#8fb0d0', 3, 20); if (aw() && time > (hero.ctrT || 0)) { hero.ctrT = time + .5; ring(hero.x, hero.y - 3, 16, '#8fb0d0'); hitAround(hero.x, hero.y, 16, D.hit * 2, '#8fb0d0'); } return 0; }
   return dmg;
 }
@@ -1726,7 +1871,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); clsGain(base * .5); clsXP((1 + S.zone / 10) * (m.boss ? 20 : m.rare ? 3 : 1));
+  clsKill(m, base); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -1854,6 +1999,7 @@ function heroStrike(t, fromWave) {
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
+  v *= 1 + .2 * ctL('U2');
   if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
@@ -1941,6 +2087,7 @@ function ultRelease() {
   // аккорд удара
   tone(60, .8, 'sawtooth', .07, 25); tone(1800, .5, 'square', .03, 150); [262, 330, 392, 523, 784].forEach((f, i) => tone(f, .5, 'triangle', .04, 0, .05 + i * .04));
   clsUlt(US.dmg);
+  if (ctL('U3')) later(.5, () => { ult = Math.max(ult, .3); });
   if (legOn('twin')) later(.9, () => { clsUlt(US.dmg); flashT = .15; shake = 10; });
 }
 // реальное время: заряд почти останавливает мир
@@ -2189,7 +2336,7 @@ function fireUlt() {
   if (ultCd > 0 || US) return;
   ultCd = ULT_CD; ult = 0;
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
-  ultStart(dmg * (aw() ? 2 : 1));   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
+  ultStart(dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')));   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
 function onTap(e) {
   audio();
@@ -2351,7 +2498,7 @@ function effMech(dt) {
     al.t -= dt; al.cd -= dt;
     let best = null, bd = 1e9; for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - al.x, m.y - al.y); if (d < bd) { bd = d; best = m; } }
     if (best) { al.face = best.x >= al.x ? 1 : -1; if (bd > 6) { al.x += (best.x - al.x) / bd * 30 * dt; al.y += (best.y - al.y) / bd * 30 * dt; } else if (al.cd <= 0) { al.cd = .8; hitMob(best, D.hit * (.3 + 1.5 * cq(1)), false, false, '#7affb0'); } }
-    if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if (aw() && cls() === 'necro') { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
+    if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if ((aw() && cls() === 'necro') || isSty('necro', 1)) { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
   }
   allies = allies.filter(al => al.t > 0);
   clsTick(dt); awkTick(dt);
@@ -3055,18 +3202,21 @@ function renderAuto() {
     return `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`; }).join('');
   if (ah !== renderAuto.a) { renderAuto.a = ah; $('autobox').innerHTML = ah; }
   const C = CL(), seen = S.meta.seen || {};
-  const ch = `<div class="cls cur"><div><b style="color:${C.c}">${C.n}</b>${C.d}<small>ульта «${ULTS[cls()][0]}»: ${ULTS[cls()][1]}</small><small>мастерство ${clsLv()} · пробуждение «${AWK[cls()][0]}»: ${awake() ? 'активно ★' : 'ур. ' + AWAKE_LV + ' + вся ветвь'}</small><small>ветвь «${BRANCHES[C.br].n}» · мастерство ×${clsPow().toFixed(2)} — очки в этой ветви дерева усиливают класс</small></div></div>` +
-    CLS_KEYS.map(k => { const c = CLASSES[k], kn = seen[k]; return `<div class="cls${k === cls() ? ' on' : ''}${kn ? '' : ' unk'}" data-c="${k}"><div><b style="color:${kn ? c.c : '#777'}">${kn ? c.n : '???'}</b><small>${BRANCHES[c.br].n}${kn ? ' · жизней: ' + kn + ' · ур. ' + clsLv(k) + (awake(k) ? ' ★' : '') : ''}</small></div></div>`; }).join('');
+  const ch = `<div class="cls cur"><div><b style="color:${C.c}">${C.n}</b>${C.d}<small>ульта «${ULTS[cls()][0]}»: ${ULTS[cls()][1]}</small><small>стиль боя: ${CSTY[cls()][sty()][0]} — ${CSTY[cls()][sty()][1]}</small><small>мастерство ${clsLv()} · пробуждение «${AWK[cls()][0]}»: ${awake() ? 'активно ★' : 'ветка ' + ctSpent(cls()) + '/' + CT_TOTAL}</small><small>ветвь «${BRANCHES[C.br].n}» · мастерство ×${clsPow().toFixed(2)} — очки в этой ветви дерева усиливают класс</small></div></div>` +
+    CLS_KEYS.map(k => { const c = CLASSES[k], kn = seen[k]; return `<div class="cls${k === cls() ? ' on' : ''}${kn ? '' : ' unk'}" data-c="${k}"><div><b style="color:${kn ? c.c : '#777'}">${kn ? c.n : '???'}</b><small>${BRANCHES[c.br].n}${kn ? ' · жизней: ' + kn + ' · ур. ' + clsLv(k) + ' · ветка ' + ctSpent(k) + '/' + CT_TOTAL + (ctPts(k) ? ' · +' + ctPts(k) + ' очк.' : '') + (awake(k) ? ' ★' : '') : ''}</small></div></div>`; }).join('');
   if (ch !== renderAuto.c) { renderAuto.c = ch; $('clsbox').innerHTML = ch; }
 }
 $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) { tSel = +lk.dataset.t; openTree(); return; } const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
-$('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } toast(c.n.toUpperCase(), c.d + ' · ' + c.st.map(x => x[0]).join(', ') + ' · ульта «' + ULTS[el.dataset.c][0] + '»'); };
-$('clsc').onclick = () => showSheet('souls');
+$('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } openCT(el.dataset.c); };
+$('clsc').onclick = () => openCT(cls());
+$('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0];
   const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b></span><em>мастерство ×${clsPow().toFixed(2)} · ${BRANCHES[C.br].n}</em></div>` + `<div class="cs"><span style="color:${C.c}">Мастерство ${clsLv()}</span><em>${fmt(cm(cls()).xp)} / ${fmt(cxpNeed(clsLv()))} опыта · +${clsLv() * 4}% урона и HP</em></div>` +
     `<div class="cs"><span style="color:${C.c}">Ульта</span><em>${(aw() ? '★ ' : '') + ULTS[cls()][0]}${aw() ? ' ×2' : ''}</em></div>` +
-    `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : pxImg('lock', '#777', 8)}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: мастерство ' + AWAKE_LV + ' + вся ветвь «' + BRANCHES[C.br].n + '»'}</em></div>` +
+    `<div class="cs"><span style="color:${C.c}">Стиль: ${CSTY[cls()][sty()][0]}</span><em>${CSTY[cls()][sty()][1]}</em></div>` +
+    `<div class="cs"><span style="color:${ctPts(cls()) ? '#5cff8a' : C.c}">Ветка ${ctSpent(cls())}/${CT_TOTAL}</span><em>${ctPts(cls()) ? '<b style="color:#5cff8a">свободных очков: ' + ctPts(cls()) + ' — тапни карточку</b>' : 'тапни карточку — ветка класса'}</em></div>` +
+    `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : pxImg('lock', '#777', 8)}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: заполни ветку класса'}</em></div>` +
     C.st.map(([n, f], j) => `<div class="cs"><span style="color:${C.c}">${n} <b style="color:#e9e4ff">${fmt(c0[j])}</b></span><em>${f(cq(j))}</em></div>`).join('');
   if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
   if (aw()) { const M = S.meta; if (!M.awk) M.awk = {}; if (!M.awk[cls()]) { M.awk[cls()] = 1; toast('ПРОБУЖДЕНИЕ: ' + C.n.toUpperCase() + '!', AWK[cls()][0] + ' · ульта ×2 · новый облик', 3500); awakenFx(); } }
@@ -3081,7 +3231,7 @@ function clsReveal() {
     if (n < 18) { rk = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; $('crn').innerHTML = `<span style="color:${CLASSES[rk].c}">${CLASSES[rk].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
     clearInterval(iv); rk = k; runCard($('crc'), 'show', () => k);
     $('crn').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}</span>`;
-    $('crs').innerHTML = `${C.d}<br><br><span style="color:${C.c}">Ульта «${ULTS[k][0]}»</span><br>${ULTS[k][1]}<br><br>` +
+    $('crs').innerHTML = `${C.d}<br><br><span style="color:${C.c}">Стиль боя: ${CSTY[k][sty()][0]}</span><br>${CSTY[k][sty()][1]}<br><br><span style="color:${C.c}">Ульта «${ULTS[k][0]}»</span><br>${ULTS[k][1]}<br><br>` +
       `мастерство ${clsLv()}${tr ? ' · облик: ' + tr[2] : ''}${awake() ? '<br><span style="color:' + C.c + '">★ ПРОБУЖДЁН: ' + AWK[k][0] + '</span>' : ''}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>усиливается ветвью «${BRANCHES[C.br].n}»<span class="tap">тап — в бой</span>`;
     [523, 659, 784, 1047].forEach((f, i) => tone(f, .15, 'triangle', .05, 0, i * .07));
     setTimeout(() => { el.hidden = true; }, 6000);
@@ -3540,6 +3690,7 @@ function showSheet(name) {
   $('panel').classList.toggle('open', name === 'stats' || name === 'souls');
   $('settings').classList.toggle('open', name === 'set');
   if (name !== 'none') { $('tree').hidden = true; $('gear').hidden = true; }
+  $('ctree').hidden = true;
   if (name === 'stats') setTab('S'); if (name === 'souls') setTab('D');
   navOn({ fight: 'nFight', stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name] || '');
   setTimeout(resize, 30);
@@ -3695,7 +3846,7 @@ if (booted) return; booted = true;
 load();
 if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
-if (!CLASSES[S.cls]) rollClass(); else { if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
+if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
 if (!S.vals.length) { stats[0].v = 2; stats[1].v = 3; stats[2].v = 1; }
