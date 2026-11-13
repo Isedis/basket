@@ -313,7 +313,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113011918';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113012219';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1912,7 +1912,7 @@ function drawUltBanner(k) {
   fctx.fillStyle = 'rgba(0,0,0,.55)'; fctx.fillRect(slide, cy - h * .04, w, h * .08);
   fctx.fillStyle = ultBan.col; fctx.fillRect(slide, cy - h * .04, w, 3 * DPR); fctx.fillRect(slide, cy + h * .04 - 3 * DPR, w, 3 * DPR);
   const fs = Math.round(k * 7 / DPR) * DPR; fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.textAlign = 'center'; fctx.textBaseline = 'middle';
-  fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000'; fctx.fillStyle = Math.sin(t * 30) > 0 || t > .5 ? ultBan.col : '#ffffff';
+  fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000'; fctx.fillStyle = ultBan.col;
   fctx.strokeText(ultBan.name.toUpperCase(), w / 2 + slide, cy); fctx.fillText(ultBan.name.toUpperCase(), w / 2 + slide, cy);
   fctx.restore(); fctx.textBaseline = 'alphabetic';
 }
@@ -1987,10 +1987,10 @@ function drawUltScreen(sx, sy) {
     ctx.globalAlpha = 1;
   }
   if (US.imp > 0) {   // кадр удара: белый экран, чёрные силуэты
-    ctx.fillStyle = US.imp > .045 ? '#ffffff' : US.col; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H);   // кадр удара без белой вспышки
     ctx.setTransform(1, 0, 0, 1, sx - camX, sy - camY);
-    for (const m of mobs) if (!m.dead) { const sp = sprite(MOBS[m.t].p, { 1: '#000', 2: '#000', 3: '#000' }, 'mk' + m.t), s = m.sz || 1; ctx.drawImage(sp, Math.round(m.x - 4 * s), Math.round(m.y - 8 * s), 8 * s, 8 * s); }
-    ctx.drawImage(silhouette('#000'), Math.round(hero.x - 4), Math.round(hero.y - 8 - (hero.lift || 0)));
+    for (const m of mobs) if (!m.dead) { const sp = sprite(MOBS[m.t].p, { 1: US.col, 2: US.col, 3: '#fff' }, 'mk' + m.t + US.col), s = m.sz || 1; ctx.drawImage(sp, Math.round(m.x - 4 * s), Math.round(m.y - 8 * s), 8 * s, 8 * s); }
+    ctx.drawImage(silhouette('#ffffff'), Math.round(hero.x - 4), Math.round(hero.y - 8 - (hero.lift || 0)));
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
@@ -2014,7 +2014,7 @@ function drawCutIn(k) {
   fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000';
   const tx = -w * .32 + sc * 9;
   fctx.fillStyle = '#a59fc0'; fctx.font = `${Math.round(fs * .55)}px "Press Start 2P", monospace`; fctx.strokeText(CLASSES[k].n.toUpperCase(), tx, -fs * .9); fctx.fillText(CLASSES[k].n.toUpperCase(), tx, -fs * .9);
-  fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = Math.sin(t * 40) > 0 || t > .4 ? c : '#ffffff';
+  fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = c;
   const mw = w * .62 - sc * 9, tw = fctx.measureText(name).width, k2 = tw > mw ? mw / tw : 1;
   fctx.save(); fctx.translate(tx, fs * .35); fctx.scale(k2, 1); fctx.strokeText(name, 0, 0); fctx.fillText(name, 0, 0); fctx.restore();
   fctx.restore(); fctx.textBaseline = 'alphabetic'; fctx.textAlign = 'center';
@@ -2057,12 +2057,12 @@ function clsUlt(dmg) {
       for (let r = 0; r < 3; r++) fx1(1.1, p => { const R = 8 + p * (40 + r * 18), n = 8; for (let i = 0; i < n; i++) { const a = i / n * 6.283 + p * (5 + r) * (r % 2 ? -1 : 1) + r; art('sword', S0, hx + Math.cos(a) * R, hy - 4 + Math.sin(a) * R * .7, 1, a + 1.57, 1 - p * .7, '#ffffff'); } });
       for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(.1 + i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hy, m.x - hx) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hx, y: hy - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .45, left: 0 }); }); }
       const t = near(1)[0] || hero, tx = t.x, ty = t.y;
-      fx1(.9, p => { const e = Math.min(1, p / .55), y = ty - 110 + 104 * e * e; art('sword', S0, tx, y - 18, 3, 0, 1, '#ffffff'); if (p > .55) { tint('#ffffff', (1 - (p - .55) / .45) * .4); } },
+      fx1(.9, p => { const e = Math.min(1, p / .55), y = ty - 110 + 104 * e * e; art('sword', S0, tx, y - 18, 3, 0, 1, '#ffffff');  },
         () => {});
       later(.5, () => { ring(tx, ty - 2, 50, '#ffffff'); ring(tx, ty - 2, 30, '#c9ced6'); groundMark(tx, ty + 2, 30, '#ffffff'); groundMark(tx, ty + 2, 30, '#ff9a3c'); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 50 ? .8 : .2), true, true, '#ffffff'); shake = 16; flashT = .12; sfx.boom(); });
       break; }
     case 'bers': {   // кровавый смерч: спираль, кровавый дождь, финальный взрыв
-      fx1(3.2, p => { tint('#3a0000', .25 + .1 * Math.sin(time * 12));
+      fx1(3.2, p => { tint('#3a0000', .25);
         for (let L = 0; L < 5; L++) for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283 + time * (10 + L * 2) * (L % 2 ? -1 : 1), R = 8 + L * 5 + Math.sin(time * 6 + L) * 2; const yy = hy - 4 - L * 3; pix(hx + Math.cos(a) * R, yy + Math.sin(a) * R * .45, i % 3 ? '#ff2222' : '#ffffff'); }
         for (let i = 0; i < 4 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY, vx: -8, vy: 90 + rnd() * 40, l: 1.2, c: rnd() < .7 ? '#aa0a0a' : '#ff3344' }); });
       for (let i = 0; i < 15; i++) later(.2 + i * .2, () => { hero.spin = .2; hitAround(hx, hy, 30, dmg * .12, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 4); tone(140, .08, 'sawtooth', .03, 70); });
@@ -2070,7 +2070,7 @@ function clsUlt(dmg) {
       break; }
     case 'pal': {   // небеса раскрываются, крылья света, гигантский молот, крест
       const t = live().sort((a, b) => b.hp - a.hp)[0] || hero, tx = t.x, ty = t.y, HC = { G: '#b08a3a', W: '#ffffff', Y: '#ffe08a', H: '#8a6a3a' };
-      fx1(1.4, p => { tint('#fff6c0', .15 * (1 - p)); for (let i = 0; i < 7; i++) { const lx = camX + (i + .5) * W / 7 + Math.sin(time + i) * 4; ctx.globalAlpha = .25 * (1 - p); ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(lx), camY - 6, 3, H + 12); } ctx.globalAlpha = 1;
+      fx1(1.4, p => { tint('#fff6c0', .08 * (1 - p)); for (let i = 0; i < 7; i++) { const lx = camX + (i + .5) * W / 7 + Math.sin(time + i) * 4; ctx.globalAlpha = .25 * (1 - p); ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(lx), camY - 6, 3, H + 12); } ctx.globalAlpha = 1;
         for (let s = -1; s <= 1; s += 2) for (let f = 0; f < 6; f++) for (let j = 0; j < 10 - f; j++) pix(hero.x + s * (4 + j + f), hero.y - 6 - f * 2 + j * .4 - p * 2, f % 2 ? '#ffffff' : '#ffe08a'); });
       fx1(.6, p => { const e = p * p, y = ty - 120 + 106 * e; art('hammer', HC, tx, y - 14, 3, -.6 + .6 * e, 1, '#ffffff'); ctx.globalAlpha = .5; circ(tx, ty, 26 * (1 - p) + 4, '#ffe08a', 30); ctx.globalAlpha = 1; },
         () => { for (let i = 0; i < 3; i++) later(i * .12, () => ring(tx, ty - 2, 30 + i * 18, i % 2 ? '#ffffff' : '#ffe08a')); burst(tx, ty - 3, '#ffe08a', 70, 100); groundMark(tx, ty + 2, 30, '#ffe08a'); groundMark(tx, ty + 2, 26, '#ffffff');
@@ -2087,7 +2087,7 @@ function clsUlt(dmg) {
         const R = 22; ctx.globalAlpha = .55; for (let i = 0; i < 10; i++) for (let j = 0; j < 4; j++) { const a = i / 10 * 3.1416 + .0 + (j % 2) * .16, rr = R * (1 - j * .22); const px = hero.x + Math.cos(Math.PI + a) * rr, py = hero.y - 2 - Math.abs(Math.sin(a)) * rr * .9; circ(px, py, 2.5, (i + j) % 3 ? '#8fb0d0' : '#ffffff', 6, 1, time * 2); } ctx.globalAlpha = 1; });
       break; }
     case 'mage': {   // небо горит, огромные метеоры с хвостами и дымом, финальный гигант
-      fx1(2.2, p => { tint('#ff5a00', .18 + .06 * Math.sin(time * 9)); for (let i = 0; i < 3 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY + H, vx: rnd() * 10 - 5, vy: -40, l: 1, c: rnd() < .5 ? '#ff9a3c' : '#ffdd66', f: 1 }); });
+      fx1(2.2, p => { tint('#ff5a00', .16); for (let i = 0; i < 3 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY + H, vx: rnd() * 10 - 5, vy: -40, l: 1, c: rnd() < .5 ? '#ff9a3c' : '#ffdd66', f: 1 }); });
       for (let i = 0; i < 12; i++) later(.1 + i * .12, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const mx = m.x, my = m.y;
         dropFx(mx + 50, my - 100, m, .35, '#ff7a20', 6, () => { ring(mx, my - 2, 22, '#ff9a3c'); burst(mx, my - 3, '#ff9a3c', 22, 60); burst(mx, my - 3, '#555555', 10, 25); hitAround(mx, my, 22, dmg * .4, '#ff9a3c'); groundMark(mx, my + 2, 22, '#ff9a3c'); shake = Math.max(shake, 6); sfx.boom(); }); });
       later(1.6, () => { const t = live().sort((a, b) => b.hp - a.hp)[0]; if (!t) return; const tx = t.x, ty = t.y;
@@ -2134,7 +2134,7 @@ function clsUlt(dmg) {
         fx1(.6, p => { const r = 4 + p * 14; ctx.globalAlpha = 1 - p; dot(mx, my - 6 - p * 14, r, '#b6ff3c'); dot(mx, my - 6 - p * 14, r * .6, '#e8ff8a'); ctx.fillStyle = '#7aa02a'; ctx.fillRect(Math.round(mx) - 1, Math.round(my - 6 - p * 14), 3, Math.round(6 + p * 14)); ctx.globalAlpha = 1; });
         ring(mx, my - 2, 16, '#b6ff3c'); hitAround(mx, my, 16, dmg * .5, '#b6ff3c'); tone(500 + i * 20, .05, 'square', .02, 150); shake = Math.max(shake, 4); })); break; }
     case 'priest': {   // небеса: нимб и крылья над героем, широкие столпы, падающие перья
-      fx1(1.8, p => { tint('#fff6c0', .22 * (1 - p)); const hy2 = hero.y - 26; ctx.globalAlpha = .9; circ(hero.x, hy2, 10, '#ffe08a', 30, .35, time); circ(hero.x, hy2, 9, '#ffffff', 20, .35, -time);
+      fx1(1.8, p => { tint('#fff6c0', .1 * (1 - p)); const hy2 = hero.y - 26; ctx.globalAlpha = .9; circ(hero.x, hy2, 10, '#ffe08a', 30, .35, time); circ(hero.x, hy2, 9, '#ffffff', 20, .35, -time);
         for (let s = -1; s <= 1; s += 2) for (let f = 0; f < 8; f++) for (let j = 0; j < 16 - f * 1.5; j++) pix(hero.x + s * (4 + j), hy2 + 4 + f * 2 - j * .5 + Math.sin(time * 6) * (j / 8), f % 2 ? '#ffffff' : '#fff6c0'); ctx.globalAlpha = 1;
         if (parts.length < 600) parts.push({ x: camX + rnd() * W, y: camY, vx: Math.sin(time * 3) * 10, vy: 22, l: 2.5, c: '#ffffff', f: 1 }); });
       live().forEach((m, i) => later(.2 + i * .05, () => { if (m.dead) return; const mx = m.x, my = m.y;
@@ -2688,13 +2688,14 @@ function render() {
   }
   // полоса ульты
   const ub = H - 3; ctx.fillStyle = '#000'; ctx.fillRect(2, ub, W - 4, 2);
-  ctx.fillStyle = ult >= 1 ? (Math.sin(time * 12) > 0 ? '#ff88ff' : '#ffffff') : ultCd > 0 ? '#5a4a6a' : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
+  ctx.fillStyle = ult >= 1 ? (Math.sin(time * 3) > 0 ? '#ff88ff' : '#ffc8ff') : ultCd > 0 ? '#5a4a6a' : '#a04cc0'; ctx.fillRect(2, ub, Math.round((W - 4) * ult), 2);
   if (ultCd > 0) { ctx.fillStyle = '#ff88ff'; ctx.fillRect(2, ub, Math.round((W - 4) * (1 - ultCd / ULT_CD)), 1); }
   drawUltScreen(sx, sy); ctx.setTransform(1, 0, 0, 1, sx, sy);
   if (ultT > 0) { ctx.fillStyle = 'rgba(20,0,30,' + Math.min(.55, ultT) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   // мерцание при изнеможении
-  if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.7, flashT * 5) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
-  if (hero.stopT > 0) { ctx.fillStyle = 'rgba(60,90,200,' + (.18 + .06 * Math.sin(time * 8)) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); }
+  // мягкая вспышка: не ярче 12% и не чаще раза в 1.5с (без мерцания на весь экран)
+  if (flashT > 0 && !S.fxLow) { if (time - (render.fl ?? -9) > 1.5 || render.flOn) { if (!render.flOn) { render.fl = time; render.flOn = true; } ctx.fillStyle = 'rgba(255,255,255,' + Math.min(.12, flashT * .6) + ')'; ctx.fillRect(-4, -4, W + 8, H + 8); } } else render.flOn = false;
+  if (hero.stopT > 0) { ctx.fillStyle = 'rgba(60,90,200,.18)'; ctx.fillRect(-4, -4, W + 8, H + 8); }
   if (S.zmod === 'night') { ctx.save(); ctx.fillStyle = 'rgba(0,0,25,.55)'; ctx.beginPath(); ctx.rect(-4, -4, W + 8, H + 8); ctx.arc(hero.x - camX, hero.y - 4 - camY, 34, 0, 6.2832, true); ctx.fill('evenodd'); ctx.restore(); }
   if (S.zmod === 'storm' || S.zmod === 'snow') { const st = S.zmod === 'storm';
     for (let i = 0; i < 70; i++) { const yy = ((i * 53.7 + time * (st ? 110 : 14)) % (H + 10)) - 5, xx = ((i * 37.3 + (st ? -yy * .35 : Math.sin(time + i) * 4)) % W + W) % W;
@@ -2742,7 +2743,7 @@ function render() {
   if (ult >= .999 && ult < 1 && ultCd > 0) { fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000'; fctx.fillStyle = '#a59fc0'; const tt = 'УЛЬТА ЧЕРЕЗ ' + Math.ceil(ultCd) + 'С'; fctx.strokeText(tt, fx.width / 2, (H - 9) * k); fctx.fillText(tt, fx.width / 2, (H - 9) * k); }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';
-    fctx.fillStyle = Math.sin(time * 10) > 0 ? '#ff88ff' : '#ffffff';
+    fctx.fillStyle = Math.sin(time * 3) > 0 ? '#ff88ff' : '#ffc8ff';
     fctx.strokeText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k); fctx.fillText('УЛЬТА ГОТОВА — ТАПНИ!', fx.width / 2, (H - 9) * k);
   }
   {
