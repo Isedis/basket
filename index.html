@@ -371,10 +371,14 @@ html,body{font-size:10px}
   <div id="settings" class="sheet">
     <div class="shead">МЕНЮ</div>
     <div class="setb">
+      <button class="btn big2" id="aall" style="background:#1f5a34">АВТОИГРА: ВЫКЛ</button>
       <button class="btn big2" id="mute">Звук: ВКЛ</button>
       <button class="btn big2" id="fxb">Эффекты: ВСЕ</button>
       <button class="btn big2" id="helpb">Что на экране?</button>
       <button class="btn big2" id="apb">Перки: ВРУЧНУЮ</button>
+      <button class="btn big2" id="aub">Ульта: ВРУЧНУЮ</button>
+      <button class="btn big2" id="atb">Таланты после смерти: ВРУЧНУЮ</button>
+      <button class="btn big2" id="acb">Путь класса: ВРУЧНУЮ</button>
       <button class="btn big2" id="updb">⟳ Проверить обновление</button>
       <div class="dim" id="buildl"></div>
       <button class="btn big2" id="resetb" style="background:#5a1a22;margin-top:18px">✕ Сбросить игру</button>
@@ -413,7 +417,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113061409';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113061822';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1973,7 +1977,7 @@ function pBuy(k, t, id) {
   const f1 = formOf(k), a1 = tierDone(k, 3);
   if ((f1 > f0 || (a1 && !a0)) && k === cls()) { $('ctree').hidden = true; navOn('nFight'); setTimeout(() => evolveStart(k, f1, a1 && !a0 ? 'ПРОБУЖДЕНИЕ' : f1 === 4 ? 'ВОЗНЕСЁННЫЙ ОБЛИК' : null), 250); return; }
   if (f1 > f0) toast('ЭВОЛЮЦИЯ: ' + evoName(k, f1).toUpperCase(), 'новый облик появится, когда выпадет ' + CLASSES[k].n, 3000);
-  renderCT();
+  if (ctK && !$('ctree').hidden) renderCT();
 }
 
 /* ---------- уровень героя в жизни и перки (1 из 3 на каждом уровне) ---------- */
@@ -3663,7 +3667,8 @@ function update(dt) {
   if (ultCd > 0) { ultCd -= dt; if (ultCd <= 0 && ult >= .999) { ult = 1; ultReadyT = 0; tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); } }
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
   for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 4);
-  if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20) fireUlt(); }
+  if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20 || (S.meta.autoUlt && bossAlive || S.meta.autoUlt && ultReadyT > 2)) fireUlt(); }
+  if (S.meta.autoPath && (autoPathSpend.t = (autoPathSpend.t || 0) + dt) > 2) { autoPathSpend.t = 0; if (pPts(cls()) > 0) autoPathSpend(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
   decalT -= dt;
   if (decalT <= 0) { decalT = 1.5; const g = decal.getContext('2d'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, 0, AW, AH); g.globalCompositeOperation = 'source-over'; }
@@ -4179,8 +4184,22 @@ $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) r
 $('clsc').onclick = () => { S.meta.clsOpen = !S.meta.clsOpen; renderCls.h = ''; renderCls(); };
 $('clsopen').onclick = () => openClassTab();
 $('perkb').onclick = () => openPerks();
-const applyAp = () => { $('apb').textContent = 'Перки: ' + (S.meta.autoPerk ? 'АВТО' : 'ВРУЧНУЮ'); };
-$('apb').onclick = () => { S.meta.autoPerk = !S.meta.autoPerk; applyAp(); if (S.meta.autoPerk) lifeXP(0); save(); };
+const AUTOS = [['apb', 'autoPerk', 'Перки'], ['aub', 'autoUlt', 'Ульта'], ['atb', 'autoTal', 'Таланты после смерти'], ['acb', 'autoPath', 'Путь класса']];
+const applyAp = () => { const M = S.meta; AUTOS.forEach(([id, k, n]) => $(id).textContent = n + ': ' + (M[k] ? 'АВТО' : 'ВРУЧНУЮ'));
+  $('aall').textContent = 'АВТОИГРА: ' + (AUTOS.every(a => M[a[1]]) ? 'ВКЛ' : AUTOS.some(a => M[a[1]]) ? 'ЧАСТИЧНО' : 'ВЫКЛ'); };
+function autoKick() { if (S.meta.autoPerk) lifeXP(0); autoPathSpend(); }
+AUTOS.slice(1).forEach(([id, k]) => $(id).onclick = () => { S.meta[k] = !S.meta[k]; applyAp(); autoKick(); save(); });
+$('aall').onclick = () => { const on = !AUTOS.every(a => S.meta[a[1]]); AUTOS.forEach(a => S.meta[a[1]] = on); applyAp(); autoKick(); save();
+  toast(on ? 'АВТОИГРА ВКЛЮЧЕНА' : 'АВТОИГРА ВЫКЛЮЧЕНА', on ? 'перки, ульта, таланты и путь класса — сами' : 'всё снова вручную'); };
+// авто-путь: тратит очки на самый низкий доступный узел (развилку выбирает случайно)
+function autoPathSpend() {
+  if (!S.meta.autoPath) return; const k = cls(); let n = 0;
+  while (pPts(k) > 0 && n++ < 200) { let best = null;
+    for (let t = 1; t <= 4 && !best; t++) { const ids = (t < 4 ? PIDS : PIDS4).slice().sort(() => rnd() - .5);
+      for (const id of ids) if (pCanBuy(k, t, id) && (!best || pL(k, t, id) < pL(k, best[0], best[1]))) best = [t, id]; }
+    if (!best) break; pBuy(k, best[0], best[1]); }
+}
+$('apb').onclick = () => { S.meta.autoPerk = !S.meta.autoPerk; applyAp(); autoKick(); save(); };
 $('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) return; if (b.dataset.pk) { takePerk(b.dataset.pk); if (S.pend) openPerks(); else $('perkbox').hidden = true; } else $('perkbox').hidden = true; };
 let endConfirm = 0;
 $('endb').onclick = () => { if (deathT > 0) return; if (performance.now() > endConfirm) { endConfirm = performance.now() + 3000; $('endb').textContent = 'ТОЧНО? +' + fmt(S.runSouls || 0) + ' ДУШ — ТАПНИ ЕЩЁ'; setTimeout(() => { $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; }, 3000); return; }
@@ -4277,6 +4296,7 @@ function rebirth(fromAsc) {
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
   { const sz = Math.min(10 * ascL('path'), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
+  if (M.autoTal) bestBuy(true);
   calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
   flashT = .5; slowT = .6; shake = 10;
@@ -4649,11 +4669,12 @@ $('tlist').onclick = e => {
   if (t.dataset.go) { tSel = +t.dataset.go; const nd = TN[tSel]; cam.x = nd.x; cam.y = nd.y; cam.z = Math.max(cam.z, 1.6); setTMode('map'); renderTInfo(); }
 };
 // разовая раздача душ по советам (как авто-таланты)
-function bestBuy() {
+function bestBuy(quiet) {
   let n = 0;
   while (n < 300) { calcRec(); let pick = TN.find(nd => tRec.has(nd.id) && nd.alt == null && canBuy(nd));
     if (!pick) { let c = null; for (const nd of TN) if (nd.alt == null && canBuy(nd) && (!c || tCost(nd, TL(nd.id)) < tCost(c, TL(c.id)))) c = nd; pick = c; }
     if (!pick) break; S.meta.souls -= tCost(pick, TL(pick.id)); S.meta.nodes[pick.id] = TL(pick.id) + 1; n++; calcTal(); }
+  if (quiet) { if (n) feed('Авто-таланты: куплено уровней ' + n, '#ff44ff'); return; }
   if (n) { toast('КУПЛЕНО УРОВНЕЙ: ' + n, 'развилки «или-или» выбирай сам'); tone(523, .1, 'triangle', .04); tone(784, .15, 'triangle', .04, 0, .08); } else toast('Нечего купить', 'не хватает душ');
   refreshTree();
 }
