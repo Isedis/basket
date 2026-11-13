@@ -412,7 +412,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113033606';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113034430';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2013,6 +2013,31 @@ function takePerk(k, silent) {
   D.dirty = true; calcPath(); recalc();
   if (!silent) { feed('Перк: ' + PK[k].n + ' ' + roman(perkL(k)), '#ffe08a'); tone(1047, .1, 'triangle', .04); }
 }
+/* ---------- атрибуты жизни и пороги эффектов ---------- */
+const ATTRS = [
+  { k: 's', n: 'Сила', c: '#ff6644', e: ['dmg', 'critd', 'cleave', 'power', 'fury', 'bleed', 'exec', 'quake', 'range'] },
+  { k: 'a', n: 'Ловкость', c: '#ffdd44', e: ['aspd', 'crit', 'dodge', 'move', 'blink', 'scrit', 'rage', 'bounce', 'echo', 'trail'] },
+  { k: 'i', n: 'Интеллект', c: '#bb88ff', e: ['fire', 'poison', 'shock', 'frost', 'wis', 'spirit', 'orbs', 'energy', 'curio', 'mark', 'grav', 'det'] },
+  { k: 'v', n: 'Выносливость', c: '#ff88aa', e: ['hp', 'regen', 'armor', 'vamp', 'thorns', 'barrier', 'leech', 'fear'] },
+];
+const ATTR_OF = {}; ATTRS.forEach((A, j) => A.e.forEach(k => ATTR_OF[k] = j));
+const CLS_ATTR = { war: 0, bers: 0, reap: 0, pal: 3, guard: 3, mage: 2, sham: 2, alch: 2, priest: 2, chrono: 2, rune: 2, necro: 2, arch: 1, assa: 1, gamb: 1, monk: 1 };
+const mainAttr = () => CLS_ATTR[cls()] ?? 0;
+function attrGain(v) {
+  if (!S.attr) S.attr = [0, 0, 0, 0];
+  const m = mainAttr(); for (let j = 0; j < 4; j++) S.attr[j] += v * (j === m ? 2 : 1) * (.8 + .4 * rnd());
+}
+const attrMul = j => { const A = (S.attr && S.attr[j]) || 0; return 1 + .15 * Math.log2(1 + A / 20) * (j === mainAttr() ? 1.25 : 1); };
+const thrL = k => (S.meta.thr && S.meta.thr[k]) || 0;
+const thrTotal = () => { let n = 0; for (const e of EFF) n += thrL(e.k); return n; };
+function thrCheck(R) {
+  const M = S.meta; if (!M.thr) M.thr = {};
+  for (const e of EFF) { const v = R[e.k]; if (!(v >= 1e3)) continue; const t = Math.min(20, Math.floor(Math.log10(v) / 3));
+    if (t > (M.thr[e.k] || 0)) { M.thr[e.k] = t; D.dirty = true;
+      const sv = bossSouls(S.zone) * .15 * t; addSouls(sv);
+      feed('Порог: ' + e.n + ' ★' + t + ' · +' + 5 * t + '% навсегда', e.c);
+      ftext(hero.x, hero.y - 26, e.n + ' ★' + t, e.c, 1, 1); tone(1319, .08, 'triangle', .035); } }
+}
 function perkMods() {
   const L = perkL;
   D.hit *= 1 + .25 * L('dmg'); D.maxHP *= 1 + .3 * L('hp'); D.aps = Math.min(14, D.aps * (1 + .1 * L('aps')));
@@ -2332,7 +2357,8 @@ function recalc() {
   const T = new Float64Array(NE);
   for (const s of stats) T[s.e] += s.v * s.w;
   const z = zs(), r = i => T[i] / z;
-  const R = {}; EFF.forEach((e, i) => R[e.k] = r(i) * (1 + ta('e_' + e.k)));
+  const R = {}; EFF.forEach((e, i) => { const j = ATTR_OF[e.k]; R[e.k] = r(i) * (1 + ta('e_' + e.k)) * (j != null ? attrMul(j) : 1) * (1 + .05 * thrL(e.k)); });
+  thrCheck(R);
   updSyn(R);
   updForms(R);
   const ord = EFF.map((e, i) => i).sort((a, b) => R[EFF[b].k] - R[EFF[a].k]);
@@ -2801,7 +2827,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); ntKill(m, base); pathKill(m); lifeXP((1 + S.zone * .1) * (m.boss ? 12 : m.rare ? 3 : 1)); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
+  clsKill(m, base); ntKill(m, base); pathKill(m); attrGain((1 + S.zone * .1) * (m.boss ? 10 : m.rare ? 3 : 1)); lifeXP((1 + S.zone * .1) * (m.boss ? 12 : m.rare ? 3 : 1)); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -4072,7 +4098,7 @@ function updateUI() {
   const fav = biomeOf(S.zone).fav;
   for (const g of groups) if (g) {
     const e = g.e;
-    g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
+    g.nm.innerHTML = EFF[e].n + (thrL(EFF[e].k) ? ` <i style="color:#ffe08a;font-style:normal">${pxImg('star', '#ffe08a', 7)}${thrL(EFF[e].k)}</i>` : '') + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
     g.fm.textContent = formName(e, F(e));
     const locked = !gcnt[e]; g.el.classList.toggle('lock', locked);
     if (locked) { g.fm.textContent = EFF[e].d; g.cnt.innerHTML = pxImg('lock', '#8a83a6', 8); g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
@@ -4167,6 +4193,7 @@ function renderCls() {
     `<div class="cs"><span style="color:${C.c}">Стиль: ${CSTY[cls()][sty()][0]}</span><em>${CSTY[cls()][sty()][1]}</em></div>` +
     `<div class="cs"><span style="color:${ctPts(cls()) ? '#5cff8a' : C.c}">Путь ${ctSpent(cls())}/${pTotal()}</span><em>${ctPts(cls()) ? '<b style="color:#5cff8a">свободных очков: ' + ctPts(cls()) + ' — тапни карточку</b>' : 'тапни карточку — ветка класса'}</em></div>` +
     `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : pxImg('lock', '#777', 8)}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: заполни ветку класса'}</em></div>` +
+    `<div class="cs"><span style="color:#e9e4ff">Атрибуты</span><em>пороги ${pxImg('star', '#ffe08a', 7)}${thrTotal()}</em></div>` + ATTRS.map((A, j) => `<div class="cs"><span style="color:${A.c}">${j === mainAttr() ? '◆ ' : ''}${A.n} <b style="color:#e9e4ff">${fmt(Math.floor((S.attr && S.attr[j]) || 0))}</b></span><em>${A.e.slice(0, 2).map(k => EFF[EI[k]].n.toLowerCase()).join(', ')}… ×${attrMul(j).toFixed(2)}</em></div>`).join('') +
     C.st.map(([n, f], j) => `<div class="cs"><span style="color:${C.c}">${n} <b style="color:#e9e4ff">${fmt(c0[j])}</b></span><em>${f(cq(j))}</em></div>`).join('');
   if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
   if (aw()) { const M = S.meta; if (!M.awk) M.awk = {}; if (!M.awk[cls()]) { M.awk[cls()] = 1; toast('ПРОБУЖДЕНИЕ: ' + C.n.toUpperCase() + '!', AWK[cls()][0] + ' · ульта ×2 · новый облик', 3500); awakenFx(); } }
@@ -4928,7 +4955,7 @@ function offline(sec) {
     const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1) * (1 + ta('x_greed')) * Math.pow(1.25, TAL.constel || 0);
     const picks = Math.min(stats.length, 12);
     for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
-    clsGain(g * .15); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
+    clsGain(g * .15); attrGain(k * (1 + S.zone * .1) * .5); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
     checkUnlocks(true);
   }
   recalc(); buildGround();
