@@ -116,6 +116,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #rbtn{background:#7a2a8a}
 #rbtn[disabled]{opacity:.45}
 #tbtn{background:#2f5a8a}
+#sky{position:fixed;inset:0;z-index:8;background:#03020a;display:flex;flex-direction:column;bottom:var(--navh)}
+#sky[hidden]{display:none}
+#shead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#0c0820;border-bottom:2px solid #2a2050;font-size:9px}
+#shead b{color:#7ad8ff;font-weight:normal}
+#sbar{background:#0a0718;border-bottom:1px solid #2a2050;padding:4px 6px}
+#sbar .shint{font-size:7px;color:#8a83b6;padding:3px 2px 1px}
+#sview{position:relative;flex:1;min-height:0;touch-action:none;overflow:hidden;background:#03020a}
+#sview canvas{position:absolute;inset:0}
+#szoom{position:absolute;right:6px;bottom:6px;display:flex;flex-direction:column;gap:4px}
+#szoom .btn{min-width:36px;min-height:36px}
+#slist2{flex:1;min-height:0;overflow-y:auto;padding:6px 8px 16px;background:#03020a}
+#sinfo{flex:none;min-height:124px;padding:8px 10px 10px;background:#0c0820;border-top:2px solid #2a2050;font-size:9px;line-height:1.8}
+#sinfo h3{font-size:10px;font-weight:normal}
+#sinfo .k{color:var(--dim)}
+#sinfo .row2{display:flex;gap:8px;margin-top:6px}
+#sinfo .row2 .btn{flex:1;padding:8px;min-height:44px;font-size:10px;background:#1e4a8a}
+#sinfo .row2 .btn[disabled]{opacity:.4}
 #tree{position:fixed;inset:0;z-index:8;background:var(--bg);display:flex;flex-direction:column;
   padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
 #thead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:2px solid var(--line);font-size:9px}
@@ -446,11 +463,18 @@ html,body{font-size:10px}
   <div id="tlist" hidden></div>
   <div id="tinfo"></div>
 </div>
+<div id="sky" hidden>
+  <div id="shead"><span>НЕБОСВОД</span><span>Искры: <b id="ssparks">0</b></span><button class="btn" id="sclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="sbar"></div>
+  <div id="sview"><canvas id="scv"></canvas><div id="szoom"><button class="btn" id="szi">+</button><button class="btn" id="szo">−</button><button class="btn" id="sfit" style="font-size:8px">ВСЁ</button></div></div>
+  <div id="slist2" hidden></div>
+  <div id="sinfo"></div>
+</div>
 <div id="modal" hidden><div id="mbox"><h2 id="mt"></h2><p id="mp"></p><button class="btn" id="mok">В БОЙ!</button></div></div>
 
 <script>
 'use strict';
-const BUILD = '20261113081905';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113083303';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -622,7 +646,7 @@ const FORM_HINT = {
   shock: 'с 3-й формы шаровые молнии, с 4-й удары с неба',
   thorns: 'с 3-й формы терновая волна вокруг героя',
 };
-const formNeed = f => 3 * Math.pow(10, 1.5 * (f - 1));
+const formNeed = f => 3 * Math.pow(10, 1.5 * (f - 1)) / (typeof SKYF !== 'undefined' && SKYF.sk_form ? 3 : 1);
 const formName = (e, f) => f <= 0 ? 'нет формы' : EFORM[e][Math.min(f, 4) - 1] + (f > 4 ? ' ' + roman(f - 3) : '');
 const SPEC = ['Громила', 'Колосс', 'Дуэлянт', 'Снайпер', 'Целитель', 'Страж', 'Палач', 'Вампир', 'Счастливчик', 'Мудрец',
   'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк',
@@ -753,6 +777,9 @@ function zkCalc() {
 }
 function zkKill(m) {
   const h = hazard();
+  if (m.harvest) { giveChest('c', 'жатва'); burst(m.x, m.y - 4, '#ff44ff', 20, 50); }
+  if (skyOn('sk_harvest') && !m.boss && !m.obj && (S.hv = (S.hv || 0) + 1) % 150 === 0) { spawnMob(false); const o = mobs[mobs.length - 1]; o.hp *= 10; o.max *= 10; o.sz = 1.5; o.rare = true; o.harvest = 1; o.role = null; fxLabel('Жатва!', o.x, o.y - 14, '#ff44ff'); }
+  if (!m.obj && ((m.boss && skyOn('sk_bosschest')) || (m.rare && skyOn('sk_goldchest') && rnd() < .05) || ((m.boss || m.rare) && rnd() < skyV('chestc')))) giveChest('c', 'звезда');
   if (m.loot) { S.runSouls = (S.runSouls || 0) + m.loot * 2; ftext(m.x, m.y - 14, '+' + fmt(m.loot * 2) + ' душ', '#ffd84a', 1, 1); }
   if (m.obj === 'crystal') { burst(m.x, m.y - 6, '#7ad8ff', 24, 60); ring(m.x, m.y - 4, 30, '#7ad8ff'); later(.05, () => hitAround(m.x, m.y, 32, D.hit * 12, '#7ad8ff', m)); }
   if (m.obj === 'portal') { addSouls(bossSouls(S.zone) * .25, m); burst(m.x, m.y - 6, '#b06aff', 24, 50); feed('Портал закрыт', '#b06aff'); }
@@ -803,7 +830,7 @@ const HAZ = [null,
   { k: 'crystal', n: 'Кристаллы', c: '#7ad8ff', d: 'разбей кристалл — он взорвётся по врагам' },
   { k: 'spore', n: 'Споры', c: '#d080ff', d: 'облака спор замедляют всех внутри' },
 ];
-const hazard = () => S.zone <= 50 ? HAZ[Math.floor((S.zone - 1) / ZONES_PER_BIOME)] || null : null;
+const hazard = () => S.zone <= 50 && !skyOn('nv_day') ? HAZ[Math.floor((S.zone - 1) / ZONES_PER_BIOME)] || null : null;
 let HZ = { z: -1, pools: [] };
 function hzStart() {
   HZ = { z: S.zone, pools: [], torn: null, t: 3 }; const h = hazard(); if (!h) return;
@@ -1122,7 +1149,7 @@ function titanDown(m) {
   if (!M.troph[wi]) { M.troph[wi] = 1; toast('ТРОФЕЙ: ' + WORLDS[wi].titan.toUpperCase(), 'навсегда: урон и HP ×10', 3500); [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1)); D.dirty = true; }
   if (S.zone >= 100) setTimeout(() => { $('mt').textContent = 'СТЕНА 100'; $('mp').innerHTML = 'Пожиратель звёзд повержен.<br><br>Дальше — <span style="color:#ff44ff">стена 100-й зоны</span>.<br>Её пробьёт третий этап.'; $('modal').hidden = false; }, 1000);
 }
-const trophyMul = () => Math.pow(10, Object.keys(S.meta.troph || {}).length);
+const trophyMul = () => Math.pow(skyOn('sk_titan') ? 20 : 10, Object.keys(S.meta.troph || {}).length);
 
 const sprCache = new Map();
 function sprite(pat, cols, key) {
@@ -1437,8 +1464,8 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1);   // корень: души не разгоняются снежным комом
-const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1) * skySoulM();   // корень: души не разгоняются снежным комом
+const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1) * (skyOn('sk_soulboss') ? 2 : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
   S.runSf -= n; S.runSouls = (S.runSouls || 0) + n;
@@ -1502,7 +1529,7 @@ const cq = j => (D.cq && D.cq[j]) || 0;
 let allies = [], totems = [], runes = [];
 function rollClass() {
   const pool = CLS_KEYS.filter(k => k !== S.cls);
-  const k = pool[Math.floor(rnd() * pool.length)];
+  const k = skyOn('nv_loyal') && CLASSES[S.cls] ? S.cls : pool[Math.floor(rnd() * pool.length)];
   S.cls = k; S.cstyle = rnd() < .5 ? 0 : 1; S.cst = [0, 0]; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[k] = (S.meta.seen[k] || 0) + 1;
   allies = []; totems = []; runes = []; hero.souls = 0;
   return k;
@@ -1564,6 +1591,7 @@ const awake = k => ctFull(k || cls());   // пробуждение: вся ве�
 const aw = () => awake();
 const tierOf = l => { let t = null; for (const x of TIERS) if (l >= x[0]) t = x; return t; };
 function clsXP(v) {
+  if (skyOn('nv_loyal')) v *= 3;
   const c = cm(cls()); c.xp += v;
   let up = 0; while (c.xp >= cxpNeed(c.lv)) { c.xp -= cxpNeed(c.lv); c.lv++; up++; }
   if (!up) return;
@@ -1822,7 +1850,7 @@ const PIDS = ['A', 'B', 'X', 'Y'];
 const P_MAX = 3, P_TOTAL = 27;
 const pL = (k, t, id) => { const c = cm(k); return (c.cp && c.cp[t + id]) || 0; };
 const pSpent = k => { const c = cm(k); let s = 0; if (c.cp) for (const i in c.cp) s += c.cp[i]; return s; };
-const pPts = k => Math.max(0, cm(k).lv - pSpent(k));
+const pPts = k => Math.max(0, cm(k).lv + (skyOn('sk_mast') ? 5 : 0) - pSpent(k));
 const pFork = (k, t) => pL(k, t, 'X') ? 'X' : pL(k, t, 'Y') ? 'Y' : null;
 /* 4-я ступень пути — «Вознесённый облик» (после первого Вознесения): 11 узлов, 2 развилки, вершина = 4-я способность */
 const PIDS4 = ['A', 'B', 'C', 'X', 'Y', 'D', 'E', 'F', 'Z', 'W', 'V'];
@@ -2181,6 +2209,7 @@ const PK = {}; PERKS.forEach(p => PK[p.k] = p);
 const perkL = k => (S.perks && S.perks[k]) || 0;
 const lvNeed = L => Math.floor(15 * Math.pow(1.22, L));
 function lifeXP(v) {
+  if (skyOn('sk_lvl')) v *= 1.5;
   S.lxp = (S.lxp || 0) + v; S.lvl = S.lvl || 1;
   while (S.lxp >= lvNeed(S.lvl)) { S.lxp -= lvNeed(S.lvl); S.lvl++; S.pend = (S.pend || 0) + 1;
     ring(hero.x, hero.y - 4, 14, '#ffe08a'); ftext(hero.x, hero.y - 20, 'УРОВЕНЬ ' + S.lvl + '!', '#ffe08a', 1.1, 1); tone(784, .08, 'square', .04); tone(1175, .12, 'square', .04, 0, .07);
@@ -2269,11 +2298,273 @@ const ASC = [
   { k: 'xp', n: 'Опыт веков', max: 8, c0: 2, d: L => 'опыт мастерства ×' + (1 + .25 * L).toFixed(2) },
   { k: 'world', n: 'Стойкость к мирам', max: 10, c0: 3, d: L => 'урон врагов за 50-й зоной −' + 5 * L + '%' },
 ];
-const ascL = k => ((S.meta.asn || {})[k]) || 0;
+const ascL = k => skyV(k);   // старые уровни вознесения теперь собираются со звёзд Небосвода
 const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(n.k === 'power' ? 1.25 : 1.6, L));
+
+/* ================= НЕБОСВОД — вечное дерево вознесения ================= */
+// 12 созвездий-ветвей, 4 кольца (открываются на 1/3/6/10-м вознесении), ~490 звёзд.
+// Обычные звёзды — бонусы; яркие — новые правила; сверхновые — «или-или»; рисунки созвездий — бонус за все звёзды фигуры.
+const SKY_RING = [0, 120, 270, 430, 600], SKY_NEED = [0, 1, 3, 6, 10];
+const GREEK = 'αβγδεζηθικλμνξοπρστυφχψω';
+// суммарная сила ключа на всём Небосводе (в «старых уровнях» для power/path/souls/cheap/legacy/xp/world)
+const SKY_TOT = { power: 40, path: 3, souls: 10, cheap: 10, legacy: 5, xp: 8, world: 10, hit: 3, hp: 4, aps: .5, ult: 3, boss: 2, gain: 2, rare: 1, trs: 2, sparks: 1, eff: .6, echo: .5, dust: 2, chestc: .3, wdmg: 3 };
+const SKY_KEY = {
+  power: v => 'урон и HP ×' + fmt(Math.pow(10, .5 * v)), path: v => 'старт жизни с ' + (10 * v).toFixed(1) + '-й зоны', souls: v => 'души ×' + (1 + .5 * v).toFixed(2),
+  cheap: v => 'таланты дешевле на ' + (5 * v).toFixed(1) + '%', legacy: v => 'после смерти остаётся ' + (5 * v).toFixed(1) + '% статов', xp: v => 'опыт мастерства ×' + (1 + .25 * v).toFixed(2),
+  world: v => 'урон врагов за 50-й зоной −' + (5 * v).toFixed(1) + '%', hit: v => '+' + pct(v) + ' урона', hp: v => '+' + pct(v) + ' HP', aps: v => '+' + pct(v) + ' скорости атаки',
+  ult: v => '+' + pct(v) + ' урона ульты', boss: v => '+' + pct(v) + ' урона по вожакам', gain: v => '+' + pct(v) + ' прироста статов', rare: v => 'золотые враги +' + pct(v),
+  trs: v => 'сокровища чаще на ' + pct(v), sparks: v => '+' + pct(v) + ' искр', eff: v => '+' + pct(v) + ' ко всем эффектам', echo: v => 'после вознесения остаётся ' + pct(v) + ' дерева талантов',
+  dust: v => '+' + pct(v) + ' пыли', chestc: v => pct(v) + ' шанс сундука с вожака и золотого', wdmg: v => '+' + pct(v) + ' урона за 50-й зоной',
+};
+const SKYB = [
+  { n: 'Мощь', c: '#ff5544', k: [['power', 3], ['hit', 1]], nt: ['sk_first', 'sk_crit'], fig: 'Дракон', sh: 'zig', fb: ['hit', .5] },
+  { n: 'Стойкость', c: '#8fb0d0', k: [['hp', 1], ['world', 1]], nt: ['sk_phx', 'sk_bossregen'], fig: 'Черепаха', sh: 'ring', fb: ['hp', .5] },
+  { n: 'Время', c: '#66ccff', k: [['aps', 1], ['ult', 1]], nt: ['sk_ult2', 'sk_rush'], fig: 'Часы', sh: 'hour', fb: ['aps', .1] },
+  { n: 'Души', c: '#ff44ff', k: [['souls', 2], ['sparks', 1]], nt: ['sk_soulboss', 'sk_harvest'], fig: 'Ворон', sh: 'wing', fb: ['sparks', .15] },
+  { n: 'Удача', c: '#ffd84a', k: [['rare', 1], ['trs', 1]], nt: ['sk_goldchest', 'sk_lucky'], fig: 'Кот', sh: 'cat', fb: ['trs', .5] },
+  { n: 'Класс', c: '#c06bff', k: [['xp', 2], ['hit', 1]], nt: ['sk_mast', 'sk_awake'], fig: 'Маска', sh: 'mask', fb: ['xp', 1] },
+  { n: 'Снаряжение', c: '#ff9a3c', k: [['dust', 1], ['chestc', 1]], nt: ['sk_bosschest', 'sk_pity'], fig: 'Наковальня', sh: 'anvil', fb: ['dust', .5] },
+  { n: 'Миры', c: '#7affb0', k: [['world', 1], ['wdmg', 1]], nt: ['sk_titan', 'sk_wslow'], fig: 'Глобус', sh: 'ring', fb: ['wdmg', 1] },
+  { n: 'Вожаки', c: '#ff2a4a', k: [['boss', 2], ['power', 1]], nt: ['sk_judge', 'sk_weak'], fig: 'Корона', sh: 'crown', fb: ['boss', .5] },
+  { n: 'Эхо', c: '#ccccff', k: [['echo', 1], ['cheap', 1], ['legacy', 1]], nt: ['sk_autotree', 'sk_keepsoul'], fig: 'Колокол', sh: 'bell', fb: ['echo', .1] },
+  { n: 'Порядок', c: '#e0c080', k: [['path', 1], ['gain', 1]], nt: ['sk_perks', 'sk_lvl'], fig: 'Весы', sh: 'scales', fb: ['gain', .5] },
+  { n: 'Звёздное пламя', c: '#fff6a0', k: [['eff', 1], ['power', 1]], nt: ['sk_form', 'sk_spec'], fig: 'Феникс', sh: 'wing', fb: ['eff', .15] },
+];
+const SKY_NT = {
+  sk_first: ['Первый удар', 'первый удар по каждому врагу ×5'], sk_crit: ['Звёздный крит', 'сила крита ×1.5'],
+  sk_phx: ['Звёздное перо', 'раз за жизнь спасает от смерти (вместе с Пером феникса — дважды)'], sk_bossregen: ['Второе дыхание', 'в бою с вожаком +3% HP в секунду'],
+  sk_ult2: ['Эхо ульты', 'ульта бьёт второй раз через миг (60% силы)'], sk_rush: ['Рывок жизни', 'первые 30 секунд жизни атака ×2'],
+  sk_soulboss: ['Пожиратель', 'вожаки дают души ×2'], sk_harvest: ['Жатва', 'каждый 150-й враг — мини-вожак с сундуком'],
+  sk_goldchest: ['Золотая жила', 'золотые враги роняют сундук с шансом 5%'], sk_lucky: ['Под звездой', 'золотые враги ×2 чаще'],
+  sk_mast: ['Наставник', '+5 очков пути каждому классу'], sk_awake: ['Пробуждённый свет', 'пробуждённые классы бьют ×1.5'],
+  sk_bosschest: ['Трофей вожака', 'каждый вожак роняет сундук'], sk_pity: ['Счастливая подкова', 'эпик+ гарантирован каждый 5-й сундук'],
+  sk_titan: ['Охотник на титанов', 'трофеи титанов ×2 сильнее'], sk_wslow: ['Тяжесть миров', 'враги за 50-й зоной на 25% медленнее'],
+  sk_judge: ['Терпение', 'вожак казнит, только если бой займёт больше 60с (а не 40с)'], sk_weak: ['Точный глаз', 'слабое место вожака ×2'],
+  sk_autotree: ['Звёздная память', 'после вознесения дерево талантов само докупается'], sk_keepsoul: ['Сбережение', 'при вознесении остаётся 10% душ'],
+  sk_perks: ['Подготовка', 'каждая жизнь начинается с 2 перками на выбор'], sk_lvl: ['Быстрый рост', 'опыт уровня героя ×1.5'],
+  sk_form: ['Ранний расцвет', 'формы эффектов наступают втрое раньше'], sk_spec: ['Призвание', 'специализация ×2 вместо ×1.5'],
+};
+const SKY_KS = [
+  ['nv_glass', 'Стеклянная пушка', 'урон ×100, но HP ×0.1', 'nv_tank', 'Твердыня', 'HP ×100, но урон ×0.3'],
+  ['nv_noult', 'Без ульты', 'ульты нет, удары ×20', 'nv_ultonly', 'Повелитель ульты', 'ульта раз в 3с, удары ×0.5'],
+  ['nv_loyal', 'Верность', 'класс не меняется после смерти, мастерство ×3', 'nv_wander', 'Странник', 'души ×2'],
+  ['nv_greed', 'Алчность', 'души ×5, враги ×3 крепче', 'nv_ascetic', 'Аскеза', 'души ×0.5, искры ×2'],
+  ['nv_horde', 'Орда', 'врагов ×2, прирост статов ×2', 'nv_duel', 'Дуэль', 'врагов вдвое меньше, они ×4 крепче, прирост ×4'],
+  ['nv_night', 'Вечная ночь', 'в каждой зоне ночь: золотые ×2.5', 'nv_day', 'Вечный день', 'опасности биомов отключены'],
+];
+const SKY_SH = {
+  zig: [[0, 0], [1, -.6], [2, 0], [3, -.6], [4, 0], [5, -.7], [5.6, -1.4], [6.4, -1.2]], ring: [[0, 0], [.9, -.9], [2.1, -1.1], [3.1, -.5], [3.3, .6], [2.4, 1.3], [1.1, 1.2], [.2, .7], 'loop'],
+  hour: [[0, -1.2], [2.4, -1.2], [1.2, 0], [0, 1.2], [2.4, 1.2], [1.2, 0], [1.2, -2], [1.2, 2]], wing: [[0, 0], [1, -1], [2.2, -1.6], [3.4, -1.4], [2.6, -.5], [3.6, .2], [2.4, .6], [1.2, .4]],
+  cat: [[0, 0], [.5, -1.2], [1.2, -.5], [2.2, -.5], [2.9, -1.2], [3.2, 0], [2.4, 1], [.8, 1], 'loop'], mask: [[0, 0], [1.2, -.8], [2.4, -.8], [3.6, 0], [2.8, 1], [1.8, .6], [.8, 1], [1.8, -.1]],
+  anvil: [[0, -1], [3.6, -1], [3, -.2], [2.2, 0], [2.4, 1], [1.2, 1], [1.4, 0], [.6, -.2], 'loop'], crown: [[0, 1], [0, -.8], [.9, .1], [1.8, -1.2], [2.7, .1], [3.6, -.8], [3.6, 1], [1.8, 1], 'loop'],
+  bell: [[1.6, -1.6], [.8, -1], [.4, .2], [0, 1], [1.6, 1.4], [3.2, 1], [2.8, .2], [2.4, -1], 'loop'], scales: [[1.8, -1.6], [1.8, 1.2], [0, -.8], [-.4, .4], [.6, .4], [3.6, -.8], [3.2, .4], [4.2, .4]],
+};
+const SN = [{ id: 0, n: 'Сердце неба', br: -1, ring: 0, k: 'power', v: 0, max: 1, x: 0, y: 0, p: -1, tp: 'root' }];
+(function genSky() {
+  const add = o => { o.id = SN.length; SN.push(o); return o; };
+  SKYB.forEach((B, bi) => {
+    const a0 = bi / SKYB.length * Math.PI * 2 - Math.PI / 2; let gi = 0;
+    const nm = () => GREEK[gi++ % 24] + ' ' + B.n.split(' ')[0];
+    const key = (j) => B.k[j % B.k.length][0];
+    const pt = (r, da) => ({ x: Math.cos(a0 + da) * r, y: Math.sin(a0 + da) * r });
+    let prev = 0;
+    for (let ring = 1; ring <= 4; ring++) {
+      const r0 = SKY_RING[ring - 1] + (ring === 1 ? 40 : 18), r1 = SKY_RING[ring] - 12, mx = [0, 5, 8, 10, 10][ring];
+      const spine = [];
+      for (let i = 0; i < 4; i++) { const r = r0 + (r1 - r0) * i / 3, wob = Math.sin(i * 1.7 + bi) * .03; spine.push(prev = add({ n: nm(), br: bi, ring, k: key(i + ring), v: 1, max: mx, p: prev, ...pt(r, wob), tp: 'star' }).id); }
+      const sprig = (from, side, n) => { let pp = spine[from]; const base = SN[pp], br = Math.hypot(base.x, base.y);
+        for (let j = 1; j <= n; j++) pp = add({ n: nm(), br: bi, ring, k: key(j + side + ring + 1), v: 1, max: mx, p: pp, ...pt(br + j * 10, side * (.07 + j * .045) * (300 / br)), tp: 'star' }).id; return pp; };
+      if (ring === 1) { sprig(1, 1, 2); sprig(2, -1, 2); const e = SN[spine[3]]; add({ n: SKY_NT[B.nt[0]][0], br: bi, ring, k: B.nt[0], v: 1, max: 1, p: spine[3], ...pt(Math.hypot(e.x, e.y) + 4, .09), tp: 'nt' }); }
+      if (ring === 2) { // рисунок созвездия
+        const S0 = SKY_SH[B.sh], pts = S0.filter(q => q !== 'loop'), cx = (r0 + r1) / 2 + 10, sc = 13, ang = a0 + .2;
+        let pp = spine[1]; const figIds = [];
+        pts.forEach(([fx, fy], j) => { const lx = (fx - 1.8) * sc, ly = fy * sc, x = Math.cos(ang) * cx + lx * Math.cos(ang) - ly * Math.sin(ang), y = Math.sin(ang) * cx + lx * Math.sin(ang) + ly * Math.cos(ang);
+          pp = add({ n: B.fig + ' ' + GREEK[j], br: bi, ring, k: key(j), v: 1, max: mx, p: pp, x, y, tp: 'fig', fig: bi }).id; figIds.push(pp); });
+        B.figIds = figIds; B.figLoop = S0.includes('loop'); }
+      if (ring === 3) { sprig(0, 1, 3); sprig(2, -1, 3); const e = SN[spine[3]]; add({ n: SKY_NT[B.nt[1]][0], br: bi, ring, k: B.nt[1], v: 1, max: 1, p: spine[3], ...pt(Math.hypot(e.x, e.y) + 4, -.08), tp: 'nt' }); }
+      if (ring === 4) { sprig(1, 1, 2); sprig(2, -1, 2);
+        if (bi % 2 === 0) { const K = SKY_KS[bi / 2], e = SN[spine[3]], rr = Math.hypot(e.x, e.y) + 30;
+          const a = add({ n: K[1], br: bi, ring, k: K[0], v: 1, max: 1, p: spine[3], ...pt(rr, .09), tp: 'ks', kd: K[2] }), b = add({ n: K[4], br: bi, ring, k: K[3], v: 1, max: 1, p: spine[3], ...pt(rr, -.09), tp: 'ks', kd: K[5] });
+          a.alt = b.id; b.alt = a.id; } }
+    }
+  });
+  // нормировка: сумма по ключу = SKY_TOT
+  const sum = {}; for (const n of SN) if (n.tp === 'star' || n.tp === 'fig') sum[n.k] = (sum[n.k] || 0) + n.max;
+  for (const n of SN) if ((n.tp === 'star' || n.tp === 'fig') && SKY_TOT[n.k]) n.v = SKY_TOT[n.k] / sum[n.k];
+})();
+const SKY_COST0 = [0, 2, 9, 30, 90];
+const skyCostRaw = (n, L) => n.tp === 'root' ? 1 : n.tp === 'nt' ? SKY_COST0[n.ring] * 12 : n.tp === 'ks' ? SKY_COST0[n.ring] * 25 : SKY_COST0[n.ring] * Math.pow(1.3, L);
+// бюджет колец: 1-е ≈ 2–3 вознесения, дальше дороже; всего ≈ 45 000 искр (~20 вознесений)
+const SKY_BUD = [0, 1500, 6500, 13000, 24000];
+const SKY_K = (() => { const t = [0, 0, 0, 0, 0]; for (const n of SN) for (let l = 0; l < n.max; l++) t[n.ring] += skyCostRaw(n, l); return t.map((v, r) => r ? SKY_BUD[r] / v : 1); })();
+const skyCost = (n, L) => Math.max(1, Math.ceil(skyCostRaw(n, L) * SKY_K[n.ring]));
+const SL = id => (S.meta.sky && S.meta.sky[id]) || 0;
+const skyRingOpen = r => (S.meta.asc || 0) >= SKY_NEED[r];
+const skyOpen = n => n.p < 0 || (SL(n.p) > 0 && skyRingOpen(n.ring));
+const skyBlocked = n => n.alt != null && SL(n.alt) > 0;
+const skyCan = n => skyOpen(n) && !skyBlocked(n) && SL(n.id) < n.max && (S.meta.sparks || 0) >= skyCost(n, SL(n.id));
+let SKYV = {}, SKYF = {};
+function calcSky() {
+  SKYV = {}; SKYF = {};
+  for (const n of SN) { const L = SL(n.id); if (!L) continue; if (n.tp === 'star' || n.tp === 'fig') SKYV[n.k] = (SKYV[n.k] || 0) + n.v * L; else if (n.tp !== 'root') SKYF[n.k] = 1; }
+  SKYB.forEach(B => { if (B.figIds && B.figIds.every(id => SL(id) >= SN[id].max)) { SKYV[B.fb[0]] = (SKYV[B.fb[0]] || 0) + B.fb[1]; B.figDone = true; } else B.figDone = false; });
+}
+const skyV = k => SKYV[k] || 0;
+const skyOn = k => !!SKYF[k];
+function skyMods() {
+  D.hit *= 1 + skyV('hit'); D.maxHP *= 1 + skyV('hp'); D.aps = Math.min(14, D.aps * (1 + skyV('aps'))); D.gainMult *= 1 + skyV('gain'); D.rare = Math.min(.7, D.rare * (1 + skyV('rare')) * (skyOn('sk_lucky') ? 2 : 1));
+  if (S.zone > 50) D.hit *= 1 + skyV('wdmg');
+  if (skyOn('sk_crit')) D.critM *= 1.5; if (skyOn('sk_awake') && aw()) D.hit *= 1.5;
+  if (skyOn('nv_glass')) { D.hit *= 100; D.maxHP *= .1; } if (skyOn('nv_tank')) { D.maxHP *= 100; D.hit *= .3; }
+  if (skyOn('nv_noult')) D.hit *= 20; if (skyOn('nv_ultonly')) D.hit *= .5;
+  if (skyOn('nv_horde')) D.gainMult *= 2; if (skyOn('nv_duel')) D.gainMult *= 4;
+}
+const skyHpM = () => (skyOn('nv_greed') ? 3 : 1) * (skyOn('nv_duel') ? 4 : 1);
+const skySoulM = () => (skyOn('nv_greed') ? 5 : 1) * (skyOn('nv_ascetic') ? .5 : 1) * (skyOn('nv_wander') ? 2 : 1);
+const skyCrowdM = () => (skyOn('nv_horde') ? 2 : 1) * (skyOn('nv_duel') ? .5 : 1);
+const ASC_TITLES = ['Смертный', 'Звёздный', 'Сияющий', 'Небесный', 'Лучезарный', 'Звездорождённый', 'Вечный', 'Владыка неба', 'Космический', 'Бесконечный', 'Первозвёздный'];
+const ascTitle = () => ASC_TITLES[Math.min(ASC_TITLES.length - 1, Math.floor(((S.meta.asc || 0) + 1) / 2))];
+const ASC_HALO = ['#ffffff', '#7ad8ff', '#ffd84a', '#ff44ff', '#7affb0', '#ff9a3c', '#c06bff', '#ff5544', '#fff6a0', '#66ccff'];
+// перенос старого магазина искр
+function skyMigrate() {
+  const M = S.meta; if (M.skyMig) return; M.skyMig = 1; if (!M.sky) M.sky = {};
+  let ref = 0; for (const n of ASC) { const L = (M.asn || {})[n.k] || 0; for (let l = 0; l < L; l++) ref += ascCost(n, l); }
+  if (ref > 0) { M.sparks = (M.sparks || 0) + ref; M.asn = {}; setTimeout(() => toast('НЕБОСВОД ОТКРЫТ', 'старое дерево вознесения превратилось в звёзды · возвращено ' + fmt(ref) + ' искр', 4500), 1500); }
+}
+
+/* ---------- экран Небосвода ---------- */
+const scam = { x: 0, y: 0, z: .55 }; let sSel = 0, sW = 0, sH = 0, sDPR = 1, sRaf = 0, sMode = 'map', sFilt = 'buy', sBg = null;
+const sPtr = new Map(); let sMoved = 0, sPinch = 0;
+const SKY_BG = Array.from({ length: 260 }, (_, i) => ({ x: (Math.sin(i * 12.9898) * 43758.5453 % 1) * 1500 - 750, y: (Math.sin(i * 78.233) * 12543.31 % 1) * 1500 - 750, r: (i % 7 === 0) ? 1.6 : .8, t: i * .7 }));
+function openSky() { calcSky(); $('sky').hidden = false; setSMode(sMode); sizeSky(); if (!openSky.fit) { openSky.fit = 1; skyFit(); } renderSInfo(); reqSky(); }
+function skyFit() { let lr = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; scam.x = 0; scam.y = 0; scam.z = Math.min(sW, sH) / (2 * SKY_RING[lr] + 90); reqSky(); }
+function sizeSky() { const v = $('sview'), r = v.getBoundingClientRect(); sDPR = Math.min(2, window.devicePixelRatio || 1); sW = r.width; sH = r.height; const c = $('scv'); c.width = Math.round(sW * sDPR); c.height = Math.round(sH * sDPR); c.style.width = sW + 'px'; c.style.height = sH + 'px'; sBg = null; }
+function reqSky() { if (!sRaf) sRaf = requestAnimationFrame(() => { sRaf = 0; drawSky(); }); }
+const s2x = x => (x - scam.x) * scam.z + sW / 2, s2y = y => (y - scam.y) * scam.z + sH / 2;
+function skyStar(c, x, y, r, col, pts) { c.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = i / (pts * 2) * Math.PI * 2 - Math.PI / 2, rr = i % 2 ? r * .42 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fillStyle = col; c.fill(); }
+function drawSky() {
+  const c = $('scv').getContext('2d'); c.setTransform(sDPR, 0, 0, sDPR, 0, 0);
+  // фон: глубокий космос + млечный путь (кэш на размер экрана)
+  if (!sBg) { sBg = document.createElement('canvas'); sBg.width = Math.max(1, Math.round(sW)); sBg.height = Math.max(1, Math.round(sH)); const b = sBg.getContext('2d');
+    const g = b.createRadialGradient(sW / 2, sH / 2, 0, sW / 2, sH / 2, Math.max(sW, sH) * .8); g.addColorStop(0, '#120a26'); g.addColorStop(1, '#03020a'); b.fillStyle = g; b.fillRect(0, 0, sW, sH);
+    b.globalAlpha = .12; for (let i = 0; i < 40; i++) { const t = i / 40, x = t * sW, y = sH * (.25 + .5 * t) + Math.sin(t * 9) * 20; const gg = b.createRadialGradient(x, y, 0, x, y, 60); gg.addColorStop(0, i % 3 ? '#6a5aa0' : '#a07ac0'); gg.addColorStop(1, 'rgba(0,0,0,0)'); b.fillStyle = gg; b.fillRect(x - 60, y - 60, 120, 120); } b.globalAlpha = 1; }
+  c.drawImage(sBg, 0, 0, sW, sH);
+  const z = scam.z, tm = performance.now() / 1000, far = z < .45;
+  // фоновые звёзды (параллакс)
+  for (const s of SKY_BG) { const x = (s.x - scam.x * .3) * Math.max(.4, z * .6) + sW / 2, y = (s.y - scam.y * .3) * Math.max(.4, z * .6) + sH / 2; if (x < -2 || y < -2 || x > sW + 2 || y > sH + 2) continue; c.globalAlpha = .35 + .3 * Math.sin(tm * 1.3 + s.t); c.fillStyle = '#cfd6ff'; c.fillRect(x, y, s.r, s.r); }
+  c.globalAlpha = 1;
+  // кольца и туман закрытых колец
+  for (let r = 1; r <= 4; r++) { const op = skyRingOpen(r); c.beginPath(); c.arc(s2x(0), s2y(0), SKY_RING[r] * z, 0, Math.PI * 2); c.strokeStyle = op ? 'rgba(160,150,255,.16)' : 'rgba(80,70,120,.25)'; c.setLineDash(op ? [] : [4, 6]); c.lineWidth = 1; c.stroke(); c.setLineDash([]); }
+  { let lr = 0; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; if (lr < 4) { c.save(); c.beginPath(); c.rect(0, 0, sW, sH); c.arc(s2x(0), s2y(0), SKY_RING[lr] * z, 0, Math.PI * 2, true); c.fillStyle = 'rgba(3,2,10,.62)'; c.fill('evenodd'); c.restore();
+    c.font = `${Math.max(8, Math.round(10 * Math.min(1.4, z * 1.6)))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = '#6a6290';
+    const rr = (SKY_RING[lr] + 26) * z; c.fillText('кольцо ' + (lr + 1) + ' откроется на ' + SKY_NEED[lr + 1] + '-м вознесении', s2x(0), s2y(0) - rr); } }
+  // связи
+  c.lineWidth = Math.max(1, 1.4 * z);
+  for (const n of SN) { if (n.p < 0) continue; const p = SN[n.p], lit = SL(n.id) > 0 && SL(p.id) > 0, op = skyRingOpen(n.ring);
+    c.strokeStyle = lit ? SKYB[n.br].c : op ? 'rgba(150,140,200,.22)' : 'rgba(80,70,120,.12)'; c.globalAlpha = lit ? .75 : 1;
+    if (n.tp === 'fig' && SN[n.p].tp === 'fig') continue;
+    c.beginPath(); c.moveTo(s2x(p.x), s2y(p.y)); c.lineTo(s2x(n.x), s2y(n.y)); c.stroke(); }
+  c.globalAlpha = 1;
+  // рисунки созвездий
+  for (const B of SKYB) { if (!B.figIds) continue; const ids = B.figIds.slice(); if (B.figLoop) ids.push(ids[0]);
+    c.strokeStyle = B.figDone ? B.c : 'rgba(200,190,255,.28)'; c.lineWidth = B.figDone ? Math.max(1.5, 2.2 * z) : Math.max(1, z); c.setLineDash(B.figDone ? [] : [3, 4]);
+    if (B.figDone) { c.shadowColor = B.c; c.shadowBlur = 8; }
+    c.beginPath(); ids.forEach((id, i) => { const n = SN[id]; i ? c.lineTo(s2x(n.x), s2y(n.y)) : c.moveTo(s2x(n.x), s2y(n.y)); }); c.stroke(); c.setLineDash([]); c.shadowBlur = 0;
+    if (!far) { const m = SN[B.figIds[3]]; c.font = `${Math.round(Math.max(7, 9 * z * 1.4))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = B.figDone ? B.c : 'rgba(200,190,255,.4)'; c.fillText(B.fig, s2x(m.x), s2y(m.y) - 22 * z - 6); } }
+  // названия ветвей
+  c.textAlign = 'center';
+  let lrO = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lrO = r;
+  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[lrO] + 22; c.font = `${Math.round(Math.max(7, 9 * Math.min(1.3, z * 1.6)))}px "Press Start 2P", monospace`; c.fillStyle = B.c; c.globalAlpha = .9; c.fillText(B.n, s2x(Math.cos(a) * r), s2y(Math.sin(a) * r)); });
+  c.globalAlpha = 1;
+  // звёзды
+  for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -20 || y < -20 || x > sW + 20 || y > sH + 20) continue;
+    const L = SL(n.id), op = skyRingOpen(n.ring), can = skyCan(n), open = skyOpen(n) && !skyBlocked(n), col = n.br < 0 ? '#ffffff' : SKYB[n.br].c;
+    const base = n.tp === 'root' ? 9 : n.tp === 'ks' ? 8 : n.tp === 'nt' ? 7 : n.tp === 'fig' ? 4.5 : 3.6, r = Math.max(far ? 1.2 : 2, base * Math.min(1.6, z * 1.5));
+    if (!op) { c.fillStyle = 'rgba(90,80,130,.5)'; c.fillRect(x - 1, y - 1, 2, 2); continue; }
+    if (far) { c.fillStyle = L ? col : can ? '#ffffff' : 'rgba(170,160,220,.45)'; c.fillRect(x - r / 2, y - r / 2, r, r); continue; }
+    if (L) { c.shadowColor = col; c.shadowBlur = n.tp === 'star' || n.tp === 'fig' ? 6 : 14; }
+    const tw = .8 + .2 * Math.sin(tm * 3 + n.id);
+    if (n.tp === 'ks') { c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillStyle = L ? col : skyBlocked(n) ? '#2a2236' : '#1a1428'; c.fillRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.strokeStyle = L ? '#ffffff' : can ? '#ffffff' : 'rgba(200,190,255,.5)'; c.lineWidth = 1.5; c.strokeRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.restore(); }
+    else skyStar(c, x, y, r * (L ? tw : 1), L ? col : open ? 'rgba(220,215,255,.55)' : 'rgba(140,130,190,.35)', n.tp === 'nt' || n.tp === 'root' ? 8 : 4);
+    c.shadowBlur = 0;
+    if (n.tp === 'nt' && !L) { c.beginPath(); c.arc(x, y, r + 3, 0, Math.PI * 2); c.strokeStyle = can ? '#ffffff' : 'rgba(200,190,255,.35)'; c.lineWidth = 1; c.stroke(); }
+    if (can) { c.beginPath(); c.arc(x, y, r + 2 + 1.5 * Math.sin(tm * 5), 0, Math.PI * 2); c.strokeStyle = 'rgba(92,255,138,.9)'; c.lineWidth = 1.2; c.stroke(); }
+    if (n.id === sSel) { c.beginPath(); c.arc(x, y, r + 6, 0, Math.PI * 2); c.strokeStyle = '#ffe08a'; c.lineWidth = 2; c.stroke(); }
+    if (L && n.max > 1 && z > 1.6) { c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#fff'; c.fillText(L, x, y + r + 9); } }
+}
+function skyNodeDesc(n, L) {
+  if (n.tp === 'root') return 'начало Небосвода';
+  if (n.tp === 'nt') return SKY_NT[n.k][1]; if (n.tp === 'ks') return n.kd;
+  return SKY_KEY[n.k] ? SKY_KEY[n.k](n.v * Math.max(1, L)) : n.k;
+}
+function renderSInfo() {
+  const n = SN[sSel], L = SL(n.id), B = n.br >= 0 ? SKYB[n.br] : null, op = skyRingOpen(n.ring);
+  const tp = { root: 'Сердце', star: 'звезда', fig: 'звезда созвездия «' + (B && B.fig) + '»', nt: 'ЯРКАЯ ЗВЕЗДА · новое правило', ks: 'СВЕРХНОВАЯ · выбери одну из двух' }[n.tp];
+  const why = !op ? 'кольцо откроется на ' + SKY_NEED[n.ring] + '-м вознесении' : skyBlocked(n) ? 'выбрана «' + SN[n.alt].n + '»' : !skyOpen(n) ? 'сначала соседняя звезда' : L >= n.max ? 'зажжена полностью' : (S.meta.sparks || 0) < skyCost(n, L) ? 'не хватает искр' : '';
+  $('sinfo').innerHTML = `<h3 style="color:${B ? B.c : '#fff'}">${n.n}</h3><div class="k">${B ? B.n + ' · ' : ''}${tp}${n.max > 1 ? ' · ур. ' + L + '/' + n.max : ''}</div>` +
+    `<div>${L ? 'Сейчас: ' + skyNodeDesc(n, L) : skyNodeDesc(n, 1)}</div>${L && L < n.max ? `<div class="k">След.: ${skyNodeDesc(n, L + 1)}</div>` : ''}` +
+    (n.tp === 'fig' && B ? `<div class="k">Все ${B.figIds.length} звёзд «${B.fig}» на максимуме: ${SKY_KEY[B.fb[0]](B.fb[1])}${B.figDone ? ' ✓' : ''}</div>` : '') +
+    `<div class="row2"><button class="btn" id="sb1"${skyCan(n) ? '' : ' disabled'}>${L >= n.max ? 'ГОТОВО' : '+1 · ' + fmt(skyCost(n, L)) + ' искр'}</button><button class="btn" id="sbm"${skyCan(n) && n.max > 1 ? '' : ' disabled'}>МАКС</button></div>` + (why ? `<div class="k">${why}</div>` : '');
+  $('sinfo').querySelector('#sb1').onclick = () => skyBuy(n, false); $('sinfo').querySelector('#sbm').onclick = () => skyBuy(n, true);
+  $('ssparks').textContent = fmt(S.meta.sparks || 0);
+}
+function skyBuy(n, all) {
+  let k = 0; while (skyCan(n) && k++ < 99) { S.meta.sparks -= skyCost(n, SL(n.id)); if (!S.meta.sky) S.meta.sky = {}; S.meta.sky[n.id] = SL(n.id) + 1; if (!all) break; }
+  if (!k) return; const B = n.br >= 0 ? SKYB[n.br] : null, was = B && B.figDone; calcSky(); D.dirty = true; recalc(); save();
+  tone(880, .06, 'triangle', .04); tone(1320, .1, 'triangle', .04, 0, .06);
+  if (B && B.figDone && !was) toast('СОЗВЕЗДИЕ «' + B.fig.toUpperCase() + '» ЗАЖЖЕНО!', SKY_KEY[B.fb[0]](B.fb[1]), 3000);
+  if (n.tp === 'nt' || n.tp === 'ks') toast(n.n.toUpperCase(), skyNodeDesc(n, 1), 2600);
+  renderSInfo(); if (sMode === 'list') renderSList(); else reqSky(); renderSBar(); renderAsc.h = ''; renderAsc();
+}
+function skyBest() {
+  let n = 0; while (n < 400) { let pick = null; for (const nd of SN) if (skyCan(nd) && nd.tp !== 'ks' && (!pick || skyCost(nd, SL(nd.id)) < skyCost(pick, SL(pick.id)))) pick = nd; if (!pick) break;
+    S.meta.sparks -= skyCost(pick, SL(pick.id)); S.meta.sky[pick.id] = SL(pick.id) + 1; n++; }
+  calcSky(); D.dirty = true; recalc(); save(); toast(n ? 'ЗАЖЖЕНО ЗВЁЗД: ' + n : 'Пока не на что тратить искры', n ? 'сверхновые «или-или» выбирай сам' : ''); renderSInfo(); renderSBar(); if (sMode === 'list') renderSList(); else reqSky();
+}
+function setSMode(m) { sMode = m; $('sview').hidden = m !== 'map'; $('sinfo').hidden = m !== 'map'; $('slist2').hidden = m !== 'list'; renderSBar(); if (m === 'list') renderSList(); else { sizeSky(); reqSky(); } }
+function renderSBar() {
+  const F = [['buy', 'Можно зажечь (' + SN.filter(skyCan).length + ')'], ['nt', 'Яркие'], ['ks', 'Сверхновые'], ['fig', 'Созвездия'], ['all', 'Все']];
+  let h = `<div class="trow"><button class="tch${sMode === 'map' ? ' on' : ''}" data-sm="map">КАРТА</button><button class="tch${sMode === 'list' ? ' on' : ''}" data-sm="list">СПИСОК</button><span class="tsp"></span><button class="tch" data-sbest="1">★ ЛУЧШЕЕ ЗА ИСКРЫ</button></div>`;
+  if (sMode === 'list') h += `<div class="trow">${F.map(([k, n]) => `<button class="tch${sFilt === k ? ' on' : ''}" data-sf="${k}">${n}</button>`).join('')}</div>`;
+  h += `<div class="shint">${ascTitle()} · вознесений: ${S.meta.asc || 0} · зажжено ${SN.filter(n => SL(n.id)).length}/${SN.length} · созвездий ${SKYB.filter(B => B.figDone).length}/12</div>`;
+  $('sbar').innerHTML = h;
+}
+function renderSList() {
+  let L = SN.filter(n => n.tp !== 'root' && skyRingOpen(n.ring));
+  if (sFilt === 'buy') L = L.filter(skyCan); if (sFilt === 'nt') L = L.filter(n => n.tp === 'nt'); if (sFilt === 'ks') L = L.filter(n => n.tp === 'ks'); if (sFilt === 'fig') L = L.filter(n => n.tp === 'fig');
+  L.sort((a, b) => (skyCan(b) - skyCan(a)) || (a.ring - b.ring) || (a.br - b.br) || (a.id - b.id));
+  $('slist2').innerHTML = (L.length ? L.slice(0, 120).map(n => { const B = SKYB[n.br], l = SL(n.id), can = skyCan(n);
+    return `<div class="tcard${can ? ' can' : ''}${l ? ' own' : ''}${skyBlocked(n) ? ' blk' : ''}" style="--nc:${B.c}"><div class="tcm"><b>${n.n}</b><em style="color:${B.c}">${B.n}</em>${n.tp === 'nt' ? '<em>яркая</em>' : n.tp === 'ks' ? '<em>сверхновая</em>' : n.tp === 'fig' ? '<em>' + B.fig + '</em>' : ''}` +
+      `<small>${l ? 'сейчас: ' + skyNodeDesc(n, l) : skyNodeDesc(n, 1)}${l && l < n.max ? '<br>след.: ' + skyNodeDesc(n, l + 1) : ''}</small></div>` +
+      `<div class="tcb"><span>${l}/${n.max}</span>${can ? `<button class="btn" data-s1="${n.id}">+1 · ${fmt(skyCost(n, l))}</button>${n.max > 1 ? `<button class="btn" data-smx="${n.id}">МАКС</button>` : ''}` : ''}<button class="tgo" data-sgo="${n.id}">на карте</button></div></div>`; }).join('')
+    : '<div class="tlh">Здесь пусто. Искры даёт вознесение.</div>');
+}
+function skyPick(px, py) { let best = -1, bd = 1e9; for (const n of SN) { const d = Math.hypot(s2x(n.x) - px, s2y(n.y) - py); if (d < bd) { bd = d; best = n.id; } } return bd < Math.max(18, 10 * scam.z) ? best : -1; }
+function skyInit() {
+  const v = $('sview');
+  v.addEventListener('pointerdown', e => { v.setPointerCapture(e.pointerId); sPtr.set(e.pointerId, { x: e.clientX, y: e.clientY }); sMoved = 0; if (sPtr.size === 2) { const [a, b] = [...sPtr.values()]; sPinch = Math.hypot(a.x - b.x, a.y - b.y); } });
+  v.addEventListener('pointermove', e => { const p = sPtr.get(e.pointerId); if (!p) return;
+    if (sPtr.size === 1) { const dx = e.clientX - p.x, dy = e.clientY - p.y; sMoved += Math.abs(dx) + Math.abs(dy); scam.x -= dx / scam.z; scam.y -= dy / scam.z; }
+    sPtr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (sPtr.size === 2) { const [a, b] = [...sPtr.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (sPinch) scam.z = clamp(scam.z * d / sPinch, .15, 3); sPinch = d; sMoved += 10; }
+    reqSky(); });
+  const up = e => { const was = sPtr.size; sPtr.delete(e.pointerId); if (was === 1 && sMoved < 8) { const r = v.getBoundingClientRect(), id = skyPick(e.clientX - r.left, e.clientY - r.top); if (id >= 0) { sSel = id; renderSInfo(); reqSky(); } } if (sPtr.size < 2) sPinch = 0; };
+  v.addEventListener('pointerup', up); v.addEventListener('pointercancel', up);
+  v.addEventListener('wheel', e => { e.preventDefault(); scam.z = clamp(scam.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), .15, 3); reqSky(); }, { passive: false });
+  $('szi').onclick = () => { scam.z = Math.min(3, scam.z * 1.4); reqSky(); }; $('szo').onclick = () => { scam.z = Math.max(.15, scam.z / 1.4); reqSky(); };
+  $('sfit').onclick = skyFit;
+  $('sclose').onclick = () => { $('sky').hidden = true; renderAsc.h = ''; renderAsc(); };
+  $('sbar').onclick = e => { const t = e.target.closest('button'); if (!t) return; if (t.dataset.sm) setSMode(t.dataset.sm); if (t.dataset.sf) { sFilt = t.dataset.sf; renderSBar(); renderSList(); } if (t.dataset.sbest) skyBest(); };
+  $('slist2').onclick = e => { const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.s1) skyBuy(SN[+t.dataset.s1], false); if (t.dataset.smx) skyBuy(SN[+t.dataset.smx], true);
+    if (t.dataset.sgo) { sSel = +t.dataset.sgo; const n = SN[sSel]; scam.x = n.x; scam.y = n.y; scam.z = Math.max(scam.z, 1.2); setSMode('map'); renderSInfo(); } };
+  setInterval(() => { if (!$('sky').hidden && sMode === 'map' && !sPtr.size && scam.z >= .45) reqSky(); }, 90);
+  window.addEventListener('resize', () => { if (!$('sky').hidden) { sizeSky(); reqSky(); } });
+}
+
 function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
 const wallZ = () => (S.meta.asc ? 100 : 50);
-const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); return Math.floor(Math.sqrt(cyc / 50) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 10)); };
+const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); return Math.floor(Math.sqrt(cyc / 50) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 10) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };
 // Страж стены: огромный, почти неуязвим без звёзд созвездий
 const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
 const guardDef = () => 1 - guardMul();
@@ -2299,10 +2590,11 @@ function ascend() {
   M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0;   // в новом цикле Стража нужно победить снова
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
-  const keepN = {}; for (const nd of TN) if (nd.auto && TL(nd.id)) keepN[nd.id] = TL(nd.id);
-  M.nodes = keepN; M.souls = 0;
+  const keepN = {}, ef = Math.min(.5, skyV('echo')); for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
+  M.nodes = keepN; M.souls = skyOn('sk_keepsoul') ? Math.floor(M.souls * .1) : 0;
   S.runSouls = 0; S.meta = M;
-  rebirth(true); ascScene(g);
+  rebirth(true); if (skyOn('sk_autotree')) bestBuy(true); ascScene(g);
+  setTimeout(() => { if (!EV) openSky(); else setTimeout(openSky, 2500); }, 3500);
 }
 function ascScene(g) {
   EV = { t: 0, k: cls(), form: formOf(cls()), old: formOf(cls()), label: 'ВОЗНЕСЕНИЕ #' + S.meta.asc, name: '+' + fmt(g) + ' искр', shown: false };
@@ -2318,8 +2610,9 @@ function renderAsc() {
   h += `<div class="gsec" style="margin-top:12px">ВОЗНЕСЕНИЕ <span>Искры: <b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b> · вознесений: ${M.asc || 0}</span></div>` +
     `<div class="dim" style="margin-bottom:6px">${can ? 'Стена пала. Вознесение сожжёт дерево талантов и души, но даст Искры. Классы, вещи и созвездия остаются. Стена уходит на 100-ю зону.' : `Победи <b style="color:#ffd84a">Стража стены</b> на ${wallZ()}-й зоне. Его защита ${(guardDef() * 100).toFixed(1)}% — звёзды созвездий ломают её, с 8★ она пропадает.`}</div>` +
     `<button class="btn big" id="ascb" style="background:#1e5a8a"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ (+' + fmt(g) + ' искр)'}</button>`;
-  if ((M.asc || 0) > 0 || M.sparks) h += `<div class="gsec" style="margin-top:12px">ДЕРЕВО ВОЗНЕСЕНИЯ</div>` + ASC.map(n => { const L = ascL(n.k), c = ascCost(n, L), mx = L >= n.max;
-    return `<div class="tcard${!mx && (M.sparks || 0) >= c ? ' can' : ''}" style="--nc:#7ad8ff"><div class="tcm"><b>${n.n}</b><small>${L ? 'сейчас: ' + n.d(L) : n.d(1)}${L && !mx ? '<br>след.: ' + n.d(L + 1) : ''}</small></div><div class="tcb"><span>${L}/${n.max}</span>${mx ? '<small>максимум</small>' : `<button class="btn" data-asc="${n.k}" style="background:#1e5a8a"${(M.sparks || 0) >= c ? '' : ' disabled'}>+1 · ${fmt(c)}✦</button>`}</div></div>`; }).join('');
+  if ((M.asc || 0) > 0 || M.sparks) { const cn = SN.filter(skyCan).length;
+    h += `<div class="gsec" style="margin-top:12px">НЕБОСВОД <span>${ascTitle()} · созвездий ${SKYB.filter(B => B.figDone).length}/12</span></div>` +
+      `<button class="btn big" id="skyb" style="background:#2a1a5a">✦ ОТКРЫТЬ НЕБОСВОД${cn ? ' · можно зажечь: ' + cn : ''}</button>`; }
   if (h !== renderAsc.h) { renderAsc.h = h; el.innerHTML = h; }
 }
 
@@ -2545,7 +2838,7 @@ function recalc() {
   const T = new Float64Array(NE);
   for (const s of stats) T[s.e] += s.v * s.w;
   const z = zs(), r = i => T[i] / z;
-  const R = {}; EFF.forEach((e, i) => { const j = ATTR_OF[e.k]; R[e.k] = r(i) * (1 + ta('e_' + e.k)) * (j != null ? attrMul(j) : 1) * (1 + .05 * thrL(e.k)) * (trHas('star') ? 1.05 : 1); });
+  const R = {}; EFF.forEach((e, i) => { const j = ATTR_OF[e.k]; R[e.k] = r(i) * (1 + ta('e_' + e.k)) * (j != null ? attrMul(j) : 1) * (1 + .05 * thrL(e.k)) * (trHas('star') ? 1.05 : 1) * (1 + skyV('eff')); });
   thrCheck(R);
   updSyn(R);
   updForms(R);
@@ -2553,7 +2846,7 @@ function recalc() {
   D.top = ord.slice(0, 3);
   const lead = ord[0], r1 = R[EFF[lead].k], r2 = R[EFF[ord[1]].k];
   D.spec = r1 >= 10 && (r1 >= 1.5 * r2 || (D.spec === lead && r1 >= 1.2 * r2)) ? lead : -1;
-  if (D.spec >= 0) R[EFF[D.spec].k] *= 1.5;
+  if (D.spec >= 0) R[EFF[D.spec].k] *= skyOn('sk_spec') ? 2 : 1.5;
   D.T = T; D.R = R;
   D.maxHP = (50 + 8 * T[1]) * (1 + ta('hp')) * (1 + ta('x_tank')) * (on('x_glass') ? .5 : 1);
   let aps = 1.2 * (1 + 0.7 * lg(R.aspd)) * (1 + .15 * sy(4)) * (1 + ta('x_haste')) * (on('x_tank') ? .75 : 1);
@@ -2603,7 +2896,7 @@ function recalc() {
   D.beam = sat(R.beam || 0, 50); D.clone = sat(R.clone || 0, 50); D.hole = sat(R.hole || 0, 50); D.mirror = sat(R.mirror || 0, 50); D.crows = sat(R.crows || 0, 50); D.ritual = sat(R.ritual || 0, 50);
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods();
+  ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods(); skyMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -2861,9 +3154,9 @@ function spawnMob(boss) {
   { const a = rnd() * 6.2832, rr = Math.hypot(W, H) * .55 + 4 + rnd() * 12; x = clamp(hero.x + Math.cos(a) * rr, 2, AW - 2); y = clamp(hero.y + Math.sin(a) * rr, 7, AH - 1); }
   const rare = !boss && (S.forceRare > 0 ? (S.forceRare--, true) : rnd() < D.rare * (S.zmod === 'night' ? 2.5 : S.zmod === 'gold' ? 3 : 1));
   const af = rollAff(boss, ev && ev.type === 'elite' && !boss ? 2 + Math.floor(rnd() * 2) : 0), na = popc(af);
-  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1);
+  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1) * skyHpM();
   mobs.push({ t, x, y, h: b.h[k % b.h.length] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
-    sp: 14 * M.s * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
+    sp: 14 * M.s * (S.zone > 50 && skyOn('sk_wslow') ? .75 : 1) * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
   { const nm = mobs[mobs.length - 1];
     if (!boss && S.zmod === 'giant') { nm.hp *= 2; nm.max *= 2; nm.sz *= 1.3; }
@@ -2910,12 +3203,12 @@ function splat(m) {
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
   g.globalAlpha = 1;
 }
-function crowd() { return Math.min(70, crowd0()); }   // не больше 70 врагов на поле
+function crowd() { return Math.min(70, Math.round(crowd0() * skyCrowdM())); }   // не больше 70 врагов на поле
 function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
 let deathT = 0;
 function heroDeath() {
-  if (deathT <= 0 && trHas('phoenix') && !S.phx) { S.phx = 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
+  if (deathT <= 0 && (S.phx || 0) < (trHas('phoenix') ? 1 : 0) + (skyOn('sk_phx') ? 1 : 0)) { S.phx = (S.phx || 0) + 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
   hero.hp = 0; if (deathT > 0) return;
   deathT = 1.4; slowT = 1.2; flashT = .3; shake = 12; hero.iframe = 3;
   for (let i = 0; i < 4; i++) burst(hero.x, hero.y - 4, ['#ff3355', '#ffffff', '#ff44ff', CL().c][i], 14, 60);
@@ -2931,7 +3224,7 @@ function bossJudge(bm, dt) {
   if (bm.jhp === undefined) bm.jhp = bm.hp;
   if (bm.jt >= 6) {
     const lost = (bm.jhp - bm.hp) / bm.max, rate = lost / bm.jt, left = bm.hp / bm.max;
-    if (rate <= 0 || left / rate > 40) { bm.exec = 1.6; tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 20, t: 1.6, max: 1.6, dmg: 0, act: 'exec', nolbl: true });
+    if (rate <= 0 || left / rate > (skyOn('sk_judge') ? 60 : 40)) { bm.exec = 1.6; tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 20, t: 1.6, max: 1.6, dmg: 0, act: 'exec', nolbl: true });
       toast('КАЗНЬ ВОЖАКА', 'урона не хватает — вожак добивает героя', 1800); [196, 147, 98].forEach((f, i) => tone(f, .3, 'sawtooth', .06, 0, i * .25)); }
     else { bm.jt = 0; bm.jhp = bm.hp; }
   }
@@ -2965,7 +3258,8 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.shd > 0) { if (crit) { m.shd = 0; burst(m.x, m.y - 4, '#7ad8ff', 12, 40); fxLabel('Щит пробит', m.x, m.y - 14, '#7ad8ff'); } else { const a = Math.min(m.shd, dmg); m.shd -= a; dmg -= a; if (dmg <= 0) { if (rnd() < .2) burst(m.x, m.y - 4, '#7ad8ff', 2, 15); return; } } }
   if (m.guard) dmg *= guardMul();   // Страж стены: защиту ломают звёзды созвездий
   if (m.pmk > time) dmg *= 1 + (m.pmkV || 0);   // метка пути класса
-  if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)) * (trHas('skull') ? 1.3 : 1); else if (m.na) dmg *= 1 + ta('elite');
+  if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)) * (trHas('skull') ? 1.3 : 1) * (1 + skyV('boss'));
+  if (!m.hit1) { m.hit1 = 1; if (skyOn('sk_first')) dmg *= 5; } else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   if (hero.stopT > 0 && m.stopD !== undefined && m.frz > 0) { m.stopD += dmg; m.fl = .07; burst(m.x, m.y - 3, '#88aaff', 1, 10); return; }   // остановка времени: урон копится
@@ -3023,7 +3317,7 @@ function killMob(m) {
   addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20), m);
   if (m.boss) { S.siege = 0; giveChest(isLegend(S.zone) ? 'r' : 'c', isLegend(S.zone) ? 'легенда' : 'вожак'); }
   if (ev && ev.type === 'treasure' && !m.boss && rnd() < .04) giveChest('c', 'сокровищница');
-  if (D.dust > .01 && rnd() < D.dust) { G().dust += Math.max(1, Math.round(1 + S.zone / 10)); fxLabel('Пыль', m.x, m.y - 12, '#c9b07a'); }
+  if (D.dust > .01 && rnd() < D.dust) { G().dust += Math.max(1, Math.round((1 + S.zone / 10) * (1 + skyV('dust')))); fxLabel('Пыль', m.x, m.y - 12, '#c9b07a'); }
   if (D.leech > .002) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.leech);
   if (D.rageK > .005) { hero.rage = Math.min(5, (hero.rage || 0) + 1); hero.rageT = 2; }
   if (D.det > .01 && !m.boss && rnd() < D.det) { burst(m.x, m.y - 3, '#ff7744', 12, 45); ring(m.x, m.y - 3, 14, '#ff7744'); fxLabel('Детонация', m.x, m.y - 12, '#ff7744'); hitAround(m.x, m.y, 14, D.hit * 1.5, '#ff7744', m); }
@@ -3053,7 +3347,7 @@ function nextZone() {
   const oldB = biomeOf(S.zone).name;
   S.zone++; S.zk = 0; S.wallW = 0; S.prepW = 0;
   { const keys = Object.keys(ZMODS); S.zmod = S.zone >= 5 && !isLegend(S.zone) && rnd() < .4 ? keys[Math.floor(rnd() * keys.length)] : null; }
-  rollZTask(); if (zTask()) S.zmod = null;
+  rollZTask(); if (zTask()) S.zmod = null; else if (skyOn('nv_night')) S.zmod = 'night';
   S.meta.best = Math.max(S.meta.best, S.zone);
   if (S.zone >= 2) tip('souls', 'Души забега', 'За врагов и вожаков копятся души (✦ вверху справа). Когда герой падёт, он переродится в новом случайном классе, а души останутся навсегда — трать их в дереве талантов.');
   const b = biomeOf(S.zone);
@@ -3502,10 +3796,11 @@ function clsUlt(dmg) {
 }
 
 function fireUlt() {
-  if (ultCd > 0 || US) return;
-  ultCd = ULT_CD - (trHas('glass') ? 2 : 0); ult = 0;
-  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
-  ultStart(dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')));   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
+  if (ultCd > 0 || US || skyOn('nv_noult')) return;
+  ultCd = skyOn('nv_ultonly') ? 3 : ULT_CD - (trHas('glass') ? 2 : 0); ult = 0;
+  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM() * (1 + skyV('ult'));
+  const fd = dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')); ultStart(fd);
+  if (skyOn('sk_ult2')) later(2.2, () => { if (deathT <= 0) clsUlt(fd * .6); });   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
 function onTap(e) {
   audio();
@@ -3520,7 +3815,7 @@ function onTap(e) {
   // слабое место вожака
   const b = mobs.find(m => m.ws && !m.dead && Math.hypot(m.x + m.ws.ox - x, m.y + m.ws.oy - y) < 6);
   if (b) {
-    const d = D.hit * 12 * (1 + ta('weak')) * (b.boss ? 1 : 1 + ksL(5, 0)) * (1 + D.crit * (D.critM - 1)) * comboM() * condDmg(b);
+    const d = D.hit * 12 * (1 + ta('weak')) * (skyOn('sk_weak') ? 2 : 1) * (b.boss ? 1 : 1 + ksL(5, 0)) * (1 + D.crit * (D.critM - 1)) * comboM() * condDmg(b);
     hitMob(b, d, true, false, '#ffee66');
     ftext(b.x, b.y - 22, 'СЛАБОЕ МЕСТО! ' + fmt(d), '#ffee66', 1.3, 1);
     burst(b.x + b.ws.ox, b.y + b.ws.oy, '#ffee66', 18, 50); flashT = Math.max(flashT, .06); slowT = Math.max(slowT, .12); shake = Math.max(shake, 5);
@@ -3668,6 +3963,8 @@ function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt *
 /* ---------- новые эффекты с видимой механикой ---------- */
 let clones = [], holes = [], crows = [];
 function nfxTick(dt) {
+  S.lt = (S.lt || 0) + dt; if (skyOn('nv_noult')) ult = 0;
+  if (bossAlive && skyOn('sk_bossregen')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * dt);
   const live3 = () => mobs.filter(m => !m.dead && !m.obj);
   if (D.beam > .02) { PT.beam = (PT.beam ?? 3) - dt; if (PT.beam <= 0) { const t = live3().filter(m => Math.hypot(m.x - hero.x, m.y - hero.y) < 70).sort((a, b) => b.hp - a.hp)[0];
     if (t) { PT.beam = 3; bolt3(hero.x, hero.y - 5, t.x, t.y - 4, '#ff3366', 1); hitMob(t, D.hit * (3 + 12 * D.beam), true, true, '#ff3366'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (.02 + .08 * D.beam)); burst(hero.x, hero.y - 5, '#ff3366', 4, 15); fxLabel('Кровавый луч', hero.x, hero.y - 18, '#ff3366'); } } }
@@ -3714,7 +4011,7 @@ const TREAS = [
 ];
 const trHas = k => !!(S.meta && S.meta.tr && S.meta.tr[k]);
 const trCount = () => TREAS.filter(t => trHas(t.k)).length;
-function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2); if (rnd() < ch) trDrop(m.x, m.y); }
+function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2) * (1 + skyV('trs')); if (rnd() < ch) trDrop(m.x, m.y); }
 function trDrop(x, y) {
   const M = S.meta; if (!M.tr) M.tr = {}; const t = TREAS[Math.floor(rnd() * TREAS.length)];
   if (M.tr[t.k]) { addSouls(bossSouls(S.zone) * 2); feed('Дубль сокровища «' + t.n + '» → души', t.c); return; }
@@ -3853,7 +4150,7 @@ function update(dt) {
       if (D.blink > .01 && td > 40 && time > (hero.blinkT || 0) && rnd() < D.blink * dt) { hero.blinkT = time + 1.5; for (let i = 0; i < 4; i++) ghosts.push({ x: hero.x + (tgt.x - hero.x) * i / 4, y: hero.y + (tgt.y - hero.y) * i / 4, l: .25, face: hero.face }); const bd = Math.max(1, Math.hypot(tgt.x - hero.x, tgt.y - hero.y)); dashTo(tgt.x - (tgt.x - hero.x) / bd * 6, tgt.y - (tgt.y - hero.y) / bd * 6); fxLabel('Скачок', hero.x, hero.y - 16, '#66ffff'); tone(1300, .06, 'triangle', .03, 600, 0, 'blink', .2); }
       const mv0 = D.move * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (hero.slowT > 0 ? .6 : 1), mv = mvCap(mv0); hero.x += dx / d * Math.min(mv * dt, d); hero.y += dy / d * Math.min(mv * dt, d);
     } else { const cx = AW / 2 - hero.x, cy = AH / 2 - hero.y, cd = Math.hypot(cx, cy); if (cd > 30) { hero.x += cx / cd * 22 * dt; hero.y += cy / cd * 22 * dt; } }
-    if (td <= reachH && hero.cd <= 0) { hero.cd = 1 / (D.aps * (1 + (hero.rage || 0) * (D.rageK || 0)) * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
+    if (td <= reachH && hero.cd <= 0) { hero.cd = 1 / (D.aps * (1 + (hero.rage || 0) * (D.rageK || 0)) * (combo >= 50 ? 1 + .3 * ksL(3, 1) : 1) * (skyOn('sk_rush') && (S.lt || 0) < 30 ? 2 : 1)) * (hero.slowT > 0 ? 1.6 : 1); heroAttack(tgt); }
   } else {
     const dx = AW / 2 - hero.x, dy = AH / 2 - hero.y, d = Math.hypot(dx, dy);
     if (d > 8) { hero.x += dx / d * mvCap(D.move) * .5 * dt; hero.y += dy / d * mvCap(D.move) * .5 * dt; }
@@ -4200,6 +4497,7 @@ function drawHeroTop(rk) {
   if (busy) { ctx.globalAlpha = .5; ctx.fillStyle = '#0a0612'; for (let dy = -7; dy <= 7; dy++) { const w = Math.round(8 * Math.sqrt(1 - (dy / 7.5) ** 2)); ctx.fillRect(Math.round(hero.x) - w, Math.round(hero.y - 5) + dy, w * 2, 1); }
     const hol = silhouette('#000'); ctx.globalAlpha = .9; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y0 + dy, hero.face); }
   ctx.globalAlpha = 1; flip(spr, x, y0, hero.face);
+  if (S.meta.asc) { const hc = ASC_HALO[(S.meta.asc - 1) % ASC_HALO.length], hy = y0 - (spr.oy || 0) - 2; ctx.globalAlpha = .7 + .2 * Math.sin(time * 3); for (let i = -2; i <= 2; i++) pix(hero.x + i, hy - (Math.abs(i) === 2 ? 0 : 1), hc); ctx.globalAlpha = 1; }
   if (busy) { const top = y0 - (spr.oy || 0) - 4 + (Math.sin(time * 4) > 0 ? 0 : -1), cx = Math.round(hero.x), c = CL().c;
     const t2 = top - 2; ctx.fillStyle = '#000'; ctx.fillRect(cx - 4, t2 - 1, 9, 2); ctx.fillRect(cx - 3, t2 + 1, 7, 1); ctx.fillRect(cx - 2, t2 + 2, 5, 1); ctx.fillRect(cx - 1, t2 + 3, 3, 1); ctx.fillRect(cx, t2 + 4, 1, 1);
     ctx.fillStyle = c; ctx.fillRect(cx - 3, t2, 7, 1); ctx.fillRect(cx - 2, t2 + 1, 5, 1); ctx.fillRect(cx - 1, t2 + 2, 3, 1); ctx.fillStyle = '#fff'; ctx.fillRect(cx, t2 + 3, 1, 1); }
@@ -4529,7 +4827,7 @@ $('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) r
 let endConfirm = 0;
 $('endb').onclick = () => { if (deathT > 0) return; if (performance.now() > endConfirm) { endConfirm = performance.now() + 3000; $('endb').textContent = 'ТОЧНО? +' + fmt(S.runSouls || 0) + ' ДУШ — ТАПНИ ЕЩЁ'; setTimeout(() => { $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; }, 3000); return; }
   endConfirm = 0; $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; showSheet('fight'); heroDeath(); };
-$('ascbox').onclick = e => { const b = e.target.closest('[data-asc]'); if (b) { ascBuy(b.dataset.asc); return; }
+$('ascbox').onclick = e => { if (e.target.id === 'skyb') { openSky(); return; } const b = e.target.closest('[data-asc]'); if (b) { ascBuy(b.dataset.asc); return; }
   if (e.target.id === 'ascb' && S.meta.guard) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
@@ -4620,12 +4918,13 @@ function rebirth(fromAsc) {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
+  if (skyOn('sk_perks')) S.pend = 2;
   rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
-  { const sz = Math.min(10 * ascL('path') + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
+  { const sz = Math.min(Math.floor(10 * ascL('path') + 1e-6) + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
   if (M.autoTal) bestBuy(true);
   calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
@@ -4752,7 +5051,7 @@ function giveChest(t, why) {
 function rollRar(t) {
   const g = G(), p = CH[t].p, tot = p.reduce((a, b) => a + b, 0); let x = rnd() * tot, r = 0;
   for (let i = 0; i < p.length; i++) { if (x < p[i]) { r = i; break; } x -= p[i]; }
-  g.pity++; if (g.pity >= 10) r = Math.max(r, 3); if (r >= 3) g.pity = 0;
+  g.pity++; if (g.pity >= (skyOn('sk_pity') ? 5 : 10)) r = Math.max(r, 3); if (r >= 3) g.pity = 0;
   return r;
 }
 const ilvlNow = () => Math.max(S.zone, Math.floor(S.meta.best * .5));
@@ -5384,6 +5683,7 @@ if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
 ntMigrate();
 if (!S.meta.pathMig) { S.meta.pathMig = 1; let had = 0; for (const k in (S.meta.cl || {})) { if (S.meta.cl[k].ct && Object.keys(S.meta.cl[k].ct).length) had = 1; S.meta.cl[k].ct = {}; } if (had) setTimeout(() => toast('ПУТЬ КЛАССА', 'ветки классов переделаны · очки мастерства возвращены', 4000), 2500); }
+skyMigrate(); calcSky(); skyInit();
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
