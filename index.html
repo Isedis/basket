@@ -26,7 +26,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 .r{display:flex;justify-content:space-between;align-items:center;gap:6px;white-space:nowrap}
 .r+.r,.bar+.r,.r+.bar{margin-top:4px}
 #zname{color:var(--zone);overflow:hidden;text-overflow:ellipsis}
+#croll .ll{color:#e9e4ff;margin-bottom:8px;padding:5px;background:#1b1629;border:1px solid var(--line)}
+#croll .ll b{font-weight:normal;color:#ffe08a}
+#croll .cbtns{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+#croll .cbtns .btn{min-height:40px;font-size:9px}
 #rank{color:#bdf;overflow:hidden;text-overflow:ellipsis}
+#hud .hr1{align-items:baseline;gap:6px}
+#hud .zt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bdf}
+#hud .zt b{font-weight:normal;color:#ffe08a}
+#kills{color:#ff44ff;white-space:nowrap}
+#hpbar{height:13px} #hpbar>b{line-height:13px;font-size:8px}
+.nb .dot{position:absolute;top:5px;right:12px;width:8px;height:8px;border-radius:50%;background:#ff4f6d;border:1px solid #000;display:none}
+.nb.has .dot{display:block}
 .bar{position:relative;height:10px;background:#221d33;border:1px solid #000;image-rendering:pixelated}
 .bar>i{position:absolute;left:0;top:0;bottom:0;background:var(--zone);width:0}
 .bar>b{position:absolute;inset:0;text-align:center;font-weight:normal;font-size:7px;line-height:10px;color:#fff;text-shadow:1px 1px 0 #000}
@@ -39,7 +50,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #zmodl{overflow:hidden;text-overflow:ellipsis;min-width:0}
 #game{position:relative;flex:1 1 auto;min-height:150px;overflow:hidden;background:#000;touch-action:none}
 #game canvas{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
-#toast{position:absolute;left:0;right:0;top:44px;text-align:center;pointer-events:none;z-index:3}
+#toast{position:absolute;left:6px;right:84px;top:30px;text-align:center;pointer-events:none;z-index:3}
 .tst{pointer-events:auto;cursor:pointer;display:inline-block;margin:0 auto;padding:5px 9px;background:rgba(10,8,18,.9);border:2px solid #f2c94c;
   color:#fff;font-size:9px;animation:pop var(--dur,2.4s) steps(12) forwards;max-width:94%;white-space:normal;line-height:1.6}
 .tst.tip{border-color:#4fd6e8;color:#bff4ff}
@@ -50,11 +61,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #panel.small{flex-basis:92px}
 #panel.big{flex-basis:72%}
 #sum{cursor:pointer}
-#sum .more{color:var(--zone)}
+#sum .more{color:var(--zone);grid-column:1/-1;text-align:center}
+#sum>span{grid-column:span 3}
+#sum .tl{display:flex;flex-direction:column;align-items:center;grid-column:span 4;background:#1b1629;border:1px solid var(--line);border-radius:4px;padding:5px 2px}
+#sum .tl small{font-size:7px;color:var(--dim)}
+#sum .tl b{font-size:13px;color:#fff;margin-top:3px;white-space:nowrap}
+#sum .up{font-style:normal;color:#5cff8a;font-size:9px}
+#smore{display:block;width:calc(100% - 16px);margin:6px 8px 10px;text-align:center}
 #pbig,#updb{margin-right:4px}
 #updb.new{background:#2f8a4f;color:#fff;animation:glow 1s steps(2) infinite}
 #phead{padding:6px 8px 4px;flex:none}
-#sum{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
+#sum{display:grid;grid-template-columns:repeat(12,1fr);gap:2px 6px;padding:0 8px 5px;font-size:7px;color:var(--dim);flex:none}
 #sum span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sum span b{color:var(--text);font-weight:normal}
 #slist,#ylist,#dlist{overflow-y:auto;flex:1;min-height:0;padding:0 4px 8px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
@@ -188,7 +205,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #obtns{display:flex;gap:8px}
 #obtns .btn{font-size:9px;padding:9px 12px;background:#6a4a1a}
 #spdb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));top:30px;z-index:4;font-size:10px;padding:5px 8px;background:#2b2540}
-#perkb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));bottom:26px;z-index:5;font-size:10px;padding:10px 12px;min-height:42px;background:#6a4a1a;color:#ffe08a;box-shadow:0 0 0 2px #ffe08a;animation:glow 1.2s steps(2) infinite}
+#perkb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));top:78px;z-index:5;font-size:9px;padding:8px 10px;min-height:40px;background:#6a4a1a;color:#ffe08a;box-shadow:0 0 0 2px #ffe08a}
 #perkbox{position:absolute;left:8px;right:8px;bottom:20px;z-index:6;background:rgba(10,8,18,.96);border:2px solid #ffe08a;border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px}
 .pkh{font-size:9px;color:#ffe08a;text-align:center}
 .pkc{font:inherit;text-align:left;background:#1e1830;border:1px solid #3a3260;border-radius:5px;padding:8px;color:#e9e4ff;cursor:pointer;position:relative}
@@ -326,6 +343,14 @@ html,body{font-size:10px}
 #tinfo{font-size:9px}
 #tinfo .row2 .btn{min-height:48px;font-size:11px}
 #ghead,#thead{font-size:10px}
+/* единый стиль: крупнее мелкий текст, кнопки под палец */
+.btn{min-height:40px}
+#clsc{font-size:9px}
+#thint{font-size:8px}
+#cthi{font-size:8px} .ctc b{font-size:8px} .ctc small{font-size:7px} .ctl small{font-size:7px}
+.tcard small{font-size:8px} .tch{min-height:34px;font-size:9px}
+#sum .tl small{font-size:8px}
+.tst small{font-size:9px}
 #ghead .btn,#thead .btn{min-height:40px}
 .syn{font-size:10px;padding:8px 4px}
 .syn .sd{font-size:8px}
@@ -337,10 +362,10 @@ html,body{font-size:10px}
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r"><span id="zname">Луг</span><span id="znum">Зона 1</span></div>
+    <div class="r hr1"><span class="zt"><b id="znum">Зона 1</b> <span id="zname">Луг</span> <span id="zmodl"></span></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0</span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
-    <div class="r"><span id="rank">Новобранец</span><span id="zmodl"></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
+    <span id="rank" hidden></span>
   </div>
   <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><button class="btn" id="perkb" hidden>★ ПЕРК</button><div id="perkbox" hidden></div><div id="toast"></div></div>
   <div id="panel" class="sheet">
@@ -353,6 +378,7 @@ html,body{font-size:10px}
     <div id="dsrc"><div class="dbar"></div><div class="dleg"></div></div>
     <div id="info" hidden></div>
     <div id="slist"></div>
+    <button class="btn" id="smore" hidden></button>
     <div id="ylist" hidden></div>
     <div id="dlist" hidden>
       <div class="r"><span>Души: <b id="dsouls" style="color:#ff44ff;font-weight:normal">0</b></span><span>Перерождений: <b id="dreb" style="font-weight:normal">0</b></span></div>
@@ -387,10 +413,10 @@ html,body{font-size:10px}
   <nav id="nav">
     <button class="nb on" id="nFight"><i>⚔</i><span>Бой</span></button>
     <button class="nb" id="nStats"><i>≡</i><span>Статы</span></button>
-    <button class="nb" id="treeb"><i>★</i><span>Таланты</span></button>
-    <button class="nb" id="nCls"><i>☗</i><span>Класс</span></button>
+    <button class="nb" id="treeb"><i>★</i><span>Таланты</span><b class="dot"></b></button>
+    <button class="nb" id="nCls"><i>☗</i><span>Класс</span><b class="dot"></b></button>
     <button class="nb" id="gearb"><i>▣</i><span>Вещи</span><b class="badge" id="gbadge" hidden></b></button>
-    <button class="nb" id="nSouls"><i>✦</i><span>Души</span></button>
+    <button class="nb" id="nSouls"><i>✦</i><span>Души</span><b class="dot"></b></button>
     <button class="nb" id="nSet"><i>⚙</i><span>Меню</span></button>
   </nav>
 </div>
@@ -417,7 +443,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113061822';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113062418';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2642,7 +2668,7 @@ function tip(key, title, text) {
 }
 // лента событий в левом нижнем углу: прирост, эволюции, формы
 let feedArr = [], gainFeedT = 0;
-function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 5) feedArr.shift(); }
+function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
 function ftext(x, y, s, c, size = 1, life = .9) {
   if (texts.length > 45) texts.shift();
   texts.push({ x, y, s, c, size, life, t: 0, vx: (rnd() - .5) * 6 });
@@ -3666,7 +3692,7 @@ function update(dt) {
   comboPop = Math.max(0, comboPop - dt);
   if (ultCd > 0) { ultCd -= dt; if (ultCd <= 0 && ult >= .999) { ult = 1; ultReadyT = 0; tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); } }
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
-  for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 4);
+  for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 3);
   if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20 || (S.meta.autoUlt && bossAlive || S.meta.autoUlt && ultReadyT > 2)) fireUlt(); }
   if (S.meta.autoPath && (autoPathSpend.t = (autoPathSpend.t || 0) + dt) > 2) { autoPathSpend.t = 0; if (pPts(cls()) > 0) autoPathSpend(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
@@ -3852,7 +3878,7 @@ function render() {
     const y0 = (H - (ult >= 1 ? 14 : 7)) * k;
     feedArr.forEach((f, i) => {
       const yy = y0 - (feedArr.length - 1 - i) * fs3 * 1.5;
-      fctx.globalAlpha = clamp(1 - (f.t - 3) / 1, 0, 1);
+      fctx.globalAlpha = .8 * clamp(1 - (f.t - 2) / 1, 0, 1);
       fctx.strokeText(f.s, 3 * k, yy); fctx.fillStyle = f.c; fctx.fillText(f.s, 3 * k, yy);
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
@@ -4063,19 +4089,19 @@ function updateUI() {
   if (time > dsT) { dsT = time + 1; renderDS(); }
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
-  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : curWorld() ? '◆ ' + { heat: 'жар', fly: 'небо', shield: 'щиты', phase: 'тени', grav: 'разломы' }[curWorld().rule] : ''; $('zmodl').style.color = zm() ? zm().c : curWorld() ? curWorld().c : ''; $('znum').textContent = 'Зона ' + S.zone;
+  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : curWorld() ? '◆ ' + { heat: 'жар', fly: 'небо', shield: 'щиты', phase: 'тени', grav: 'разломы' }[curWorld().rule] : ''; $('zmodl').style.color = zm() ? zm().c : curWorld() ? curWorld().c : ''; $('znum').textContent = 'Зона ' + S.zone + ' ·';
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
   else if (S.zk >= need) { zbarI.style.width = '100%'; zbarI.style.background = '#ff9a3c'; zbarB.textContent = 'ВОЖАК ИДЁТ!'; }
   else { zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = '#7a5cff'; zbarB.textContent = S.zk + ' / ' + need; }
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
-  hpB.textContent = 'HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
+  hpB.textContent = 'Ур.' + (S.lvl || 1) + ' · HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
   $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + rankName(heroRank());
   { const pb = $('perkb'); pb.hidden = !S.pend || S.meta.autoPerk; pb.textContent = '★ ПЕРК' + (S.pend > 1 ? ' ×' + S.pend : ''); }
-  $('kills').textContent = S.runSouls ? fmt(S.runSouls) + ' душ' : fmt(S.kills) + ' уб.';
+  $('kills').textContent = fmt(S.runSouls || 0) + ' душ';
   const ex = $('ex');
-  if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = 'НАГРАДА ×' + exMult().toFixed(2); } else ex.style.display = 'none';
+  if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = '×' + exMult().toFixed(2); } else ex.style.display = 'none';
   // статы
   $('scount').textContent = stats.length;
   if (synNew.length) {
@@ -4087,10 +4113,10 @@ function updateUI() {
   if (tab === 'D') renderSouls();
   $('dcount').textContent = fmt(S.meta.souls) + (S.runSouls ? ' +' + fmt(S.runSouls) : '');
   const canBuy = TN.some(nd => tOpen(nd) && TL(nd.id) < nMax(nd) && S.meta.souls >= tCost(nd, TL(nd.id)));
-  $('tabD').classList.toggle('glow', tab !== 'D' && (S.zone >= 30 || canBuy));
-  $('treeb').style.color = canBuy ? '#ff44ff' : '';
-  { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; $('gearb').classList.toggle('glow', n > 0); }
-  $('nSouls').classList.toggle('glow', $('tabD').classList.contains('glow'));
+  $('treeb').classList.toggle('has', canBuy && $('tree').hidden);
+  $('nCls').classList.toggle('has', pPts(cls()) > 0 && $('ctree').hidden);
+  $('nSouls').classList.toggle('has', !!S.meta.guard && tab !== 'D');
+  { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; }
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
   $('snext').textContent = 'новый стат через ' + fmt(nk - S.kills) + ' уб.';
   ubarI.style.width = clamp((S.kills - pk) / (nk - pk) * 100, 0, 100) + '%';
@@ -4103,6 +4129,11 @@ function updateUI() {
     if (fl) gfl[s.e] = true; gcnt[s.e] = (gcnt[s.e] || 0) + 1;
   }
   const fav = biomeOf(S.zone).fav;
+  { const act = groups.filter(g => g && gcnt[g.e]), ord = act.slice().sort((a, b) => D.T[b.e] - D.T[a.e]), top = new Set(ord.slice(0, 6));
+    const hideN = S.allStats ? 0 : act.length - top.size, lockN = groups.filter(g => g && !gcnt[g.e]).length;
+    for (const g of groups) if (g) { const hid = !S.allStats && !top.has(g); if (g.el.hidden !== hid) g.el.hidden = hid; }
+    const sm = $('smore'); sm.hidden = tab !== 'S' || (hideN + lockN === 0 && !S.allStats);
+    sm.textContent = S.allStats ? '▴ только главные' : '▾ остальные статы: ' + hideN + (lockN ? ' · ' + lockN + ' закрыто' : ''); }
   for (const g of groups) if (g) {
     const e = g.e;
     g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
@@ -4131,11 +4162,18 @@ function updateUI() {
      ['Шаг', pct(D.trail || 0), D.trail], ['Сферы', D.orbs || 0, D.orbs], ['Эхо', pct(D.echo || 0), D.echo], ['Метка', pct(D.mark || 0), D.mark],
      ['Орда', '+' + (D.horde || 0), D.horde], ['Скачок', pct(D.blink || 0), D.blink], ['Клад', pct(D.dust || 0), D.dust], ['Землетр', pct(D.quake || 0), D.quake]]
       .map(([n, v, on]) => `<span${on > .001 || on === true ? '' : ' style="opacity:.4"'}>${n} <b>${v}</b></span>`).join('')).split('</span>').filter(Boolean).map(x => x + '</span>');
-  const sh = S.sumFull ? cells.join('') + '<span class="more">▴ меньше</span>' : cells.slice(0, 3).join('') + '<span class="more">▾ ещё ' + (cells.length - 3) + '</span>';
+  const dps = D.hit * D.aps * (1 + D.crit * (D.critM - 1)), U = updateUI, tnow = performance.now();
+  if (!U.pk) U.pk = { d: dps, h: D.maxHP, k: S.kps, td: 0, th: 0, tk: 0 };
+  for (const [key, v, tk] of [['d', dps, 'td'], ['h', D.maxHP, 'th'], ['k', S.kps, 'tk']]) { if (v > U.pk[key] * 1.001) U.pk[tk] = tnow + 2500; U.pk[key] = v; }
+  const up = t => tnow < U.pk[t] ? ' <i class="up">▲</i>' : '';
+  const tiles = `<div class="tl"><small>УРОН/С</small><b>${fmt(dps)}${up('td')}</b></div><div class="tl"><small>ЗДОРОВЬЕ</small><b>${fmt(D.maxHP)}${up('th')}</b></div><div class="tl"><small>УБИЙСТВ/С</small><b>${S.kps.toFixed(1)}${up('tk')}</b></div>`;
+  const sh = tiles + (S.sumFull ? cells.join('') + '<span class="more">▴ свернуть</span>' : '<span class="more">▾ все характеристики (' + cells.length + ')</span>');
   if (sh !== updateUI.sh) { updateUI.sh = sh; $('sum').innerHTML = sh; }
   renderCls();
 }
-$('sum').onclick = () => { S.sumFull = !S.sumFull; updateUI(); setTimeout(resize, 50); };
+$('sum').onclick = () => { S.sumFull = !S.sumFull; $('dsrc').hidden = !S.sumFull; updateUI(); setTimeout(resize, 50); };
+$('dsrc').hidden = !S.sumFull;
+$('smore').onclick = () => { S.allStats = !S.allStats; updateUI(); };
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'Эффекты: ' + (S.fxLow ? 'МИНИМУМ' : 'ВСЕ'); }
 $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
@@ -4240,10 +4278,14 @@ function clsReveal() {
     if (n < 18) { rk = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; $('crn').innerHTML = `<span style="color:${CLASSES[rk].c}">${CLASSES[rk].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
     clearInterval(iv); rk = k; runCard($('crc'), 'show', () => k);
     $('crn').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}</span>`;
-    $('crs').innerHTML = `${C.d}<br><br><span style="color:${C.c}">Стиль боя: ${CSTY[k][sty()][0]}</span><br>${CSTY[k][sty()][1]}<br><br><span style="color:${C.c}">Ульта «${ULTS[k][0]}»</span><br>${ULTS[k][1]}<br><br>` +
-      `мастерство ${clsLv()}${tr ? ' · облик: ' + tr[2] : ''}${awake() ? '<br><span style="color:' + C.c + '">★ ПРОБУЖДЁН: ' + AWK[k][0] + '</span>' : ''}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>усиливается ветвью «${BRANCHES[C.br].n}»<span class="tap">тап — в бой</span>`;
+    const LL = S.meta.lastLife, canT = TN.some(nd => tOpen(nd) && TL(nd.id) < nMax(nd) && S.meta.souls >= tCost(nd, TL(nd.id)));
+    $('crs').innerHTML = (LL ? `<div class="ll">ПРОШЛАЯ ЖИЗНЬ: зона <b>${LL.z}</b>${LL.rec ? ' <b style="color:#5cff8a">рекорд!</b>' : ''} · <b style="color:#ff44ff">+${fmt(LL.s)} душ</b></div>` : '') +
+      `${C.d}<br><br><span style="color:${C.c}">Стиль: ${CSTY[k][sty()][0]}</span> · <span style="color:${C.c}">Ульта «${ULTS[k][0]}»</span><br>` +
+      `<div class="cbtns">${canT && !S.meta.autoTal ? `<button class="btn" id="crT" style="background:#5a2a7a">ПОТРАТИТЬ ДУШИ (${fmt(S.meta.souls)})</button>` : ''}<button class="btn" id="crG" style="background:#1f5a34">В БОЙ ▶</button></div>`;
+    if ($('crT')) $('crT').onclick = e => { e.stopPropagation(); el.hidden = true; $('treeb').click(); };
+    $('crG').onclick = e => { e.stopPropagation(); el.hidden = true; };
     [523, 659, 784, 1047].forEach((f, i) => tone(f, .15, 'triangle', .05, 0, i * .07));
-    setTimeout(() => { el.hidden = true; }, 6000);
+    clearTimeout(clsReveal.to); clsReveal.to = setTimeout(() => { el.hidden = true; }, 9000);
   }, 70);
 }
 let autoT = 0;
@@ -4285,6 +4327,7 @@ function renderSouls() {
 }
 function rebirth(fromAsc) {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
+  M.lastLife = { z: S.zone, s: g, k: S.kills, c: S.cls, rec: S.zone > M.best };
   M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone);
   const keepF = Math.min(.5, .03 * ksL(7, 1) + .05 * ascL('legacy')), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
@@ -4608,7 +4651,7 @@ function renderHint() {
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
 /* ---------- дерево: режим списка, фильтры, наборы ---------- */
-let tMode = 'map', tFilt = 'buy', tBr = -1;
+let tMode = 'list', tFilt = 'rec', tBr = -1;
 const nodeType = nd => nd.id === 0 ? 'КОРЕНЬ' : nd.auto ? 'АВТОМАТИКА' : nd.k.startsWith('ks') ? 'КЛЮЧЕВОЙ' : nd.nt ? 'ОСОБЫЙ' : nd.alt != null ? 'ВЫБОР' : '';
 const nodeDesc = (nd, l) => { const ks = nd.k.startsWith('ks'), bm = nd.br >= 0 && TB[nd.br] && !ks && !nd.nt ? TB[nd.br].bm : 1; return TK[nd.k][2](nd.v * l * bm); };
 const icCacheT = {};
@@ -4620,7 +4663,7 @@ function nodeIconURL(nd, col) {
 }
 function setTMode(m) { tMode = m; S.meta.tMode = m; $('thint').hidden = m !== 'map'; $('tview').hidden = m !== 'map'; $('tinfo').hidden = m !== 'map'; $('tlist').hidden = m !== 'list'; renderTBar(); if (m === 'list') renderTList(); else { sizeTree(); drawTree(); } }
 function renderTBar() {
-  const F = [['buy', 'Можно купить'], ['rec', 'Совет'], ['special', 'Особые'], ['sets', 'Наборы'], ['all', 'Все']];
+  const F = [['rec', '★ Что качать'], ['buy', 'Доступно'], ['special', 'Особые'], ['sets', 'Наборы'], ['all', 'Все']];
   let h = `<div class="trow"><button class="tch${tMode === 'map' ? ' on' : ''}" data-m="map">КАРТА</button><button class="tch${tMode === 'list' ? ' on' : ''}" data-m="list">СПИСОК</button><span class="tsp"></span><button class="tch" data-best="1">★ ЛУЧШЕЕ ЗА ДУШИ</button></div>`;
   if (tMode === 'list') {
     h += `<div class="trow">${F.map(([k, n]) => `<button class="tch${tFilt === k ? ' on' : ''}" data-f="${k}">${n}${k === 'buy' ? ' (' + TN.filter(canBuy).length + ')' : ''}</button>`).join('')}</div>`;
@@ -4639,12 +4682,14 @@ function renderTList() {
   renderTBar();
   if (tFilt === 'sets') { $('tlist').innerHTML = `<div class="tlh">Наборы: узлы одной темы из любых ветвей. Набрал порог — тема усиливается, на 2-м пороге появляется механика и аура героя.</div>` + setsHTML(); return; }
   calcRec();
-  let L = TN.filter(nd => nd.id !== 0 && (tBr < 0 || nd.br === tBr));
+  $('tsouls').textContent = fmt(S.meta.souls);
+  let L = TN.filter(nd => (nd.id !== 0 || canBuy(nd)) && (tBr < 0 || nd.br === tBr || nd.id === 0));
   if (tFilt === 'buy') L = L.filter(canBuy);
-  if (tFilt === 'rec') L = L.filter(nd => tRec.has(nd.id) || (canBuy(nd) && (nd.nt || nd.k.startsWith('ks') || nd.alt != null)));
+  if (tFilt === 'rec') L = L.filter(nd => tRec.has(nd.id) || canBuy(nd));
   if (tFilt === 'special') L = L.filter(nd => nd.nt || nd.k.startsWith('ks') || nd.alt != null || nd.auto);
-  L.sort((a, b) => (canBuy(b) - canBuy(a)) || (a.br - b.br) || (a.d - b.d) || (a.id - b.id));
-  const cards = L.slice(0, 120).map(nd => {
+  if (tFilt === 'rec') L.sort((a, b) => (canBuy(b) - canBuy(a)) || (tRec.has(b.id) - tRec.has(a.id)) || (tCost(a, TL(a.id)) - tCost(b, TL(b.id))));
+  else L.sort((a, b) => (canBuy(b) - canBuy(a)) || (a.br - b.br) || (a.d - b.d) || (a.id - b.id));
+  const cards = L.slice(0, tFilt === 'rec' ? 30 : 120).map(nd => {
     const l = TL(nd.id), mx = nMax(nd), col = nodeCol(nd), buy = canBuy(nd), tp = nodeType(nd), tag = tagOf(nd), blocked = nodeBlocked(nd), open = tOpen(nd);
     const why = blocked ? 'выбран «' + TN[nd.alt].n + '»' : !open ? 'сначала «' + TN[nd.p].n + '»' : l >= mx ? 'максимум' : S.meta.souls < tCost(nd, l) ? 'не хватает душ' : '';
     return `<div class="tcard${buy ? ' can' : ''}${l ? ' own' : ''}${blocked ? ' blk' : ''}" style="--nc:${col}">` +
@@ -4653,7 +4698,7 @@ function renderTList() {
       `<small>${l ? 'сейчас: ' + nodeDesc(nd, l) : nodeDesc(nd, 1)}${l && l < mx ? '<br>след.: ' + nodeDesc(nd, l + 1) : ''}${nd.alt != null && !blocked ? '<br>или «' + TN[nd.alt].n + '»' : ''}</small></div>` +
       `<div class="tcb"><span>${l}/${mx}</span>${buy ? `<button class="btn" data-b1="${nd.id}">+1 · ${fmt(tCost(nd, l))}</button><button class="btn" data-bm="${nd.id}">МАКС</button>` : `<small>${why}</small>`}<button class="tgo" data-go="${nd.id}">на карте</button></div></div>`;
   }).join('');
-  $('tlist').innerHTML = (L.length ? cards : '<div class="tlh">Здесь пусто. ' + (tFilt === 'buy' ? 'Пока не на что тратить души — переродись и возвращайся.' : '') + '</div>');
+  $('tlist').innerHTML = (tFilt === 'rec' ? `<div class="tlh">Сверху — лучшее для твоего героя сейчас.</div>` : '') + (L.length ? cards : '<div class="tlh">Здесь пусто. ' + (tFilt !== 'all' ? 'Пока не на что тратить души — переродись и возвращайся.' : '') + '</div>');
 }
 $('tbar').onclick = e => {
   const t = e.target.closest('button'); if (!t) return;
