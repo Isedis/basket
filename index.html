@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113234041';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113235035';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1879,7 +1879,7 @@ function renderCT() {
   const tabs = `<div class="trow" style="margin:8px 0"><button class="tch${ctTab === 'tree' ? ' on' : ''}" data-ct="tree">ВЕТКА${pts ? ' · +' + pts : ''}</button><button class="tch${ctTab === 'rel' ? ' on' : ''}" data-ct="rel">РЕЛИКВИЯ${relPending(k) ? ' · +' + relPending(k) : ''}</button><button class="tch${ctTab === 'leg' ? ' on' : ''}" data-ct="leg">НАСЛЕДИЕ</button><button class="tch${ctTab === 'all' ? ' on' : ''}" data-ct="all">КОЛЛЕКЦИЯ ${Object.keys(S.meta.seen || {}).length}/16</button></div>`;
   let h = tabs;
   if (ctTab === 'tree') {
-    h += `<div class="ctsum">Ветка-символ класса: 3 ступени (+4-я после Вознесения), ромбы — сигнатурные узлы · уровень мастерства = 1 очко · вложено ${pSpent(k)} / ${pTotal()}${cur ? '' : ' · работает, когда играешь этим классом'}</div><canvas id="ptc" style="width:100%;height:${PTH}px;display:block;border-radius:6px"></canvas><div id="pinfo" class="pinfo"></div>`;
+    h += `<div class="ctsum">Ветка класса: 3 ступени (+4-я после Вознесения) · ромбы — сигнатурные узлы, малые кружки — боковые ветви · уровень мастерства = 1 очко · вложено ${pSpent(k)} / ${pTotal()}${cur ? '' : ' · работает, когда играешь этим классом'}</div><canvas id="ptc" style="width:100%;height:${PTH}px;display:block;border-radius:6px"></canvas><div id="pinfo" class="pinfo"></div>`;
   } else if (ctTab === 'rel') h += relHTML(k);
   else if (ctTab === 'leg') h += legHTML();
   else {
@@ -1981,10 +1981,11 @@ const PFX = {   // описание эффекта по уровню L и пар
   slow: L => `враги рядом замедлены и получают +${5 * L}% урона`, volley: (L, p) => `каждый ${p}-й удар — залп из ${2 + L} снарядов`, fury: L => `+${6 * L}% скорости атаки`,
   crit: L => `+${4 * L}% крита и +${10 * L}% силы крита`, tough: L => `+${10 * L}% HP и +${3 * L}% брони`, revive: L => `раз за жизнь встаёт с ${30 * L}% HP`,
   ultc: L => `ульта копится на ${15 * L}% быстрее`,
-  sig0: L => `«${CLASSES[ckey()].st[0][0]}» сильнее на ${8 * L}%`, sig1: L => `«${CLASSES[ckey()].st[1][0]}» сильнее на ${8 * L}%`, sigU: L => `урон ульты +${25 * L}%`, sigA: L => `+${8 * L}% урона и HP этим классом`, double: L => `шанс ${5 * L}% ударить дважды`, giant: L => `+${12 * L}% урона`,
+  sig0: L => `«${CLASSES[ckey()].st[0][0]}» сильнее на ${8 * L}%`, sig1: L => `«${CLASSES[ckey()].st[1][0]}» сильнее на ${8 * L}%`, sigU: L => `урон ульты +${25 * L}%`, sigA: L => `+${8 * L}% урона и HP этим классом`,
+  mn_dmg: L => `+${4 * L}% урона`, mn_hp: L => `+${5 * L}% HP`, mn_aps: L => `+${2 * L}% скорости атаки`, mn_crit: L => `+${L}% крита`, mn_ult: L => `+${6 * L}% урона ульты`, mn_cq: L => `статы класса +${3 * L}%`, double: L => `шанс ${5 * L}% ударить дважды`, giant: L => `+${12 * L}% урона`,
 };
 const PICON = { nova: 'star', chain: 'bolt', bounce: 'swap', orbit: 'eye', trail: 'flame', pulse: 'spike', sky: 'bolt', summon: 'skull', boom: 'flame', leech: 'drop', shield: 'shield', exec: 'sword',
-  mark: 'eye', slow: 'clock', volley: 'sword', fury: 'wing', crit: 'eye', tough: 'heart', revive: 'heart', ultc: 'star', double: 'fist', giant: 'fist', sig0: 'star', sig1: 'star', sigU: 'bolt', sigA: 'fist' };
+  mark: 'eye', slow: 'clock', volley: 'sword', fury: 'wing', crit: 'eye', tough: 'heart', revive: 'heart', ultc: 'star', double: 'fist', giant: 'fist', sig0: 'star', sig1: 'star', sigU: 'bolt', sigA: 'fist', mn_dmg: 'sword', mn_hp: 'heart', mn_aps: 'wing', mn_crit: 'eye', mn_ult: 'star', mn_cq: 'fist' };
 const PIDS = ['A', 'B', 'X', 'Y'];
 const P_MAX = 3, P_TOTAL = 27;
 const pL = (k, t, id) => { const c = cm(k); return (c.cp && c.cp[t + id]) || 0; };
@@ -2008,12 +2009,12 @@ const CAP4 = {
   chrono: ['Петля веков', 'каждые 12с время стоит 2с, потом удар ×10 по всем'], rune: ['Мировая печать', 'каждые 7с руна под каждым врагом (×6)'],
   necro: ['Армия тьмы', 'каждые 8с 6 скелетов и луч тьмы по всем (×5)'], reap: ['Конец всего', 'каждые 6с коса во весь экран (×10)'],
 };
-const pMax = (t, id) => t === 4 && id === 'V' ? 1 : P_MAX;
+const pMax = (t, id) => t === 4 && id === 'V' ? 1 : id[0] === 'M' ? 2 : P_MAX;
 function sigNode(k, t, id) { const C = CLASSES[k], s0 = C.st[0][0], s1 = C.st[1][0];
   if (t === 1) return id === 'S' ? [s0, 'sig0', 0] : [s1, 'sig1', 0]; if (t === 2) return id === 'S' ? ['Мастер: ' + s0, 'sig0', 0] : ['Мастер: ' + s1, 'sig1', 0];
   if (t === 3) return id === 'S' ? ['Ульта «' + ULTS[k][0] + '»', 'sigU', 0] : ['Суть: ' + C.n, 'sigA', 0]; return id === 'S' ? ['Звезда: ' + s0, 'sig0', 0] : ['Звёздная ульта', 'sigU', 0]; }
-function pNode(k, t, id) { if (id === 'S' || id === 'T') return sigNode(k, t, id); if (t < 4) return PATH[k][t - 1][PIDS.indexOf(id)]; if (id === 'V') return [CAP4[k][0], 'cap4', 0]; return PATH4[id]; }
-const pTotal = () => S.meta.asc ? 76 : 45;
+function pNode(k, t, id) { if (id[0] === 'M') { const i = +id.slice(1), ty = MTY[i]; return [MNAME[ty] + ' ' + roman(t) + (i < 5 ? '·' + (i + 1) : '·' + (i - 4)), ty, 0]; } if (id === 'S' || id === 'T') return sigNode(k, t, id); if (t < 4) return PATH[k][t - 1][PIDS.indexOf(id)]; if (id === 'V') return [CAP4[k][0], 'cap4', 0]; return PATH4[id]; }
+const pTotal = () => S.meta.asc ? 156 : 105;
 function cap4Tick(dt) {
   const k = cls(), c = CL().c, T = (key, per) => { PT[key] = (PT[key] ?? per) - dt; if (PT[key] <= 0) { PT[key] = per; return true; } return false; };
   const all = () => mobs.filter(m => !m.dead), name = CAP4[k][0], lbl = () => fxLabel(name, hero.x, hero.y - 22, c), H = D.hit;
@@ -2045,6 +2046,7 @@ const tierOpen = (k, t) => t === 1 || (tierDone(k, t - 1) && (t < 4 || !!S.meta.
 function pCanBuy(k, t, id) {
   if (!tierOpen(k, t) || pPts(k) < 1 || pL(k, t, id) >= pMax(t, id)) return false;
   if (FORK[id] && pL(k, t, FORK[id])) return false;
+  if (id[0] === 'M') { const i = +id.slice(1), prev = i === 0 ? 'A' : i === 5 ? (t === 4 ? 'C' : 'B') : 'M' + (i - 1); if (!pL(k, t, prev)) return false; }
   if (t === 4 && id === 'V') { const tmp = cm(k).cp || {}; return ['A', 'B', 'C', 'D', 'E', 'F'].every(i => (tmp['4' + i] || 0) >= P_MAX) && ((tmp['4X'] || 0) >= P_MAX || (tmp['4Y'] || 0) >= P_MAX) && ((tmp['4Z'] || 0) >= P_MAX || (tmp['4W'] || 0) >= P_MAX); }
   return true;
 }
@@ -2054,6 +2056,7 @@ function calcPath() {
   const k = cls(); PFXL = [];
   for (let t = 1; t <= 3; t++) PIDS.forEach((id, j) => { const L = pL(k, t, id); if (L) { const [n, ty, p] = PATH[k][t - 1][j]; PFXL.push({ n, ty, p: p || 0, L, t, id }); } });
   for (const id of PIDS4) { const L = pL(k, 4, id); if (!L || id === 'V') continue; const [n, ty, p] = PATH4[id]; PFXL.push({ n, ty, p: p || 0, L: L * 2, t: 4, id }); }   // звёздные узлы вдвое сильнее
+  for (let t = 1; t <= 4; t++) for (let i = 0; i < 10; i++) { const L = pL(k, t, 'M' + i); if (L) PFXL.push({ n: MNAME[MTY[i]], ty: MTY[i], p: 0, L: t === 4 ? L * 2 : L, t, id: 'M' + i }); }
   for (let t = 1; t <= 4; t++) for (const id of ['S', 'T']) { const L = pL(k, t, id); if (!L) continue; const [n, ty] = sigNode(k, t, id); PFXL.push({ n, ty, p: 0, L: t === 4 ? L * 2 : L, t, id }); }   // сигнатурные узлы класса
   PFXL.push(...perkFx(), ...relFx());   // перки жизни
 }
@@ -2139,8 +2142,10 @@ function pathMods() {
     if (e.ty === 'tough') { D.maxHP *= 1 + .1 * L; D.armor = Math.min(.95, D.armor + .03 * L); }
     if (e.ty === 'giant') D.hit *= 1 + .12 * L;
     if (e.ty === 'sig0' && D.cq) D.cq[0] = Math.min(1.5, D.cq[0] * (1 + .08 * L) + .02 * L); if (e.ty === 'sig1' && D.cq) D.cq[1] = Math.min(1.5, D.cq[1] * (1 + .08 * L) + .02 * L);
-    if (e.ty === 'sigA') { D.hit *= 1 + .08 * L; D.maxHP *= 1 + .08 * L; } }
-  D.ultSig = PFXL.filter(e => e.ty === 'sigU').reduce((a, e) => a + .25 * e.L, 0);
+    if (e.ty === 'sigA') { D.hit *= 1 + .08 * L; D.maxHP *= 1 + .08 * L; }
+    if (e.ty === 'mn_dmg') D.hit *= 1 + .04 * L; if (e.ty === 'mn_hp') D.maxHP *= 1 + .05 * L; if (e.ty === 'mn_aps') D.aps = Math.min(14, D.aps * (1 + .02 * L)); if (e.ty === 'mn_crit') D.crit = Math.min(.95, D.crit + .01 * L);
+    if (e.ty === 'mn_cq' && D.cq) D.cq = D.cq.map(q => Math.min(1.5, q * (1 + .03 * L) + .01 * L)); }
+  D.ultSig = PFXL.filter(e => e.ty === 'sigU').reduce((a, e) => a + .25 * e.L, 0) + PFXL.filter(e => e.ty === 'mn_ult').reduce((a, e) => a + .06 * e.L, 0);
   const f = formOf(cls()); D.hit *= 1 + .15 * (f - 1); D.maxHP *= 1 + .15 * (f - 1);   // каждая эволюция: +15% урона и HP
 }
 function pathHit(t, dmg, crit) {
@@ -2250,78 +2255,114 @@ function heroCols(k, rk, v) {
   return { 1: cp[1] || a, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' };
 }
 
-/* ---------- экран пути класса: узлы выстроены символом класса, своя атмосфера ---------- */
+/* ---------- экран пути класса: огромный пиксельный символ класса + дерево узлов поверх ---------- */
 let pSel = null, pRaf = 0;
-const PTH = 1300;
-// символы классов: штрихи в поле 100×160 (y вниз)
-const PSYM = {
-  war: [[[50, 4], [50, 108]], [[24, 124], [50, 114], [76, 124]], [[50, 128], [50, 156]]],
-  bers: [[[50, 22], [50, 156]], [[50, 20], [18, 10], [8, 40], [18, 70], [50, 58]], [[52, 34], [82, 26], [90, 52]]],
-  pal: [[[50, 50], [50, 156]], [[16, 12], [84, 12], [84, 48], [16, 48], [16, 12]]],
-  guard: [[[50, 156], [16, 116], [10, 40], [22, 12], [50, 22], [78, 12], [90, 40], [84, 116], [50, 156]], [[50, 40], [50, 120]]],
-  mage: [[[42, 156], [56, 44]], [[56, 44], [36, 24], [56, 2], [76, 24], [56, 44]]],
-  sham: [[[50, 156], [50, 42]], [[50, 70], [12, 56], [26, 84], [50, 78]], [[50, 78], [74, 84], [88, 56], [50, 70]], [[36, 30], [50, 8], [64, 30], [50, 42], [36, 30]]],
-  arch: [[[38, 4], [70, 30], [82, 80], [70, 130], [38, 156]], [[38, 4], [38, 156]], [[12, 100], [92, 60]]],
-  assa: [[[16, 154], [84, 6]], [[84, 154], [16, 6]]],
-  gamb: [[[16, 8], [84, 8], [84, 152], [16, 152], [16, 8]], [[50, 46], [72, 80], [50, 114], [28, 80], [50, 46]]],
-  alch: [[[42, 6], [42, 56], [10, 146], [90, 146], [58, 56], [58, 6]], [[30, 116], [70, 108]]],
-  priest: [[[50, 4], [50, 156]], [[22, 56], [78, 48]], [[30, 22], [50, 10], [70, 22], [50, 34], [30, 22]]],
-  monk: [[[50, 8], [86, 30], [94, 80], [86, 130], [50, 152], [14, 130], [6, 80], [14, 30], [50, 8]], [[50, 8], [28, 44], [50, 80], [72, 116], [50, 152]]],
-  chrono: [[[14, 6], [86, 6], [50, 80], [86, 154], [14, 154], [50, 80], [14, 6]]],
-  rune: [[[50, 4], [88, 46], [50, 88], [12, 46], [50, 4]], [[50, 88], [16, 156]], [[50, 88], [84, 156]]],
-  necro: [[[20, 74], [16, 36], [50, 6], [84, 36], [80, 74], [66, 94], [66, 120], [34, 120], [34, 94], [20, 74]], [[40, 140], [60, 136]]],
-  reap: [[[72, 156], [40, 8]], [[40, 8], [10, 20], [2, 52], [18, 40], [46, 26]]],
+const PTH = 1760, PBAND = 400;
+// большие символы классов: примитивы в поле 100×300 (y вниз). материалы: 1 основной, 2 тёмный, 3 золото, 4 сияние, 5 стекло
+const SYM2 = {
+  war: [['poly', 1, [[44, 22], [50, 4], [56, 22], [57, 198], [43, 198]]], ['line', 2, 50, 26, 50, 188, 2], ['poly', 3, [[16, 198], [84, 198], [88, 212], [12, 212]]], ['circ', 4, 50, 205, 4],
+    ['poly', 2, [[45, 212], [55, 212], [55, 268], [45, 268]]], ['line', 3, 45, 224, 55, 224, 2], ['line', 3, 45, 240, 55, 240, 2], ['line', 3, 45, 256, 55, 256, 2], ['circ', 3, 50, 278, 9], ['circ', 4, 50, 278, 4]],
+  bers: [['poly', 2, [[47, 30], [53, 30], [54, 296], [46, 296]]], ['poly', 1, [[50, 40], [16, 18], [6, 60], [10, 112], [24, 134], [50, 100]]], ['poly', 1, [[50, 52], [80, 62], [50, 84]]], ['poly', 1, [[47, 32], [50, 6], [53, 32]]],
+    ['line', 4, 13, 24, 7, 62, 2], ['line', 4, 7, 62, 11, 110, 2], ['line', 3, 46, 106, 54, 106, 3], ['line', 3, 46, 118, 54, 118, 3], ['circ', 3, 50, 292, 6]],
+  pal: [['poly', 2, [[47, 90], [53, 90], [53, 292], [47, 292]]], ['poly', 1, [[12, 28], [88, 28], [88, 92], [12, 92]]], ['poly', 3, [[12, 28], [88, 28], [88, 38], [12, 38]]], ['poly', 3, [[12, 82], [88, 82], [88, 92], [12, 92]]],
+    ['circ', 3, 50, 60, 12], ['circ', 4, 50, 60, 5], ['line', 3, 46, 130, 54, 130, 3], ['line', 3, 46, 200, 54, 200, 3], ['circ', 3, 50, 290, 8]],
+  guard: [['poly', 1, [[10, 18], [90, 18], [90, 200], [50, 292], [10, 200]]], ['pline', 3, [[10, 18], [90, 18], [90, 200], [50, 292], [10, 200], [10, 18]], 4], ['line', 2, 50, 26, 50, 276, 3], ['line', 2, 14, 130, 86, 130, 3],
+    ['circ', 3, 50, 130, 16], ['circ', 4, 50, 130, 6]],
+  mage: [['line', 2, 56, 96, 40, 296, 5], ['poly', 3, [[40, 72], [56, 98], [72, 72], [66, 100], [56, 108], [46, 100]]], ['poly', 4, [[56, 6], [78, 42], [56, 94], [34, 42]]], ['poly', 5, [[56, 14], [64, 42], [56, 80], [48, 42]]],
+    ['circ', 4, 22, 30, 3], ['circ', 4, 88, 60, 3], ['circ', 4, 26, 90, 2], ['circ', 3, 40, 294, 5]],
+  sham: [['poly', 2, [[42, 80], [58, 80], [58, 296], [42, 296]]], ['circ', 1, 50, 50, 22], ['poly', 3, [[38, 32], [50, 2], [62, 32]]], ['circ', 4, 42, 48, 3], ['circ', 4, 58, 48, 3], ['line', 2, 42, 62, 58, 62, 2],
+    ['poly', 3, [[42, 92], [4, 72], [14, 102], [4, 120], [42, 112]]], ['poly', 3, [[58, 92], [96, 72], [86, 102], [96, 120], [58, 112]]],
+    ['poly', 1, [[36, 130], [64, 130], [64, 172], [36, 172]]], ['circ', 4, 44, 146, 3], ['circ', 4, 56, 146, 3], ['line', 2, 42, 162, 58, 162, 2], ['poly', 1, [[36, 200], [64, 200], [64, 242], [36, 242]]], ['circ', 4, 44, 216, 3], ['circ', 4, 56, 216, 3]],
+  arch: [['pline', 1, [[30, 8], [60, 40], [78, 110], [78, 190], [60, 260], [30, 292]], 6], ['poly', 3, [[72, 134], [84, 134], [84, 166], [72, 166]]], ['line', 4, 30, 10, 30, 290, 1],
+    ['line', 2, 8, 150, 92, 150, 2], ['poly', 3, [[90, 142], [100, 150], [90, 158]]], ['poly', 3, [[10, 150], [2, 138], [18, 150], [2, 162]]]],
+  assa: [['line', 1, 20, 282, 74, 40, 7], ['poly', 4, [[70, 44], [80, 20], [78, 50]]], ['line', 3, 18, 222, 46, 240, 4], ['circ', 3, 16, 290, 6],
+    ['line', 1, 80, 282, 26, 40, 7], ['poly', 4, [[30, 44], [20, 20], [22, 50]]], ['line', 3, 82, 222, 54, 240, 4], ['circ', 3, 84, 290, 6], ['circ', 4, 50, 160, 5]],
+  gamb: [['poly', 5, [[12, 18], [88, 18], [88, 282], [12, 282]]], ['pline', 2, [[12, 18], [88, 18], [88, 282], [12, 282], [12, 18]], 3], ['poly', 1, [[50, 88], [80, 150], [50, 212], [20, 150]]], ['poly', 4, [[50, 120], [62, 150], [50, 180], [38, 150]]],
+    ['poly', 1, [[24, 32], [30, 44], [24, 56], [18, 44]]], ['poly', 1, [[76, 244], [82, 256], [76, 268], [70, 256]]]],
+  alch: [['poly', 2, [[40, 8], [60, 8], [60, 24], [40, 24]]], ['poly', 5, [[42, 24], [58, 24], [58, 150], [42, 150]]], ['circ', 5, 50, 214, 46], ['poly', 1, [[8, 200], [92, 200], [90, 228], [74, 254], [26, 254], [10, 228]]],
+    ['circ', 4, 38, 222, 4], ['circ', 4, 58, 236, 3], ['circ', 4, 52, 190, 3], ['circ', 4, 50, 120, 2], ['line', 3, 40, 160, 60, 160, 2]],
+  priest: [['poly', 3, [[42, 18], [58, 18], [58, 296], [42, 296]]], ['poly', 3, [[12, 80], [88, 80], [88, 100], [12, 100]]], ['ring', 4, 50, 90, 32, 3], ['circ', 1, 50, 90, 9], ['circ', 4, 50, 90, 4],
+    ['line', 4, 50, 40, 50, 50, 2], ['line', 4, 22, 140, 32, 130, 1], ['line', 4, 78, 140, 68, 130, 1]],
+  monk: [['poly', 2, [[47, 116], [53, 116], [53, 296], [47, 296]]], ['circ', 1, 50, 66, 46], ['circ', 2, 50, 43, 23], ['circ', 1, 50, 89, 23], ['circ', 1, 50, 43, 7], ['circ', 2, 50, 89, 7], ['ring', 3, 50, 66, 46, 2],
+    ['circ', 3, 50, 150, 6], ['circ', 3, 50, 176, 6], ['circ', 3, 50, 202, 6], ['circ', 3, 50, 228, 6]],
+  chrono: [['poly', 3, [[12, 8], [88, 8], [88, 24], [12, 24]]], ['poly', 3, [[12, 276], [88, 276], [88, 292], [12, 292]]], ['line', 2, 18, 24, 18, 276, 4], ['line', 2, 82, 24, 82, 276, 4],
+    ['poly', 5, [[24, 24], [76, 24], [54, 150], [76, 276], [24, 276], [46, 150]]], ['poly', 1, [[30, 64], [70, 64], [52, 146], [48, 146]]], ['poly', 1, [[30, 276], [70, 276], [50, 226]]], ['line', 1, 50, 150, 50, 228, 1]],
+  rune: [['poly', 2, [[20, 44], [50, 10], [80, 44], [86, 286], [14, 286]]], ['line', 4, 50, 60, 50, 244, 4], ['line', 4, 50, 104, 26, 72, 4], ['line', 4, 50, 104, 74, 72, 4], ['line', 4, 50, 186, 28, 222, 4], ['line', 4, 50, 186, 72, 222, 4], ['circ', 1, 50, 146, 9]],
+  necro: [['line', 2, 50, 140, 50, 296, 6], ['line', 3, 18, 170, 82, 232, 4], ['line', 3, 82, 170, 18, 232, 4], ['circ', 1, 50, 66, 36], ['poly', 1, [[28, 88], [72, 88], [66, 130], [34, 130]]],
+    ['circ', 2, 37, 70, 10], ['circ', 2, 63, 70, 10], ['circ', 4, 37, 70, 3], ['circ', 4, 63, 70, 3], ['poly', 2, [[50, 88], [44, 102], [56, 102]]], ['line', 2, 42, 112, 42, 128, 1], ['line', 2, 50, 112, 50, 128, 1], ['line', 2, 58, 112, 58, 128, 1]],
+  reap: [['line', 2, 72, 296, 40, 18, 6], ['line', 3, 63, 216, 69, 222, 4], ['line', 3, 56, 150, 62, 156, 4], ['poly', 1, [[40, 22], [4, 40], [0, 96], [14, 72], [30, 54], [46, 40]]], ['line', 4, 4, 42, 1, 90, 2], ['circ', 3, 40, 22, 6]],
 };
-// атмосфера: [верх, низ, частицы]
 const CATM = {
   war: ['#1c1610', '#07050a', 'spark'], bers: ['#2a0a08', '#0a0204', 'ember'], pal: ['#2a2410', '#0a0804', 'ray'], guard: ['#141c26', '#05080c', 'glint'],
   mage: ['#1e0a2e', '#06020c', 'arcane'], sham: ['#0a1a2e', '#02060c', 'rain'], arch: ['#0c1e12', '#020604', 'leaf'], assa: ['#140c22', '#020106', 'smoke'],
   gamb: ['#0a1e16', '#020604', 'suit'], alch: ['#161e06', '#040602', 'bubble'], priest: ['#2a2616', '#0a0904', 'ray'], monk: ['#2a180a', '#0a0502', 'petal'],
   chrono: ['#0c122e', '#02040c', 'gear'], rune: ['#1c0a2e', '#05020c', 'glyph'], necro: ['#071c10', '#010402', 'fog'], reap: ['#1e0820', '#050106', 'soul'],
 };
-const PSEQ = ['A', 'S', 'X', 'Y', 'T', 'B'], PSEQ4 = ['A', 'B', 'C', 'S', 'X', 'Y', 'D', 'E', 'F', 'T', 'Z', 'W', 'V'];
-const pathLayC = {};
-function pathLayout(W) {
-  const k = ctK || cls(), key = k + '|' + Math.round(W); if (pathLayC[key]) return pathLayC[key];
-  const strokes = PSYM[k], seg = st => { let l = 0; for (let i = 1; i < st.length; i++) l += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); return l; };
-  const lens = strokes.map(seg), tot = lens.reduce((a, b) => a + b, 0), N = 31;
-  const cnt = lens.map(l => Math.max(2, Math.round(l / tot * N))); let sum = cnt.reduce((a, b) => a + b, 0);
-  while (sum > N) { const i = cnt.indexOf(Math.max(...cnt)); cnt[i]--; sum--; } while (sum < N) { const i = lens.indexOf(Math.max(...lens)); cnt[i]++; sum++; }
-  const pts = [];
-  strokes.forEach((st, si) => { const closed = st[0][0] === st[st.length - 1][0] && st[0][1] === st[st.length - 1][1], L = lens[si], n = cnt[si];
-    for (let j = 0; j < n; j++) { let d = L * (closed ? j / n : n === 1 ? 0 : j / (n - 1)), i = 1; while (i < st.length - 1 && d > Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1])) { d -= Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); i++; }
-      const a = st[i - 1], b = st[i], sl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, f = Math.min(1, d / sl); pts.push({ fx: a[0] + (b[0] - a[0]) * f, fy: a[1] + (b[1] - a[1]) * f, si, j, closed, n }); } });
-  const sx = W * .84 / 100, ox = W * .08, sy = (PTH - 200) / 160, oy = 90;
-  pts.forEach(p => { p.x = ox + p.fx * sx; p.y = oy + p.fy * sy; });
-  // раздвигаем слишком близкие узлы
-  for (let it = 0; it < 60; it++) for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) { const A = pts[a], B = pts[b]; let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy); if (d >= 46) continue; if (d < .01) { dx = 1; dy = 0; d = 1; } const push = (46 - d) / 2; A.x -= dx / d * push; A.y -= dy / d * push; B.x += dx / d * push; B.y += dy / d * push; A.y = clamp(A.y, 80, PTH - 60); B.y = clamp(B.y, 80, PTH - 60);
-    A.x = clamp(A.x, 22, W - 22); B.x = clamp(B.x, 22, W - 22); }
-  const ord = pts.slice().sort((a, b) => b.y - a.y || a.x - b.x);
-  ord.forEach((p, i) => { p.kind = 'node'; if (i < 18) { p.t = 1 + Math.floor(i / 6); p.id = PSEQ[i % 6]; } else { p.t = 4; p.id = PSEQ4[i - 18]; } });
-  const edges = []; strokes.forEach((st, si) => { const sp = pts.filter(p => p.si === si).sort((a, b) => a.j - b.j); for (let i = 1; i < sp.length; i++) edges.push([sp[i - 1], sp[i]]); if (sp.length && sp[0].closed) edges.push([sp[sp.length - 1], sp[0]]); });
-  const bands = [6, 12, 18].map(i => (ord[i - 1].y + ord[i].y) / 2);
-  const out = ord; out.edges = edges; out.bands = bands; out.bottom = ord[0].y + 40; out.top = ord[ord.length - 1].y - 46; return pathLayC[key] = out;
+const symC = {};
+function symArt(k, W, lit) {
+  const key = k + W + lit; if (symC[key]) return symC[key];
+  const GW = 44, px = W / GW, GH = Math.round(PTH / px), sx = W / 100, sy = PTH / 300, G = new Uint8Array(GW * GH), P = SYM2[k];
+  const inPoly = (x, y, pts) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const segD = (x, y, x1, y1, x2, y2) => { const ax = (x2 - x1) * sx, ay = (y2 - y1) * sy, bx = (x - x1) * sx, by = (y - y1) * sy, l2 = ax * ax + ay * ay || 1, u = clamp((ax * bx + ay * by) / l2, 0, 1); return Math.hypot(bx - ax * u, by - ay * u); };
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) { const x = (i + .5) / GW * 100, y = (j + .5) * px / sy; let m = 0;
+    for (const p of P) { const t = p[0]; let hit = false;
+      if (t === 'poly') hit = inPoly(x, y, p[2]);
+      else if (t === 'circ') hit = Math.hypot((x - p[2]) * sx, (y - p[3]) * sx) <= p[4] * sx;
+      else if (t === 'ring') hit = Math.abs(Math.hypot((x - p[2]) * sx, (y - p[3]) * sx) - p[4] * sx) <= p[5] * sx / 2 + px * .3;
+      else if (t === 'line') hit = segD(x, y, p[2], p[3], p[4], p[5]) <= p[6] * sx / 2 + px * .35;
+      else if (t === 'pline') { const pts = p[2]; for (let q = 1; q < pts.length && !hit; q++) hit = segD(x, y, pts[q - 1][0], pts[q - 1][1], pts[q][0], pts[q][1]) <= p[3] * sx / 2 + px * .35; }
+      if (hit) m = p[1]; }
+    G[j * GW + i] = m; }
+  const C = CLASSES[k].c, pal = { 1: C, 2: shade(C, -.55), 3: '#ffd84a', 4: '#ffffff', 5: '#bfe6ff' };
+  const cv = document.createElement('canvas'); cv.width = GW; cv.height = GH; const x = cv.getContext('2d'), g = (i, j) => (i < 0 || j < 0 || i >= GW || j >= GH) ? 0 : G[j * GW + i];
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) { const m = g(i, j);
+    if (!m) { if (g(i - 1, j) || g(i + 1, j) || g(i, j - 1) || g(i, j + 1)) { x.fillStyle = '#000'; x.globalAlpha = lit ? .9 : .6; x.fillRect(i, j, 1, 1); } continue; }
+    let col = pal[m]; if (g(i - 1, j) !== m || g(i, j - 1) !== m) col = shade(col, .3); else if (g(i + 1, j) !== m || g(i, j + 1) !== m) col = shade(col, -.3);
+    if (!lit) col = shade(col, -.5); x.globalAlpha = m === 5 ? (lit ? .55 : .3) : 1; x.fillStyle = col; x.fillRect(i, j, 1, 1); }
+  return symC[key] = cv;
 }
 function pathAtmo(c, W, H, T, k) {
   const A = CATM[k], col = CLASSES[k].c, g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, A[0]); g.addColorStop(1, A[1]); c.fillStyle = g; c.fillRect(0, 0, W, H);
   const ty = A[2], R = i => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1;
-  for (let i = 0; i < 46; i++) { const r1 = R(i), r2 = R(i + 99), r3 = R(i + 199); let x = r1 * W, y = r2 * H; const sp = 10 + r3 * 20;
+  for (let i = 0; i < 60; i++) { const r1 = R(i), r2 = R(i + 99), r3 = R(i + 199); let x = r1 * W, y = r2 * H; const sp = 10 + r3 * 20;
     switch (ty) {
       case 'spark': case 'ember': case 'soul': case 'bubble': { y = (H - ((T * sp + r2 * H) % H)); x += Math.sin(T * 1.5 + i) * 6; c.globalAlpha = .35 + .4 * r3;
         c.fillStyle = ty === 'spark' ? (i % 3 ? '#ffaa44' : '#ffee88') : ty === 'ember' ? (i % 3 ? '#ff3322' : '#ff8844') : ty === 'soul' ? (i % 2 ? col : '#ffffff') : '#d8ff7a';
         if (ty === 'bubble') { c.strokeStyle = '#b6ff3c'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, 2 + r3 * 4, 0, 6.283); c.stroke(); } else c.fillRect(Math.round(x), Math.round(y), ty === 'soul' ? 3 : 2, ty === 'soul' ? 3 : 2); break; }
       case 'rain': { y = (T * 160 * (.6 + r3) + r2 * H) % H; c.globalAlpha = .35; c.fillStyle = '#7ad8ff'; c.fillRect(Math.round(x), Math.round(y), 1, 8); if (i === 0 && Math.sin(T * .7) > .985) { c.globalAlpha = .12; c.fillStyle = '#cfefff'; c.fillRect(0, 0, W, H); } break; }
       case 'leaf': case 'petal': { y = (T * sp * 1.2 + r2 * H) % H; x = (x + Math.sin(T + i) * 20 + T * 8) % W; c.globalAlpha = .55; c.fillStyle = ty === 'leaf' ? (i % 2 ? '#5cff8a' : '#2a8a4a') : (i % 2 ? '#ffaacc' : '#ffd0e0'); c.fillRect(Math.round(x), Math.round(y), 3, 2); c.fillRect(Math.round(x) + 1, Math.round(y) - 1, 1, 1); break; }
-      case 'ray': if (i < 7) { c.globalAlpha = .06 + .04 * Math.sin(T * .6 + i); c.fillStyle = ty === 'ray' && k === 'priest' ? '#fff6c0' : '#ffe08a'; c.beginPath(); const x0 = r1 * W; c.moveTo(x0 - 10, 0); c.lineTo(x0 + 20, 0); c.lineTo(x0 + 120, H); c.lineTo(x0 + 60, H); c.fill(); } else if (i < 30) { c.globalAlpha = .3 + .3 * Math.sin(T * 2 + i); c.fillStyle = '#fff6c0'; c.fillRect(Math.round(x), Math.round((y + T * 6) % H), 1, 1); } break;
-      case 'glint': { const ph = (T * .5 + r3) % 1; if (ph < .15) { const a = 1 - ph / .15; c.globalAlpha = a; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x) - 3, Math.round(y), 7, 1); c.fillRect(Math.round(x), Math.round(y) - 3, 1, 7); } break; }
+      case 'ray': if (i < 7) { c.globalAlpha = .06 + .04 * Math.sin(T * .6 + i); c.fillStyle = k === 'priest' ? '#fff6c0' : '#ffe08a'; c.beginPath(); const x0 = r1 * W; c.moveTo(x0 - 10, 0); c.lineTo(x0 + 20, 0); c.lineTo(x0 + 120, H); c.lineTo(x0 + 60, H); c.fill(); } else if (i < 30) { c.globalAlpha = .3 + .3 * Math.sin(T * 2 + i); c.fillStyle = '#fff6c0'; c.fillRect(Math.round(x), Math.round((y + T * 6) % H), 1, 1); } break;
+      case 'glint': { const ph = (T * .5 + r3) % 1; if (ph < .15) { c.globalAlpha = 1 - ph / .15; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x) - 3, Math.round(y), 7, 1); c.fillRect(Math.round(x), Math.round(y) - 3, 1, 7); } break; }
       case 'arcane': case 'glyph': { const a = T * (.2 + r3 * .3) + i; x += Math.cos(a) * 14; y += Math.sin(a) * 10; c.globalAlpha = .25 + .35 * Math.sin(T * 2 + i); c.fillStyle = ty === 'glyph' ? '#bb88ff' : (i % 3 ? '#c06bff' : '#ff8844');
         const gx = Math.round(x), gy = Math.round(y); c.fillRect(gx, gy, 4, 1); c.fillRect(gx + (i % 4), gy - 3, 1, 4); if (ty === 'glyph') c.fillRect(gx, gy + 3, 4, 1); break; }
-      case 'smoke': case 'fog': { x = (x + T * (4 + r3 * 6)) % (W + 60) - 30; c.globalAlpha = ty === 'fog' ? .08 : .07; c.fillStyle = ty === 'fog' ? '#7affb0' : '#6a5aa0'; c.beginPath(); c.arc(x, y, 18 + r3 * 26, 0, 6.283); c.fill(); break; }
+      case 'smoke': case 'fog': { x = (x + T * (4 + r3 * 6)) % (W + 60) - 30; c.globalAlpha = .08; c.fillStyle = ty === 'fog' ? '#7affb0' : '#6a5aa0'; c.beginPath(); c.arc(x, y, 18 + r3 * 26, 0, 6.283); c.fill(); break; }
       case 'suit': { y = (T * sp + r2 * H) % H; c.globalAlpha = .3; c.fillStyle = i % 2 ? '#ff4466' : '#44ffaa'; const sx = Math.round(x), sy = Math.round(y); c.fillRect(sx + 1, sy, 1, 1); c.fillRect(sx, sy + 1, 3, 1); c.fillRect(sx + 1, sy + 2, 1, 1); break; }
-      case 'gear': if (i < 6) { const gx = r1 * W, gy = r2 * H, rr = 14 + r3 * 22, a0 = T * (i % 2 ? .4 : -.4); c.globalAlpha = .12; c.strokeStyle = '#88aaff'; c.lineWidth = 2; c.beginPath(); c.arc(gx, gy, rr, 0, 6.283); c.stroke();
+      case 'gear': if (i < 7) { const gx = r1 * W, gy = r2 * H, rr = 14 + r3 * 22, a0 = T * (i % 2 ? .4 : -.4); c.globalAlpha = .12; c.strokeStyle = '#88aaff'; c.lineWidth = 2; c.beginPath(); c.arc(gx, gy, rr, 0, 6.283); c.stroke();
         for (let tt = 0; tt < 10; tt++) { const a = a0 + tt / 10 * 6.283; c.fillStyle = '#88aaff'; c.fillRect(gx + Math.cos(a) * (rr + 3) - 2, gy + Math.sin(a) * (rr + 3) - 2, 4, 4); } } break;
     } }
   c.globalAlpha = 1;
+}
+// дерево узлов: на каждую ступень — ядро (A, B, развилка X/Y, сигнатурные S, T) + две боковые ветви по 5 малых узлов
+const MTY = ['mn_dmg', 'mn_hp', 'mn_aps', 'mn_crit', 'mn_ult', 'mn_cq', 'mn_dmg', 'mn_hp', 'mn_crit', 'mn_cq'];
+const MNAME = { mn_dmg: 'Мощь', mn_hp: 'Живучесть', mn_aps: 'Быстрота', mn_crit: 'Точность', mn_ult: 'Сила ульты', mn_cq: 'Мастерство' };
+const MPOS = [[.2, 96], [.09, 160], [.08, 232], [.14, 300], [.25, 352]];
+const pathLayC = {};
+function pathLayout(W) {
+  const key = Math.round(W); if (pathLayC[key]) return pathLayC[key];
+  const out = [], links = [], base = t => PTH - 70 - (t - 1) * PBAND, N = (t, id, fx, dy) => { const n = { kind: 'node', t, id, x: W * fx, y: base(t) - dy }; out.push(n); return n; }, by = (t, id) => out.find(n => n.t === t && n.id === id);
+  const root = t => ({ x: W / 2, y: base(t) });
+  for (let t = 1; t <= 3; t++) {
+    const A = N(t, 'A', .36, 58), B = N(t, 'B', .64, 58), X = N(t, 'X', .38, 146), Y = N(t, 'Y', .62, 146), S0 = N(t, 'S', .5, 222), T0 = N(t, 'T', .5, 300);
+    links.push([root(t), A], [root(t), B], [A, X], [B, Y], [X, S0], [Y, S0], [S0, T0]);
+    let pl = A, pr = B; MPOS.forEach(([fx, dy], i) => { const l = N(t, 'M' + i, fx, dy), r = N(t, 'M' + (i + 5), 1 - fx, dy); links.push([pl, l], [pr, r]); pl = l; pr = r; });
+    links.push([T0, root(t + 1)]);
+  }
+  const N4 = { A: [.26, 64], B: [.5, 70], C: [.74, 64], X: [.3, 130], Y: [.44, 140], D: [.7, 134], T: [.58, 196], E: [.34, 206], F: [.7, 214], S: [.5, 262], Z: [.38, 300], W: [.62, 300], V: [.5, 350] };
+  for (const id in N4) N(4, id, N4[id][0], N4[id][1]);
+  const Q = id => by(4, id), r4 = root(4);
+  links.push([r4, Q('A')], [r4, Q('B')], [r4, Q('C')], [Q('A'), Q('X')], [Q('B'), Q('Y')], [Q('C'), Q('D')], [Q('X'), Q('E')], [Q('Y'), Q('E')], [Q('D'), Q('F')], [Q('Y'), Q('T')], [Q('E'), Q('S')], [Q('F'), Q('S')], [Q('S'), Q('Z')], [Q('S'), Q('W')], [Q('Z'), Q('V')], [Q('W'), Q('V')]);
+  { let pl = Q('A'), pr = Q('C'); MPOS.forEach(([fx, dy], i) => { const l = N(4, 'M' + i, fx * .9, dy), r = N(4, 'M' + (i + 5), 1 - fx * .9, dy); links.push([pl, l], [pr, r]); pl = l; pr = r; }); }
+  out.links = links; out.bands = [base(2), base(3), base(4)]; out.bottom = base(1); out.top = base(4) - 380; return pathLayC[key] = out;
 }
 function pathTierY(W, f) { const L = pathLayout(W); return f <= 1 ? L.bottom : f >= 4 ? L.top : L.bands[f - 2]; }
 function drawPath() {
@@ -2330,47 +2371,51 @@ function drawPath() {
   if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(PTH * dpr); }
   const c = cv.getContext('2d'), T = performance.now() / 1000; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
   pathAtmo(c, W, PTH, T, k);
-  const L = pathLayout(W), on = p => pL(k, p.t, p.id) > 0, prog = Math.min(1, pSpent(k) / pTotal());
-  const yP = L.bottom - (L.bottom - L.top) * prog;
-  // гигантский символ класса: тусклый контур + наполнение светом снизу вверх
-  const strokeAll = (w, col, a) => { c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); for (const [a1, b1] of L.edges) { c.moveTo(a1.x, a1.y); c.lineTo(b1.x, b1.y); } c.stroke(); };
-  strokeAll(26, C.c, .06); strokeAll(3, '#3a3260', .9);
-  c.save(); c.beginPath(); c.rect(0, yP, W, PTH - yP); c.clip(); strokeAll(30, C.c, .18 + .06 * Math.sin(T * 2)); strokeAll(12, C.c, .35); c.restore();
-  if (prog > 0 && prog < 1) { c.globalAlpha = .7; c.fillStyle = C.c; for (let x = 0; x < W; x += 6) c.fillRect(x + (Math.floor(T * 8) % 6), Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); }
-  c.globalAlpha = 1;
-  // линии символа: зажжённые — яркие с бегущим светом
-  for (const [a, b] of L.edges) { const lit = on(a) && on(b); if (!lit) continue; c.globalAlpha = .3; c.strokeStyle = C.c; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
-    c.globalAlpha = 1; c.lineWidth = 3; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); const f = (T * .6 + a.x * .013) % 1; c.fillStyle = '#ffffff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
-  // полосы ступеней: эволюция облика
+  const L = pathLayout(W), on = p => p.id ? pL(k, p.t, p.id) > 0 : true, prog = Math.min(1, pSpent(k) / pTotal()), yP = L.bottom + 40 - (L.bottom + 40 - L.top) * prog;
+  // огромный пиксельный символ класса: тёмный целиком, снизу вверх загорается по мере вложений
+  const dim = symArt(k, Math.round(W), false), lit = symArt(k, Math.round(W), true);
+  c.drawImage(dim, 0, 0, W, PTH);
+  c.save(); c.beginPath(); c.rect(0, yP, W, PTH - yP); c.clip();
+  c.globalAlpha = .35 + .1 * Math.sin(T * 1.6); const gl = c.createRadialGradient(W / 2, (yP + PTH) / 2, 10, W / 2, (yP + PTH) / 2, Math.max(W, PTH - yP)); gl.addColorStop(0, C.c + '55'); gl.addColorStop(1, C.c + '00'); c.fillStyle = gl; c.fillRect(0, yP, W, PTH - yP);
+  c.globalAlpha = .9; c.drawImage(lit, 0, 0, W, PTH); c.restore(); c.globalAlpha = 1;
+  if (prog > 0 && prog < 1) { c.fillStyle = '#ffffff'; for (let x = 0; x < W; x += 5) { c.globalAlpha = .4 + .4 * Math.sin(x * .3 + T * 6); c.fillRect(x, Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); } c.globalAlpha = 1; }
+  // затемнение под узлами, чтобы дерево читалось поверх рисунка
+  c.fillStyle = 'rgba(4,2,10,.28)'; c.fillRect(0, 0, W, PTH);
+  // связи
+  for (const [a, b] of L.links) { const both = on(a) && on(b), op = !b.t || tierOpen(k, b.t);
+    if (both) { c.globalAlpha = .35; c.strokeStyle = C.c; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.globalAlpha = 1; c.lineWidth = 3; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      const f = (T * .6 + a.x * .013 + a.y * .007) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
+    else { c.strokeStyle = op ? shade(C.c, -.4) : '#2a2440'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.setLineDash([]); } }
+  // полосы ступеней
   const band = (y, f, txt, got, cur) => { c.globalAlpha = got ? .9 : .5; c.fillStyle = got ? C.c : '#3a3260'; for (let x = 4; x < W - 4; x += 8) c.fillRect(x, Math.round(y), 4, 1); c.globalAlpha = 1;
-    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 46;
-    let bx = W / 2, bs = -1; for (const cx of [W / 2, tw / 2 + 4, W - tw / 2 - 4]) { let d = 1e9; for (const q of L) { const dx = Math.max(0, Math.abs(q.x - cx) - tw / 2), dy = Math.max(0, Math.abs(q.y - y) - 11); d = Math.min(d, Math.hypot(dx, dy)); } if (d > bs + 2) { bs = d; bx = cx; } }
-    c.fillStyle = '#0a0614'; c.fillRect(bx - tw / 2, y - 11, tw, 22); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.strokeRect(bx - tw / 2, y - 11, tw, 22);
-    if (f) { const pat = evoPat(k, f), sc = 1.5, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got); c.drawImage(spr, Math.round(bx - tw / 2 + 4), Math.round(y - pat.length * sc / 2), Math.round(pat[0].length * sc), Math.round(pat.length * sc)); }
-    c.fillStyle = got ? (cur ? '#ffffff' : C.c) : '#6a6290'; c.fillText((cur ? '► ' : '') + txt, bx + 10, y + 3); };
+    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 46, bx = W / 2;
+    c.fillStyle = '#0a0614'; c.fillRect(bx - tw / 2, y + 8, tw, 22); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.strokeRect(bx - tw / 2, y + 8, tw, 22);
+    if (f) { const pat = evoPat(k, f), sc = 1.5, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got); c.drawImage(spr, Math.round(bx - tw / 2 + 4), Math.round(y + 19 - pat.length * sc / 2), Math.round(pat[0].length * sc), Math.round(pat.length * sc)); }
+    c.fillStyle = got ? (cur ? '#ffffff' : C.c) : '#6a6290'; c.fillText((cur ? '► ' : '') + txt, bx + 10, y + 22); };
   const fNow = formOf(k);
   band(L.bottom, 1, 'I · ' + evoName(k, 1), true, fNow === 1);
   band(L.bands[0], 2, 'II · ' + evoName(k, 2), tierDone(k, 1), fNow === 2);
   band(L.bands[1], 3, 'III · ' + evoName(k, 3), tierDone(k, 2), fNow === 3);
   band(L.bands[2], 0, 'ПРОБУЖДЕНИЕ «' + AWK[k][0] + '»', tierDone(k, 3), false);
   band(L.top, 4, S.meta.asc ? 'IV · ' + evoName(k, 4) : 'IV · после Вознесения', tierDone(k, 4), fNow === 4);
-  if (!S.meta.asc) { c.globalAlpha = .55; c.fillStyle = '#05030c'; c.fillRect(0, L.top + 14, W, L.bands[2] - L.top - 26); c.globalAlpha = 1; c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#7ad8ff'; c.textAlign = 'center'; c.fillText('4-я ступень откроется после Вознесения', W / 2, (L.top + L.bands[2]) / 2); }
+  if (!S.meta.asc) { c.globalAlpha = .32; c.fillStyle = '#05030c'; c.fillRect(0, L.top + 34, W, L.bands[2] - L.top - 34); c.globalAlpha = 1; c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#7ad8ff'; c.textAlign = 'center'; c.fillText('4-я ступень откроется после Вознесения', W / 2, (L.top + L.bands[2]) / 2); }
   // узлы
   for (const p of L) {
-    const [nm, ty] = pNode(k, p.t, p.id), lv = pL(k, p.t, p.id), op = tierOpen(k, p.t), can = pCanBuy(k, p.t, p.id), blk = !!FORK[p.id] && pL(k, p.t, FORK[p.id]) > 0, sig = p.id === 'S' || p.id === 'T', r = p.id === 'V' ? 18 : 14;
-    if (lv) { const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.6); gr.addColorStop(0, C.c + '88'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - r * 2.6, p.y - r * 2.6, r * 5.2, r * 5.2); }
+    const [nm, ty] = pNode(k, p.t, p.id), lv = pL(k, p.t, p.id), op = tierOpen(k, p.t), can = pCanBuy(k, p.t, p.id), blk = !!FORK[p.id] && pL(k, p.t, FORK[p.id]) > 0, sig = p.id === 'S' || p.id === 'T', mn = p.id[0] === 'M', r = p.id === 'V' ? 18 : mn ? 10 : 14;
+    if (lv) { const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.6); gr.addColorStop(0, C.c + '99'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - r * 2.6, p.y - r * 2.6, r * 5.2, r * 5.2); }
     if (can) { c.globalAlpha = .55 + .45 * Math.sin(T * 3); c.strokeStyle = '#5cff8a'; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, r + 5, 0, 6.283); c.stroke(); c.globalAlpha = 1; }
     c.beginPath();
     if (p.id === 'V') { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 - 1.57, rr = i % 2 ? r * .55 : r * 1.1; c.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr); } c.closePath(); }
     else if (FORK[p.id]) { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; c.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); } c.closePath(); }
-    else if (sig) { c.moveTo(p.x, p.y - r - 2); c.lineTo(p.x + r + 2, p.y); c.lineTo(p.x, p.y + r + 2); c.lineTo(p.x - r - 2, p.y); c.closePath(); }
+    else if (sig) { c.moveTo(p.x, p.y - r - 3); c.lineTo(p.x + r + 3, p.y); c.lineTo(p.x, p.y + r + 3); c.lineTo(p.x - r - 3, p.y); c.closePath(); }
     else c.arc(p.x, p.y, r, 0, 6.283);
-    c.fillStyle = lv ? C.c : op ? '#1e1830' : '#100c1a'; c.fill(); c.strokeStyle = lv ? '#ffffff' : sig && op ? '#ffe08a' : op ? shade(C.c, -.2) : '#2a2440'; c.lineWidth = 2; c.stroke();
-    const ic = ICONS[PICON[ty] || 'star'], ps = 3; c.fillStyle = lv ? 'rgba(0,0,0,.75)' : op ? (sig ? '#ffe08a' : C.c) : '#3a3260'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(p.x - 7.5 + i * ps, p.y - 7.5 + j * ps, ps, ps);
-    for (let i = 0; i < pMax(p.t, p.id); i++) { c.fillStyle = i < lv ? '#ffe08a' : '#2a2440'; c.fillRect(p.x - 8 + i * 6, p.y + r + 3, 4, 3); }
-    if ((pSel && pSel.t === p.t && pSel.id === p.id) || (can && !lv)) { c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(nm).width; c.fillStyle = 'rgba(5,3,12,.75)'; c.fillRect(p.x - tw / 2 - 2, p.y + r + 8, tw + 4, 9); c.fillStyle = lv ? '#fff' : '#a59fc0'; c.fillText(nm, p.x, p.y + r + 15); }
+    c.fillStyle = lv ? C.c : op ? '#1a1430' : '#0e0a18'; c.fill(); c.strokeStyle = lv ? '#ffffff' : sig && op ? '#ffe08a' : op ? shade(C.c, -.1) : '#2a2440'; c.lineWidth = 2; c.stroke();
+    const ic = ICONS[PICON[ty] || 'star'], ps = mn ? 2 : 3; c.fillStyle = lv ? 'rgba(0,0,0,.75)' : op ? (sig ? '#ffe08a' : C.c) : '#3a3260'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(p.x - ps * 2.5 + i * ps, p.y - ps * 2.5 + j * ps, ps, ps);
+    for (let i = 0; i < pMax(p.t, p.id); i++) { c.fillStyle = i < lv ? '#ffe08a' : '#2a2440'; c.fillRect(p.x - pMax(p.t, p.id) * 3 + i * 6 + 1, p.y + r + 3, 4, 3); }
+    if ((pSel && pSel.t === p.t && pSel.id === p.id) || (can && !lv && !mn)) { c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(nm).width; c.fillStyle = 'rgba(5,3,12,.8)'; c.fillRect(p.x - tw / 2 - 2, p.y + r + 8, tw + 4, 9); c.fillStyle = lv ? '#fff' : '#cfc8ef'; c.fillText(nm, p.x, p.y + r + 15); }
     if (blk) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(p.x - 8, p.y - 8); c.lineTo(p.x + 8, p.y + 8); c.moveTo(p.x + 8, p.y - 8); c.lineTo(p.x - 8, p.y + 8); c.stroke(); }
     if (pSel && pSel.t === p.t && pSel.id === p.id) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.setLineDash([4, 3]); c.lineDashOffset = T * 12; c.beginPath(); c.arc(p.x, p.y, r + 9, 0, 6.283); c.stroke(); c.setLineDash([]); }
+    if (p.id === 'X' && op) { const y2 = L.find(q => q.t === p.t && q.id === 'Y'); c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#f2c94c'; c.fillText('ИЛИ', (p.x + y2.x) / 2, p.y + 3); }
   }
   pRaf = requestAnimationFrame(drawPath);
 }
