@@ -165,6 +165,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #clsc .cs span{white-space:nowrap;flex:none}
 #clsc .cs em{font-style:normal;color:var(--dim);text-align:right}
 #croll{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:30;background:#120f1c;border:3px solid #f2c94c;padding:14px 18px;text-align:center;font-size:13px;min-width:230px;pointer-events:none;box-shadow:0 0 0 3px #000,0 0 30px #000}
+#croll{pointer-events:auto!important;cursor:pointer}
+#croll canvas{display:block;margin:4px auto 2px;image-rendering:pixelated}
+#croll .tap{display:block;font-size:6px;color:#5a5470;margin-top:8px}
+.nb i.px{width:24px;height:24px;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
+.pxi{image-rendering:pixelated;vertical-align:-1px;margin-right:3px}
 #croll small{display:block;font-size:7px;color:var(--dim);margin-top:8px;line-height:1.7}
 .cls{border:2px solid #2b2540;background:#16131f;padding:7px;font-size:7px;line-height:1.7;cursor:pointer;display:flex;gap:6px;align-items:flex-start}
 .cls b{font-size:8px;font-weight:normal;display:block}
@@ -308,7 +313,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261112163821';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113010741';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -619,7 +624,105 @@ const CLS_SPR = {
   necro: { p: ["..2222..", ".222222.", ".253352.", ".255552.", ".244442.", ".222222.", ".2.22.2.", "..2..2.."], pal: { 2: '#1c2a22', 5: '#d8e8d8' } },
   reap:  { p: ["..2222..", ".222222.", ".223322.", ".222222.", "2224222.", ".222222.", "2.2..2.2", "........"], pal: { 2: '#1a1020', 3: '#ff44ff' } },
 };
-const heroPat = () => CLS_SPR[cls()].p;
+const heroPat = () => framePat(CLS_SPR[cls()].p, heroFrame);
+/* ---------- кадры анимации героя ---------- */
+// из одного спрайта класса строим кадры: шаг (ноги врозь), замах (корпус вперёд), удар по герою (откат), вдох
+let heroFrame = 'idle';
+const frameCache = {};
+function shiftRow(r, d) { return d > 0 ? '.'.repeat(d) + r.slice(0, 8 - d) : r.slice(-d) + '.'.repeat(-d); }
+function framePat(P, f) {
+  const key = P.join('') + f; if (frameCache[key]) return frameCache[key];
+  let o = P.slice();
+  if (f === 'walk') { let L = 7; while (L > 4 && !/[^.]/.test(P[L])) L--; const legs = [...P[L]]; const spread = Array(8).fill('.'); legs.forEach((ch, i) => { if (ch === '.') return; const ni = clamp(i < 4 ? i - 1 : i + 1, 0, 7); spread[ni] = ch; }); o[L] = spread.join(''); }
+  if (f === 'atk') for (let r = 0; r < 6; r++) o[r] = shiftRow(P[r], 1);
+  if (f === 'hurt') for (let r = 0; r < 6; r++) o[r] = shiftRow(P[r], -1);
+  if (f === 'breath') { o = ['........', ...P.slice(0, 4), P[5], P[6], P[7]]; }
+  return frameCache[key] = o;
+}
+function pickHeroFrame() {
+  const mv = Math.hypot(hero.x - (hero.lx ?? hero.x), hero.y - (hero.ly ?? hero.y)); hero.lx = hero.x; hero.ly = hero.y;
+  hero.walkT = mv > .05 ? .15 : (hero.walkT || 0) - .033;
+  if (hero.swing > 0 || hero.cast > 0 || hero.spin > 0 || hero.fists > 0 || hero.sweep > 0) return 'atk';
+  if (hero.hurt > 0) return 'hurt';
+  if (hero.walkT > 0) return Math.floor(time * 10) % 2 ? 'walk' : 'idle';
+  return Math.floor(time * 1.6) % 2 ? 'breath' : 'idle';
+}
+
+/* ---------- следы боя на земле ---------- */
+const MARK_OF = { '#ff6622': 'burn', '#ff9a3c': 'crater', '#ff7744': 'burn', '#ff3322': 'crater', '#ff8a3c': 'burn', '#ff5544': 'burn',
+  '#b08a5a': 'crack', '#ffffff': 'crack', '#8fb0d0': 'crack', '#ff4433': 'crack', '#ff6644': 'crack', '#b6ff3c': 'acid', '#88ee22': 'acid',
+  '#ffe08a': 'holy', '#fff2a8': 'holy', '#fff6c0': 'holy', '#bb88ff': 'rune', '#7affb0': 'dark', '#ff44ff': 'dark', '#88aaff': 'rune', '#99eeff': 'crack', '#ccf6ff': 'crack' };
+let markN = 0, markT = 0;
+function groundMark(x, y, r, c) {
+  const t = MARK_OF[c]; if (!t || S.fxLow || !decal) return;
+  if (time > markT) { markT = time + .5; markN = 0; } if (++markN > 8) return;   // не больше 16 следов в секунду
+  const g = decal.getContext('2d'), R = Math.min(r, 30);
+  const blob = (col, a, rr, n) => { g.fillStyle = col; for (let i = 0; i < n; i++) { const an = rnd() * 6.283, d = Math.sqrt(rnd()) * rr; g.globalAlpha = a * (.6 + rnd() * .4); g.fillRect(Math.round(x + Math.cos(an) * d), Math.round(y + Math.sin(an) * d * .6), 1 + (rnd() < .3 ? 1 : 0), 1); } };
+  if (t === 'burn' || t === 'crater') { blob('#1a120c', .5, R * .55, R * 4); blob('#3a2416', .4, R * .7, R * 2); if (t === 'crater') { g.globalAlpha = .5; g.fillStyle = '#0c0806'; for (let i = 0; i < 20; i++) { const an = i / 20 * 6.283; g.fillRect(Math.round(x + Math.cos(an) * R * .45), Math.round(y + Math.sin(an) * R * .27), 1, 1); } } blob('#ff6a20', .6, R * .4, 4); }
+  if (t === 'crack') { g.fillStyle = '#16120e'; g.globalAlpha = .6; const n = 3 + Math.floor(rnd() * 3); for (let k = 0; k < n; k++) { let an = rnd() * 6.283, px = x, py = y; const L = R * (.4 + rnd() * .5); for (let s = 0; s < L; s++) { an += (rnd() - .5) * .7; px += Math.cos(an); py += Math.sin(an) * .6; g.fillRect(Math.round(px), Math.round(py), 1, 1); } } }
+  if (t === 'acid') { blob('#4a7a12', .45, R * .6, R * 3); blob('#b6ff3c', .35, R * .4, R); }
+  if (t === 'holy') { g.fillStyle = '#ffe08a'; g.globalAlpha = .3; for (let i = 0; i < 26; i++) { const an = i / 26 * 6.283; g.fillRect(Math.round(x + Math.cos(an) * R * .6), Math.round(y + Math.sin(an) * R * .36), 1, 1); } blob('#fff6c0', .25, R * .4, R); }
+  if (t === 'rune') { g.fillStyle = c; g.globalAlpha = .4; for (let i = 0; i < 22; i++) { const an = i / 22 * 6.283; g.fillRect(Math.round(x + Math.cos(an) * R * .55), Math.round(y + Math.sin(an) * R * .33), 1, 1); } for (let s = -3; s <= 3; s++) { g.fillRect(Math.round(x + s), Math.round(y), 1, 1); g.fillRect(Math.round(x), Math.round(y + s * .6), 1, 1); } }
+  if (t === 'dark') { blob('#0e1a14', .45, R * .55, R * 3); blob(c, .25, R * .35, R); }
+  g.globalAlpha = 1;
+}
+
+/* ---------- пиксельные иконки интерфейса ---------- */
+const PXI = {
+  sword: ["........#", ".......##", "......##.", ".....##..", "#...##...", ".#.##....", "..##.....", ".##.#....", "#....#..."],
+  stats: [".........", "......##.", "......##.", "...##.##.", "...##.##.", "##.##.##.", "##.##.##.", "##.##.##.", "#########"],
+  star:  ["....#....", "....#....", "...###...", "#########", ".#######.", "..#####..", "..##.##..", ".##...##.", "#.......#"],
+  chest: [".........", ".#######.", "#.......#", "#########", "#...#...#", "#..###..#", "#...#...#", "#.......#", "#########"],
+  soul:  ["....#....", "...##....", "...###...", "..####.#.", ".######..", ".##.###..", ".#...##..", ".##.##...", "..###...."],
+  gear:  ["...###...", ".#.###.#.", "..#####..", "####.####", "###...###", "####.####", "..#####..", ".#.###.#.", "...###..."],
+  lock:  ["..###..", ".#...#.", ".#...#.", "#######", "###.###", "###.###", "#######"],
+  bulb:  ["..###..", ".#...#.", "#.....#", "#..#..#", ".#.#.#.", "..###..", "..###.."],
+};
+const pxCache = {};
+function pxURL(n, col = '#ffffff', sc = 3) {
+  const k = n + col + sc; if (pxCache[k]) return pxCache[k];
+  const P = PXI[n], c = document.createElement('canvas'); c.width = P[0].length * sc; c.height = P.length * sc; const x = c.getContext('2d'); x.fillStyle = col;
+  P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') x.fillRect(i * sc, j * sc, sc, sc); }));
+  return pxCache[k] = c.toDataURL();
+}
+const pxImg = (n, col, h = 9) => `<img class="pxi" src="${pxURL(n, col)}" style="height:${h}px" alt="">`;
+function applyNavIcons() {
+  const map = { nFight: 'sword', nStats: 'stats', treeb: 'star', gearb: 'chest', nSouls: 'soul', nSet: 'gear' };
+  for (const id in map) { const i = $(id).querySelector('i'); i.className = 'px'; i.textContent = ''; i.style.setProperty('--ic', `url(${pxURL(map[id])})`); }
+}
+
+/* ---------- экран класса: выпадение и смерть ---------- */
+let cardRaf = 0;
+function cardEl() { let el = $('croll'); if (!el) { el = document.createElement('div'); el.id = 'croll'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; } return el; }
+// крупная фигурка с аурой и лучами; mode: 'roll' — мелькают классы, 'show' — выбранный, 'dead' — тающая красная тень
+function runCard(cv, mode, getK) {
+  cancelAnimationFrame(cardRaf);
+  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; const t0 = performance.now(), ps = [];
+  const loop = now => {
+    if (!cv.isConnected || cardEl().hidden) return;
+    const t = (now - t0) / 1000, k = getK(), C = CLASSES[k], W2 = cv.width, cx = W2 / 2, cy = W2 / 2 + 4;
+    x.clearRect(0, 0, W2, W2);
+    if (mode !== 'dead') {
+      const pul = .7 + .3 * Math.sin(t * 4);
+      x.globalAlpha = .25 * pul; x.fillStyle = C.c; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + t * .6; x.save(); x.translate(cx, cy); x.rotate(a); x.fillRect(0, -2, W2, 4); x.restore(); }
+      x.globalAlpha = .35 * pul; x.beginPath(); x.arc(cx, cy, 30 + 4 * pul, 0, 6.283); x.fill(); x.globalAlpha = 1;
+      if (mode === 'show' && ps.length < 40 && Math.random() < .5) ps.push({ x: cx + (Math.random() - .5) * 50, y: cy + 30, vy: -20 - Math.random() * 30, l: 1 });
+    }
+    for (const p of ps) { p.y += p.vy / 60; p.l -= 1 / 60; x.globalAlpha = Math.max(0, p.l); x.fillStyle = Math.random() < .5 ? C.c : '#ffffff'; x.fillRect(Math.round(p.x), Math.round(p.y), 3, 3); }
+    for (let i = ps.length - 1; i >= 0; i--) if (ps[i].l <= 0) ps.splice(i, 1);
+    x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
+    const P = framePat(CLS_SPR[k].p, mode === 'dead' ? 'hurt' : Math.floor(t * 1.6) % 2 ? 'breath' : 'idle');
+    const cols = mode === 'dead' ? { 1: '#ff3355', 2: '#aa2233', 3: '#ffffff', 4: '#ff5577', 5: '#ff8899' } : { 1: CLS_SPR[k].pal?.[1] || '#c9ced6', 2: CLS_SPR[k].pal?.[2] || '#3a3450', 3: CLS_SPR[k].pal?.[3] || '#ffe08a', 4: C.c, 5: CLS_SPR[k].pal?.[5] || '#f0c090' };
+    const spr = sprite(P, cols, 'card' + k + mode + P.join(''));
+    const S2 = 8, off = mode === 'dead' ? Math.min(12, t * 8) : 0;
+    x.fillStyle = '#000'; x.globalAlpha *= .4; x.beginPath(); x.ellipse(cx, cy + 32, 22, 5, 0, 0, 6.283); x.fill(); x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
+    x.drawImage(spr, cx - 4 * S2, cy - 4 * S2 + off, 8 * S2, 8 * S2);
+    x.globalAlpha = 1;
+    cardRaf = requestAnimationFrame(loop);
+  };
+  cardRaf = requestAnimationFrame(loop);
+}
+
 
 const HERO = ["..111...", ".11331..", ".11111..", "..222...", ".12221..", ".1.2.1..", "..2.2...", "..1.1..."];
 const MOBS = [
@@ -664,14 +767,14 @@ function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
 function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
 function heroSprite(r, flash, ex) {
   const P = heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;
-  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa' }, 'hf' + k);
-  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3) }, 'ht' + k + hero.tint);
+  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa' }, 'hf' + k + heroFrame);
+  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3) }, 'ht' + k + heroFrame + hero.tint);
   let a = ARMOR[r % ARMOR.length], v = r >= 6 ? '#77ffff' : '#ffe08a';
   if (D.top && D.R[EFF[D.top[0]].k] >= 3) { a = shade(EFF[D.top[0]].c, -.1); v = EFF[D.top[2]].c; }
   const c1 = cp[1] || (ex ? shade(a, -.35) : a);
-  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090' }, 'h' + k + c1 + v + (ex ? 'e' : ''));
+  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090' }, 'h' + k + heroFrame + c1 + v + (ex ? 'e' : ''));
 }
-const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c }, 'hs' + cls() + c);
+const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c }, 'hs' + cls() + heroFrame + c);
 
 /* ---------- состояние ---------- */
 const SAVE_KEY = 'inf_brawl_save_v1';
@@ -1443,14 +1546,14 @@ function nextToast() {
   const q = tq.shift(); if (!q) { tBusy = false; return; }
   tBusy = true; toastEl.innerHTML = '';
   const d = document.createElement('div'); d.className = 'tst ' + q.cls; d.style.setProperty('--dur', q.dur + 'ms');
-  d.textContent = q.t; if (q.sub) { const s = document.createElement('small'); s.textContent = q.sub; d.appendChild(s); }
+  d.textContent = q.t; if (q.cls === 'tip') d.insertAdjacentHTML('afterbegin', pxImg('bulb', '#f2c94c', 9)); if (q.sub) { const s = document.createElement('small'); s.textContent = q.sub; d.appendChild(s); }
   toastEl.appendChild(d); setTimeout(() => { d.remove(); nextToast(); }, q.dur);
 }
 // подсказки: каждая показывается один раз за всю игру
 function tip(key, title, text) {
   if (!S.tips) S.tips = {};
   if (S.tips[key]) return; S.tips[key] = 1;
-  toast('💡 ' + title, text, 5000, 'tip');
+  toast(title, text, 5000, 'tip');
 }
 // лента событий в левом нижнем углу: прирост, эволюции, формы
 let feedArr = [], gainFeedT = 0;
@@ -1531,9 +1634,9 @@ function heroDeath() {
   hero.hp = 0; if (deathT > 0) return;
   deathT = 1.4; slowT = 1.2; flashT = .3; shake = 12; hero.iframe = 3;
   for (let i = 0; i < 4; i++) burst(hero.x, hero.y - 4, ['#ff3355', '#ffffff', '#ff44ff', CL().c][i], 14, 60);
-  let el = $('croll'); if (!el) { el = document.createElement('div'); el.id = 'croll'; document.body.appendChild(el); }
-  el.hidden = false; el.style.borderColor = '#ff3355';
-  el.innerHTML = `<span style="color:#ff3355">ГЕРОЙ ПАЛ</span><small>${CL().n} · зона ${S.zone} · ${fmt(S.kills)} убийств<br><span style="color:#ff44ff">+${fmt(S.runSouls || 0)} душ навсегда</span></small>`;
+  const el = cardEl(); el.hidden = false; el.style.borderColor = '#ff3355';
+  el.innerHTML = `<span style="color:#ff3355">ГЕРОЙ ПАЛ</span><canvas id="crc" width="120" height="120"></canvas><small>${CL().n} · зона ${S.zone} · ${fmt(S.kills)} убийств<br><span style="color:#ff44ff">+${fmt(S.runSouls || 0)} душ навсегда</span></small>`;
+  runCard($('crc'), 'dead', () => cls());
   [523, 392, 262, 131].forEach((f, i) => tone(f, .25, 'square', .05, 0, i * .15));
 }
 function hurtHero(dmg) {
@@ -1550,7 +1653,7 @@ function hurtHero(dmg) {
   }
   return dmg;
 }
-function ring(x, y, r, c) { if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
+function ring(x, y, r, c) { groundMark(x, y + 2, r, c); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
   if (m.dead) return;
@@ -2493,10 +2596,11 @@ function render() {
 }
 function drawHero(rk) {
   const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8);
-  if (deathT > 0) { ctx.globalAlpha = Math.min(1, deathT / 1.4); ctx.drawImage(silhouette('#ff3355'), x, y + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
+  if (deathT > 0) { heroFrame = 'hurt'; ctx.globalAlpha = Math.min(1, deathT / 1.4); ctx.drawImage(silhouette('#ff3355'), x, y + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
   // светлое кольцо под ногами — героя видно всегда
   ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
-  const moving = hero.swing <= 0 && Math.sin(time * 14) > 0;
+  heroFrame = pickHeroFrame();
+  const moving = heroFrame === 'walk';
   const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0;
   if (hero.iframe > 0 && Math.sin(time * 40) > 0) ctx.globalAlpha = .5;
   const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
@@ -2699,7 +2803,7 @@ function updateUI() {
     g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
     g.fm.textContent = formName(e, F(e));
     const locked = !gcnt[e]; g.el.classList.toggle('lock', locked);
-    if (locked) { g.fm.textContent = EFF[e].d; g.cnt.textContent = '🔒'; g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
+    if (locked) { g.fm.textContent = EFF[e].d; g.cnt.innerHTML = pxImg('lock', '#8a83a6', 8); g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
     else { g.cnt.textContent = gcnt[e]; g.val.textContent = fmt(D.T[e]); }
     if (!!gfl[e] !== !!g.fl) { g.fl = !!gfl[e]; g.el.classList.toggle('fl', g.fl); }
   }
@@ -2762,7 +2866,7 @@ const au = k => { if (!S.meta.auto) S.meta.auto = { tal: true, chest: true, up: 
 function renderAuto() {
   au('chest');
   const ah = Object.keys(AUTO).map(k => { const nd = TN.find(n => n.auto === k);
-    if (!autoOpen(k)) return `<div class="aut" data-t="${nd.id}" style="opacity:.6"><i style="background:#3a3450"></i><div>🔒 ${AUTO[k].n}<small>открывается в дереве талантов · ${nd.fixed} душ (тап — открыть дерево)</small></div></div>`;
+    if (!autoOpen(k)) return `<div class="aut" data-t="${nd.id}" style="opacity:.6"><i style="background:#3a3450"></i><div>${pxImg('lock', '#8a83a6', 8)}${AUTO[k].n}<small>открывается в дереве талантов · ${nd.fixed} душ (тап — открыть дерево)</small></div></div>`;
     return `<div class="aut${au(k) ? ' on' : ''}" data-a="${k}"><i></i><div>${AUTO[k].n}<small>${AUTO[k].d}</small></div></div>`; }).join('');
   if (ah !== renderAuto.a) { renderAuto.a = ah; $('autobox').innerHTML = ah; }
   const C = CL(), seen = S.meta.seen || {};
@@ -2777,21 +2881,25 @@ function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0];
   const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b></span><em>мастерство ×${clsPow().toFixed(2)} · ${BRANCHES[C.br].n}</em></div>` + `<div class="cs"><span style="color:${C.c}">Мастерство ${clsLv()}</span><em>${fmt(cm(cls()).xp)} / ${fmt(cxpNeed(clsLv()))} опыта · +${clsLv() * 4}% урона и HP</em></div>` +
     `<div class="cs"><span style="color:${C.c}">Ульта</span><em>${(aw() ? '★ ' : '') + ULTS[cls()][0]}${aw() ? ' ×2' : ''}</em></div>` +
-    `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : '🔒 '}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: мастерство ' + AWAKE_LV + ' + вся ветвь «' + BRANCHES[C.br].n + '»'}</em></div>` +
+    `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : pxImg('lock', '#777', 8)}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: мастерство ' + AWAKE_LV + ' + вся ветвь «' + BRANCHES[C.br].n + '»'}</em></div>` +
     C.st.map(([n, f], j) => `<div class="cs"><span style="color:${C.c}">${n} <b style="color:#e9e4ff">${fmt(c0[j])}</b></span><em>${f(cq(j))}</em></div>`).join('');
   if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
   if (aw()) { const M = S.meta; if (!M.awk) M.awk = {}; if (!M.awk[cls()]) { M.awk[cls()] = 1; toast('ПРОБУЖДЕНИЕ: ' + C.n.toUpperCase() + '!', AWK[cls()][0] + ' · ульта ×2 · новый облик', 3500); awakenFx(); } }
 }
 function clsReveal() {
-  let el = $('croll'); if (!el) { el = document.createElement('div'); el.id = 'croll'; document.body.appendChild(el); }
-  el.hidden = false; el.style.borderColor = ''; let n = 0; const C = CL();
+  const el = cardEl(); el.hidden = false; el.style.borderColor = ''; let n = 0, rk = CLS_KEYS[0];
+  const C = CL(), k = cls(), tr = tierOf(clsLv());
+  el.innerHTML = `<span style="font-size:8px;color:var(--dim)">НОВЫЙ КЛАСС</span><canvas id="crc" width="120" height="120"></canvas><span id="crn"></span><small id="crs"></small>`;
+  runCard($('crc'), 'roll', () => rk);
   const iv = setInterval(() => {
     n++;
-    if (n < 16) { const k = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; el.innerHTML = `<span style="color:${CLASSES[k].c}">${CLASSES[k].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
-    clearInterval(iv);
-    el.innerHTML = `<span style="font-size:8px;color:var(--dim)">НОВЫЙ КЛАСС</span><br><span style="color:${C.c}">${C.n.toUpperCase()}</span><small>${C.d}<br>мастерство: ${clsLv()}${awake() ? ' · ПРОБУЖДЁН ★' : ''}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>ульта: «${ULTS[cls()][0]}»<br>усиливается ветвью «${BRANCHES[C.br].n}»</small>`;
+    if (n < 18) { rk = CLS_KEYS[Math.floor(rnd() * CLS_KEYS.length)]; $('crn').innerHTML = `<span style="color:${CLASSES[rk].c}">${CLASSES[rk].n}</span>`; tone(600 + n * 40, .03, 'square', .02); return; }
+    clearInterval(iv); rk = k; runCard($('crc'), 'show', () => k);
+    $('crn').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}</span>`;
+    $('crs').innerHTML = `${C.d}<br><br><span style="color:${C.c}">Ульта «${ULTS[k][0]}»</span><br>${ULTS[k][1]}<br><br>` +
+      `мастерство ${clsLv()}${tr ? ' · облик: ' + tr[2] : ''}${awake() ? '<br><span style="color:' + C.c + '">★ ПРОБУЖДЁН: ' + AWK[k][0] + '</span>' : ''}<br>статы класса: ${C.st.map(x => x[0]).join(', ')}<br>усиливается ветвью «${BRANCHES[C.br].n}»<span class="tap">тап — в бой</span>`;
     [523, 659, 784, 1047].forEach((f, i) => tone(f, .15, 'triangle', .05, 0, i * .07));
-    setTimeout(() => { el.hidden = true; }, 3200);
+    setTimeout(() => { el.hidden = true; }, 6000);
   }, 70);
 }
 let autoT = 0;
@@ -3412,6 +3520,7 @@ recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
 $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); applyFx(); $('buildl').textContent = 'Сборка ' + BUILD + ' · прогресс сохраняется автоматически';
 $('panel').classList.toggle('small', !!S.panelSmall); $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('ptog').textContent = S.panelSmall ? '▲' : '▼';
+applyNavIcons();
 resize();
 hero.x = AW / 2; hero.y = AH / 2; camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
 const away = (Date.now() - (S.t || Date.now())) / 1000;
