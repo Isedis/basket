@@ -109,6 +109,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #tview canvas{position:absolute;inset:0}
 #tzoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
 #tzoom .btn{font-size:12px;width:34px;height:34px}
+#tbar{background:#110e1c;border-bottom:1px solid var(--line);padding:4px 6px}
+.trow{display:flex;gap:4px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.trow::-webkit-scrollbar{display:none}
+.tsp{flex:1}
+.tch{flex:none;font:inherit;font-size:7px;padding:7px 8px;background:#1e1830;color:#a59fc0;border:1px solid #3a3260;border-radius:5px;cursor:pointer;white-space:nowrap}
+.tch[style*="--bc"]{color:var(--bc)}
+.tch.on{background:#3a2a5a;color:#fff;border-color:#bb88ff}
+#tlist{flex:1;min-height:0;overflow-y:auto;padding:6px 8px 16px;-webkit-overflow-scrolling:touch;background:#0a0812}
+.tlh{font-size:7px;line-height:1.8;color:var(--dim);padding:8px 4px}
+.tcard{display:flex;gap:8px;align-items:flex-start;padding:8px;margin-bottom:6px;background:#141024;border:1px solid #2a2440;border-left:4px solid var(--nc);border-radius:4px}
+.tcard.can{border-color:#3e8a5a;box-shadow:0 0 0 1px #3e8a5a inset}
+.tcard.own{background:#1a1430}
+.tcard.blk{opacity:.45}
+.tcard img{width:28px;height:28px;image-rendering:pixelated;border-radius:4px;flex:none;border:1px solid #000}
+.tcm{flex:1;min-width:0;font-size:8px;line-height:1.6}
+.tcm b{font-weight:normal;color:var(--nc);margin-right:4px}
+.tcm em{font-style:normal;font-size:6px;padding:1px 3px;margin-right:3px;border:1px solid currentColor;border-radius:3px;color:#a59fc0;white-space:nowrap}
+.tcm small{display:block;font-size:7px;color:#cfc8e8;margin-top:3px}
+.tcb{display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:none;width:86px;font-size:8px;text-align:center}
+.tcb .btn{font-size:7px;padding:6px 2px;background:#7a2a8a}
+.tcb small{font-size:6px;color:var(--dim)}
+.tgo{font:inherit;font-size:6px;background:none;border:0;color:#7a70a0;text-decoration:underline;cursor:pointer;padding:2px}
+.tsets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tset{padding:7px;background:#141024;border:1px solid #2a2440;border-top:3px solid var(--tc);border-radius:4px;font-size:7px;line-height:1.7}
+.tset.on{background:#1c1630}
+.tset b{font-weight:normal;color:var(--tc)}
+.tset span{float:right;color:#e9e4ff}
+.tset i{position:relative;display:block;height:5px;background:#000;margin:4px 0}
+.tset i u{position:absolute;left:0;top:0;bottom:0;background:var(--tc)}
+.tset i s{position:absolute;top:-2px;bottom:-2px;width:1px;background:#fff;text-decoration:none}
+.tset small{display:block;font-size:6px;color:#5a5470}
+.tset small.got{color:#e9e4ff}
 #tinfo{flex:none;min-height:124px;padding:8px 10px 10px;background:var(--panel);border-top:2px solid var(--line);font-size:8px;line-height:1.8}
 #tinfo h3{font-size:10px;font-weight:normal}
 #tinfo .k{color:var(--dim)}
@@ -322,15 +354,17 @@ html,body{font-size:10px}
 <div id="ctree" hidden><div id="cthead"></div><div id="ctbody"></div></div>
 <div id="tree" hidden>
   <div id="thead"><span>ДЕРЕВО ТАЛАНТОВ</span><span>Души: <b id="tsouls">0</b></span><button class="btn" id="tclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="tbar"></div>
   <div id="thint"></div>
-  <div id="tview"><canvas id="tcv"></canvas><div id="tzoom"><button class="btn" id="tzi">+</button><button class="btn" id="tzo">−</button></div></div>
+  <div id="tview"><canvas id="tcv"></canvas><div id="tzoom"><button class="btn" id="tzi">+</button><button class="btn" id="tzo">−</button><button class="btn" id="tfit" style="font-size:8px">ВСЁ</button></div></div>
+  <div id="tlist" hidden></div>
   <div id="tinfo"></div>
 </div>
 <div id="modal" hidden><div id="mbox"><h2 id="mt"></h2><p id="mp"></p><button class="btn" id="mok">В БОЙ!</button></div></div>
 
 <script>
 'use strict';
-const BUILD = '20261113014050';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113020508';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -524,7 +558,7 @@ function makeStat(n) {
 }
 // эволюция: стат перерастает порог и превращается в более сильную версию (вес ×4)
 function setLvl(s, l) { s.lvl = l; s.w = s.w0 * Math.pow(4, l); s.name = s.bn + (l ? ' ' + roman(l + 1) : ''); }
-const evoAt = s => 1000 * Math.pow(1000, s.lvl) / (1 + ta('evo'));
+const evoAt = s => 1000 * Math.pow(1000, s.lvl) / (1 + ta('evo')) / (1 + .08 * ntL(6, 2));
 let evoToastT = 0;
 function tryEvolve(s, silent) {
   let up = 0; while (s.v >= evoAt(s)) { setLvl(s, s.lvl + 1); up++; }
@@ -861,6 +895,122 @@ const KS = [
   [['Пожиратель душ', L => 'вожаки после 30-й зоны дают ×' + (1 + L) + ' душ'], ['Бессмертная душа', L => 'после перерождения часть статов остаётся (' + pct(Math.min(.3, .03 * L)) + ', быстрый старт)']],
 ];
 KS.forEach((pr, bi) => pr.forEach(([n, d], j) => TK['ks' + bi + '_' + j] = [n, 1, d]));
+/* ---------- особые узлы дерева: механики, которые видно в бою (по 3 в ветке) ---------- */
+const NOTABLE = [
+  [['Кровавый счёт', 'Кровь', L => 'каждый 10-й удар бьёт ×' + (2 + L)], ['Гнев палача', 'Кровь', L => 'крит добивает раненого врага (<30% HP) с шансом ' + 4 * L + '%'], ['Тень берсерка', 'Тьма', L => 'при комбо 50+ тень повторяет удары на ' + 15 * L + '%']],
+  [['Отдача', 'Сталь', L => 'при ударе по герою шанс ' + 5 * L + '% на ударную волну ×1.5'], ['Каменная кожа', 'Сталь', L => 'каждые 10с каменный щит ' + 4 * L + '% HP'], ['Второе сердце', 'Кровь', L => 'при HP ниже 50% регенерация +' + L + '% HP/с']],
+  [['Огненный шлейф', 'Пламя', L => 'герой оставляет огонь: ' + pct(.2 * L) + ' удара/с'], ['Шаровая молния', 'Гроза', L => 'шар вокруг героя бьёт врагов раз в секунду на ' + pct(.5 * L) + ' удара'], ['Ледяная звезда', 'Ветер', L => 'каждые 8с ледяная звезда замораживает врагов рядом на ' + (.5 * L).toFixed(1) + 'с']],
+  [['Двойной удар', 'Ветер', L => 'шанс ' + 4 * L + '% повторить атаку сразу'], ['Рывок', 'Ветер', L => 'каждые 6с рывок сквозь врагов (×' + L + ' удара каждому)'], ['Ураган', 'Ветер', L => 'при комбо 100+ скорость атаки +' + 5 * L + '%']],
+  [['Золотой дождь', 'Золото', L => 'золотой враг рассыпает монеты: награда ×' + 3 * L], ['Мимик', 'Золото', L => 'шанс ' + (.2 * L).toFixed(1) + '% на сундук с каждого врага'], ['Счастливый крит', 'Золото', L => 'шанс ' + 3 * L + '% что крит станет ультра-критом (×5)']],
+  [['Божья кара', 'Свет', L => 'каждые 5с молния с неба в самого крепкого врага (×' + 2 * L + ')'], ['Святой щит', 'Свет', L => 'ульта даёт щит ' + 10 * L + '% HP'], ['Небесный суд', 'Свет', L => 'урон по вожакам +' + 10 * L + '%']],
+  [['Поток знаний', 'Свет', L => 'каждый новый стат даёт всплеск наград ×' + L], ['Озарение', 'Золото', L => 'каждые 30с всплеск наград ×' + 5 * L], ['Мудрость предков', 'Свет', L => 'эволюция статов на ' + 8 * L + '% раньше']],
+  [['Жнец душ', 'Тьма', L => 'шанс ' + L + '% что убитый оставит взрывную душу (×2 удара)'], ['Призрачный страж', 'Тьма', L => Math.ceil(L / 2) + ' призрачных стража бьются рядом'], ['Вечная душа', 'Тьма', L => '+' + 5 * L + '% душ забега']],
+];
+NOTABLE.forEach((br, bi) => br.forEach(([n, tag, d], j) => TK['n' + bi + '_' + j] = [n, 1, d, tag]));
+// новые развилки: по 2 на ветку, выбор стиля ветки (сильный буст одного эффекта)
+const PAIRS2 = [[['crit', 'rage'], ['scrit', 'exec']], [['thorns', 'vamp'], ['barrier', 'leech']], [['fire', 'shock'], ['poison', 'frost']], [['aspd', 'blink'], ['trail', 'echo']],
+  [['luck', 'greed'], ['dust', 'hunt']], [['energy', 'mark'], ['orbs', 'quake']], [['wis', 'curio'], ['spirit', 'grav']], [['bleed', 'det'], ['fear', 'horde']]];
+for (const e of EFF) { const k = 'p_' + e.k; TK[k] = ['Путь: ' + e.n, .5, v => '«' + e.n + '» +' + pct(v)]; }
+// темы и наборы
+const TAGS = { 'Пламя': '#ff7a30', 'Гроза': '#7ad8ff', 'Кровь': '#ff3355', 'Сталь': '#b8c4d8', 'Золото': '#ffd84a', 'Ветер': '#8affc8', 'Тьма': '#b06aff', 'Свет': '#fff2a0' };
+const TAG_OF = { e_fire: 'Пламя', e_det: 'Пламя', e_orbs: 'Пламя', e_shock: 'Гроза', e_echo: 'Гроза', e_spirit: 'Гроза', e_range: 'Гроза',
+  e_vamp: 'Кровь', e_bleed: 'Кровь', e_leech: 'Кровь', e_fury: 'Кровь', e_rage: 'Кровь', hit: 'Кровь', e_dmg: 'Кровь', e_critd: 'Кровь', e_crit: 'Кровь', e_power: 'Кровь', e_exec: 'Кровь', e_scrit: 'Кровь',
+  hp: 'Сталь', e_armor: 'Сталь', e_thorns: 'Сталь', e_barrier: 'Сталь', e_dodge: 'Сталь', e_regen: 'Сталь', e_cleave: 'Сталь',
+  e_luck: 'Золото', rare: 'Золото', elite: 'Золото', gain: 'Золото', e_greed: 'Золото', e_dust: 'Золото', e_hunt: 'Золото',
+  e_aspd: 'Ветер', e_move: 'Ветер', combo_t: 'Ветер', combo_m: 'Ветер', e_blink: 'Ветер', e_trail: 'Ветер', crowd: 'Ветер', spawn: 'Ветер', e_frost: 'Ветер',
+  soul: 'Тьма', legacy: 'Тьма', e_fear: 'Тьма', e_horde: 'Тьма', e_grav: 'Тьма', e_poison: 'Тьма', offline: 'Тьма',
+  tap: 'Свет', ultc: 'Свет', ultd: 'Свет', weak: 'Свет', e_energy: 'Свет', e_mark: 'Свет', boss_t: 'Свет', bossdmg: 'Свет', e_wis: 'Свет', unlock: 'Свет', evo: 'Свет', form: 'Свет', e_curio: 'Свет', e_quake: 'Свет' };
+const SET_FX = {
+  'Пламя': ['огонь сильнее', 'каждый 5-й удар — огненная вспышка', 'вспышка ×2 и шире'], 'Гроза': ['молнии сильнее', 'каждые 2с цепная молния по 3 врагам', 'по 6 врагам ×2'],
+  'Кровь': ['урон и криты сильнее', 'убийства лечат 0.5% HP', 'лечат 1.5% HP'], 'Сталь': ['защита сильнее', 'каждые 8с щит 10% HP', 'щит 25% HP'],
+  'Золото': ['удача сильнее', 'шанс 3% на россыпь наград за убийство', 'шанс 6%'], 'Ветер': ['скорость сильнее', '+10% скорости атаки и бега', '+25%'],
+  'Тьма': ['тьма сильнее', 'каждые 4с тёмный импульс вокруг героя', 'импульс ×2'], 'Свет': ['свет сильнее', 'ульта копится на 20% быстрее', 'на 50%, луч света каждые 5с'],
+};
+const SET_EFF = { 'Пламя': ['fire', 'det', 'orbs'], 'Гроза': ['shock', 'echo', 'spirit'], 'Кровь': ['dmg', 'critd', 'vamp', 'bleed'], 'Сталь': ['armor', 'hp', 'thorns', 'barrier'],
+  'Золото': ['luck', 'greed', 'dust'], 'Ветер': ['aspd', 'move', 'blink'], 'Тьма': ['fear', 'grav', 'poison'], 'Свет': ['energy', 'mark', 'wis'] };
+const tagOf = nd => nd.tag || TAG_OF[nd.k] || (nd.k.startsWith('p_') ? TAG_OF['e_' + nd.k.slice(2)] : null);
+let NTL = [], TSET = {};
+const ntL = (bi, j) => (NTL[bi] && NTL[bi][j]) || 0;
+let TAGTOT = null;   // сколько всего узлов у темы (развилка считается за один)
+const setNeed = (tag, i) => { if (!TAGTOT) { TAGTOT = {}; for (const nd of TN) { if (nd.alt != null && nd.alt < nd.id) continue; const t = tagOf(nd); if (t) TAGTOT[t] = (TAGTOT[t] || 0) + 1; } } return Math.max(2, Math.round((TAGTOT[tag] || 4) * [.25, .5, .85][i])); };
+const setT = tag => { const n = TSET[tag] || 0; return n >= setNeed(tag, 2) ? 3 : n >= setNeed(tag, 1) ? 2 : n >= setNeed(tag, 0) ? 1 : 0; };
+function calcSets() {
+  NTL = BRANCHES.map(() => [0, 0, 0]); TSET = {};
+  for (const nd of TN) { const l = TL(nd.id); if (nd.nt) NTL[nd.br][nd.ntj] = Math.min(5, l); if (l > 0) { const t = tagOf(nd); if (t) TSET[t] = (TSET[t] || 0) + 1; } }
+  for (const t in TAGS) { const tier = setT(t); if (tier) for (const e of SET_EFF[t]) TAL['e_' + e] = (TAL['e_' + e] || 0) + .25 * tier; }
+}
+// механики особых узлов и наборов
+let hitCnt = 0;
+function ntHit(t, dmg, crit) {
+  hitCnt++;
+  const a = ntL(0, 0); if (a && hitCnt % 10 === 0 && !t.dead) { hitMob(t, dmg * (1 + a), true, true, '#ff3355'); fxLabel('Кровавый счёт', t.x, t.y - 16, '#ff3355'); burst(t.x, t.y - 4, '#ff3355', 10, 40); }
+  const b = ntL(0, 1); if (b && crit && !t.dead && !t.boss && t.hp < t.max * .3 && rnd() < .04 * b) { trackDmg('Казнь', t.hp); hitMob(t, t.hp + 1, true, false, '#ff3355'); fxLabel('Гнев палача', t.x, t.y - 16, '#ff3355'); }
+  const c = ntL(0, 2); if (c && combo >= 50 && !t.dead) { ghosts.push({ x: hero.x - hero.face * 5, y: hero.y, l: .2, face: hero.face }); hitMob(t, dmg * .15 * c, false, false, '#b06aff'); }
+  const d = ntL(3, 0); if (d && rnd() < .04 * d && !t.dead && !hero.dbl) { hero.dbl = 1; ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); heroStrike(t, true); hero.dbl = 0; }
+  const f = ntL(4, 2); if (f && crit && rnd() < .03 * f && !t.dead) { hitMob(t, dmg * 4, true, true, '#ffd84a'); fxLabel('Счастливый крит', t.x, t.y - 16, '#ffd84a'); }
+  const st = setT('Пламя'); if (st >= 2 && hitCnt % 5 === 0) { const r = st >= 3 ? 20 : 14; ring(t.x, t.y - 2, r, '#ff7a30'); hitAround(t.x, t.y, r, dmg * (st >= 3 ? 2 : 1), '#ff6622'); }
+}
+function ntHurt() {
+  const a = ntL(1, 0); if (a && rnd() < .05 * a && time > (hero.otT || 0)) { hero.otT = time + .5; ring(hero.x, hero.y - 3, 18, '#b8c4d8'); hitAround(hero.x, hero.y, 18, D.hit * 1.5, '#b8c4d8'); fxLabel('Отдача', hero.x, hero.y - 18, '#b8c4d8'); }
+}
+function ntKill(m, base) {
+  const a = ntL(4, 0); if (a && m.rare) { giveBurst(base * 3 * a); for (let i = 0; i < 10 && parts.length < 600; i++) parts.push({ x: m.x, y: m.y - 4, vx: (rnd() - .5) * 60, vy: -40 - rnd() * 40, l: .8, c: '#ffd84a' }); fxLabel('Золотой дождь', m.x, m.y - 14, '#ffd84a'); }
+  const b = ntL(4, 1); if (b && rnd() < .002 * b) giveChest('c', 'мимик');
+  const c = ntL(7, 0); if (c && !m.boss && rnd() < .01 * c) { const mx = m.x, my = m.y; fx1(.5, p => { ctx.globalAlpha = 1 - p * .5; dot(mx, my - 6 - p * 6, 3, '#b06aff'); pix(mx, my - 6 - p * 6, '#ffffff'); ctx.globalAlpha = 1; }, () => { ring(mx, my - 4, 14, '#b06aff'); hitAround(mx, my, 14, D.hit * 2, '#b06aff'); }); }
+  const sk = setT('Кровь'); if (sk >= 2) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (sk >= 3 ? .015 : .005));
+  const sg = setT('Золото'); if (sg >= 2 && rnd() < (sg >= 3 ? .06 : .03)) { giveBurst(base * 4); burst(m.x, m.y - 4, '#ffd84a', 8, 40); }
+}
+function ntTick(dt) {
+  const T = (k, per) => { PT[k] = (PT[k] ?? per) - dt; if (PT[k] <= 0) { PT[k] = per; return true; } return false; };
+  const live2 = () => mobs.filter(m => !m.dead);
+  let L;
+  if ((L = ntL(1, 1)) && T('ntSkin', 10)) { hero.shield = Math.max(hero.shield, D.maxHP * .04 * L); ring(hero.x, hero.y - 4, 10, '#8a8f99'); fxLabel('Каменная кожа', hero.x, hero.y - 18, '#b8c4d8'); }
+  if ((L = ntL(1, 2)) && S.hpf < .5) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .01 * L * dt);
+  if ((L = ntL(2, 0)) && T('ntTrail', .4)) { if (clouds.length < 30) clouds.push({ x: hero.x, y: hero.y, r: 7, dps: D.hit * .2 * L, t: 2, fire: true }); }
+  if ((L = ntL(2, 1))) { const a = time * 3, ox = hero.x + Math.cos(a) * 12, oy = hero.y - 4 + Math.sin(a) * 8; if (rnd() < .4) parts.push({ x: ox, y: oy, vx: 0, vy: 0, l: .15, c: '#7ad8ff', f: 1 });
+    if (T('ntBall', 1)) { const o = nearMobs(ox, oy, 30)[0]; if (o) { bolts.push({ x1: ox, y1: oy, x2: o.x, y2: o.y - 3, l: .1, c: '#7ad8ff' }); hitMob(o, D.hit * .5 * L, false, false, '#99eeff'); } } }
+  if ((L = ntL(2, 2)) && T('ntStar', 8) && mobs.length) { ring(hero.x, hero.y - 3, 24, '#a8e8ff'); for (const m of live2()) if (Math.hypot(m.x - hero.x, m.y - hero.y) < 24 && !m.boss) m.frz = Math.max(m.frz || 0, .5 * L); fxLabel('Ледяная звезда', hero.x, hero.y - 18, '#a8e8ff'); }
+  if ((L = ntL(3, 1)) && T('ntDash', 6)) { const o = nearMobs(hero.x, hero.y, 50)[0]; if (o) { const x0 = hero.x, y0 = hero.y, a = Math.atan2(o.y - y0, o.x - x0), tx = clamp(o.x + Math.cos(a) * 10, 4, AW - 4), ty = clamp(o.y + Math.sin(a) * 10, 8, AH - 1);
+      for (let i = 0; i < 5; i++) ghosts.push({ x: x0 + (tx - x0) * i / 5, y: y0 + (ty - y0) * i / 5, l: .3, face: hero.face }); for (const m of live2()) if (segDist(m.x, m.y, { x: x0, y: y0, x2: tx, y2: ty }) < 8) hitMob(m, D.hit * L, false, true, '#8affc8'); hero.x = tx; hero.y = ty; fxLabel('Рывок', hero.x, hero.y - 18, '#8affc8'); } }
+  if ((L = ntL(5, 0)) && T('ntSmite', 5)) { const o = live2().sort((a, b) => b.hp - a.hp)[0]; if (o) { bolts.push({ x1: o.x, y1: camY, x2: o.x, y2: o.y - 3, l: .2, c: '#fff2a0' }); bolts.push({ x1: o.x + 1, y1: camY, x2: o.x + 1, y2: o.y - 3, l: .15, c: '#ffffff' }); hitMob(o, D.hit * 2 * L, true, true, '#fff6c0'); fxLabel('Божья кара', o.x, o.y - 16, '#fff2a0'); } }
+  if ((L = ntL(6, 1)) && T('ntInsight', 30)) { giveBurst(zs() * D.gainMult * 5 * L); feed('Озарение! Всплеск наград', '#ffd84a'); }
+  if ((L = ntL(7, 1))) { const want = Math.ceil(L / 2); hero.guards = hero.guards || []; while (hero.guards.length < want) hero.guards.push({ a: hero.guards.length * 3.14, cd: 0 });
+    for (const g of hero.guards) { g.cd -= dt; g.a += dt * 1.5; if (g.cd <= 0) { const gx = hero.x + Math.cos(g.a) * 14, gy = hero.y + Math.sin(g.a) * 8, o = nearMobs(gx, gy, 20)[0]; if (o) { g.cd = .8; bolts.push({ x1: gx, y1: gy - 5, x2: o.x, y2: o.y - 3, l: .08, c: '#b06aff' }); hitMob(o, D.hit * .6, false, false, '#b06aff'); } } } }
+  let st;
+  if ((st = setT('Гроза')) >= 2 && T('setStorm', 2)) { let from = { x: hero.x, y: hero.y }; const hs = new Set(); for (let j = 0; j < (st >= 3 ? 6 : 3); j++) { const o = nearMobs(from.x, from.y, 40).find(m => !hs.has(m)); if (!o) break; hs.add(o); bolts.push({ x1: from.x, y1: from.y - 3, x2: o.x, y2: o.y - 3, l: .1, c: '#7ad8ff' }); hitMob(o, D.hit * .8 * (st >= 3 ? 2 : 1), false, false, '#99eeff'); from = o; } }
+  if ((st = setT('Сталь')) >= 2 && T('setSteel', 8)) hero.shield = Math.max(hero.shield, D.maxHP * (st >= 3 ? .25 : .1));
+  if ((st = setT('Тьма')) >= 2 && T('setDark', 4) && mobs.length) { ring(hero.x, hero.y - 3, 22, '#b06aff'); hitAround(hero.x, hero.y, 22, D.hit * (st >= 3 ? 2 : 1), '#b06aff'); }
+  if ((st = setT('Свет')) >= 3 && T('setLight', 5)) { const o = randMob(); if (o) { bolts.push({ x1: hero.x, y1: hero.y - 6, x2: o.x, y2: o.y - 3, l: .2, c: '#fff2a0' }); hitMob(o, D.hit * 3, true, false, '#fff6c0'); } }
+}
+function ntMods() {
+  let L; if ((L = ntL(3, 2)) && combo >= 100) D.aps = Math.min(14, D.aps * (1 + .05 * L));
+  const w = setT('Ветер'); if (w >= 2) { const k = w >= 3 ? 1.25 : 1.1; D.aps = Math.min(14, D.aps * k); D.move *= k; }
+}
+// ауры героя от наборов (видно, что собрано)
+function drawSetAura() {
+  if (S.fxLow) return;
+  for (const t in TAGS) { const tier = setT(t); if (tier < 2) continue; const c = TAGS[t], n = tier === 3 ? 2 : 1;
+    for (let i = 0; i < n; i++) if (rnd() < .35 && parts.length < 600) {
+      const a = rnd() * 6.283, r = 5 + rnd() * 4;
+      if (t === 'Пламя') parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 4, vx: 0, vy: -26, l: .45, c: rnd() < .5 ? c : '#ffcc33', f: 1 });
+      else if (t === 'Гроза') parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r, vx: (rnd() - .5) * 60, vy: (rnd() - .5) * 60, l: .08, c: rnd() < .5 ? c : '#ffffff', f: 1 });
+      else if (t === 'Кровь') parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - 6, vx: 0, vy: 12, l: .5, c });
+      else if (t === 'Сталь') { if (rnd() < .3) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - 3 - rnd() * 6, vx: 0, vy: 0, l: .2, c: '#ffffff', f: 1 }); }
+      else if (t === 'Золото') parts.push({ x: hero.x + Math.cos(a) * 8, y: hero.y - 4 + Math.sin(a) * 4, vx: 0, vy: -8, l: .6, c, f: 1 });
+      else if (t === 'Ветер') parts.push({ x: hero.x - hero.face * 6, y: hero.y - rnd() * 8, vx: -hero.face * 40, vy: 0, l: .25, c, f: 1 });
+      else if (t === 'Тьма') parts.push({ x: hero.x + Math.cos(a) * 9, y: hero.y - 3 + Math.sin(a) * 5, vx: -Math.cos(a) * 14, vy: -Math.sin(a) * 10, l: .5, c, f: 1 });
+      else if (t === 'Свет') parts.push({ x: hero.x + (rnd() - .5) * 12, y: hero.y - 10 - rnd() * 4, vx: 0, vy: -6, l: .7, c, f: 1 });
+    } }
+  if (hero.guards && ntL(7, 1)) for (const g of hero.guards) { const gx = hero.x + Math.cos(g.a) * 14, gy = hero.y + Math.sin(g.a) * 8; ctx.globalAlpha = .7; ctx.drawImage(sprite(MOBS[4].p, { 1: '#b06aff', 2: '#5a2a8a', 3: '#ffffff' }, 'guardG'), Math.round(gx - 4), Math.round(gy - 8)); ctx.globalAlpha = 1; }
+  if (ntL(2, 1)) { const a = time * 3, ox = Math.round(hero.x + Math.cos(a) * 12), oy = Math.round(hero.y - 4 + Math.sin(a) * 8); ctx.fillStyle = '#7ad8ff'; ctx.fillRect(ox - 1, oy - 1, 3, 3); pix(ox, oy, '#ffffff'); }
+}
+// миграция: узлы, ставшие особыми, возвращают души по старой цене
+function ntMigrate() {
+  if (S.meta.ntMig) return; S.meta.ntMig = 1; let back = 0;
+  for (const nd of TN) if (nd.nt) { const l = TL(nd.id); for (let i = 0; i < l; i++) back += Math.ceil(Math.pow(1 + .5 * i, 2.2) * (1 + nd.d * .35)); S.meta.nodes[nd.id] = 0; }
+  if (back) { S.meta.souls += back; setTimeout(() => toast('ДЕРЕВО ОБНОВЛЕНО', 'особые узлы переделаны · возвращено ' + fmt(back) + ' душ', 4000), 1500); }
+}
+
 const BRANCHES = [
   { n: 'Ярость', c: '#ff5544', k: ['hit', 'e_crit', 'e_critd', 'e_power', 'e_dmg', 'e_fury'] },
   { n: 'Стойкость', c: '#aabbcc', k: ['hp', 'e_armor', 'e_regen', 'e_dodge', 'e_vamp', 'e_thorns'] },
@@ -894,7 +1044,8 @@ BRANCHES.forEach((b, bi) => {
     if ([2, 3, 5, 7, 8, 10, 11].includes(i)) {
       const side = i % 2 ? 1 : -1;
       const sid = add(b.k[ki++ % b.k.length], ca * r + px * 19 * side, sa * r + py * 19 * side, id, i + 1, 0);
-      if ([3, 7, 11].includes(i)) add(b.k[ki++ % b.k.length], ca * (r + 8) + px * 36 * side, sa * (r + 8) + py * 36 * side, sid, i + 2, 0);
+      if ([3, 7, 11].includes(i)) { const nid = add(b.k[ki++ % b.k.length], ca * (r + 8) + px * 36 * side, sa * (r + 8) + py * 36 * side, sid, i + 2, 0), j = [3, 7, 11].indexOf(i), nk = 'n' + bi + '_' + j;
+        Object.assign(TN[nid], { k: nk, v: 1, max: 5, n: TK[nk][0], nt: true, ntj: j, tag: TK[nk][3] }); }   // особый узел
     }
     prev = id;
   }
@@ -915,6 +1066,15 @@ AUTO_NODES.forEach(([k, n, cost], i) => {
   TK['auto_' + k] = [n, 1, () => 'открывает автоматику «' + n + '»'];
   TN.push({ id: TN.length, br: -1, k: 'auto_' + k, p: 0, x: Math.cos(a) * 26, y: Math.sin(a) * 26, d: 1, v: 1, max: 1, n, auto: k, fixed: cost });
 });
+// новые развилки (id старых узлов не меняются): у первого узла ветки и после вершины
+BRANCHES.forEach((b, bi) => {
+  const [ca, sa, px, py] = b.dir;
+  [[1, 0], [12, 1]].forEach(([i, pi]) => {
+    const r = 26 * i + 14 + (i === 12 ? 22 : 0), pr = PAIRS2[bi][pi], ids = [], par = b.main[i];
+    [-1, 1].forEach((side, j) => { const k = 'p_' + pr[j]; TN.push({ id: TN.length, br: bi, k, p: par, x: ca * r + px * 24 * side, y: sa * r + py * 24 * side, d: i + 1, v: TK[k][1], max: 0, n: TK[k][0], pair2: true }); ids.push(TN.length - 1); });
+    TN[ids[0]].alt = ids[1]; TN[ids[1]].alt = ids[0];
+  });
+});
 const autoOpen = k => (S.meta.nodes[TN.find(nd => nd.auto === k).id] || 0) > 0;
 const TL = id => S.meta.nodes[id] || 0;
 const tOpen = nd => nd.p < 0 || TL(nd.p) > 0;
@@ -933,10 +1093,11 @@ function calcTal() {
   TB.forEach(b => { b.ms = b.pts < 25 ? 0 : Math.floor(Math.log2(b.pts / 25)) + 1; b.full = b.have >= b.n; b.bm = (1 + .004 * b.pts) * Math.pow(1.15, b.ms) * (b.full ? 1.5 : 1); });
   KSL = BRANCHES.map((b, bi) => b.ksId.map(id => brActive(bi) ? Math.min(5, TL(id)) : 0));
   for (const nd of TN) {
-    const l = TL(nd.id); if (!l || nd.k.startsWith('ks') || !brActive(nd.br)) continue;
+    const l = TL(nd.id); if (!l || nd.k.startsWith('ks') || nd.nt || !brActive(nd.br)) continue;
     TAL[nd.k] = (TAL[nd.k] || 0) + nd.v * l * (nd.br >= 0 ? TB[nd.br].bm : 1); TAL[nd.k + '!'] = 1;
   }
   TAL.constel = TB.filter(b => b.full).length;
+  calcSets();
   TAL.lv = 0; for (const nd of TN) if (!nd.auto) TAL.lv += TL(nd.id);
   calcGear();
 }
@@ -944,7 +1105,7 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper')));   // корень: души не разгоняются снежным комом
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
@@ -1483,6 +1644,7 @@ function recalc() {
   D.dust = .25 * sat(R.dust, 60);
   D.quake = sat(R.quake, 60);
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
+  ntMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -1599,6 +1761,7 @@ function checkUnlocks(silent) {
     else if (ksL(6, 0) && D.gainMult) s.v += zs() * D.gainMult * 10 * ksL(6, 0);
     if (S.lv && S.lv[s.n]) setLvl(s, S.lv[s.n]);
     stats.push(s); addStatRow(s, !silent); added++;
+    if (!silent && ntL(6, 0)) giveBurst(zs() * (D.gainMult || 1) * 2 * ntL(6, 0));
     if (!silent) { feed('Новый стат: ' + s.name + ' → ' + EFF[s.e].n, '#f2c94c'); if (added === 1) sfx.unlock(); }
   }
   if (added) D.dirty = true;
@@ -1788,7 +1951,7 @@ function hurtHero(dmg) {
   dmg = clsBlock(dmg); if (dmg <= 0) return 0;
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
-  hero.hp -= dmg; hero.hurt = .1;
+  hero.hp -= dmg; hero.hurt = .1; ntHurt();
   if (hero.hp <= 0 && !bossAlive) hero.hp = 1;   // обычные враги доводят до изнеможения, убить может только вожак
   if (hero.hp <= 0) {
     if (au('reb') && !S.second) { S.second = true; hero.hp = D.maxHP * .5; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'ВТОРОЙ ШАНС!', '#ff44ff', 1.2, 1.2); ring(hero.x, hero.y - 4, 20, '#ff44ff'); flashT = .1; }
@@ -1806,7 +1969,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (!col && D.mark > .01) m.mark = 3;
   if (m.af & 128 && rnd() < .3) { if (show && texts.length < 7) ftext(m.x, m.y - 8 * m.sz, 'мимо', '#bb88ff', .8, .5); return; }
   if (m.af & 1) dmg *= .5;
-  if (m.boss) dmg *= 1 + ta('bossdmg'); else if (m.na) dmg *= 1 + ta('elite');
+  if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)); else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   if (hero.stopT > 0 && m.stopD !== undefined && m.frz > 0) { m.stopD += dmg; m.fl = .07; burst(m.x, m.y - 3, '#88aaff', 1, 10); return; }   // остановка времени: урон копится
@@ -1871,7 +2034,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
+  clsKill(m, base); ntKill(m, base); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -1994,12 +2157,13 @@ function heroStrike(t, fromWave) {
   }
   if (D.poison > .02) { t.psn = Math.max(t.psn, D.hit * D.poison); t.psnT = 3; }
   if (D.vamp > 0) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.vamp);
+  ntHit(t, dmg, crit);
 }
 
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
-  v *= 1 + .2 * ctL('U2');
+  v *= (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
   if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
@@ -2087,6 +2251,7 @@ function ultRelease() {
   // аккорд удара
   tone(60, .8, 'sawtooth', .07, 25); tone(1800, .5, 'square', .03, 150); [262, 330, 392, 523, 784].forEach((f, i) => tone(f, .5, 'triangle', .04, 0, .05 + i * .04));
   clsUlt(US.dmg);
+  if (ntL(5, 1)) hero.shield = Math.max(hero.shield, D.maxHP * .1 * ntL(5, 1));
   if (ctL('U3')) later(.5, () => { ult = Math.max(ult, .3); });
   if (legOn('twin')) later(.9, () => { clsUlt(US.dmg); flashT = .15; shake = 10; });
 }
@@ -2501,7 +2666,7 @@ function effMech(dt) {
     if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if ((aw() && cls() === 'necro') || isSty('necro', 1)) { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
   }
   allies = allies.filter(al => al.t > 0);
-  clsTick(dt); awkTick(dt);
+  clsTick(dt); awkTick(dt); ntTick(dt);
   if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
       let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
       if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
@@ -2524,7 +2689,7 @@ function effMech(dt) {
   if (ft >= 3) { PT.nova -= dt; if (PT.nova <= 0) { PT.nova = 4; ring(hero.x, hero.y - 3, 14, '#cc9966'); hitAround(hero.x, hero.y, 14, D.hit * D.thorns * (1 + .5 * (ft - 3)), '#cc9966'); } }
   if (fr >= 2 && hero.hp >= D.maxHP * .999) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
   // ядовитые облака
-  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { if (c.acid && aw() && cls() === 'alch') m.slowT = Math.max(m.slowT || 0, .2); trackDmg(c.acid ? 'Кислота' : 'Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt; if (m.hp <= 0) { m.dead = true; killMob(m); } } }
+  for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { if (c.acid && aw() && cls() === 'alch') m.slowT = Math.max(m.slowT || 0, .2); trackDmg(c.acid ? 'Кислота' : c.fire ? 'Огонь' : 'Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt; if (m.hp <= 0) { m.dead = true; killMob(m); } } }
   clouds = clouds.filter(c => c.t > 0);
   for (const r of rings) { r.l -= dt; r.r += (r.max - r.r) * Math.min(1, dt * 18); } rings = rings.filter(r => r.l > 0);
   for (const g of ghosts) g.l -= dt; ghosts = ghosts.filter(g => g.l > 0);
@@ -2730,7 +2895,7 @@ function render() {
   ctx.fillStyle = '#05040a'; ctx.fillRect(camX - 6, camY - 6, W + 12, H + 12);
   ctx.drawImage(ground, 0, 0);
   ctx.drawImage(decal, 0, 0);
-  for (const c of clouds) { ctx.globalAlpha = Math.min(.5, c.t * .3); const n = Math.floor(c.r * 1.5); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = rnd() * c.r; pix(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .6, c.acid ? (i % 2 ? '#b6ff3c' : '#e8ff8a') : i % 2 ? '#88ee22' : '#4a8a12'); } }
+  for (const c of clouds) { ctx.globalAlpha = Math.min(.5, c.t * .3); const n = Math.floor(c.r * 1.5); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = rnd() * c.r; pix(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * .6, c.acid ? (i % 2 ? '#b6ff3c' : '#e8ff8a') : c.fire ? (i % 2 ? '#ff7a30' : '#ffcc33') : i % 2 ? '#88ee22' : '#4a8a12'); } }
   drawClsWorld();
   ctx.globalAlpha = 1;
   // красные зоны атак вожака: заливка в шахматку + яркая мигающая граница
@@ -2997,7 +3162,7 @@ function drawHero(rk) {
   const sw = hero.swing > 0;
   const geq = S.meta.gear ? S.meta.gear.eq : {};
   const swordC = cls() !== 'war' ? CL().c : geq.w ? RAR[geq.w.rar].c : rk >= 8 ? ac : '#e6e6f0';
-  drawClsFx();
+  drawClsFx(); drawSetAura();
   if (geq.a) { const ac2 = RAR[geq.a.rar].c; pix(x + 1, y + 3, ac2); pix(x + 6, y + 3, ac2); pix(x + 1, y + 4, shade(ac2, -.3)); pix(x + 6, y + 4, shade(ac2, -.3)); }
   if (geq.m) pix(hero.x, y + 4, RAR[geq.m.rar].c);
   if (geq.r && Math.sin(time * 3) > .9) pix(hero.x + hero.face * 3, y + 5, '#ffffff');
@@ -3474,7 +3639,8 @@ $('treeb').onclick = () => { showSheet('none'); $('gear').hidden = true; navOn('
 $('tclose').onclick = () => { tree.hidden = true; navOn('nFight'); };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
-function openTree() { tree.hidden = false; sizeTree(); calcRec(); renderHint(); renderTInfo(); drawTree(); }
+$('tfit').onclick = () => fitTree();
+function openTree() { tree.hidden = false; setTMode(tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
 function sizeTree() {
   tDPR = Math.min(3, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
   tcv.width = Math.round(tW * tDPR); tcv.height = Math.round(tH * tDPR); tcv.style.width = tW + 'px'; tcv.style.height = tH + 'px';
@@ -3528,72 +3694,154 @@ function renderHint() {
   $('thint').innerHTML = `Все 8 ветвей работают сразу · у каждого таланта до 50 уровней<br>Совет: ${tip}` +
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
+/* ---------- дерево: режим списка, фильтры, наборы ---------- */
+let tMode = 'map', tFilt = 'buy', tBr = -1;
+const nodeType = nd => nd.id === 0 ? 'КОРЕНЬ' : nd.auto ? 'АВТОМАТИКА' : nd.k.startsWith('ks') ? 'КЛЮЧЕВОЙ' : nd.nt ? 'ОСОБЫЙ' : nd.alt != null ? 'ВЫБОР' : '';
+const nodeDesc = (nd, l) => { const ks = nd.k.startsWith('ks'), bm = nd.br >= 0 && TB[nd.br] && !ks && !nd.nt ? TB[nd.br].bm : 1; return TK[nd.k][2](nd.v * l * bm); };
+const icCacheT = {};
+function nodeIconURL(nd, col) {
+  const k = iconOf(nd.k) + col; if (icCacheT[k]) return icCacheT[k];
+  const c = document.createElement('canvas'); c.width = c.height = 7; const x = c.getContext('2d'); x.fillStyle = col;
+  ICONS[iconOf(nd.k)].forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') x.fillRect(i + 1, j + 1, 1, 1); }));
+  return icCacheT[k] = c.toDataURL();
+}
+function setTMode(m) { tMode = m; $('thint').hidden = m !== 'map'; $('tview').hidden = m !== 'map'; $('tinfo').hidden = m !== 'map'; $('tlist').hidden = m !== 'list'; renderTBar(); if (m === 'list') renderTList(); else { sizeTree(); drawTree(); } }
+function renderTBar() {
+  const F = [['buy', 'Можно купить'], ['rec', 'Совет'], ['special', 'Особые'], ['sets', 'Наборы'], ['all', 'Все']];
+  let h = `<div class="trow"><button class="tch${tMode === 'map' ? ' on' : ''}" data-m="map">КАРТА</button><button class="tch${tMode === 'list' ? ' on' : ''}" data-m="list">СПИСОК</button><span class="tsp"></span><button class="tch" data-best="1">★ ЛУЧШЕЕ ЗА ДУШИ</button></div>`;
+  if (tMode === 'list') {
+    h += `<div class="trow">${F.map(([k, n]) => `<button class="tch${tFilt === k ? ' on' : ''}" data-f="${k}">${n}${k === 'buy' ? ' (' + TN.filter(canBuy).length + ')' : ''}</button>`).join('')}</div>`;
+    if (tFilt !== 'sets') h += `<div class="trow"><button class="tch${tBr < 0 ? ' on' : ''}" data-b="-1">Все ветви</button>${BRANCHES.map((b, bi) => `<button class="tch${tBr === bi ? ' on' : ''}" data-b="${bi}" style="--bc:${b.c}">${b.n}</button>`).join('')}</div>`;
+  }
+  $('tbar').innerHTML = h;
+}
+function setsHTML() {
+  return '<div class="tsets">' + Object.keys(TAGS).map(t => { const n = TSET[t] || 0, tier = setT(t), c = TAGS[t], need = [0, 1, 2].map(i => setNeed(t, i));
+    const nxt = tier < 3 ? need[tier] : need[2], pc = Math.min(100, n / need[2] * 100);
+    return `<div class="tset${tier ? ' on' : ''}" style="--tc:${c}"><b>${t}</b><span>${n} / ${nxt}${tier === 3 ? ' ★' : ''}</span><i><u style="width:${pc}%"></u>${need.map(v => `<s style="left:${v / need[2] * 100}%"></s>`).join('')}</i>` +
+      SET_FX[t].map((d, i) => `<small class="${tier > i ? 'got' : ''}">${need[i]}: ${d}</small>`).join('') + '</div>'; }).join('') + '</div>';
+}
+function renderTList() {
+  if (tMode !== 'list') return;
+  renderTBar();
+  if (tFilt === 'sets') { $('tlist').innerHTML = `<div class="tlh">Наборы: узлы одной темы из любых ветвей. Набрал порог — тема усиливается, на 2-м пороге появляется механика и аура героя.</div>` + setsHTML(); return; }
+  calcRec();
+  let L = TN.filter(nd => nd.id !== 0 && (tBr < 0 || nd.br === tBr));
+  if (tFilt === 'buy') L = L.filter(canBuy);
+  if (tFilt === 'rec') L = L.filter(nd => tRec.has(nd.id) || (canBuy(nd) && (nd.nt || nd.k.startsWith('ks') || nd.alt != null)));
+  if (tFilt === 'special') L = L.filter(nd => nd.nt || nd.k.startsWith('ks') || nd.alt != null || nd.auto);
+  L.sort((a, b) => (canBuy(b) - canBuy(a)) || (a.br - b.br) || (a.d - b.d) || (a.id - b.id));
+  const cards = L.slice(0, 120).map(nd => {
+    const l = TL(nd.id), mx = nMax(nd), col = nodeCol(nd), buy = canBuy(nd), tp = nodeType(nd), tag = tagOf(nd), blocked = nodeBlocked(nd), open = tOpen(nd);
+    const why = blocked ? 'выбран «' + TN[nd.alt].n + '»' : !open ? 'сначала «' + TN[nd.p].n + '»' : l >= mx ? 'максимум' : S.meta.souls < tCost(nd, l) ? 'не хватает душ' : '';
+    return `<div class="tcard${buy ? ' can' : ''}${l ? ' own' : ''}${blocked ? ' blk' : ''}" style="--nc:${col}">` +
+      `<img src="${nodeIconURL(nd, l ? '#000' : col)}" style="background:${l ? col : '#1a1528'}">` +
+      `<div class="tcm"><b>${nd.n}</b>${tp ? `<em>${tp}</em>` : ''}${tag ? `<em style="color:${TAGS[tag]}">${tag}</em>` : ''}${nd.br >= 0 ? `<em style="color:${BRANCHES[nd.br].c}">${BRANCHES[nd.br].n}</em>` : ''}` +
+      `<small>${l ? 'сейчас: ' + nodeDesc(nd, l) : nodeDesc(nd, 1)}${l && l < mx ? '<br>след.: ' + nodeDesc(nd, l + 1) : ''}${nd.alt != null && !blocked ? '<br>или «' + TN[nd.alt].n + '»' : ''}</small></div>` +
+      `<div class="tcb"><span>${l}/${mx}</span>${buy ? `<button class="btn" data-b1="${nd.id}">+1 · ${fmt(tCost(nd, l))}</button><button class="btn" data-bm="${nd.id}">МАКС</button>` : `<small>${why}</small>`}<button class="tgo" data-go="${nd.id}">на карте</button></div></div>`;
+  }).join('');
+  $('tlist').innerHTML = (L.length ? cards : '<div class="tlh">Здесь пусто. ' + (tFilt === 'buy' ? 'Пока не на что тратить души — переродись и возвращайся.' : '') + '</div>');
+}
+$('tbar').onclick = e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.m) setTMode(t.dataset.m);
+  if (t.dataset.f) { tFilt = t.dataset.f; renderTList(); }
+  if (t.dataset.b) { tBr = +t.dataset.b; renderTList(); }
+  if (t.dataset.best) bestBuy();
+};
+$('tlist').onclick = e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.b1) buyNode(TN[+t.dataset.b1], false);
+  if (t.dataset.bm) buyNode(TN[+t.dataset.bm], true);
+  if (t.dataset.go) { tSel = +t.dataset.go; const nd = TN[tSel]; cam.x = nd.x; cam.y = nd.y; cam.z = Math.max(cam.z, 1.6); setTMode('map'); renderTInfo(); }
+};
+// разовая раздача душ по советам (как авто-таланты)
+function bestBuy() {
+  let n = 0;
+  while (n < 300) { calcRec(); let pick = TN.find(nd => tRec.has(nd.id) && nd.alt == null && canBuy(nd));
+    if (!pick) { let c = null; for (const nd of TN) if (nd.alt == null && canBuy(nd) && (!c || tCost(nd, TL(nd.id)) < tCost(c, TL(c.id)))) c = nd; pick = c; }
+    if (!pick) break; S.meta.souls -= tCost(pick, TL(pick.id)); S.meta.nodes[pick.id] = TL(pick.id) + 1; n++; calcTal(); }
+  if (n) { toast('КУПЛЕНО УРОВНЕЙ: ' + n, 'развилки «или-или» выбирай сам'); tone(523, .1, 'triangle', .04); tone(784, .15, 'triangle', .04, 0, .08); } else toast('Нечего купить', 'не хватает душ');
+  refreshTree();
+}
+function fitTree() {
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const nd of TN) { x0 = Math.min(x0, nd.x); x1 = Math.max(x1, nd.x); y0 = Math.min(y0, nd.y); y1 = Math.max(y1, nd.y); }
+  cam.x = (x0 + x1) / 2; cam.y = (y0 + y1) / 2; cam.z = Math.min(tW / (x1 - x0 + 60), tH / (y1 - y0 + 60)); drawTree();
+}
+
+/* ---------- красивая карта дерева ---------- */
+const TSTARS = []; { let sd = 7; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 260; i++) TSTARS.push({ x: (R() - .5) * 900, y: (R() - .5) * 900, s: R() < .15 ? 2 : 1, p: R() * 6.28 }); }
+function nodeShape(c, nd, x, y, r) {
+  c.beginPath();
+  if (nd.id === 0) c.arc(x, y, r, 0, 6.2832);
+  else if (nd.k.startsWith('ks')) { for (let i = 0; i < 16; i++) { const a = i / 16 * 6.2832 - 1.5708, rr = i % 2 ? r * .55 : r * 1.15; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); }
+  else if (nd.nt) { c.moveTo(x, y - r * 1.2); c.lineTo(x + r * 1.2, y); c.lineTo(x, y + r * 1.2); c.lineTo(x - r * 1.2, y); c.closePath(); }
+  else if (nd.alt != null) { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.2832; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } c.closePath(); }
+  else if (nd.auto) { const q = r * .85; c.rect(x - q, y - q, q * 2, q * 2); }
+  else c.arc(x, y, r, 0, 6.2832);
+}
 function drawTree() {
-  if (tree.hidden) return;
-  const c = tctx, now = performance.now(); c.setTransform(tDPR, 0, 0, tDPR, 0, 0); c.clearRect(0, 0, tW, tH);
-  c.fillStyle = '#141024'; const gs = 26 * cam.z;
-  if (gs > 8) for (let gx = ((-cam.x * cam.z + tW / 2) % gs + gs) % gs; gx < tW; gx += gs) for (let gy = ((-cam.y * cam.z + tH / 2) % gs + gs) % gs; gy < tH; gy += gs) c.fillRect(Math.round(gx), Math.round(gy), 2, 2);
-  // линии
-  c.lineWidth = Math.max(1.5, 2.5 * cam.z / 1.6);
+  if (tree.hidden || tMode !== 'map') return;
+  const c = tctx, now = performance.now(), T = now / 1000; c.setTransform(tDPR, 0, 0, tDPR, 0, 0);
+  // космос: градиент, туманности ветвей, звёзды
+  const [cx0, cy0] = toScr(0, 0);
+  let g = c.createRadialGradient(cx0, cy0, 0, cx0, cy0, Math.max(tW, tH) * .9); g.addColorStop(0, '#1c1233'); g.addColorStop(.5, '#0e0a1c'); g.addColorStop(1, '#05040a'); c.fillStyle = g; c.fillRect(0, 0, tW, tH);
+  BRANCHES.forEach((b, bi) => { const [ca, sa] = b.dir, [nx, ny] = toScr(ca * 190, sa * 190), rr = 170 * cam.z; const gg = c.createRadialGradient(nx, ny, 0, nx, ny, rr); gg.addColorStop(0, b.c + '30'); gg.addColorStop(1, b.c + '00'); c.fillStyle = gg; c.fillRect(nx - rr, ny - rr, rr * 2, rr * 2); });
+  for (const st of TSTARS) { const [x, y] = toScr(st.x * .9 + cam.x * .25, st.y * .9 + cam.y * .25); if (x < 0 || y < 0 || x > tW || y > tH) continue; c.globalAlpha = .35 + .35 * Math.sin(T * 1.3 + st.p); c.fillStyle = '#ffffff'; c.fillRect(Math.round(x), Math.round(y), st.s, st.s); }
+  c.globalAlpha = .12; c.strokeStyle = '#8a7acc'; c.lineWidth = 1; for (let i = 1; i <= 13; i++) { c.beginPath(); c.arc(cx0, cy0, (26 * i + 14) * cam.z, 0, 6.2832); c.stroke(); } c.globalAlpha = 1;
+  // связи: свечение у купленных, бегущие огоньки
   for (const nd of TN) if (nd.p >= 0) {
-    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y), col = nodeCol(nd);
-    const full = nd.br >= 0 && TB[nd.br] && TB[nd.br].full;
-    c.globalAlpha = brActive(nd.br) ? 1 : .35;
-    c.strokeStyle = TL(nd.id) ? (full ? '#ffe08a' : col) : TL(pn.id) ? shade(col, -.45) : '#2a2440';
-    if (nd.alt != null) c.setLineDash([3, 3]); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]);
+    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y), col = nodeCol(nd), own = TL(nd.id) > 0, avail = TL(pn.id) > 0;
+    if (nd.alt != null) c.setLineDash([4, 4]);
+    if (own) { c.globalAlpha = .25; c.strokeStyle = col; c.lineWidth = 6 * Math.min(1.5, cam.z); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+    c.globalAlpha = own ? 1 : avail ? .55 : .25; c.strokeStyle = own ? col : avail ? shade(col, -.35) : '#3a3260'; c.lineWidth = (own ? 2.5 : 1.5) * Math.min(1.5, Math.max(.7, cam.z / 1.4));
+    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]);
+    if (own && cam.z > .5) { const f = (T * .6 + nd.id * .37) % 1; c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x1 + (x2 - x1) * f) - 1, Math.round(y1 + (y2 - y1) * f) - 1, 2, 2); }
   }
   c.globalAlpha = 1;
-  // искры по линиям
   for (const sp of tSparks) { const a = TN[sp.a], b = TN[sp.b], t = sp.t; const [x, y] = toScr(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); c.fillStyle = sp.c; c.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); }
-  const blink = Math.floor(now / 400) % 2;
+  // узлы
+  const pulse = .55 + .45 * Math.sin(T * 3);
   for (const nd of TN) {
-    const [x, y] = toScr(nd.x, nd.y), sz = Math.round(nodeSize(nd) * cam.z), h = sz / 2;
-    if (x < -sz || y < -sz || x > tW + sz || y > tH + sz) continue;
-    const col = nodeCol(nd), l = TL(nd.id), open = tOpen(nd), buy = canBuy(nd), blocked = nodeBlocked(nd);
-    const full = nd.br >= 0 && TB[nd.br] && TB[nd.br].full;
-    c.globalAlpha = brActive(nd.br) || buy ? 1 : .35;
-    const X = Math.round(x - h), Y = Math.round(y - h);
-    if (full && l) { c.fillStyle = 'rgba(255,224,138,' + (.25 + .2 * Math.sin(now / 300 + nd.id)) + ')'; c.fillRect(X - 5, Y - 5, sz + 10, sz + 10); }
-    c.fillStyle = '#000'; c.fillRect(X - 2, Y - 2, sz + 4, sz + 4);
-    c.fillStyle = l ? col : open ? '#221c34' : '#110e1c'; c.fillRect(X, Y, sz, sz);
-    if (!l) { c.strokeStyle = buy ? (blink ? col : '#ffffff') : open && !blocked ? shade(col, -.4) : '#2a2440'; c.lineWidth = Math.max(1, cam.z); c.strokeRect(X + .5, Y + .5, sz - 1, sz - 1); }
-    if (nd.alt != null) { c.strokeStyle = l ? '#ffffff' : shade(col, -.2); c.lineWidth = 1; c.strokeRect(X - 3.5, Y - 3.5, sz + 7, sz + 7); }
-    // иконка
-    const ic = ICONS[iconOf(nd.k)], ps = Math.floor((sz - 2) / 6);
-    if (ps >= 1) { c.fillStyle = l ? 'rgba(0,0,0,.7)' : open ? col : shade(col, -.6); const ox = Math.round(x - 2.5 * ps), oy = Math.round(y - 2.5 * ps);
-      for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(ox + i * ps, oy + j * ps, ps, ps); }
-    if (blocked) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(X, Y); c.lineTo(X + sz, Y + sz); c.moveTo(X + sz, Y); c.lineTo(X, Y + sz); c.stroke(); }
-    if (nd.id === tSel) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.strokeRect(X - 5, Y - 5, sz + 10, sz + 10); }
-    if (tRec.has(nd.id)) { c.font = `${Math.max(8, Math.round(6 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText('!', x, Y - 4); c.fillStyle = '#5cff8a'; c.fillText('!', x, Y - 4); }
-    if (l && cam.z > .9) {
-      c.font = `${Math.max(7, Math.round(5.5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'top';
-      c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(l, x, Y + sz + 3); c.fillStyle = '#fff'; c.fillText(l, x, Y + sz + 3);
-    }
+    const [x, y] = toScr(nd.x, nd.y), r = nodeSize(nd) * cam.z * (nd.nt ? .62 : .55); if (x < -30 || y < -30 || x > tW + 30 || y > tH + 30) continue;
+    const col = nodeCol(nd), l = TL(nd.id), open = tOpen(nd), buy = canBuy(nd), blocked = nodeBlocked(nd), tag = tagOf(nd);
+    if (l || nd.id === 0) { const gr = c.createRadialGradient(x, y, 0, x, y, r * 2.6); gr.addColorStop(0, col + (nd.nt || nd.k.startsWith('ks') ? '88' : '55')); gr.addColorStop(1, col + '00'); c.fillStyle = gr; c.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2); }
+    if (buy) { c.globalAlpha = pulse; c.strokeStyle = '#5cff8a'; c.lineWidth = 2; nodeShape(c, nd, x, y, r + 5); c.stroke(); c.globalAlpha = 1; }
+    nodeShape(c, nd, x, y, r + 1.5); c.fillStyle = '#000'; c.fill();
+    if (l || nd.id === 0) { const fg = c.createRadialGradient(x - r * .3, y - r * .3, 0, x, y, r * 1.2); fg.addColorStop(0, shade(col, .45)); fg.addColorStop(1, shade(col, -.25)); c.fillStyle = fg; }
+    else c.fillStyle = open ? '#1e1830' : '#100c1a';
+    nodeShape(c, nd, x, y, r); c.fill();
+    c.lineWidth = Math.max(1, cam.z * .8); c.strokeStyle = l ? shade(col, .5) : open && !blocked ? shade(col, -.2) : '#2a2440'; nodeShape(c, nd, x, y, r); c.stroke();
+    if (tag && (nd.nt || nd.alt != null)) { c.strokeStyle = TAGS[tag]; c.globalAlpha = .8; c.lineWidth = 1.5; nodeShape(c, nd, x, y, r + 3.5); c.stroke(); c.globalAlpha = 1; }
+    if (nd.id === 0) { c.strokeStyle = '#ff88ff'; c.lineWidth = 2; c.setLineDash([4, 6]); c.lineDashOffset = -T * 20; c.beginPath(); c.arc(x, y, r + 7, 0, 6.2832); c.stroke(); c.setLineDash([]); }
+    const ic = ICONS[iconOf(nd.k)], ps = Math.floor(r * 1.2 / 5);
+    if (ps >= 1) { c.fillStyle = l || nd.id === 0 ? 'rgba(0,0,0,.75)' : open ? col : shade(col, -.55); const ox = Math.round(x - 2.5 * ps), oy = Math.round(y - 2.5 * ps); for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(ox + i * ps, oy + j * ps, ps, ps); }
+    if (blocked) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - r * .7, y - r * .7); c.lineTo(x + r * .7, y + r * .7); c.moveTo(x + r * .7, y - r * .7); c.lineTo(x - r * .7, y + r * .7); c.stroke(); }
+    if (nd.id === tSel) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.setLineDash([5, 4]); c.lineDashOffset = T * 15; c.beginPath(); c.arc(x, y, r + 9, 0, 6.2832); c.stroke(); c.setLineDash([]); }
+    if (tRec.has(nd.id)) { c.font = `${Math.max(8, Math.round(6 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText('!', x, y - r - 5); c.fillStyle = '#5cff8a'; c.fillText('!', x, y - r - 5); }
+    if (l && cam.z > .9) { c.font = `${Math.max(7, Math.round(5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'top'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(l, x, y + r + 4); c.fillStyle = '#fff'; c.fillText(l, x, y + r + 4); }
+    if ((nd.nt || nd.k.startsWith('ks')) && cam.z > 1.3) { c.font = `${Math.max(6, Math.round(3.4 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'top'; c.lineWidth = 3; c.strokeStyle = '#000'; const ty = y + r + (l ? 6 + 5 * cam.z : 4); c.strokeText(nd.n, x, ty); c.fillStyle = l ? '#ffffff' : '#a59fc0'; c.fillText(nd.n, x, ty); }
   }
-  c.globalAlpha = 1;
-  // частицы покупки
   for (const p of tParts) { const [x, y] = toScr(p.x, p.y); c.globalAlpha = Math.max(0, p.l * 2); c.fillStyle = p.c; c.fillRect(Math.round(x), Math.round(y), 3, 3); }
   c.globalAlpha = 1;
-  // звёзды созвездий
-  TB.forEach((b, bi) => { if (!b || !b.full) return; for (let i = 0; i < 6; i++) { const nd = TN[BRANCHES[bi].main[1 + ((Math.floor(now / 500) + i * 2) % 12)]], [x, y] = toScr(nd.x + Math.sin(i * 7) * 14, nd.y + Math.cos(i * 5) * 14); c.fillStyle = '#ffe08a'; c.fillRect(Math.round(x), Math.round(y), 2, 2); } });
-  // подписи ветвей: название, очки, рубежи, созвездие
+  // подписи ветвей
   BRANCHES.forEach((b, bi) => {
-    const [lx, ly] = labelPos(bi), [x, y] = toScr(lx, ly), tb = TB[bi] || {}, act = brActive(bi);
+    const [lx, ly] = labelPos(bi), [x, y] = toScr(lx, ly), tb = TB[bi] || {};
     c.font = `${Math.max(7, Math.round(4.5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const t1 = b.n + (tb.full ? ' ★' : ''), t2 = (act ? '' : 'выкл · ') + (tb.pts || 0) + ' очк. · ×' + (tb.bm || 1).toFixed(2) + (tb.ms ? ' · рубеж ' + tb.ms : '');
-    c.lineWidth = 3; c.strokeStyle = '#000'; c.fillStyle = act ? (tb.full ? '#ffe08a' : b.c) : '#666';
-    c.strokeText(t1, x, y); c.fillText(t1, x, y);
-    c.font = `${Math.max(6, Math.round(3.3 * cam.z))}px "Press Start 2P", monospace`; c.fillStyle = act ? '#e9e4ff' : '#666';
-    c.strokeText(t2, x, y + Math.max(10, 6 * cam.z)); c.fillText(t2, x, y + Math.max(10, 6 * cam.z));
+    const t1 = b.n + (tb.full ? ' ★' : ''), t2 = (tb.pts || 0) + ' очк. · ×' + (tb.bm || 1).toFixed(2) + (tb.ms ? ' · рубеж ' + tb.ms : '');
+    c.lineWidth = 4; c.strokeStyle = '#000'; c.fillStyle = tb.full ? '#ffe08a' : b.c; c.strokeText(t1, x, y); c.fillText(t1, x, y);
+    c.font = `${Math.max(6, Math.round(3.3 * cam.z))}px "Press Start 2P", monospace`; c.fillStyle = '#e9e4ff'; const dy = Math.max(10, 6 * cam.z);
+    c.strokeText(t2, x, y + dy); c.fillText(t2, x, y + dy);
     const t3 = CLS_KEYS.filter(k => CLASSES[k].br === bi).map(k => (k === cls() ? '► ' : '') + CLASSES[k].n).join(' · ');
-    c.fillStyle = CL().br === bi ? CL().c : '#a59fc0'; c.strokeText(t3, x, y + 2 * Math.max(10, 6 * cam.z)); c.fillText(t3, x, y + 2 * Math.max(10, 6 * cam.z));
+    c.fillStyle = CL().br === bi ? CL().c : '#a59fc0'; c.strokeText(t3, x, y + 2 * dy); c.fillText(t3, x, y + 2 * dy);
   });
   $('tsouls').textContent = fmt(S.meta.souls);
 }
+
 function renderTInfo() {
   const nd = TN[tSel], l = TL(nd.id), open = tOpen(nd), col = nodeCol(nd);
   const maxed = l >= nMax(nd), cost = tCost(nd, l), d = TK[nd.k][2], ks = nd.k.startsWith('ks');
-  const bm = nd.br >= 0 && TB[nd.br] ? TB[nd.br].bm : 1, mul = ks ? 1 : bm;
+  const bm = nd.br >= 0 && TB[nd.br] ? TB[nd.br].bm : 1, mul = ks || nd.nt ? 1 : bm;
   const tb = nd.br >= 0 ? TB[nd.br] : null;
   let warn = '';
   if (!open) warn = `Сначала изучи «${TN[nd.p].n}»`;
@@ -3612,7 +3860,7 @@ function renderTInfo() {
   $('tb1').onclick = () => buyNode(nd, false); $('tbm').onclick = () => buyNode(nd, true);
   if ($('tbr')) $('tbr').onclick = () => { let back = 0; for (let i = 0; i < TL(nd.id); i++) back += tCost(nd, i); S.meta.souls += back; S.meta.nodes[nd.id] = 0; refreshTree(); feed('Выбор сброшен: +' + fmt(back) + ' душ', '#ff44ff'); };
 }
-function refreshTree() { calcTal(); D.dirty = true; save(); calcRec(); renderHint(); renderTInfo(); drawTree(); }
+function refreshTree() { calcTal(); D.dirty = true; save(); calcRec(); renderHint(); renderTInfo(); drawTree(); renderTList(); }
 function buyNode(nd, all) {
   if (!canBuy(nd)) return;
   if (nd.br >= 0 && !brActive(nd.br)) S.meta.act.push(nd.br);
@@ -3681,7 +3929,7 @@ const tUp = e => {
 };
 tview.addEventListener('pointerup', tUp); tview.addEventListener('pointercancel', e => { tPtr.delete(e.pointerId); tPinch = 0; });
 tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); drawTree(); }, { passive: false });
-setInterval(() => { if (!tree.hidden && !tRaf) drawTree(); }, 400);
+setInterval(() => { if (!tree.hidden && !tRaf && tMode === 'map') drawTree(); }, 50);   // плавная анимация звёзд и огоньков
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
 
 /* ---------- нижнее меню и шторки ---------- */
@@ -3846,6 +4094,7 @@ if (booted) return; booted = true;
 load();
 if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
+ntMigrate();
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
