@@ -188,6 +188,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #obtns{display:flex;gap:8px}
 #obtns .btn{font-size:9px;padding:9px 12px;background:#6a4a1a}
 #spdb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));top:30px;z-index:4;font-size:10px;padding:5px 8px;background:#2b2540}
+#perkb{position:absolute;right:max(6px, env(safe-area-inset-right, 0px));bottom:26px;z-index:5;font-size:10px;padding:10px 12px;min-height:42px;background:#6a4a1a;color:#ffe08a;box-shadow:0 0 0 2px #ffe08a;animation:glow 1.2s steps(2) infinite}
+#perkbox{position:absolute;left:8px;right:8px;bottom:20px;z-index:6;background:rgba(10,8,18,.96);border:2px solid #ffe08a;border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.pkh{font-size:9px;color:#ffe08a;text-align:center}
+.pkc{font:inherit;text-align:left;background:#1e1830;border:1px solid #3a3260;border-radius:5px;padding:8px;color:#e9e4ff;cursor:pointer;position:relative}
+.pkc b{display:block;font-weight:normal;font-size:9px;color:#ffe08a}
+.pkc small{display:block;font-size:8px;margin-top:3px}
+.pkc em{display:block;font-style:normal;font-size:7px;color:var(--dim);margin-top:2px}
+.pkc i{position:absolute;top:6px;right:8px;font-style:normal;font-size:6px;color:#7ad8ff}
+.pkx{font:inherit;font-size:7px;background:none;border:0;color:var(--dim);padding:4px;cursor:pointer}
 #spdb.on{background:#2f8a4f;color:#fff;box-shadow:0 0 0 2px #5cff8a}
 #clsbox{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #clsbox .cur{grid-column:1/-1;border-color:#f2c94c;background:#2c2346;font-size:8px}
@@ -332,7 +341,7 @@ html,body{font-size:10px}
     <div class="r"><span id="rank">Новобранец</span><span id="zmodl"></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0 убийств</span></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
   </div>
-  <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><div id="toast"></div></div>
+  <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><button class="btn" id="perkb" hidden>★ ПЕРК</button><div id="perkbox" hidden></div><div id="toast"></div></div>
   <div id="panel" class="sheet">
     <div id="phead">
       <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog" hidden>▼</button></span></div>
@@ -364,6 +373,7 @@ html,body{font-size:10px}
       <button class="btn big2" id="mute">Звук: ВКЛ</button>
       <button class="btn big2" id="fxb">Эффекты: ВСЕ</button>
       <button class="btn big2" id="helpb">Что на экране?</button>
+      <button class="btn big2" id="apb">Перки: ВРУЧНУЮ</button>
       <button class="btn big2" id="updb">⟳ Проверить обновление</button>
       <div class="dim" id="buildl"></div>
       <button class="btn big2" id="resetb" style="background:#5a1a22;margin-top:18px">✕ Сбросить игру</button>
@@ -402,7 +412,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113032801';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113033606';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1241,7 +1251,7 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls'));   // корень: души не разгоняются снежным комом
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls'));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
@@ -1273,7 +1283,7 @@ function retreat(b, why) {
   tone(330, .15, 'square', .04, 0); tone(220, .3, 'square', .04, 0, .15);
   tip('retreat', 'Это не поражение', 'Герой отступил и копит силу на обычных врагах. Шкала сверху — готовность к вожаку. Тап по ней — бой сразу.');
 }
-const comboTime = () => 2.5 + ta('combo_t');
+const comboTime = () => 2.5 + ta('combo_t') + perkL('combo');
 const comboM = () => 1 + .25 * (1 + ta('combo_m')) * Math.log2(1 + combo / 5);
 const COMBO_MS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
@@ -1688,6 +1698,7 @@ function calcPath() {
   const k = cls(); PFXL = [];
   for (let t = 1; t <= 3; t++) PIDS.forEach((id, j) => { const L = pL(k, t, id); if (L) { const [n, ty, p] = PATH[k][t - 1][j]; PFXL.push({ n, ty, p: p || 0, L, t, id }); } });
   for (const id of PIDS4) { const L = pL(k, 4, id); if (!L || id === 'V') continue; const [n, ty, p] = PATH4[id]; PFXL.push({ n, ty, p: p || 0, L: L * 2, t: 4, id }); }   // звёздные узлы вдвое сильнее
+  PFXL.push(...perkFx());   // перки жизни
 }
 const pfx = ty => PFXL.filter(e => e.ty === ty);
 /* облик механик пути для каждого класса: сферы, удар с неба, союзники, снаряды */
@@ -1962,6 +1973,59 @@ function pBuy(k, t, id) {
   if ((f1 > f0 || (a1 && !a0)) && k === cls()) { $('ctree').hidden = true; navOn('nFight'); setTimeout(() => evolveStart(k, f1, a1 && !a0 ? 'ПРОБУЖДЕНИЕ' : f1 === 4 ? 'ВОЗНЕСЁННЫЙ ОБЛИК' : null), 250); return; }
   if (f1 > f0) toast('ЭВОЛЮЦИЯ: ' + evoName(k, f1).toUpperCase(), 'новый облик появится, когда выпадет ' + CLASSES[k].n, 3000);
   renderCT();
+}
+
+/* ---------- уровень героя в жизни и перки (1 из 3 на каждом уровне) ---------- */
+// перки на эту жизнь: статы или механики (те же, что у пути класса), до 5 рангов
+const PERKS = [
+  { k: 'dmg', n: 'Острый клинок', d: L => '+' + 25 * L + '% урона' }, { k: 'hp', n: 'Толстая шкура', d: L => '+' + 30 * L + '% HP' },
+  { k: 'aps', n: 'Быстрые руки', d: L => '+' + 10 * L + '% скорости атаки' }, { k: 'crit', n: 'Глаз орла', d: L => '+' + 4 * L + '% крита, +' + 15 * L + '% силы крита' },
+  { k: 'vamp', n: 'Кровожадность', d: L => 'вампиризм +' + L + '%' }, { k: 'regen', n: 'Живучесть', d: L => 'регенерация +' + L + '% HP/с' },
+  { k: 'gain', n: 'Жадность', d: L => '+' + 20 * L + '% прироста статов' }, { k: 'gold', n: 'Золотая лихорадка', d: L => 'золотых врагов ×' + (1 + .3 * L).toFixed(1) },
+  { k: 'souls', n: 'Душелов', d: L => '+' + 15 * L + '% душ забега' }, { k: 'combo', n: 'Кураж', d: L => 'комбо держится на ' + L + 'с дольше' },
+  { k: 'ult', n: 'Накопитель', d: L => 'ульта копится на ' + 20 * L + '% быстрее' }, { k: 'clsx', n: 'Мастер класса', d: L => 'статы класса сильнее на ' + 15 * L + '%' },
+  { k: 'dodge', n: 'Тень', d: L => '+' + 3 * L + '% уворота' }, { k: 'armor', n: 'Латы', d: L => '+' + 4 * L + '% брони' },
+  { k: 'm_nova', n: 'Взрывной удар', fx: ['nova', 4], d: L => PFX.nova(L, 4) }, { k: 'm_chain', n: 'Цепная молния', fx: ['chain'], d: L => PFX.chain(L) },
+  { k: 'm_orbit', n: 'Сферы', fx: ['orbit'], d: L => PFX.orbit(L) }, { k: 'm_sky', n: 'Кара небес', fx: ['sky', 6], d: L => PFX.sky(L, 6) },
+  { k: 'm_pulse', n: 'Волна силы', fx: ['pulse', 6], d: L => PFX.pulse(L, 6) }, { k: 'm_summon', n: 'Союзник', fx: ['summon', 0], d: L => PFX.summon(L, 0) },
+  { k: 'm_trail', n: 'Огненный след', fx: ['trail'], d: L => PFX.trail(L) }, { k: 'm_volley', n: 'Залп', fx: ['volley', 5], d: L => PFX.volley(L, 5) },
+  { k: 'm_boom', n: 'Взрыв трупов', fx: ['boom'], d: L => PFX.boom(L) }, { k: 'm_shield', n: 'Щит', fx: ['shield', 8], d: L => PFX.shield(L, 8) },
+];
+const PK = {}; PERKS.forEach(p => PK[p.k] = p);
+const perkL = k => (S.perks && S.perks[k]) || 0;
+const lvNeed = L => Math.floor(15 * Math.pow(1.22, L));
+function lifeXP(v) {
+  S.lxp = (S.lxp || 0) + v; S.lvl = S.lvl || 1;
+  while (S.lxp >= lvNeed(S.lvl)) { S.lxp -= lvNeed(S.lvl); S.lvl++; S.pend = (S.pend || 0) + 1;
+    ring(hero.x, hero.y - 4, 14, '#ffe08a'); ftext(hero.x, hero.y - 20, 'УРОВЕНЬ ' + S.lvl + '!', '#ffe08a', 1.1, 1); tone(784, .08, 'square', .04); tone(1175, .12, 'square', .04, 0, .07);
+    tip('perk', 'Новый уровень!', 'Кнопка ★ ПЕРК справа внизу — выбери 1 из 3 улучшений на эту жизнь. В меню можно включить авто-выбор.'); }
+  if (S.pend && S.meta.autoPerk) { while (S.pend) { const o = perkOffer(); if (!o.length) { S.pend = 0; break; } takePerk(o[0].k, true); } }
+}
+function perkOffer() {
+  if (S.offer && S.offer.length) return S.offer.map(k => PK[k]);
+  const pool = PERKS.filter(p => perkL(p.k) < 5).sort(() => rnd() - .5);
+  // авто-выбор предпочитает уже взятые (сильнее стакаются)
+  if (S.meta.autoPerk) pool.sort((a, b) => perkL(b.k) - perkL(a.k));
+  S.offer = pool.slice(0, 3).map(p => p.k); return S.offer.map(k => PK[k]);
+}
+function takePerk(k, silent) {
+  if (!S.perks) S.perks = {}; S.perks[k] = perkL(k) + 1; S.pend = Math.max(0, (S.pend || 0) - 1); S.offer = null;
+  D.dirty = true; calcPath(); recalc();
+  if (!silent) { feed('Перк: ' + PK[k].n + ' ' + roman(perkL(k)), '#ffe08a'); tone(1047, .1, 'triangle', .04); }
+}
+function perkMods() {
+  const L = perkL;
+  D.hit *= 1 + .25 * L('dmg'); D.maxHP *= 1 + .3 * L('hp'); D.aps = Math.min(14, D.aps * (1 + .1 * L('aps')));
+  D.crit = Math.min(.95, D.crit + .04 * L('crit')); D.critM *= 1 + .15 * L('crit'); D.vamp += .01 * L('vamp'); D.regen += .01 * L('regen');
+  D.gainMult *= 1 + .2 * L('gain'); D.rare = Math.min(.7, D.rare * (1 + .3 * L('gold'))); D.dodge = Math.min(.9, D.dodge + .03 * L('dodge')); D.armor = Math.min(.95, D.armor + .04 * L('armor'));
+  if (L('clsx') && D.cq) D.cq = D.cq.map(q => Math.min(1.5, q * (1 + .15 * L('clsx'))));
+}
+function perkFx() { const out = []; for (const p of PERKS) if (p.fx && perkL(p.k)) out.push({ n: p.n, ty: p.fx[0], p: p.fx[1] || 0, L: perkL(p.k), t: 9, id: p.k }); return out; }
+function openPerks() {
+  if (!S.pend) return; const o = perkOffer(); if (!o.length) { S.pend = 0; return; }
+  const el = $('perkbox'); el.hidden = false;
+  el.innerHTML = `<div class="pkh">УРОВЕНЬ ${S.lvl} · ВЫБЕРИ ПЕРК${S.pend > 1 ? ' (ещё ' + (S.pend - 1) + ')' : ''}</div>` + o.map(p => { const L = perkL(p.k);
+    return `<button class="pkc" data-pk="${p.k}"><b>${p.n} ${roman(L + 1)}</b><small>${p.d(L + 1)}</small>${L ? `<em>сейчас: ${p.d(L)}</em>` : ''}${p.fx ? '<i>механика</i>' : ''}</button>`; }).join('') + `<button class="pkx" data-pk="">позже</button>`;
 }
 
 /* ---------- ЭТАП 2: созвездия, Страж стены, Вознесение, Искры ---------- */
@@ -2324,7 +2388,7 @@ function recalc() {
   D.quake = sat(R.quake, 60);
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods(); pathMods(); constMods(); gearMods();
+  ntMods(); pathMods(); constMods(); gearMods(); perkMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -2737,7 +2801,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); ntKill(m, base); pathKill(m); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
+  clsKill(m, base); ntKill(m, base); pathKill(m); lifeXP((1 + S.zone * .1) * (m.boss ? 12 : m.rare ? 3 : 1)); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -2871,7 +2935,7 @@ const flyMul = fromWave => wRule('fly') && !fromWave && !setOn(1, 4) ? .6 : 1;
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
-  v *= constUlt() * (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
+  v *= (1 + .2 * perkL('ult')) * constUlt() * (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
   if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));
   if (ult >= 1) { ultReadyT = 0; tip('ult', 'Ульта готова', 'Полоса внизу экрана заполнена. Тапни в любое место — удар по всем врагам.'); tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); }
@@ -3974,7 +4038,8 @@ function updateUI() {
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
   hpB.textContent = 'HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
-  $('rank').textContent = (D.spec >= 0 ? SPEC[D.spec] + ' · ' : '') + rankName(heroRank());
+  $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + (D.spec >= 0 ? SPEC[D.spec] + ' · ' : '') + rankName(heroRank());
+  { const pb = $('perkb'); pb.hidden = !S.pend || S.meta.autoPerk; pb.textContent = '★ ПЕРК' + (S.pend > 1 ? ' ×' + S.pend : ''); }
   $('kills').textContent = S.runSouls ? fmt(S.runSouls) + ' душ' : fmt(S.kills) + ' уб.';
   const ex = $('ex');
   if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = 'НАГРАДА ×' + exMult().toFixed(2); } else ex.style.display = 'none';
@@ -4085,6 +4150,10 @@ $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) {
 $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } openCT(el.dataset.c); };
 $('clsc').onclick = () => openClassTab();
 $('clsopen').onclick = () => openClassTab();
+$('perkb').onclick = () => openPerks();
+const applyAp = () => { $('apb').textContent = 'Перки: ' + (S.meta.autoPerk ? 'АВТО' : 'ВРУЧНУЮ'); };
+$('apb').onclick = () => { S.meta.autoPerk = !S.meta.autoPerk; applyAp(); if (S.meta.autoPerk) lifeXP(0); save(); };
+$('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) return; if (b.dataset.pk) { takePerk(b.dataset.pk); if (S.pend) openPerks(); else $('perkbox').hidden = true; } else $('perkbox').hidden = true; };
 let endConfirm = 0;
 $('endb').onclick = () => { if (deathT > 0) return; if (performance.now() > endConfirm) { endConfirm = performance.now() + 3000; $('endb').textContent = 'ТОЧНО? +' + fmt(S.runSouls || 0) + ' ДУШ — ТАПНИ ЕЩЁ'; setTimeout(() => { $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; }, 3000); return; }
   endConfirm = 0; $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; showSheet('fight'); heroDeath(); };
@@ -4164,7 +4233,7 @@ function rebirth(fromAsc) {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); holy = []; pals = []; EV = null; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; pals = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
@@ -4932,7 +5001,7 @@ recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
 $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); applyFx(); $('buildl').textContent = 'Сборка ' + BUILD + ' · прогресс сохраняется автоматически';
 $('panel').classList.toggle('small', !!S.panelSmall); $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('ptog').textContent = S.panelSmall ? '▲' : '▼';
-applyNavIcons();
+applyNavIcons(); applyAp();
 resize();
 hero.x = AW / 2; hero.y = AH / 2; camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
 const away = (Date.now() - (S.t || Date.now())) / 1000;
