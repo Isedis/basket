@@ -399,6 +399,7 @@ html,body{font-size:10px}
     <div class="setb">
       <button class="btn big2" id="aall" style="background:#1f5a34">АВТОИГРА: ВЫКЛ</button>
       <button class="btn big2" id="mute">Звук: ВКЛ</button>
+      <button class="btn big2" id="shkb">Тряска: СЛАБАЯ</button>
       <button class="btn big2" id="fxb">Эффекты: ВСЕ</button>
       <button class="btn big2" id="helpb">Что на экране?</button>
       <button class="btn big2" id="apb">Перки: ВРУЧНУЮ</button>
@@ -443,7 +444,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113065919';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113070849';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3697,7 +3698,7 @@ function update(dt) {
   for (const t of texts) { t.t += dt; t.x += t.vx * dt; t.y -= 14 * dt; }
   texts = texts.filter(t => t.t < t.life);
   for (const b of bolts) b.l -= dt; bolts = bolts.filter(b => b.l > 0);
-  shake = Math.max(0, shake - dt * 25);
+  shake = Math.max(0, Math.min(shake, 16) - dt * 40);
   comboPop = Math.max(0, comboPop - dt);
   if (ultCd > 0) { ultCd -= dt; if (ultCd <= 0 && ult >= .999) { ult = 1; ultReadyT = 0; tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); } }
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
@@ -3728,7 +3729,9 @@ function line(x1, y1, x2, y2, c, jag) {
 }
 
 function render() {
-  const sx = shake ? Math.round((rnd() - .5) * shake) : 0, sy = shake ? Math.round((rnd() - .5) * shake) : 0;
+  // тряска: мягкий потолок амплитуды; режим в Меню (выкл / слабая / полная)
+  const shM = S.meta.shk ?? 1, amp = !shake || !shM ? 0 : shM === 1 ? 2.2 * (1 - Math.exp(-shake / 8)) : 5 * (1 - Math.exp(-shake / 10));
+  const sx = amp ? Math.round((rnd() - .5) * amp) : 0, sy = amp ? Math.round((rnd() - .5) * amp * .6) : 0;
   ctx.setTransform(1, 0, 0, 1, sx - camX, sy - camY);
   ctx.fillStyle = '#05040a'; ctx.fillRect(camX - 6, camY - 6, W + 12, H + 12);
   ctx.drawImage(ground, 0, 0);
@@ -4248,6 +4251,9 @@ $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) r
 $('clsc').onclick = () => { S.meta.clsOpen = !S.meta.clsOpen; renderCls.h = ''; renderCls(); };
 $('clsopen').onclick = () => openClassTab();
 $('perkb').onclick = () => openPerks();
+const SHK_N = ['ВЫКЛ', 'СЛАБАЯ', 'ПОЛНАЯ'];
+const applyShk = () => { $('shkb').textContent = 'Тряска: ' + SHK_N[S.meta.shk ?? 1]; };
+$('shkb').onclick = () => { S.meta.shk = ((S.meta.shk ?? 1) + 1) % 3; applyShk(); shake = 10; save(); };
 const AUTOS = [['apb', 'autoPerk', 'Перки'], ['aub', 'autoUlt', 'Ульта'], ['atb', 'autoTal', 'Таланты после смерти'], ['acb', 'autoPath', 'Путь класса']];
 const applyAp = () => { const M = S.meta; AUTOS.forEach(([id, k, n]) => $(id).textContent = n + ': ' + (M[k] ? 'АВТО' : 'ВРУЧНУЮ'));
   $('aall').textContent = 'АВТОИГРА: ' + (AUTOS.every(a => M[a[1]]) ? 'ВКЛ' : AUTOS.some(a => M[a[1]]) ? 'ЧАСТИЧНО' : 'ВЫКЛ'); };
@@ -5132,7 +5138,7 @@ recalc();
 hero.hp = D.maxHP * clamp(S.hpf || 1, .3, 1);
 $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); applyFx(); $('buildl').textContent = 'Сборка ' + BUILD + ' · прогресс сохраняется автоматически';
 $('panel').classList.toggle('small', !!S.panelSmall); $('panel').classList.toggle('big', !!S.panelBig); $('pbig').textContent = S.panelBig ? '⤡' : '⤢'; $('ptog').textContent = S.panelSmall ? '▲' : '▼';
-applyNavIcons(); applyAp();
+applyNavIcons(); applyAp(); applyShk();
 resize();
 hero.x = AW / 2; hero.y = AH / 2; camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
 const away = (Date.now() - (S.t || Date.now())) / 1000;
