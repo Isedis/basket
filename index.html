@@ -40,7 +40,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #game{position:relative;flex:1 1 auto;min-height:150px;overflow:hidden;background:#000;touch-action:none}
 #game canvas{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
 #toast{position:absolute;left:0;right:0;top:44px;text-align:center;pointer-events:none;z-index:3}
-.tst{display:inline-block;margin:0 auto;padding:5px 9px;background:rgba(10,8,18,.9);border:2px solid #f2c94c;
+.tst{pointer-events:auto;cursor:pointer;display:inline-block;margin:0 auto;padding:5px 9px;background:rgba(10,8,18,.9);border:2px solid #f2c94c;
   color:#fff;font-size:9px;animation:pop var(--dur,2.4s) steps(12) forwards;max-width:94%;white-space:normal;line-height:1.6}
 .tst.tip{border-color:#4fd6e8;color:#bff4ff}
 .tst.tip small{color:#e9e4ff}
@@ -413,7 +413,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113060703';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113061409';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2627,13 +2627,14 @@ function nextToast() {
   tBusy = true; toastEl.innerHTML = '';
   const d = document.createElement('div'); d.className = 'tst ' + q.cls; d.style.setProperty('--dur', q.dur + 'ms');
   d.textContent = q.t; if (q.cls === 'tip') d.insertAdjacentHTML('afterbegin', pxImg('bulb', '#f2c94c', 9)); if (q.sub) { const s = document.createElement('small'); s.textContent = q.sub; d.appendChild(s); }
-  toastEl.appendChild(d); setTimeout(() => { d.remove(); nextToast(); }, q.dur);
+  toastEl.appendChild(d); let done = false; const fin = () => { if (done) return; done = true; d.remove(); nextToast(); };
+  d.onclick = fin; setTimeout(fin, q.dur);
 }
 // подсказки: каждая показывается один раз за всю игру
 function tip(key, title, text) {
   if (!S.tips) S.tips = {};
   if (S.tips[key]) return; S.tips[key] = 1;
-  toast(title, text, 5000, 'tip');
+  toast(title, text + ' (тапни, чтобы закрыть)', 4500, 'tip');
 }
 // лента событий в левом нижнем углу: прирост, эволюции, формы
 let feedArr = [], gainFeedT = 0;
@@ -4065,7 +4066,7 @@ function updateUI() {
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
   hpB.textContent = 'HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
-  $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + (D.spec >= 0 ? SPEC[D.spec] + ' · ' : '') + rankName(heroRank());
+  $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + rankName(heroRank());
   { const pb = $('perkb'); pb.hidden = !S.pend || S.meta.autoPerk; pb.textContent = '★ ПЕРК' + (S.pend > 1 ? ' ×' + S.pend : ''); }
   $('kills').textContent = S.runSouls ? fmt(S.runSouls) + ' душ' : fmt(S.kills) + ' уб.';
   const ex = $('ex');
@@ -4432,7 +4433,7 @@ function renderGear() {
   $('gdust').textContent = fmt(g.dust);
   $('gpity').textContent = 'эпик+ гарантирован через ' + (10 - g.pity);
   $('gch').innerHTML = Object.keys(CH).map(t => `<div class="chest"><img class="ic" src="${iconURL('crown', CH[t].col)}"><div class="tx" style="color:${CH[t].col}">${CH[t].n}<br><span style="color:var(--dim);font-size:7px">в наличии: ${g.chests[t]}</span></div>` +
-    `<button class="btn" data-o="${t}" ${g.chests[t] ? '' : 'disabled'}>ОТКРЫТЬ</button></div>`).join('');
+    (g.chests[t] > 1 ? `<button class="btn" data-oa="${t}" style="margin-right:4px">ВСЕ</button>` : '') + `<button class="btn" data-o="${t}" ${g.chests[t] ? '' : 'disabled'}>ОТКРЫТЬ</button></div>`).join('');
   $('geq').innerHTML = Object.keys(SLOTS).map(sl => { const it = g.eq[sl];
     if (!it) return `<div class="it empty"><img class="ic" src="${iconURL(SLOTS[sl].icon, '#3a3450')}"><div class="tx">${SLOTS[sl].n}: пусто<br>выпадает из сундуков</div></div>`;
     return `<div class="it" style="border-color:${RAR[it.rar].c}55"><img class="ic" src="${iconURL(SLOTS[sl].icon, RAR[it.rar].c)}"><div class="tx">${itemHTML(it)}</div>` +
@@ -4450,6 +4451,7 @@ $('gclose').onclick = () => { $('gear').hidden = true; navOn('nFight'); };
 $('gbody').onclick = e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return; const g = G();
   if (b.dataset.o) startOpening(b.dataset.o);
+  if (b.dataset.oa) { startOpening(b.dataset.oa); openAll(); }
   if (b.dataset.gem) { const [sl, gi] = b.dataset.gem.split(':'), it = g.eq[sl], M = S.meta; if (it && (M.gems || [])[+gi] > 0 && (it.gems || []).length < sockets(it)) { if (!it.gems) it.gems = []; it.gems.push(+gi); M.gems[+gi]--; tone(1047, .12, 'triangle', .05); tone(1568, .15, 'triangle', .04, 0, .08); gearChanged(); renderGear(); } }
   if (b.dataset.u) { const it = g.eq[b.dataset.u], c = upCost(it); if (g.dust >= c) { g.dust -= c; it.up++; tone(523, .08, 'square', .04); tone(784, .1, 'square', .04, 0, .06); gearChanged(); renderGear(); } }
   if (b.dataset.e) { const i = g.inv.findIndex(x => x.id == b.dataset.e), it = g.inv[i], cur = g.eq[it.slot]; g.inv.splice(i, 1); g.eq[it.slot] = it; if (cur) g.inv.push(cur); gearChanged(); renderGear(); }
@@ -4492,7 +4494,7 @@ function openAll() {
   const best = got.reduce((a, b) => b.rar > a.rar ? b : a, got[0]);
   op.ph = 'burst'; op.time = 0; op.it = best;
   for (let i = 0; i < 120; i++) { const a = rnd() * 6.28, v = 20 + rnd() * 70; op.parts.push({ x: 60, y: 52, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, l: .6 + rnd(), c: RAR[got[Math.floor(rnd() * got.length)].rar].c }); }
-  const cnt = [0, 0, 0, 0, 0]; got.forEach(x => cnt[x.rar]++);
+  const cnt = RAR.map(() => 0); got.forEach(x => cnt[x.rar]++);
   $('ocard').innerHTML = `<div class="rn" style="color:${RAR[best.rar].c}">ОТКРЫТО: ${got.length}</div>` + cnt.map((n, i) => n ? `<span style="color:${RAR[i].c}">${RAR[i].n}: ${n}</span>` : '').filter(Boolean).join('<br>') +
     `<br><br>Лучшее: <span style="color:${RAR[best.rar].c}">${best.name}</span><br><span style="color:var(--dim)">лучшие вещи надеты автоматически</span>`;
   op = null; $('otake').hidden = false; $('otake').textContent = 'ГОТОВО'; $('oall').hidden = true;
