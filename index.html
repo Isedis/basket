@@ -179,6 +179,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #ghead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:2px solid var(--line);font-size:9px}
 #ghead b{color:#9fd8ff;font-weight:normal}
 #gbody{flex:1;min-height:0;overflow-y:auto;padding:4px 10px 16px;-webkit-overflow-scrolling:touch}
+.trs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.trc{background:#141024;border:1px solid var(--tc,#2a2440);border-radius:4px;padding:6px 4px;text-align:center;font-size:8px;line-height:1.5}
+.trc i{display:block;width:12px;height:12px;margin:0 auto 4px;background:var(--tc);transform:rotate(45deg);box-shadow:0 0 6px var(--tc)}
+.trc b{display:block;font-weight:normal;color:var(--tc)}
+.trc small{display:block;color:var(--dim);font-size:7px}
+.trc.lk{opacity:.45} .trc.lk i{background:#3a3450;box-shadow:none}
 .gsec{font-size:8px;color:var(--zone);margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center;gap:6px}
 .gsec span{color:var(--dim);font-size:7px}
 .gsec .btn{font-size:7px;padding:3px 6px;background:#5a3a2a}
@@ -424,7 +430,7 @@ html,body{font-size:10px}
 <div id="gear" hidden>
   <div id="ghead"><span>СНАРЯЖЕНИЕ</span><span>Пыль: <b id="gdust">0</b></span><button class="btn" id="gclose">✕ ЗАКРЫТЬ</button></div>
   <div id="gbody">
-    <div class="gsec">СУНДУКИ <span id="gpity"></span></div><div id="gch"></div>
+    <div class="gsec">СУНДУКИ <span id="gpity"></span></div><div id="gch"></div><div id="gtr"></div>
     <div class="gsec">НАДЕТО</div><div id="geq"></div>
     <div id="gsets"></div>
     <div class="gsec">ИНВЕНТАРЬ <span id="gcnt"></span> <button class="btn" id="gsalv">РАЗОБРАТЬ ВСЁ</button></div><div id="ginv"></div>
@@ -444,7 +450,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113075003';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113081905';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -539,6 +545,12 @@ const EFF = [
   { k: 'blink', n: 'Скачок',      c: '#66ffff', d: 'герой телепортируется к цели' },
   { k: 'dust',  n: 'Кладоискатель', c: '#c9b07a', d: 'убийства дают пыль для вещей' },
   { k: 'quake', n: 'Землетрясение', c: '#b08a5a', d: 'каждый 6-й удар сотрясает землю' },
+  { k: 'beam',  n: 'Кровавый луч', c: '#ff3366', d: 'луч бьёт сильнейшего врага и лечит' },
+  { k: 'clone', n: 'Двойник',     c: '#8899ff', d: 'теневой двойник сражается рядом' },
+  { k: 'hole',  n: 'Чёрная дыра', c: '#9a5aff', d: 'стягивает толпу и схлопывается' },
+  { k: 'mirror',n: 'Зеркало',     c: '#bff4ff', d: 'щит отражает удар обратно' },
+  { k: 'crows', n: 'Вороны',      c: '#7a6aa0', d: 'стая воронов пикирует на врагов' },
+  { k: 'ritual',n: 'Ритуал',      c: '#cc0033', d: 'жертвует HP ради мощного взрыва' },
 ];
 const NE = EFF.length;
 const EI = {}; EFF.forEach((e, i) => EI[e.k] = i);
@@ -588,6 +600,12 @@ const EFORM = [
   ['Шаг', 'Скачок', 'Сквозь тени', 'Вездесущий'],
   ['Старатель', 'Кладоискатель', 'Золотая жила', 'Царь сокровищ'],
   ['Толчок', 'Удар оземь', 'Землетрясение', 'Раскол мира'],
+  ['Алая нить', 'Кровавый луч', 'Багровый поток', 'Река крови'],
+  ['Тень', 'Двойник', 'Отражение', 'Армия теней'],
+  ['Воронка', 'Чёрная дыра', 'Горизонт событий', 'Сингулярность'],
+  ['Блик', 'Зеркало', 'Зеркальный щит', 'Отражение мира'],
+  ['Ворон', 'Стая', 'Чёрное крыло', 'Вороний король'],
+  ['Порез', 'Ритуал', 'Кровавая жертва', 'Пакт крови'],
 ];
 const FORM_HINT = {
   dmg: 'со 2-й формы удар даёт волну, с 3-й волна ранит соседей',
@@ -610,7 +628,7 @@ const SPEC = ['Громила', 'Колосс', 'Дуэлянт', 'Снайпе�
   'Ветер', 'Мясник', 'Тень', 'Копейщик', 'Пиромант', 'Чумной доктор', 'Громовержец', 'Ёж', 'Титан', 'Берсерк',
   'Кровопускатель', 'Ледяной страж', 'Палач', 'Метатель', 'Гравитон', 'Призыватель', 'Скряга', 'Хранитель',
   'Подрывник', 'Пиявка', 'Неистовый', 'Мастер крита', 'Ловчий', 'Энергетик', 'Ужас ночи', 'Мудрец',
-  'Громовой бегун', 'Огненный страж', 'Эхо войны', 'Метчик', 'Вожак орды', 'Призрак-скакун', 'Кладоискатель', 'Сотрясатель'];
+  'Громовой бегун', 'Огненный страж', 'Эхо войны', 'Метчик', 'Вожак орды', 'Призрак-скакун', 'Кладоискатель', 'Сотрясатель', 'Кровопийца', 'Двойник', 'Повелитель бездны', 'Зеркальщик', 'Вороний князь', 'Жрец крови'];
 let formNew = [];
 const F = i => ((S.form && S.form[i]) || 0) + ksL(6, 1);
 function updForms(R) {
@@ -1419,7 +1437,7 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls'));   // корень: души не разгоняются снежным комом
+const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1);   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
@@ -2527,7 +2545,7 @@ function recalc() {
   const T = new Float64Array(NE);
   for (const s of stats) T[s.e] += s.v * s.w;
   const z = zs(), r = i => T[i] / z;
-  const R = {}; EFF.forEach((e, i) => { const j = ATTR_OF[e.k]; R[e.k] = r(i) * (1 + ta('e_' + e.k)) * (j != null ? attrMul(j) : 1) * (1 + .05 * thrL(e.k)); });
+  const R = {}; EFF.forEach((e, i) => { const j = ATTR_OF[e.k]; R[e.k] = r(i) * (1 + ta('e_' + e.k)) * (j != null ? attrMul(j) : 1) * (1 + .05 * thrL(e.k)) * (trHas('star') ? 1.05 : 1); });
   thrCheck(R);
   updSyn(R);
   updForms(R);
@@ -2582,9 +2600,10 @@ function recalc() {
   D.blink = .6 * sat(R.blink, 80);
   D.dust = .25 * sat(R.dust, 60);
   D.quake = sat(R.quake, 60);
+  D.beam = sat(R.beam || 0, 50); D.clone = sat(R.clone || 0, 50); D.hole = sat(R.hole || 0, 50); D.mirror = sat(R.mirror || 0, 50); D.crows = sat(R.crows || 0, 50); D.ritual = sat(R.ritual || 0, 50);
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods(); pathMods(); constMods(); gearMods(); perkMods();
+  ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods();
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -2665,6 +2684,12 @@ function effVal(e) {
     case 'blink': return 'шанс скачка к цели ' + pct(D.blink) + ' в секунду';
     case 'dust': return 'шанс пыли за убийство ' + pct(D.dust);
     case 'quake': return 'землетрясение: ' + pct(D.quake * 1.5) + ' удара по кругу';
+    case 'beam': return 'каждые 3с луч: ×' + (3 + 12 * D.beam).toFixed(1) + ' удара, лечит ' + pct(.02 + .08 * D.beam) + ' HP';
+    case 'clone': return 'каждые 9с двойник на ' + (3 + 4 * D.clone).toFixed(1) + 'с, бьёт на ' + pct(.5 + D.clone) + ' удара';
+    case 'hole': return 'каждые 8с дыра стягивает врагов и бьёт ×' + (5 + 25 * D.hole).toFixed(0);
+    case 'mirror': return 'щит каждые ' + Math.max(3, 8 - 5 * D.mirror).toFixed(1) + 'с: гасит удар и отвечает ×' + (10 + 40 * D.mirror).toFixed(0);
+    case 'crows': return 'воронов: ' + (1 + Math.floor(4 * D.crows)) + ', пике ×' + (1 + 3 * D.crows).toFixed(1);
+    case 'ritual': return 'каждые 10с −10% HP → взрыв ×' + (8 + 40 * D.ritual).toFixed(0);
     case 'curio': return 'статы открываются в ' + (1 + D.curious).toFixed(2) + ' раза быстрее';
     case 'barrier': return 'щит ' + pct(D.barrier) + ' HP каждые 6с';
     case 'fury': return 'до ×' + (1 + D.furyK).toFixed(2) + ' урона при низком HP';
@@ -2890,6 +2915,7 @@ function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor
 
 let deathT = 0;
 function heroDeath() {
+  if (deathT <= 0 && trHas('phoenix') && !S.phx) { S.phx = 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
   hero.hp = 0; if (deathT > 0) return;
   deathT = 1.4; slowT = 1.2; flashT = .3; shake = 12; hero.iframe = 3;
   for (let i = 0; i < 4; i++) burst(hero.x, hero.y - 4, ['#ff3355', '#ffffff', '#ff44ff', CL().c][i], 14, 60);
@@ -2912,6 +2938,7 @@ function bossJudge(bm, dt) {
 }
 function hurtHero(dmg, unblock) {
   if (!unblock) { dmg = clsBlock(dmg); if (dmg <= 0) return 0; }
+  if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; hero.hurt = .1; ntHurt();
@@ -2938,7 +2965,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.shd > 0) { if (crit) { m.shd = 0; burst(m.x, m.y - 4, '#7ad8ff', 12, 40); fxLabel('Щит пробит', m.x, m.y - 14, '#7ad8ff'); } else { const a = Math.min(m.shd, dmg); m.shd -= a; dmg -= a; if (dmg <= 0) { if (rnd() < .2) burst(m.x, m.y - 4, '#7ad8ff', 2, 15); return; } } }
   if (m.guard) dmg *= guardMul();   // Страж стены: защиту ломают звёзды созвездий
   if (m.pmk > time) dmg *= 1 + (m.pmkV || 0);   // метка пути класса
-  if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)); else if (m.na) dmg *= 1 + ta('elite');
+  if (m.boss) dmg *= (1 + ta('bossdmg')) * (1 + .1 * ntL(5, 2)) * (trHas('skull') ? 1.3 : 1); else if (m.na) dmg *= 1 + ta('elite');
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   if (hero.stopT > 0 && m.stopD !== undefined && m.frz > 0) { m.stopD += dmg; m.fl = .07; burst(m.x, m.y - 3, '#88aaff', 1, 10); return; }   // остановка времени: урон копится
@@ -2958,7 +2985,7 @@ function hitMob(m, dmg, crit, show, col) {
 let killWindow = 0;
 function killMob(m) {
   S.kills++; killWindow++;
-  zkKill(m);
+  zkKill(m); trRoll(m);
   combo++; comboT = comboTime(); comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008);
   if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
   if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { feed('Комбо ' + combo + '! награды ×' + comboM().toFixed(2), '#ffdd44'); sfx.combo(); comboPop = .4; if (combo === 10) tip('combo', 'Комбо', 'Убивай без пауз — растёт множитель наград (вверху справа). Тапы по врагам продлевают комбо.'); }
@@ -3476,7 +3503,7 @@ function clsUlt(dmg) {
 
 function fireUlt() {
   if (ultCd > 0 || US) return;
-  ultCd = ULT_CD; ult = 0;
+  ultCd = ULT_CD - (trHas('glass') ? 2 : 0); ult = 0;
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM();
   ultStart(dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')));   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
@@ -3637,6 +3664,72 @@ function bossPhase(m) {
 /* ---------- механики и визуал эффектов ---------- */
 function randMob() { const a = mobs.filter(m => !m.dead); return a.length ? a[Math.floor(rnd() * a.length)] : null; }
 function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt * rate) parts.push(mk()); }
+
+/* ---------- новые эффекты с видимой механикой ---------- */
+let clones = [], holes = [], crows = [];
+function nfxTick(dt) {
+  const live3 = () => mobs.filter(m => !m.dead && !m.obj);
+  if (D.beam > .02) { PT.beam = (PT.beam ?? 3) - dt; if (PT.beam <= 0) { const t = live3().filter(m => Math.hypot(m.x - hero.x, m.y - hero.y) < 70).sort((a, b) => b.hp - a.hp)[0];
+    if (t) { PT.beam = 3; bolt3(hero.x, hero.y - 5, t.x, t.y - 4, '#ff3366', 1); hitMob(t, D.hit * (3 + 12 * D.beam), true, true, '#ff3366'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * (.02 + .08 * D.beam)); burst(hero.x, hero.y - 5, '#ff3366', 4, 15); fxLabel('Кровавый луч', hero.x, hero.y - 18, '#ff3366'); } } }
+  if (D.clone > .02) { PT.clone = (PT.clone ?? 4) - dt; if (PT.clone <= 0 && clones.length < (D.clone > .7 ? 2 : 1)) { PT.clone = 9; clones.push({ x: hero.x - hero.face * 8, y: hero.y, t: 3 + 4 * D.clone, cd: 0, face: hero.face }); burst(hero.x, hero.y - 4, '#8899ff', 10, 30); fxLabel('Двойник', hero.x, hero.y - 18, '#8899ff'); } }
+  for (const c of clones) { c.t -= dt; c.cd -= dt; let best = null, bd = 1e9; for (const m of mobs) { if (m.dead || m.obj) continue; const d = Math.hypot(m.x - c.x, m.y - c.y); if (d < bd) { bd = d; best = m; } }
+    if (best) { c.face = best.x >= c.x ? 1 : -1; if (bd > 7) { c.x += (best.x - c.x) / bd * 90 * dt; c.y += (best.y - c.y) / bd * 90 * dt; } else if (c.cd <= 0) { c.cd = .35; hitMob(best, D.hit * (.5 + D.clone), false, false, '#8899ff'); } } }
+  clones = clones.filter(c => c.t > 0);
+  if (D.hole > .02) { PT.hole = (PT.hole ?? 5) - dt; if (PT.hole <= 0) { const L = live3(); if (L.length >= 4) { PT.hole = 8; let best = null, bn = 0;
+    for (let i = 0; i < Math.min(12, L.length); i++) { const m = L[Math.floor(rnd() * L.length)], n = L.filter(o => Math.hypot(o.x - m.x, o.y - m.y) < 30).length; if (n > bn) { bn = n; best = m; } }
+    if (best) holes.push({ x: best.x, y: best.y, t: 2, max: 2 }); } } }
+  for (const h of holes) { h.t -= dt; for (const m of mobs) if (!m.dead && !m.obj && !m.boss) { const d = Math.hypot(h.x - m.x, h.y - m.y); if (d < 38 && d > 2) { m.x += (h.x - m.x) / d * 45 * dt; m.y += (h.y - m.y) / d * 45 * dt; } }
+    if (h.t <= 0) { ring(h.x, h.y - 2, 22, '#9a5aff'); burst(h.x, h.y - 2, '#9a5aff', 18, 50); hitAround(h.x, h.y, 24, D.hit * (5 + 25 * D.hole), '#9a5aff'); fxLabel('Чёрная дыра', h.x, h.y - 14, '#9a5aff'); } }
+  holes = holes.filter(h => h.t > 0);
+  if (D.mirror > .02 && !hero.mirror) { PT.mir = (PT.mir ?? 2) - dt; if (PT.mir <= 0) { PT.mir = Math.max(3, 8 - 5 * D.mirror); hero.mirror = 1; } }
+  { const n = D.crows > .02 ? 1 + Math.floor(4 * D.crows) : 0; while (crows.length < n) crows.push({ a: rnd() * 6.28, st: 0, cd: rnd(), x: hero.x, y: hero.y }); if (crows.length > n) crows.length = n;
+    crows.forEach((c, i) => { c.a += dt * 2.2; const ox = hero.x + Math.cos(c.a + i * 6.28 / n) * 14, oy = hero.y - 9 + Math.sin(c.a + i * 6.28 / n) * 6;
+      if (c.tgt && (c.tgt.dead || c.st <= 0)) c.tgt = null;
+      if (c.tgt) { c.st -= dt; const d = Math.hypot(c.tgt.x - c.x, c.tgt.y - 4 - c.y); if (d < 4) { hitMob(c.tgt, D.hit * (1 + 3 * D.crows), false, false, '#7a6aa0'); burst(c.x, c.y, '#3a2a4a', 3, 20); c.tgt = null; } else { c.x += (c.tgt.x - c.x) / d * 160 * dt; c.y += (c.tgt.y - 4 - c.y) / d * 160 * dt; } }
+      else { c.x += (ox - c.x) * Math.min(1, dt * 8); c.y += (oy - c.y) * Math.min(1, dt * 8); c.cd -= dt;
+        if (c.cd <= 0) { c.cd = 1.2; const t = mobs.filter(m => !m.dead && !m.obj && Math.hypot(m.x - hero.x, m.y - hero.y) < 55); if (t.length) { c.tgt = t[Math.floor(rnd() * t.length)]; c.st = .6; } } } }); }
+  if (D.ritual > .02) { PT.rit = (PT.rit ?? 6) - dt; if (PT.rit <= 0 && hero.hp > D.maxHP * .5 && mobs.length) { PT.rit = 10; hero.hp -= hero.hp * .1;
+    ring(hero.x, hero.y - 2, 30, '#cc0033'); ring(hero.x, hero.y - 2, 18, '#ff3366'); burst(hero.x, hero.y - 4, '#cc0033', 20, 55); hitAround(hero.x, hero.y, 32, D.hit * (8 + 40 * D.ritual), '#cc0033'); fxLabel('Ритуал', hero.x, hero.y - 18, '#cc0033'); } }
+}
+function drawNfx() {
+  for (const h of holes) { const f = 1 - h.t / h.max, r = 4 + f * 3; ctx.fillStyle = '#05010c'; ctx.globalAlpha = .9; ctx.fillRect(Math.round(h.x - r), Math.round(h.y - r * .6 - 2), Math.round(r * 2), Math.round(r * 1.2));
+    ctx.globalAlpha = .8; for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28 + time * 6, rr = r + 3 + Math.sin(i * 1.7 + time * 9) * 1.5; pix(h.x + Math.cos(a) * rr, h.y - 2 + Math.sin(a) * rr * .6, i % 3 ? '#9a5aff' : '#ffffff'); } ctx.globalAlpha = 1; }
+  for (const c of clones) { ctx.globalAlpha = Math.min(.6, c.t * .6); const sl = silhouette('#8899ff'); ctx.save(); if (c.face < 0) { ctx.translate(Math.round(c.x - 4) * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(sl, Math.round(c.x - 4) - (sl.ox || 0), Math.round(c.y - 8) - (sl.oy || 0)); ctx.restore(); ctx.globalAlpha = 1; }
+  for (const c of crows) { const x = Math.round(c.x), y = Math.round(c.y), fl = Math.sin(time * 18 + x) > 0; ctx.fillStyle = '#1a1424'; ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x - (fl ? 2 : 1), y - (fl ? 1 : 0), 1, 1); ctx.fillRect(x + (fl ? 2 : 1), y - (fl ? 1 : 0), 1, 1); pix(x, y - 1, '#7a6aa0'); }
+  if (hero.mirror) { ctx.globalAlpha = .55 + .2 * Math.sin(time * 5); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + time * .8; pix(hero.x + Math.cos(a) * 8, hero.y - 4 + Math.sin(a) * 7, '#bff4ff'); } ctx.globalAlpha = 1; }
+}
+function mirrorBlock(dmg) {
+  hero.mirror = 0; const t = mobs.filter(m => !m.dead && !m.obj).sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y))[0];
+  ring(hero.x, hero.y - 4, 12, '#bff4ff'); burst(hero.x, hero.y - 4, '#ffffff', 10, 40); fxLabel('Зеркало', hero.x, hero.y - 18, '#bff4ff');
+  if (t) { bolt3(hero.x, hero.y - 5, t.x, t.y - 4, '#bff4ff', 0); hitMob(t, D.hit * (10 + 40 * D.mirror), true, true, '#bff4ff'); }
+}
+/* ---------- сокровища: редкие находки навсегда ---------- */
+const TREAS = [
+  { k: 'heart', n: 'Сердце дракона', c: '#ff4433', d: '+25% урона' }, { k: 'eye', n: 'Глаз бури', c: '#99eeff', d: '+10% скорости атаки' },
+  { k: 'crown', n: 'Корона гоблина', c: '#ffd84a', d: 'золотые враги ×1.5' }, { k: 'phoenix', n: 'Перо феникса', c: '#ff9a3c', d: 'раз за жизнь спасает от смерти' },
+  { k: 'glass', n: 'Песочные часы', c: '#e0c080', d: 'ульта перезаряжается на 2с быстрее' }, { k: 'fang', n: 'Клык волка', c: '#e8e8e8', d: '+5% крита, +25% силы крита' },
+  { k: 'tear', n: 'Слеза луны', c: '#bfe0ff', d: '+30% HP, +1% HP/с' }, { k: 'compass', n: 'Компас странника', c: '#c9b07a', d: 'жизнь начинается на 3 зоны дальше' },
+  { k: 'skull', n: 'Череп титана', c: '#cfcfcf', d: '+30% урона вожакам' }, { k: 'bag', n: 'Мешок душ', c: '#ff44ff', d: '+15% душ забега' },
+  { k: 'echo', n: 'Камень эха', c: '#ccccff', d: '+20% прироста статов' }, { k: 'star', n: 'Звёздная пыль', c: '#fff6a0', d: '+5% ко всем эффектам' },
+];
+const trHas = k => !!(S.meta && S.meta.tr && S.meta.tr[k]);
+const trCount = () => TREAS.filter(t => trHas(t.k)).length;
+function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2); if (rnd() < ch) trDrop(m.x, m.y); }
+function trDrop(x, y) {
+  const M = S.meta; if (!M.tr) M.tr = {}; const t = TREAS[Math.floor(rnd() * TREAS.length)];
+  if (M.tr[t.k]) { addSouls(bossSouls(S.zone) * 2); feed('Дубль сокровища «' + t.n + '» → души', t.c); return; }
+  M.tr[t.k] = 1; D.dirty = true; recalc(); save();
+  toast('СОКРОВИЩЕ: ' + t.n.toUpperCase() + '!', t.d + ' · навсегда · коллекция ' + trCount() + '/' + TREAS.length + ' (Вещи)', 4500);
+  ring(x, y - 4, 24, t.c); burst(x, y - 4, t.c, 40, 70); [523, 784, 1047, 1568].forEach((f, i) => tone(f, .18, 'triangle', .05, 0, i * .09));
+}
+function trMods() {
+  if (trHas('heart')) D.hit *= 1.25; if (trHas('eye')) D.aps = Math.min(14, D.aps * 1.1); if (trHas('crown')) D.rare = Math.min(.7, D.rare * 1.5);
+  if (trHas('fang')) { D.crit = Math.min(.95, D.crit + .05); D.critM *= 1.25; } if (trHas('tear')) { D.maxHP *= 1.3; D.regen += .01; } if (trHas('echo')) D.gainMult *= 1.2;
+}
+function trHTML() {
+  return `<div class="gsec">СОКРОВИЩА <span>${trCount()} / ${TREAS.length} · редкая находка с врагов, навсегда</span></div><div class="trs">` +
+    TREAS.map(t => trHas(t.k) ? `<div class="trc" style="--tc:${t.c}"><i></i><b>${t.n}</b><small>${t.d}</small></div>` : `<div class="trc lk"><i></i><b>???</b><small>ещё не найдено</small></div>`).join('') + '</div>';
+}
 function effMech(dt) {
   const ff = F(EI.fire), fs = F(EI.shock), ft = F(EI.thorns), fr = F(EI.regen);
   for (const al of allies) {
@@ -3646,7 +3739,7 @@ function effMech(dt) {
     if (al.t <= 0) { burst(al.x, al.y - 3, '#7affb0', 6, 20); if ((aw() && cls() === 'necro') || isSty('necro', 1)) { ring(al.x, al.y - 3, 14, '#7affb0'); hitAround(al.x, al.y, 14, D.hit * 2, '#7affb0'); } }
   }
   allies = allies.filter(al => al.t > 0);
-  clsTick(dt); awkTick(dt); ntTick(dt); pathTick(dt); worldTick(dt); gearTick(dt);
+  clsTick(dt); awkTick(dt); ntTick(dt); pathTick(dt); worldTick(dt); gearTick(dt); nfxTick(dt);
   if (D.grav > .02) { PT.grv = (PT.grv ?? 4) - dt; if (PT.grv <= 0) { PT.grv = 4;
       let n = 0; for (const m of mobs) { if (m.dead || m.boss) continue; const dx = hero.x - m.x, dy = hero.y - m.y, d = Math.hypot(dx, dy) || 1; if (d < 45 && d > 8) { m.kx += dx / d * 140 * D.grav; m.ky += dy / d * 140 * D.grav; n++; } }
       if (n) { fxLabel('Притяжение', hero.x, hero.y - 18, '#9a7aff'); for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = 30 + rnd() * 10; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .6, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 45, l: .4, c: '#9a7aff', f: 1 }); } } } }
@@ -3976,6 +4069,7 @@ function render() {
   for (const pr of proj) { pix(pr.x, pr.y, '#ffffff'); pix(pr.x - pr.vx * .02, pr.y - pr.vy * .02, '#ff3322'); pix(pr.x - pr.vx * .04, pr.y - pr.vy * .04, '#ff3322'); }
   for (const [qx, qy] of pix2) { ctx.fillStyle = '#66aaff'; ctx.fillRect(Math.round(qx) - 1, Math.round(qy), 3, 1); } pix2 = [];
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
+  drawNfx();
   drawHazTop();
   drawHeroTop(rk);
   // полоса вожака (экранные координаты)
@@ -4350,7 +4444,7 @@ function updateUI() {
      ['Детон', pct(D.det || 0), D.det], ['Похищ', pct(D.leech || 0), D.leech], ['Раж', pct(D.rageK || 0), D.rageK], ['Сверхкр', pct(D.scrit || 0), D.scrit],
      ['Охотн', '×' + (D.hunt || 1).toFixed(1), D.hunt > 1.01], ['Энерг', '×' + (D.energy || 1).toFixed(1), D.energy > 1.01], ['Страх', pct(D.fear || 0), D.fear], ['Любозн', '×' + (1 + (D.curious || 0)).toFixed(1), D.curious],
      ['Шаг', pct(D.trail || 0), D.trail], ['Сферы', D.orbs || 0, D.orbs], ['Эхо', pct(D.echo || 0), D.echo], ['Метка', pct(D.mark || 0), D.mark],
-     ['Орда', '+' + (D.horde || 0), D.horde], ['Скачок', pct(D.blink || 0), D.blink], ['Клад', pct(D.dust || 0), D.dust], ['Землетр', pct(D.quake || 0), D.quake]]
+     ['Орда', '+' + (D.horde || 0), D.horde], ['Скачок', pct(D.blink || 0), D.blink], ['Клад', pct(D.dust || 0), D.dust], ['Землетр', pct(D.quake || 0), D.quake], ['Луч', pct(D.beam || 0), D.beam], ['Двойник', pct(D.clone || 0), D.clone], ['Дыра', pct(D.hole || 0), D.hole], ['Зеркало', pct(D.mirror || 0), D.mirror], ['Вороны', pct(D.crows || 0), D.crows], ['Ритуал', pct(D.ritual || 0), D.ritual]]
       .map(([n, v, on]) => `<span${on > .001 || on === true ? '' : ' style="opacity:.4"'}>${n} <b>${v}</b></span>`).join('')).split('</span>').filter(Boolean).map(x => x + '</span>');
   const dps = D.hit * D.aps * (1 + D.crit * (D.critM - 1)), U = updateUI, tnow = performance.now();
   if (!U.pk) U.pk = { d: dps, h: D.maxHP, k: S.kps, td: 0, th: 0, tk: 0 };
@@ -4526,12 +4620,12 @@ function rebirth(fromAsc) {
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
-  rollClass(); holy = []; pals = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
-  { const sz = Math.min(10 * ascL('path'), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
+  { const sz = Math.min(10 * ascL('path') + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
   if (M.autoTal) bestBuy(true);
   calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
@@ -4690,6 +4784,7 @@ function renderGear() {
   $('gpity').textContent = 'эпик+ гарантирован через ' + (10 - g.pity);
   $('gch').innerHTML = Object.keys(CH).map(t => `<div class="chest"><img class="ic" src="${iconURL('crown', CH[t].col)}"><div class="tx" style="color:${CH[t].col}">${CH[t].n}<br><span style="color:var(--dim);font-size:7px">в наличии: ${g.chests[t]}</span></div>` +
     (g.chests[t] > 1 ? `<button class="btn" data-oa="${t}" style="margin-right:4px">ВСЕ</button>` : '') + `<button class="btn" data-o="${t}" ${g.chests[t] ? '' : 'disabled'}>ОТКРЫТЬ</button></div>`).join('');
+  $('gtr').innerHTML = trHTML();
   $('geq').innerHTML = Object.keys(SLOTS).map(sl => { const it = g.eq[sl];
     if (!it) return `<div class="it empty"><img class="ic" src="${iconURL(SLOTS[sl].icon, '#3a3450')}"><div class="tx">${SLOTS[sl].n}: пусто<br>выпадает из сундуков</div></div>`;
     return `<div class="it" style="border-color:${RAR[it.rar].c}55"><img class="ic" src="${iconURL(SLOTS[sl].icon, RAR[it.rar].c)}"><div class="tx">${itemHTML(it)}</div>` +
@@ -5226,7 +5321,7 @@ function offline(sec) {
     const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1) * (1 + ta('x_greed')) * Math.pow(1.25, TAL.constel || 0);
     const picks = Math.min(stats.length, 12);
     for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
-    clsGain(g * .15); attrGain(k * (1 + S.zone * .1) * .5); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
+    clsGain(g * .15); attrGain(k * (1 + S.zone * .1) * .5); if (rnd() < k / 4000) trDrop(hero.x, hero.y); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
     checkUnlocks(true);
   }
   recalc(); buildGround();
