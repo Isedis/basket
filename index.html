@@ -388,7 +388,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113022920';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113023236';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1536,8 +1536,80 @@ function calcPath() {
   for (let t = 1; t <= 3; t++) PIDS.forEach((id, j) => { const L = pL(k, t, id); if (L) { const [n, ty, p] = PATH[k][t - 1][j]; PFXL.push({ n, ty, p: p || 0, L, t, id }); } });
 }
 const pfx = ty => PFXL.filter(e => e.ty === ty);
+/* облик механик пути для каждого класса: сферы, удар с неба, союзники, снаряды */
+const CSKIN = {
+  war:   { orb: 'sword', sky: 'sword', sum: ['shade', '#c9ced6'], vol: 'knife' },
+  bers:  { orb: 'axe', sky: 'quake', sum: ['shade', '#ff4433'], vol: 'axe' },
+  pal:   { orb: 'holy', sky: 'pillar', sum: [4, '#ffe08a'], vol: 'holy' },
+  guard: { orb: 'shield', sky: 'shield', sum: [7, '#8fb0d0'], vol: 'shield' },
+  mage:  { orb: 'fire', sky: 'meteor', sum: [12, '#ff7a30'], vol: 'fire' },
+  sham:  { orb: 'bolt', sky: 'lightning', sum: [4, '#66ccff'], vol: 'bolt' },
+  arch:  { orb: 'arrow', sky: 'arrow', sum: [1, '#5cff8a'], vol: 'arrow' },
+  assa:  { orb: 'knife', sky: 'shadow', sum: ['shade', '#9a7aff'], vol: 'knife' },
+  gamb:  { orb: 'card', sky: 'card', sum: [4, '#44ffaa'], vol: 'card' },
+  alch:  { orb: 'flask', sky: 'flask', sum: [0, '#b6ff3c'], vol: 'flask' },
+  priest:{ orb: 'halo', sky: 'pillar', sum: [4, '#fff6c0'], vol: 'holy' },
+  monk:  { orb: 'chi', sky: 'palm', sum: ['shade', '#ffaa55'], vol: 'chi' },
+  chrono:{ orb: 'gear', sky: 'clock', sum: ['shade', '#88aaff'], vol: 'time' },
+  rune:  { orb: 'rune', sky: 'runepillar', sum: [7, '#bb88ff'], vol: 'rune' },
+  necro: { orb: 'skull', sky: 'dark', sum: [2, '#7affb0'], vol: 'bone' },
+  reap:  { orb: 'soul', sky: 'scythe', sum: [4, '#ff44ff'], vol: 'scythe' },
+};
+const SK = () => CSKIN[cls()];
+function drawOrb(type, x, y, a, c) {
+  x = Math.round(x); y = Math.round(y);
+  switch (type) {
+    case 'sword': art('sword', { G: '#ffd84a', W: '#ffffff', S: '#c9ced6', H: '#6a4a2a' }, x, y, .7, a + 1.57); break;
+    case 'axe': for (let i = -2; i <= 2; i++) pix(x + Math.cos(a * 3) * i, y + Math.sin(a * 3) * i, i === 2 ? '#ffffff' : '#c9ced6'); dot(x + Math.cos(a * 3) * 2, y + Math.sin(a * 3) * 2, 2, '#ff4433'); break;
+    case 'holy': ctx.fillStyle = '#ffe08a'; ctx.fillRect(x - 1, y - 3, 2, 6); ctx.fillRect(x - 3, y - 1, 6, 2); pix(x, y, '#ffffff'); break;
+    case 'shield': ctx.fillStyle = '#5a6a8a'; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillStyle = '#8fb0d0'; ctx.fillRect(x - 1, y - 1, 2, 3); break;
+    case 'fire': dot(x, y, 4, '#ff7a30'); dot(x, y, 2, '#ffdd66'); ctx.globalAlpha = .5; for (let j = 1; j < 4; j++) pix(x - Math.cos(a + 1.57) * j * 2, y - Math.sin(a + 1.57) * j * 2, '#ff6622'); ctx.globalAlpha = 1; break;
+    case 'bolt': dot(x, y, 3, '#ffffff'); pix(x + (rnd() < .5 ? 2 : -2), y + (rnd() < .5 ? 2 : -2), '#99eeff'); pix(x + (rnd() - .5) * 6, y + (rnd() - .5) * 6, '#66ccff'); break;
+    case 'arrow': for (let j = 0; j < 5; j++) pix(x - Math.cos(a + 1.57) * j, y - Math.sin(a + 1.57) * j, j === 0 ? '#ffffff' : j > 3 ? '#5cff8a' : '#c9a36a'); break;
+    case 'knife': for (let j = -2; j <= 2; j++) pix(x + Math.cos(a * 4) * j, y + Math.sin(a * 4) * j, j > 0 ? '#ffffff' : '#9a7aff'); break;
+    case 'card': ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, y - 3, 4, 6); ctx.fillStyle = ['#ff4466', '#ffd84a', '#228844', '#222244'][Math.floor(a * 2) & 3]; ctx.fillRect(x - 1, y - 1, 2, 2); break;
+    case 'flask': art('flask', { W: '#e6e6e6', G: '#3a6a12', L: '#b6ff3c', B: '#ffffff' }, x, y, .8, a * 2); break;
+    case 'halo': ctx.globalAlpha = .9; circ(x, y, 3, '#fff6c0', 10, .5, a * 3); pix(x, y, '#ffffff'); ctx.globalAlpha = 1; break;
+    case 'chi': dot(x, y, 4, '#ffaa55'); dot(x, y, 2, '#fff0c0'); circ(x, y, 4, '#ffcc66', 8, 1, a * 4); break;
+    case 'gear': circ(x, y, 3, '#88aaff', 8, 1, a * 5); dot(x, y, 2, '#ffffff'); break;
+    case 'rune': ctx.fillStyle = '#bb88ff'; ctx.fillRect(x - 2, y - 2, 5, 1); ctx.fillRect(x, y - 2, 1, 5); ctx.fillRect(x - 2, y + 2, 5, 1); pix(x, y, '#ffffff'); break;
+    case 'skull': art('skull', { W: '#d8e8d8', K: '#7affb0' }, x, y, .5, 0); break;
+    case 'soul': dot(x, y, 3, '#ff44ff'); pix(x, y - 2, '#ffaaff'); ctx.globalAlpha = .5; pix(x - Math.cos(a) * 3, y - Math.sin(a) * 3 + 2, '#ff44ff'); ctx.globalAlpha = 1; break;
+    default: ctx.fillStyle = c; ctx.fillRect(x - 1, y - 1, 3, 3); pix(x, y, '#ffffff');
+  }
+}
+function skyStrike(type, o, dmg, c, name) {
+  const tx = o.x, ty = o.y, hit = () => { if (!o.dead) hitMob(o, dmg, true, true, c); ring(tx, ty - 2, 16, c); groundMark(tx, ty + 2, 14, type === 'meteor' || type === 'quake' ? '#ff9a3c' : type === 'dark' ? '#7affb0' : '#ffffff'); fxLabel(name, tx, ty - 18, c); shake = Math.max(shake, 4); hitStop = Math.max(hitStop, .03); sfx.boom(); };
+  switch (type) {
+    case 'meteor': dropFx(tx + 40, ty - 90, o, .32, '#ff7a30', 6, hit); break;
+    case 'sword': fx1(.3, p => art('sword', { G: '#ffd84a', W: '#ffffff', S: '#c9ced6', H: '#6a4a2a' }, tx, ty - 80 + 70 * p * p, 1.6, 0, 1, '#ffffff'), hit); break;
+    case 'shield': fx1(.3, p => art('shield', { S: '#5a6a8a', W: '#ffffff', B: '#8fb0d0', G: '#ffd84a' }, tx, ty - 80 + 72 * p * p, 1.5, 0, 1, '#ffffff'), hit); break;
+    case 'arrow': fx1(.2, p => art('arrow', { W: '#ffffff', S: '#5cff8a', G: '#2f8a4f' }, tx, ty - 80 + 74 * p, 2, Math.PI, 1, '#5cff8a'), hit); break;
+    case 'card': fx1(.35, p => { ctx.save(); ctx.translate(Math.round(tx), Math.round(ty - 70 + 62 * p)); ctx.rotate(p * 9); ctx.drawImage(artCv('card', { K: '#000', W: '#ffffff' }), -7, -10, 14, 20); ctx.restore(); }, hit); break;
+    case 'flask': fx1(.35, p => art('flask', { W: '#e6e6e6', G: '#3a6a12', L: '#b6ff3c', B: '#ffffff' }, tx, ty - 70 + 64 * p * p, 1.6, p * 10), () => { hit(); if (clouds.length < 36) clouds.push({ x: tx, y: ty, r: 14, dps: D.hit * .5, t: 3, acid: true }); }); break;
+    case 'palm': fx1(.3, p => art('palm', { W: '#ffcc66' }, tx, ty - 60 + 54 * p * p, 2.2, 0, 1, '#ffffff'), hit); break;
+    case 'scythe': fx1(.3, p => { const R = 22; for (let b = 0; b < 18; b++) { const a = -2.4 + p * 3.6 - b * .06, r = R - b * .5; for (let w = 0; w < 3; w++) pix(tx + Math.cos(a) * (r - w), ty - 6 + Math.sin(a) * (r - w) * .7, w ? '#ff44ff' : '#ffffff'); } }, hit); break;
+    case 'quake': fx1(.25, p => { ctx.globalAlpha = 1 - p; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; dot(tx + Math.cos(a) * 10 * p, ty - 2 + Math.sin(a) * 6 * p - 8 * Math.sin(p * 3.14), 2, '#8a6a4a'); } ctx.globalAlpha = 1; }, hit); ring(tx, ty - 2, 20, '#b08a5a'); break;
+    case 'lightning': bolt3(tx, camY - 4, tx, ty - 3, '#99eeff', 1); for (let i = 0; i < 3; i++) bolts.push({ x1: tx, y1: ty - 20 - i * 8, x2: tx + (rnd() - .5) * 20, y2: ty - 10 - i * 8, l: .12, c: '#ccf6ff' }); hit(); break;
+    case 'pillar': fx1(.45, p => { const w = Math.round(8 * (1 - p)) + 2; ctx.globalAlpha = 1 - p * .6; ctx.fillStyle = c; ctx.fillRect(Math.round(tx - w / 2), camY - 6, w, Math.round(ty - camY + 4)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(tx) - 1, camY - 6, 2, Math.round(ty - camY + 4)); ctx.globalAlpha = 1; }); hit(); break;
+    case 'runepillar': fx1(.45, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#bb88ff'; ctx.fillRect(Math.round(tx) - 3, camY - 6, 6, Math.round(ty - camY + 4)); circ(tx, ty, 10, '#e0ccff', 16, .5, p * 6); ctx.globalAlpha = 1; }); hit(); break;
+    case 'dark': bolt3(hero.x, hero.y - 8, tx, ty - 3, '#7affb0', 1); fx1(.4, p => { ctx.globalAlpha = 1 - p; dot(tx, ty - 6, 10 * (1 - p) + 2, '#1a3a26'); ctx.globalAlpha = 1; }); hit(); break;
+    case 'shadow': fx1(.35, p => { ctx.globalAlpha = 1 - p; for (let j = -14; j <= 14; j++) { pix(tx + j, ty - 4 + j * .6, '#ffffff'); pix(tx + j, ty - 4 - j * .6, '#9a7aff'); } ctx.globalAlpha = 1; }); hit(); break;
+    case 'clock': fx1(.5, p => { ctx.globalAlpha = 1 - p; circ(tx, ty - 3, 12, '#88aaff', 24, .8); const a = -1.57 + p * 12; for (let r = 0; r < 10; r++) pix(tx + Math.cos(a) * r, ty - 3 + Math.sin(a) * r * .8, '#ffffff'); ctx.globalAlpha = 1; }); hit(); break;
+    default: bolt3(tx, camY - 4, tx, ty - 3, c, 1); hit();
+  }
+}
+function palSprite(c) {
+  const s = SK().sum;
+  if (s[0] === 'shade') return sprite(heroPat(), { 1: s[1], 2: shade(s[1], -.5), 3: '#ffffff', 4: s[1], 5: shade(s[1], .3), 6: s[1], 7: '#ffffff' }, 'pshade' + cls() + s[1] + heroPat().length);
+  return sprite(MOBS[s[0]].p, { 1: s[1], 2: shade(s[1], -.5), 3: '#ffffff' }, 'pal' + s[0] + s[1]);
+}
+const PSND = { nova: [180, .12, 'square', 90], chain: [1600, .06, 'square', 400], sky: [90, .25, 'sawtooth', 40], pulse: [220, .15, 'triangle', 110], volley: [900, .05, 'triangle', 1500], summon: [300, .2, 'triangle', 600], boom: [120, .15, 'square', 60] };
+const psnd = ty => { const s = PSND[ty]; if (s) tone(s[0], s[1], s[2], .03, s[3], 0, 'p' + ty, .08); };
+
 /* механики узлов пути: общий движок, цвет — цвет класса */
-let pals = [], pHitN = 0;
+let pals = [], pHitN = 0, novaDots = [];
+const drawLater = (x, y, a) => { if (novaDots.length < 40) novaDots.push({ x, y, a, t: .25 }); };
 function pathMods() {
   for (const e of PFXL) { const L = e.L;
     if (e.ty === 'fury') D.aps = Math.min(14, D.aps * (1 + .06 * L));
@@ -1550,19 +1622,19 @@ function pathHit(t, dmg, crit) {
   if (!PFXL.length || t.dead) return; pHitN++; const c = CL().c;
   for (const e of PFXL) { const L = e.L;
     switch (e.ty) {
-      case 'nova': if (pHitN % e.p === 0) { const r = 12 + 3 * L; ring(t.x, t.y - 2, r, c); hitAround(t.x, t.y, r, dmg * (.8 + .6 * L), c); if (rnd() < .3) fxLabel(e.n, t.x, t.y - 16, c); } break;
-      case 'chain': if (rnd() < .1 * L) { let from = t; const hs = new Set([t]); for (let j = 0; j < 2 + L; j++) { const o = nearMobs(from.x, from.y, 34).find(m => !hs.has(m)); if (!o) break; hs.add(o); bolts.push({ x1: from.x, y1: from.y - 3, x2: o.x, y2: o.y - 3, l: .1, c }); hitMob(o, dmg * .6, false, false, c); from = o; } } break;
-      case 'bounce': { let from = t; const hs = new Set([t]); for (let j = 0; j < L; j++) { const o = nearMobs(from.x, from.y, 36).find(m => !hs.has(m)); if (!o) break; hs.add(o); waves.push({ x: from.x, y: from.y - 4, t: o, sp: 240, a: 0, l: 1, pv: 1, c, dmg: dmg * .6 }); from = o; } break; }
+      case 'nova': if (pHitN % e.p === 0) { const r = 12 + 3 * L; ring(t.x, t.y - 2, r, c); ring(t.x, t.y - 2, r * .55, '#ffffff'); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; drawLater(t.x + Math.cos(a) * r * .7, t.y - 3 + Math.sin(a) * r * .45, a); } hitAround(t.x, t.y, r, dmg * (.8 + .6 * L), c); psnd('nova'); hitStop = Math.max(hitStop, .02); if (rnd() < .3) fxLabel(e.n, t.x, t.y - 16, c); } break;
+      case 'chain': if (rnd() < .1 * L) { let from = t; const hs = new Set([t]); for (let j = 0; j < 2 + L; j++) { const o = nearMobs(from.x, from.y, 34).find(m => !hs.has(m)); if (!o) break; hs.add(o); bolts.push({ x1: from.x, y1: from.y - 3, x2: o.x, y2: o.y - 3, l: .1, c }); hitMob(o, dmg * .6, false, false, c); from = o; } psnd('chain'); } break;
+      case 'bounce': { let from = t; const hs = new Set([t]); for (let j = 0; j < L; j++) { const o = nearMobs(from.x, from.y, 36).find(m => !hs.has(m)); if (!o) break; hs.add(o); waves.push({ x: from.x, y: from.y - 4, t: o, sp: 240, a: 0, l: 1, pv: 1, c, dmg: dmg * .6, kind: SK().vol }); from = o; } break; }
       case 'exec': if (!t.boss && !t.dead && t.hp < t.max * .08 * L) { trackDmg('Казнь', t.hp); hitMob(t, t.hp + 1, false, false, c); fxLabel(e.n, t.x, t.y - 16, c); } break;
       case 'mark': t.pmk = time + 3; t.pmkV = .1 * L; break;
       case 'double': if (!hero.pdbl && rnd() < .05 * L && !t.dead) { hero.pdbl = 1; ghosts.push({ x: hero.x, y: hero.y, l: .2, face: hero.face }); heroStrike(t, true); hero.pdbl = 0; } break;
-      case 'volley': if (pHitN % e.p === 0) { const all = mobs.filter(m => !m.dead); for (let j = 0; j < 2 + L && all.length; j++) { const o = all[Math.floor(rnd() * all.length)]; waves.push({ x: hero.x, y: hero.y - 5, t: o, sp: 200, a: 0, l: 1.4, pv: 1, c, dmg: dmg * .7 }); } } break;
+      case 'volley': if (pHitN % e.p === 0) { const all = mobs.filter(m => !m.dead); for (let j = 0; j < 2 + L && all.length; j++) { const o = all[Math.floor(rnd() * all.length)]; waves.push({ x: hero.x, y: hero.y - 5, t: o, sp: 200, a: 0, l: 1.4, pv: 1, c, dmg: dmg * .7, kind: SK().vol }); } psnd('volley'); } break;
       case 'ultc': if (ult < 1 && ultCd <= 0) ult = Math.min(1, ult + .002 * L); break;
     } }
 }
 function pathKill(m) {
   for (const e of PFXL) { const L = e.L, c = CL().c;
-    if (e.ty === 'boom' && !m.boss && rnd() < .05 * L) { ring(m.x, m.y - 3, 16, c); hitAround(m.x, m.y, 16, D.hit * 2, c, m); fxLabel(e.n, m.x, m.y - 14, c); }
+    if (e.ty === 'boom' && !m.boss && rnd() < .05 * L) { psnd('boom'); burst(m.x, m.y - 3, c, 16, 50); ring(m.x, m.y - 3, 16, c); hitAround(m.x, m.y, 16, D.hit * 2, c, m); fxLabel(e.n, m.x, m.y - 14, c); }
     if (e.ty === 'leech') hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .005 * L); }
 }
 function pathTick(dt) {
@@ -1573,9 +1645,9 @@ function pathTick(dt) {
       case 'orbit': for (let i = 0; i < L; i++) { const a = time * 2.6 + i * 6.283 / L + e.t, ox = hero.x + Math.cos(a) * 16, oy = hero.y - 4 + Math.sin(a) * 10;
         for (const m of mobs) if (!m.dead && Math.hypot(m.x - ox, m.y - 3 - oy) < 6 && time > (m['po' + key] || 0)) { m['po' + key] = time + .4; hitMob(m, D.hit * .5, false, false, c); } } break;
       case 'trail': if (T(key, .45) && clouds.length < 34) clouds.push({ x: hero.x, y: hero.y, r: 7, dps: D.hit * .25 * L, t: 2.2, col: c }); break;
-      case 'pulse': if (T(key, e.p) && mobs.length) { const r = 20 + 4 * L; ring(hero.x, hero.y - 3, r, c); ring(hero.x, hero.y - 3, r * .6, '#ffffff'); hitAround(hero.x, hero.y, r, D.hit * (1 + L), c); fxLabel(e.n, hero.x, hero.y - 20, c); } break;
-      case 'sky': if (T(key, e.p)) { const o = mobs.filter(m => !m.dead).sort((a, b) => b.hp - a.hp)[0]; if (o) { bolt3(o.x, camY - 4, o.x, o.y - 3, c, 1); ring(o.x, o.y - 2, 14, c); hitMob(o, D.hit * (2 + 2 * L), true, true, c); groundMark(o.x, o.y + 2, 12, '#ffffff'); fxLabel(e.n, o.x, o.y - 18, c); shake = Math.max(shake, 3); } } break;
-      case 'summon': if (T(key, 4) && mobs.length && pals.filter(p2 => p2.key === key).length < e.p + L) { const a = rnd() * 6.283; pals.push({ key, x: hero.x + Math.cos(a) * 10, y: hero.y + Math.sin(a) * 6, t: 12, cd: .4, face: 1 }); burst(hero.x + Math.cos(a) * 10, hero.y + Math.sin(a) * 6 - 3, c, 8, 25); } break;
+      case 'pulse': if (T(key, e.p) && mobs.length) { const r = 20 + 4 * L; ring(hero.x, hero.y - 3, r, c); ring(hero.x, hero.y - 3, r * .6, '#ffffff'); hitAround(hero.x, hero.y, r, D.hit * (1 + L), c); fxLabel(e.n, hero.x, hero.y - 20, c); psnd('pulse'); for (let i = 0; i < 16 && parts.length < 650; i++) { const a = i / 16 * 6.283; parts.push({ x: hero.x + Math.cos(a) * 6, y: hero.y - 3 + Math.sin(a) * 4, vx: Math.cos(a) * 90, vy: Math.sin(a) * 60, l: .3, c, f: 1 }); } } break;
+      case 'sky': if (T(key, e.p)) { const o = mobs.filter(m => !m.dead).sort((a, b) => b.hp - a.hp)[0]; if (o) { skyStrike(SK().sky, o, D.hit * (2 + 2 * L), c, e.n); psnd('sky'); } } break;
+      case 'summon': if (T(key, 4) && mobs.length && pals.filter(p2 => p2.key === key).length < e.p + L) { const a = rnd() * 6.283; psnd('summon'); pals.push({ key, x: hero.x + Math.cos(a) * 10, y: hero.y + Math.sin(a) * 6, t: 12, cd: .4, face: 1 }); burst(hero.x + Math.cos(a) * 10, hero.y + Math.sin(a) * 6 - 3, c, 8, 25); } break;
       case 'shield': if (T(key, e.p)) { hero.shield = Math.max(hero.shield, D.maxHP * .06 * L); ring(hero.x, hero.y - 4, 10, c); } break;
       case 'slow': for (const m of mobs) if (!m.dead && Math.hypot(m.x - hero.x, m.y - hero.y) < 28) { m.slowT = Math.max(m.slowT || 0, .1); m.pmk = Math.max(m.pmk || 0, time + .2); m.pmkV = Math.max(m.pmkV || 0, .05 * L); } break;
     } }
@@ -1592,9 +1664,10 @@ function pathRevive() { const e = pfx('revive')[0]; if (!e || S.pRev) return fal
 function drawPathFx() {
   if (!PFXL.length) return;
   const c = CL().c;
-  for (const e of pfx('orbit')) for (let i = 0; i < e.L; i++) { const a = time * 2.6 + i * 6.283 / e.L + e.t, ox = Math.round(hero.x + Math.cos(a) * 16), oy = Math.round(hero.y - 4 + Math.sin(a) * 10); ctx.fillStyle = c; ctx.fillRect(ox - 1, oy - 1, 3, 3); pix(ox, oy, '#ffffff'); ctx.globalAlpha = .4; pix(ox - Math.round(Math.cos(a + 1.57) * 2), oy - Math.round(Math.sin(a + 1.57) * 2), c); ctx.globalAlpha = 1; }
-  for (const al of pals) { const sp2 = sprite(MOBS[4].p, { 1: c, 2: shade(c, -.5), 3: '#ffffff' }, 'pal' + c); ctx.globalAlpha = al.t < 1 ? al.t : .85;
-    ctx.save(); if (al.face < 0) { ctx.translate(Math.round(al.x - 4) * 2 + 8, 0); ctx.scale(-1, 1); } ctx.drawImage(sp2, Math.round(al.x - 4), Math.round(al.y - 8)); ctx.restore(); ctx.globalAlpha = 1; }
+  for (const e of pfx('orbit')) for (let i = 0; i < e.L; i++) { const a = time * 2.6 + i * 6.283 / e.L + e.t; drawOrb(SK().orb, hero.x + Math.cos(a) * 16, hero.y - 4 + Math.sin(a) * 10, a, c); }
+  for (const al of pals) { const sp2 = palSprite(c), X = Math.round(al.x - 4), Y = Math.round(al.y - 8); ctx.globalAlpha = al.t < 1 ? al.t : .9;
+    ctx.save(); if (al.face < 0) { ctx.translate((X + 4) * 2, 0); ctx.scale(-1, 1); } ctx.drawImage(sp2, X - (sp2.ox || 0), Y - (sp2.oy || 0)); ctx.restore(); ctx.globalAlpha = 1; }
+  for (const d of novaDots) drawOrb(SK().orb, d.x, d.y, d.a, c); novaDots = novaDots.filter(d => (d.t -= .016) > 0);
 }
 /* ---------- сцена эволюции ---------- */
 let EV = null;
@@ -3582,7 +3655,9 @@ function drawClsWorld() {
 }
 // снаряды классов
 function drawClsWave(w) {
-  if (w.pv) { const x = Math.round(w.x), y = Math.round(w.y); ctx.fillStyle = w.c; ctx.fillRect(x - 1, y - 1, 3, 3); pix(x, y, '#ffffff'); ctx.globalAlpha = .45; for (let j = 1; j <= 3; j++) pix(x - Math.cos(w.a) * j * 2, y - Math.sin(w.a) * j * 2, w.c); ctx.globalAlpha = 1; return true; }
+  const PVK = { knife: 'knife', bone: 'skull', chi: 'chi', holy: 'holy', rune: 'rune', bolt: 'bolt', flask: 'flask', card: 'card' };
+  if (w.pv && PVK[w.kind]) { drawOrb(PVK[w.kind], w.x, w.y, w.a + time * 6, w.c); return true; }
+  if (w.pv && !w.kind) { const x = Math.round(w.x), y = Math.round(w.y); ctx.fillStyle = w.c; ctx.fillRect(x - 1, y - 1, 3, 3); pix(x, y, '#ffffff'); ctx.globalAlpha = .45; for (let j = 1; j <= 3; j++) pix(x - Math.cos(w.a) * j * 2, y - Math.sin(w.a) * j * 2, w.c); ctx.globalAlpha = 1; return true; }
   const x = Math.round(w.x), y = Math.round(w.y), ca = Math.cos(w.a), sa = Math.sin(w.a), sp = time * 25;
   switch (w.kind) {
     case 'axe': case 'scythe': case 'hammer': case 'shield': {
