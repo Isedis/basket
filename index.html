@@ -443,7 +443,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113062957';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113065919';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3796,7 +3796,7 @@ function render() {
       ctx.fillStyle = o.rare ? '#ffd84a' : '#e33'; ctx.fillRect(x, y - 2, Math.max(1, Math.round(s * o.hp / o.max)), 1);
     }
   }
-  for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3); pix(p.x, p.y, p.c); }
+  { const hx = hero.x, hy = hero.y - 4; for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3) * (Math.abs(p.x - hx) < 6 && Math.abs(p.y - hy) < 7 ? .3 : 1); pix(p.x, p.y, p.c); } }
   ctx.globalAlpha = 1;
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
@@ -3815,6 +3815,7 @@ function render() {
   for (const pr of proj) { pix(pr.x, pr.y, '#ffffff'); pix(pr.x - pr.vx * .02, pr.y - pr.vy * .02, '#ff3322'); pix(pr.x - pr.vx * .04, pr.y - pr.vy * .04, '#ff3322'); }
   for (const [qx, qy] of pix2) { ctx.fillStyle = '#66aaff'; ctx.fillRect(Math.round(qx) - 1, Math.round(qy), 3, 1); } pix2 = [];
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
+  drawHeroTop(rk);
   // полоса вожака (экранные координаты)
   const boss = mobs.find(m => m.boss);
   ctx.setTransform(1, 0, 0, 1, sx, sy);
@@ -3932,11 +3933,27 @@ function render() {
     fctx.textAlign = 'center';
   }
 }
+// герой поверх всех эффектов: чёрный контур + спрайт; указатель, когда на экране тесно
+function drawHeroTop(rk) {
+  if (deathT > 0 || hero.iframe > 0 && Math.sin(time * 40) > 0) return;
+  const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8 - (hero.lift || 0)), moving = heroFrame === 'walk';
+  const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0, y0 = y + hop - (moving ? 1 : 0);
+  const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
+  const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate((X + 4) * 2, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X - (img.ox || 0), Y - (img.oy || 0)); ctx.restore(); };
+  const busy = parts.length > 120 || mobs.length > 14;
+  if (busy) { ctx.globalAlpha = .5; ctx.fillStyle = '#0a0612'; for (let dy = -7; dy <= 7; dy++) { const w = Math.round(8 * Math.sqrt(1 - (dy / 7.5) ** 2)); ctx.fillRect(Math.round(hero.x) - w, Math.round(hero.y - 5) + dy, w * 2, 1); }
+    const hol = silhouette('#000'); ctx.globalAlpha = .9; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y0 + dy, hero.face); }
+  ctx.globalAlpha = 1; flip(spr, x, y0, hero.face);
+  if (busy) { const top = y0 - (spr.oy || 0) - 4 + (Math.sin(time * 4) > 0 ? 0 : -1), cx = Math.round(hero.x), c = CL().c;
+    const t2 = top - 2; ctx.fillStyle = '#000'; ctx.fillRect(cx - 4, t2 - 1, 9, 2); ctx.fillRect(cx - 3, t2 + 1, 7, 1); ctx.fillRect(cx - 2, t2 + 2, 5, 1); ctx.fillRect(cx - 1, t2 + 3, 3, 1); ctx.fillRect(cx, t2 + 4, 1, 1);
+    ctx.fillStyle = c; ctx.fillRect(cx - 3, t2, 7, 1); ctx.fillRect(cx - 2, t2 + 1, 5, 1); ctx.fillRect(cx - 1, t2 + 2, 3, 1); ctx.fillStyle = '#fff'; ctx.fillRect(cx, t2 + 3, 1, 1); }
+}
 function drawHero(rk) {
   const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8 - (hero.lift || 0));
   if (deathT > 0) { heroFrame = 'hurt'; ctx.globalAlpha = Math.min(1, deathT / 1.4); const ds = silhouette('#ff3355'); ctx.drawImage(ds, x - (ds.ox || 0), y - (ds.oy || 0) + Math.round((1.4 - deathT) * 3)); ctx.globalAlpha = 1; return; }
   // светлое кольцо под ногами — героя видно всегда
-  ctx.globalAlpha = .55; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28; pix(hero.x + Math.cos(a) * 5, hero.y + Math.sin(a) * 1.6, '#ffffff'); } ctx.globalAlpha = 1;
+  ctx.globalAlpha = .45; ctx.fillStyle = '#000'; for (let dy = -3; dy <= 2; dy++) { const w = Math.round(9 * Math.sqrt(1 - (dy / 3.5) ** 2)); ctx.fillRect(Math.round(hero.x) - w, Math.round(hero.y) + dy, w * 2, 1); }
+  ctx.globalAlpha = .9; for (let i = 0; i < 20; i++) { const a = i / 20 * 6.28; pix(hero.x + Math.cos(a) * 7, hero.y + Math.sin(a) * 2.4, i % 2 ? CL().c : '#ffffff'); } ctx.globalAlpha = 1;
   heroFrame = pickHeroFrame();
   const moving = heroFrame === 'walk';
   const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0;
