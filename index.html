@@ -226,7 +226,7 @@ html,body{font-size:10px}
 #hud .r+.r,#hud .bar+.r,#hud .r+.bar{margin-top:3px}
 #zname{font-size:10px}
 #game{flex:1 1 auto}
-#nav{flex:none;display:grid;grid-template-columns:repeat(6,1fr);background:var(--panel);border-top:2px solid var(--line);padding:4px 4px env(safe-area-inset-bottom,0px);z-index:7;position:relative}
+#nav{flex:none;display:grid;grid-template-columns:repeat(7,1fr);background:var(--panel);border-top:2px solid var(--line);padding:4px 4px env(safe-area-inset-bottom,0px);z-index:7;position:relative}
 .nb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;background:none;border:0;color:var(--dim);font:inherit;font-size:8px;cursor:pointer;border-radius:6px}
 .nb i{font-style:normal;font-size:18px;line-height:1;font-family:system-ui,sans-serif}
 .nb.on{color:#fff;background:#2b2540}
@@ -241,7 +241,7 @@ html,body{font-size:10px}
 .btn.big2{min-height:52px;font-size:11px;background:#2b2540;text-align:left;padding:10px 14px}
 #buildl{font-size:8px;color:var(--dim);margin-top:4px}
 #gear,#tree,#ctree{bottom:var(--navh)}
-#ctree{position:fixed;inset:0;z-index:9;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#ctree{position:fixed;inset:0;bottom:var(--navh);z-index:9;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
 #cthead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:2px solid var(--line);font-size:9px}
 #cthead b{color:#f2c94c;font-weight:normal}
 #ctbody{flex:1;min-height:0;overflow-y:auto;padding:8px 8px 16px;-webkit-overflow-scrolling:touch}
@@ -257,6 +257,23 @@ html,body{font-size:10px}
 .ctn.max{border-color:var(--cc);background:#221b33}
 .ctn.lock{opacity:.4}
 .ctn.top{border-width:3px}
+.cthero{display:flex;gap:10px;align-items:flex-start;background:#141024;border:1px solid #2a2440;border-radius:6px;padding:8px}
+.cthero canvas{flex:none;width:110px;height:110px;image-rendering:pixelated}
+#cthi{flex:1;min-width:0;font-size:7px;line-height:1.7}
+.ctd{color:#e9e4ff;margin-bottom:4px}
+.ctl{color:var(--dim);margin-top:3px}
+.ctl b{font-weight:normal}
+.ctxp{display:block;height:5px;background:#000;margin:3px 0;position:relative}
+.ctxp u{position:absolute;left:0;top:0;bottom:0}
+.ctl small{display:block;font-size:6px}
+.ctcol{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ctc{position:relative;font:inherit;background:#141024;border:1px solid #2a2440;border-radius:5px;padding:6px 3px;color:#e9e4ff;text-align:center;cursor:pointer}
+.ctc img{width:40px;height:40px;image-rendering:pixelated;display:block;margin:0 auto 3px}
+.ctc b{display:block;font-weight:normal;font-size:7px;color:var(--cc)}
+.ctc small{display:block;font-size:6px;color:var(--dim);line-height:1.6}
+.ctc em{position:absolute;top:3px;right:3px;font-style:normal;font-size:6px;color:#5cff8a}
+.ctc.sel{border-color:var(--cc);background:#221b33}
+.ctc.cur{box-shadow:0 0 0 2px var(--cc) inset}
 .btn{font-size:10px;min-height:34px;padding:6px 10px}
 .tab{font-size:10px;padding:8px 0}
 #phead{padding:8px 10px 6px}
@@ -315,8 +332,8 @@ html,body{font-size:10px}
       <div>Рекорд зоны: <span id="dbest">1</span></div>
       <div id="dfore"></div>
       <button class="btn big" id="tbtn">ДЕРЕВО ТАЛАНТОВ</button>
-      <div class="gsec" style="margin-top:14px">КЛАСС ГЕРОЯ <span>выпадает случайно при перерождении</span></div>
-      <div id="clsbox"></div>
+      <button class="btn big" id="clsopen" style="margin-top:10px">КЛАСС И КОЛЛЕКЦИЯ</button>
+      <div id="clsbox" hidden></div>
       <div class="gsec" style="margin-top:14px">АВТОМАТИКА <span>меньше тыкать</span></div>
       <div id="autobox"></div>
       <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Обычные враги доводят только до изнеможения, а вожак может убить. Если долго не проходишь зону, вожак приходит сам. Когда герой падает, он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
@@ -337,6 +354,7 @@ html,body{font-size:10px}
     <button class="nb on" id="nFight"><i>⚔</i><span>Бой</span></button>
     <button class="nb" id="nStats"><i>≡</i><span>Статы</span></button>
     <button class="nb" id="treeb"><i>★</i><span>Таланты</span></button>
+    <button class="nb" id="nCls"><i>☗</i><span>Класс</span></button>
     <button class="nb" id="gearb"><i>▣</i><span>Вещи</span><b class="badge" id="gbadge" hidden></b></button>
     <button class="nb" id="nSouls"><i>✦</i><span>Души</span></button>
     <button class="nb" id="nSet"><i>⚙</i><span>Меню</span></button>
@@ -364,7 +382,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113021146';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113021505';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -720,6 +738,7 @@ function groundMark(x, y, r, c) {
 
 /* ---------- пиксельные иконки интерфейса ---------- */
 const PXI = {
+  helm:  ["..#####..", ".#######.", "#########", "##.....##", "##.#.#.##", "##.....##", "###...###", ".##...##.", ".#.....#."],
   sword: ["........#", ".......##", "......##.", ".....##..", "#...##...", ".#.##....", "..##.....", ".##.#....", "#....#..."],
   stats: [".........", "......##.", "......##.", "...##.##.", "...##.##.", "##.##.##.", "##.##.##.", "##.##.##.", "#########"],
   star:  ["....#....", "....#....", "...###...", "#########", ".#######.", "..#####..", "..##.##..", ".##...##.", "#.......#"],
@@ -738,7 +757,7 @@ function pxURL(n, col = '#ffffff', sc = 3) {
 }
 const pxImg = (n, col, h = 9) => `<img class="pxi" src="${pxURL(n, col)}" style="height:${h}px" alt="">`;
 function applyNavIcons() {
-  const map = { nFight: 'sword', nStats: 'stats', treeb: 'star', gearb: 'chest', nSouls: 'soul', nSet: 'gear' };
+  const map = { nFight: 'sword', nStats: 'stats', treeb: 'star', nCls: 'helm', gearb: 'chest', nSouls: 'soul', nSet: 'gear' };
   for (const id in map) { const i = $(id).querySelector('i'); i.className = 'px'; i.textContent = ''; i.style.setProperty('--ic', `url(${pxURL(map[id])})`); }
 }
 
@@ -746,11 +765,11 @@ function applyNavIcons() {
 let cardRaf = 0;
 function cardEl() { let el = $('croll'); if (!el) { el = document.createElement('div'); el.id = 'croll'; document.body.appendChild(el); el.onclick = () => { el.hidden = true; }; } return el; }
 // крупная фигурка с аурой и лучами; mode: 'roll' — мелькают классы, 'show' — выбранный, 'dead' — тающая красная тень
-function runCard(cv, mode, getK) {
-  cancelAnimationFrame(cardRaf);
+function runCard(cv, mode, getK, alive) {
+  alive = alive || (() => !cardEl().hidden);
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; const t0 = performance.now(), ps = [];
   const loop = now => {
-    if (!cv.isConnected || cardEl().hidden) return;
+    if (!cv.isConnected || !alive()) return;
     const t = (now - t0) / 1000, k = getK(), C = CLASSES[k], W2 = cv.width, cx = W2 / 2, cy = W2 / 2 + 4;
     x.clearRect(0, 0, W2, W2);
     if (mode !== 'dead') {
@@ -769,9 +788,9 @@ function runCard(cv, mode, getK) {
     x.fillStyle = '#000'; x.globalAlpha *= .4; x.beginPath(); x.ellipse(cx, cy + 32, 22, 5, 0, 0, 6.283); x.fill(); x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
     x.drawImage(spr, cx - 4 * S2, cy - 4 * S2 + off, 8 * S2, 8 * S2);
     x.globalAlpha = 1;
-    cardRaf = requestAnimationFrame(loop);
+    cv._raf = requestAnimationFrame(loop);
   };
-  cardRaf = requestAnimationFrame(loop);
+  cancelAnimationFrame(cv._raf); cv._raf = requestAnimationFrame(loop);
 }
 
 
@@ -1354,22 +1373,59 @@ function ctDM(t) {
 
 /* интерфейс ветки класса */
 let ctK = null;
-function openCT(k) { ctK = k; $('ctree').hidden = false; renderCT(); }
-function renderCT() {
-  const k = ctK, C = CLASSES[k], c = cm(k), pts = ctPts(k), cur = k === cls();
-  $('cthead').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}</span><span>Очки: <b>${pts}</b></span><button class="btn" id="ctclose">✕ ЗАКРЫТЬ</button>`;
-  $('ctclose').onclick = () => { $('ctree').hidden = true; };
-  const full = ctFull(k);
-  let h = `<div class="ctsum">Мастерство <b style="color:${C.c}">${c.lv}</b> · вложено ${ctSpent(k)} / ${CT_TOTAL} · каждый уровень мастерства = 1 очко<br>${full ? `<span style="color:${C.c}">★ ВЕТКА ЗАПОЛНЕНА — КЛАСС ПРОБУЖДЁН: ${AWK[k][0]}</span>` : `Заполни ветку целиком — класс пробудится: «${AWK[k][0]}»`}</div><div class="ctgrid">`;
-  for (const n of CT) {
-    const l = ctL(n.id, k), [nm, d] = ctNode(k, n.id), ok = ctReqOk(k, n), mx = l >= n.max, can = ok && !mx && pts > 0;
-    let extra = '';
-    if (n.id === 'S') extra = CSTY[k].slice(0, 2).map((s2, i) => `<i class="${cur && sty() === i ? 'on' : ''}">${s2[0]}: ${s2[1]}</i>`).join('');
-    h += `<button class="ctn${mx ? ' max' : ''}${can ? ' can' : ''}${ok ? '' : ' lock'}${n.id === 'V' ? ' top' : ''}" data-n="${n.id}" style="grid-column:${n.x + 1}${n.id === 'R' || n.id === 'S' || n.id === 'V' ? ' / span 1' : ''};grid-row:${n.y + 1};--cc:${C.c}">` +
-      `<b>${nm}</b><small>${l ? d(l) : d(1)}</small><em>${l}/${n.max}</em>${extra}</button>`;
-  }
-  $('ctbody').innerHTML = h + '</div>' + (cur ? '' : '<div class="ctsum" style="opacity:.7">Бонусы ветки работают, когда играешь этим классом.</div>');
+function openCT(k) { if (k !== ctK) ctHeroK = null; ctK = k; $('ctree').hidden = false; renderCT(); }
+let ctTab = 'tree', ctHeroK = null;
+const sprURL = {};
+function clsSprURL(k, known) {
+  const key = k + known; if (sprURL[key]) return sprURL[key];
+  const C = CLASSES[k], P = CLS_SPR[k], cv2 = document.createElement('canvas'); cv2.width = cv2.height = 8; const x = cv2.getContext('2d');
+  const cols = known ? { 1: P.pal?.[1] || '#c9ced6', 2: P.pal?.[2] || '#3a3450', 3: P.pal?.[3] || '#ffe08a', 4: C.c, 5: P.pal?.[5] || '#f0c090' } : { 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450' };
+  P.p.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
+  return sprURL[key] = cv2.toDataURL();
 }
+function renderCT() {
+  const k = ctK, C = CLASSES[k], c = cm(k), pts = ctPts(k), cur = k === cls(), full = ctFull(k), tr = tierOf(c.lv);
+  $('cthead').innerHTML = `<span style="color:${C.c}">${C.n.toUpperCase()}${cur ? ' <small style="color:var(--dim)">· твой класс</small>' : ''}</span><span>Очки: <b>${pts}</b></span><button class="btn" id="ctclose">✕</button>`;
+  $('ctclose').onclick = () => { $('ctree').hidden = true; navOn('nFight'); };
+  // герой: большая анимированная фигурка (создаётся один раз на класс)
+  if (ctHeroK !== k || !$('cthc')) {
+    ctHeroK = k;
+    $('ctbody').innerHTML = `<div class="cthero"><canvas id="cthc" width="110" height="110"></canvas><div id="cthi"></div></div><div id="ctdyn"></div>`;
+    runCard($('cthc'), 'show', () => ctK, () => !$('ctree').hidden);
+  }
+  const xpn = cxpNeed(c.lv), xpp = Math.min(100, c.xp / xpn * 100);
+  const stl = cur ? `<b style="color:${C.c}">Стиль: ${CSTY[k][sty()][0]}</b> — ${CSTY[k][sty()][1]}` : `Стили: ${CSTY[k].slice(0, 2).map(s2 => s2[0]).join(' / ')} (выпадает случайно)`;
+  $('cthi').innerHTML = `<div class="ctd">${C.d}</div>` +
+    `<div class="ctl">Мастерство <b style="color:${C.c}">${c.lv}</b>${tr ? ' · облик: ' + tr[2] : ''}<i class="ctxp"><u style="width:${xpp}%;background:${C.c}"></u></i><small>${fmt(c.xp)} / ${fmt(xpn)} опыта · +${c.lv * 4}% урона и HP</small></div>` +
+    `<div class="ctl">${stl}</div>` +
+    (cur ? C.st.map(([n, f], j) => `<div class="ctl"><b style="color:${C.c}">${n}</b> ${fmt((S.cst || [0, 0])[j])} — ${f(cq(j))}</div>`).join('') : `<div class="ctl">Статы класса: ${C.st.map(x => x[0]).join(', ')}</div>`) +
+    `<div class="ctl"><b style="color:${C.c}">Ульта «${(full ? '★ ' : '') + ULTS[k][0]}»</b> — ${ULTS[k][1]}${full ? ' (×2)' : ''}</div>` +
+    `<div class="ctl">${full ? `<b style="color:${C.c}">★ Пробуждён: ${AWK[k][0]}</b> — ${AWK[k][1]}` : `${pxImg('lock', '#777', 8)}Пробуждение «${AWK[k][0]}»: заполни ветку (${ctSpent(k)}/${CT_TOTAL})`}</div>`;
+  const tabs = `<div class="trow" style="margin:8px 0"><button class="tch${ctTab === 'tree' ? ' on' : ''}" data-ct="tree">ВЕТКА${pts ? ' · +' + pts : ''}</button><button class="tch${ctTab === 'all' ? ' on' : ''}" data-ct="all">КОЛЛЕКЦИЯ ${Object.keys(S.meta.seen || {}).length}/16</button></div>`;
+  let h = tabs;
+  if (ctTab === 'tree') {
+    h += `<div class="ctsum">Каждый уровень мастерства = 1 очко · вложено ${ctSpent(k)} / ${CT_TOTAL}${cur ? '' : ' · бонусы работают, когда играешь этим классом'}</div><div class="ctgrid">`;
+    for (const n of CT) {
+      const l = ctL(n.id, k), [nm, d] = ctNode(k, n.id), ok = ctReqOk(k, n), mx = l >= n.max, can = ok && !mx && pts > 0;
+      let extra = '';
+      if (n.id === 'S') extra = CSTY[k].slice(0, 2).map((s2, i) => `<i class="${cur && sty() === i ? 'on' : ''}">${s2[0]}: ${s2[1]}</i>`).join('');
+      h += `<button class="ctn${mx ? ' max' : ''}${can ? ' can' : ''}${ok ? '' : ' lock'}${n.id === 'V' ? ' top' : ''}" data-n="${n.id}" style="grid-column:${n.x + 1};grid-row:${n.y + 1};--cc:${C.c}">` +
+        `<b>${nm}</b><small>${l ? d(l) : d(1)}</small><em>${l}/${n.max}</em>${extra}</button>`;
+    }
+    h += '</div>';
+  } else {
+    const seen = S.meta.seen || {};
+    h += '<div class="ctcol">' + CLS_KEYS.map(k2 => { const c2 = CLASSES[k2], kn = !!seen[k2], m2 = cm(k2), p2 = ctPts(k2);
+      return `<button class="ctc${k2 === k ? ' sel' : ''}${k2 === cls() ? ' cur' : ''}" data-ck="${k2}" style="--cc:${kn ? c2.c : '#555'}"><img src="${clsSprURL(k2, kn)}"><b>${kn ? c2.n : '???'}</b>` +
+        `<small>${BRANCHES[c2.br].n}${kn ? '<br>ур. ' + m2.lv + ' · ' + ctSpent(k2) + '/' + CT_TOTAL + (awake(k2) ? ' ★' : '') : ''}</small>${p2 && kn ? `<em>+${p2}</em>` : ''}</button>`; }).join('') + '</div>';
+  }
+  $('ctdyn').innerHTML = h;
+}
+$('ctbody').addEventListener('click', e => {
+  const t = e.target.closest('[data-ct]'); if (t) { ctTab = t.dataset.ct; renderCT(); return; }
+  const ck = e.target.closest('[data-ck]'); if (ck) { const k2 = ck.dataset.ck; if (!(S.meta.seen || {})[k2]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[CLASSES[k2].br].n + '»'); return; } ctHeroK = null; ctK = k2; ctTab = 'tree'; renderCT(); }
+});
+function openClassTab(k) { showSheet('none'); $('tree').hidden = true; $('gear').hidden = true; navOn('nCls'); openCT(k || cls()); }
 
 // множитель урона удара от класса
 function clsDM(t) {
@@ -3373,7 +3429,8 @@ function renderAuto() {
 }
 $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) { tSel = +lk.dataset.t; openTree(); return; } const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
 $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } openCT(el.dataset.c); };
-$('clsc').onclick = () => openCT(cls());
+$('clsc').onclick = () => openClassTab();
+$('clsopen').onclick = () => openClassTab();
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0];
@@ -3985,6 +4042,7 @@ function showSheet(name) {
 }
 const sheetToggle = name => () => { const id = { stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name]; showSheet($(id).classList.contains('on') ? 'fight' : name); };
 $('nFight').onclick = () => showSheet('fight');
+$('nCls').onclick = () => { if (!$('ctree').hidden && ctK === cls()) { $('ctree').hidden = true; navOn('nFight'); } else openClassTab(); };
 $('nStats').onclick = sheetToggle('stats');
 $('nSouls').onclick = sheetToggle('souls');
 $('nSet').onclick = sheetToggle('set');
