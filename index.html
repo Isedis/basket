@@ -313,7 +313,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113011307';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113011918';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2020,87 +2020,168 @@ function drawCutIn(k) {
   fctx.restore(); fctx.textBaseline = 'alphabetic'; fctx.textAlign = 'center';
 }
 
+/* ---------- крупная пиксельная графика для ульт ---------- */
+const ART = {
+  sword: ["..W..", ".WSW.", ".WSW.", ".WSW.", ".WSW.", ".WSW.", ".WSW.", ".WSW.", ".WSW.", "GGGGG", "..H..", "..H..", "..H..", ".GGG."],
+  hammer: ["GGGGGGGGGGG", "GWWWWWWWWWG", "GWYYYYYYYWG", "GWYYYYYYYWG", "GWYYYYYYYWG", "GGGGGGGGGGG", "....HHH....", "....HHH....", "....HHH....", "....HHH....", "....HHH....", "....GGG...."],
+  shield: [".SSSSSSS.", "SWWWWWWWS", "SWBBGBBWS", "SWBGGGBWS", "SWBBGBBWS", "SWBBGBBWS", ".SWBBBWS.", ".SWBBBWS.", "..SWBWS..", "...SWS...", "....S...."],
+  skull: ["..WWWWWWW..", ".WWWWWWWWW.", "WWWWWWWWWWW", "WWKKWWWKKWW", "WWKKWWWKKWW", "WWWWWKWWWWW", ".WWWWWWWWW.", "..WKWKWKW..", "..WWWWWWW..", "...W.W.W..."],
+  palm: [".W.W.W...", ".W.W.W.W.", ".W.W.W.W.", ".WWWWWWW.", ".WWWWWWW.", "WWWWWWWW.", ".WWWWWWW.", "..WWWWW..", "..WWWWW.."],
+  flask: ["..WWW..", "...G...", "..GGG..", ".GLLLG.", "GLLLLLG", "GLLBLLG", "GLLLLLG", ".GLLLG.", "..GGG.."],
+  card: ["KKKKKKK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KWWWWWK", "KKKKKKK"],
+  arrow: [".W.", "WWW", ".S.", ".S.", ".S.", ".S.", ".S.", ".S.", "GSG", "G.G"],
+  clock: [],
+};
+const artCache = {};
+function artCv(name, cols, key) {
+  const k = name + (key || JSON.stringify(cols)); if (artCache[k]) return artCache[k];
+  const P = ART[name], c = document.createElement('canvas'); c.width = P[0].length; c.height = P.length; const x = c.getContext('2d');
+  P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
+  return artCache[k] = c;
+}
+// нарисовать крупный спрайт: центр (x,y), масштаб, поворот, прозрачность, светящаяся обводка
+function art(name, cols, x, y, sc = 1, rot = 0, a = 1, glow) {
+  const c = artCv(name, cols); ctx.save(); ctx.globalAlpha = a; ctx.translate(Math.round(x), Math.round(y)); if (rot) ctx.rotate(rot); ctx.imageSmoothingEnabled = false;
+  if (glow) { const g = artCv(name, Object.fromEntries(Object.keys(cols).map(k => [k, glow])), 'g' + name + glow); ctx.globalAlpha = a * .5; for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.drawImage(g, -c.width * sc / 2 + ox, -c.height * sc / 2 + oy, c.width * sc, c.height * sc); ctx.globalAlpha = a; }
+  ctx.drawImage(c, -c.width * sc / 2, -c.height * sc / 2, c.width * sc, c.height * sc); ctx.restore();
+}
+const tint = (col, a) => { ctx.globalAlpha = a; ctx.fillStyle = col; ctx.fillRect(camX - 6, camY - 6, W + 12, H + 12); ctx.globalAlpha = 1; };
+function bolt3(x1, y1, x2, y2, c, w = 1) { for (let o = -w; o <= w; o++) bolts.push({ x1: x1 + o, y1, x2: x2 + o, y2, l: .14, c: o ? c : '#ffffff' }); }
+const near = n => live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, n);
+
 function clsUlt(dmg) {
-  const k = cls(), c = CL().c;
+  const k = cls(), c = CL().c, hx = hero.x, hy = hero.y;
   switch (k) {
-    case 'war':
-      fx1(.7, p => { const r = 6 + p * 60; ctx.globalAlpha = 1 - p; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283 + p * 2; for (let j = 0; j < 5; j++) pix(hero.x + Math.cos(a) * (r + j), hero.y - 4 + Math.sin(a) * (r + j) * .7, j > 3 ? '#ffffff' : '#c9ced6'); } ctx.globalAlpha = 1; });
-      for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(.15 + i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hero.y, m.x - hero.x) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hero.x, y: hero.y - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .6, left: 0 }); }); }
-      break;
-    case 'bers':
-      fx1(3.2, p => { const r = 26, rot = p * 40; ctx.globalAlpha = .85; for (let i = 0; i < 4; i++) { const a = rot + i * 1.57; for (let j = 8; j < r; j += 2) pix(hero.x + Math.cos(a) * j, hero.y - 4 + Math.sin(a) * j * .7, j > r - 4 ? '#ffffff' : '#ff4433'); } circ(hero.x, hero.y - 3, r, '#aa1a1a', 36, .7, rot * .2); ctx.globalAlpha = 1;
-        if (rnd() < .6 && parts.length < 500) { const a = rnd() * 6.28; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y - 4 + Math.sin(a) * r * .7, vx: Math.cos(a) * 30, vy: -20, l: .5, c: '#ff2222' }); } });
-      for (let i = 0; i < 15; i++) later(.2 + i * .2, () => { hero.spin = .2; hitAround(hero.x, hero.y, 26, dmg * .15, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 3); tone(140, .08, 'sawtooth', .03, 70); });
-      break;
-    case 'pal': { const t = live().sort((a, b) => b.hp - a.hp)[0] || hero, tx = t.x, ty = t.y;
-      fx1(.55, p => { const e = p * p, hy = ty - 90 + 84 * e; ctx.fillStyle = '#8a6a3a'; ctx.fillRect(Math.round(tx) - 1, Math.round(hy - 18), 3, 16); ctx.fillStyle = '#ffe08a'; ctx.fillRect(Math.round(tx) - 8, Math.round(hy - 4), 17, 9); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(tx) - 7, Math.round(hy - 3), 15, 2); ctx.fillStyle = '#b08a3a'; ctx.fillRect(Math.round(tx) - 8, Math.round(hy + 3), 17, 2);
-        ctx.globalAlpha = .4; circ(tx, ty, 20 * (1 - p) + 4, '#ffe08a', 24); ctx.globalAlpha = 1; },
-        () => { ring(tx, ty - 2, 44, '#ffe08a'); ring(tx, ty - 2, 26, '#ffffff'); burst(tx, ty - 3, '#ffe08a', 60, 90); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 44 ? 1.4 : .5), true, true, '#fff2a8'); hero.hp = D.maxHP; hero.shield = Math.max(hero.shield, D.maxHP * .5); shake = 16; flashT = .15; sfx.boom();
-          fx1(.8, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(tx) - 1, Math.round(ty - 30), 3, 26); ctx.fillRect(Math.round(tx) - 8, Math.round(ty - 22), 17, 3); ctx.globalAlpha = 1; }); });
+    case 'war': {   // три кольца гигантских мечей по спирали, затем меч с неба
+      const S0 = { G: '#ffd84a', W: '#ffffff', S: '#c9ced6', H: '#6a4a2a' };
+      for (let r = 0; r < 3; r++) fx1(1.1, p => { const R = 8 + p * (40 + r * 18), n = 8; for (let i = 0; i < n; i++) { const a = i / n * 6.283 + p * (5 + r) * (r % 2 ? -1 : 1) + r; art('sword', S0, hx + Math.cos(a) * R, hy - 4 + Math.sin(a) * R * .7, 1, a + 1.57, 1 - p * .7, '#ffffff'); } });
+      for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; later(.1 + i * .02, () => { let best = null, bd = 1e9; for (const m of live()) { const da = Math.abs(((Math.atan2(m.y - hy, m.x - hx) - a + 9.42) % 6.283) - 3.14); if (da < bd) { bd = da; best = m; } } if (best) waves.push({ x: hx, y: hy - 4, t: best, sp: 260, a, l: 1.5, fin: true, bounce: true, dmg: dmg * .45, left: 0 }); }); }
+      const t = near(1)[0] || hero, tx = t.x, ty = t.y;
+      fx1(.9, p => { const e = Math.min(1, p / .55), y = ty - 110 + 104 * e * e; art('sword', S0, tx, y - 18, 3, 0, 1, '#ffffff'); if (p > .55) { tint('#ffffff', (1 - (p - .55) / .45) * .4); } },
+        () => {});
+      later(.5, () => { ring(tx, ty - 2, 50, '#ffffff'); ring(tx, ty - 2, 30, '#c9ced6'); groundMark(tx, ty + 2, 30, '#ffffff'); groundMark(tx, ty + 2, 30, '#ff9a3c'); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 50 ? .8 : .2), true, true, '#ffffff'); shake = 16; flashT = .12; sfx.boom(); });
       break; }
-    case 'guard':
-      hero.iframe = 3;
-      fx1(3, p => { const pul = 1 + Math.sin(p * 40) * .08; ctx.globalAlpha = .7 * (1 - p * .5); circ(hero.x, hero.y - 4, 16 * pul, '#8fb0d0', 40, .9); circ(hero.x, hero.y - 4, 14 * pul, '#ffffff', 30, .9, p * 3); for (let i = -2; i <= 2; i++) pix(hero.x + i * 6, hero.y - 4 - 14 * pul * .9 + Math.abs(i) * 2, '#ffffff'); ctx.globalAlpha = 1; });
-      later(.15, () => { ring(hero.x, hero.y - 3, 55, '#8fb0d0'); ring(hero.x, hero.y - 3, 32, '#ffffff'); shake = 14;
-        for (const m of live()) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1; m.kx += dx / d * 260; m.ky += dy / d * 260; if (!m.boss) m.frz = 3; hitMob(m, dmg * .9, true, true, '#8fb0d0'); } sfx.boom(); });
-      break;
-    case 'mage':
-      for (let i = 0; i < 14; i++) later(.15 + i * .1, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const mx = m.x, my = m.y;
-        dropFx(mx + 40, my - 80, m, .3, '#ff9a3c', 4, () => { ring(mx, my - 2, 18, '#ff9a3c'); burst(mx, my - 3, '#ff9a3c', 16, 50); burst(mx, my - 3, '#ffee88', 8, 30); hitAround(mx, my, 18, dmg * .5, '#ff9a3c'); shake = Math.max(shake, 4); sfx.boom(); }); });
-      break;
-    case 'sham':
-      fx1(1.4, p => { const a = p < .15 ? p / .15 : p > .8 ? (1 - p) / .2 : 1; ctx.globalAlpha = .6 * a; for (let i = 0; i < 40; i++) { const x = camX + (i * 37 % W) + Math.sin(time * 2 + i) * 3, y = camY + 4 + (i * 13 % 10); dot(x, y, 5, i % 3 ? '#2a2f44' : '#3a4060'); } ctx.globalAlpha = 1; });
-      for (let r = 0; r < 3; r++) later(.2 + r * .35, () => { for (const m of live()) { bolts.push({ x1: m.x + (rnd() - .5) * 16, y1: camY + 6, x2: m.x, y2: m.y - 3, l: .2, c: r % 2 ? '#ffffff' : '#99eeff' }); hitMob(m, dmg * .4, true, r === 2, '#ccf6ff'); } flashT = .08; shake = 6; tone(1800, .1, 'square', .03, 300); });
-      for (let i = 0; i < 3; i++) totems.push({ x: hero.x + (i - 1) * 14, y: hero.y + 6, t: 14, cd: .3 });
-      break;
-    case 'arch':
-      fx1(.3, p => { ctx.globalAlpha = 1 - p; for (let i = 0; i < 12; i++) pix(hero.x + (i - 6), hero.y - 10 - p * 60 - (i % 3) * 3, '#5cff8a'); ctx.globalAlpha = 1; });
-      for (let i = 0; i < 60; i++) later(.3 + i * .025, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const ox = (rnd() - .5) * 8, x = m.x + ox;
-        fx1(.15, p => { const y = m.y - 40 + 37 * p; for (let j = 0; j < 5; j++) pix(x - 2 + j * .4, y - j, j === 0 ? '#ffffff' : j > 3 ? '#5cff8a' : '#c9a36a'); }, () => { if (!m.dead) hitMob(m, dmg * .08, false, false, '#5cff8a'); }); });
-      break;
-    case 'assa': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 12);
-      fx1(.3 + tg.length * .12, p => { ctx.fillStyle = 'rgba(10,0,20,.35)'; ctx.fillRect(camX - 4, camY - 4, W + 8, H + 8); });
-      tg.forEach((m, i) => later(.2 + i * .12, () => { if (m.dead) return; blinkTo(m, true); burst(hero.x, hero.y - 4, '#4a3a6a', 10, 40); hitMob(m, dmg * 1.6, true, true, '#9a7aff'); tone(1300 + i * 60, .05, 'triangle', .03, 500);
-        const mx = m.x, my = m.y - 4; fx1(.35, p => { ctx.globalAlpha = 1 - p; for (let j = -6; j <= 6; j++) { pix(mx + j, my + j * .8, '#ffffff'); pix(mx + j, my - j * .8, '#9a7aff'); } ctx.globalAlpha = 1; }); }));
-      hero.iframe = tg.length * .12 + .5; break; }
-    case 'gamb': for (let i = 0; i < 5; i++) later(.15 + i * .25, () => { const s = Math.floor(rnd() * 5), nm = ['♥ ЧЕРВИ', '♦ БУБНЫ', '♣ ТРЕФЫ', '♠ ПИКИ', '★ ДЖОКЕР'][s], col = ['#ff4466', '#ffd84a', '#5cff8a', '#e9e4ff', '#44ffaa'][s];
-        const cx0 = hero.x, cy0 = hero.y - 6, dx = (i - 2) * 12;
-        fx1(.9, p => { const x = cx0 + dx * Math.min(1, p * 3), y = cy0 - 26 * Math.min(1, p * 3) - (p > .6 ? (p - .6) * 30 : 0); ctx.globalAlpha = p > .7 ? (1 - p) / .3 : 1; ctx.fillStyle = s === 4 ? '#44ffaa' : '#ffffff'; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 4, 7, 9); ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 4, 7, 1); dot(x, y, 3, col); ctx.globalAlpha = 1; });
-        ftext(hero.x + dx, hero.y - 40, nm, col, .9, 1); ring(hero.x, hero.y - 3, 22 + i * 4, col);
+    case 'bers': {   // кровавый смерч: спираль, кровавый дождь, финальный взрыв
+      fx1(3.2, p => { tint('#3a0000', .25 + .1 * Math.sin(time * 12));
+        for (let L = 0; L < 5; L++) for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283 + time * (10 + L * 2) * (L % 2 ? -1 : 1), R = 8 + L * 5 + Math.sin(time * 6 + L) * 2; const yy = hy - 4 - L * 3; pix(hx + Math.cos(a) * R, yy + Math.sin(a) * R * .45, i % 3 ? '#ff2222' : '#ffffff'); }
+        for (let i = 0; i < 4 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY, vx: -8, vy: 90 + rnd() * 40, l: 1.2, c: rnd() < .7 ? '#aa0a0a' : '#ff3344' }); });
+      for (let i = 0; i < 15; i++) later(.2 + i * .2, () => { hero.spin = .2; hitAround(hx, hy, 30, dmg * .12, '#ff6644'); hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03); shake = Math.max(shake, 4); tone(140, .08, 'sawtooth', .03, 70); });
+      later(3.2, () => { ring(hero.x, hero.y - 3, 60, '#ff2222'); ring(hero.x, hero.y - 3, 40, '#ffffff'); for (const m of live()) hitMob(m, dmg * .6, true, true, '#ff4433'); for (let i = 0; i < 60 && parts.length < 600; i++) { const a = rnd() * 6.283; parts.push({ x: hero.x, y: hero.y - 4, vx: Math.cos(a) * 120, vy: Math.sin(a) * 80, l: .7, c: '#ff2222' }); } shake = 14; flashT = .1; sfx.boom(); });
+      break; }
+    case 'pal': {   // небеса раскрываются, крылья света, гигантский молот, крест
+      const t = live().sort((a, b) => b.hp - a.hp)[0] || hero, tx = t.x, ty = t.y, HC = { G: '#b08a3a', W: '#ffffff', Y: '#ffe08a', H: '#8a6a3a' };
+      fx1(1.4, p => { tint('#fff6c0', .15 * (1 - p)); for (let i = 0; i < 7; i++) { const lx = camX + (i + .5) * W / 7 + Math.sin(time + i) * 4; ctx.globalAlpha = .25 * (1 - p); ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(lx), camY - 6, 3, H + 12); } ctx.globalAlpha = 1;
+        for (let s = -1; s <= 1; s += 2) for (let f = 0; f < 6; f++) for (let j = 0; j < 10 - f; j++) pix(hero.x + s * (4 + j + f), hero.y - 6 - f * 2 + j * .4 - p * 2, f % 2 ? '#ffffff' : '#ffe08a'); });
+      fx1(.6, p => { const e = p * p, y = ty - 120 + 106 * e; art('hammer', HC, tx, y - 14, 3, -.6 + .6 * e, 1, '#ffffff'); ctx.globalAlpha = .5; circ(tx, ty, 26 * (1 - p) + 4, '#ffe08a', 30); ctx.globalAlpha = 1; },
+        () => { for (let i = 0; i < 3; i++) later(i * .12, () => ring(tx, ty - 2, 30 + i * 18, i % 2 ? '#ffffff' : '#ffe08a')); burst(tx, ty - 3, '#ffe08a', 70, 100); groundMark(tx, ty + 2, 30, '#ffe08a'); groundMark(tx, ty + 2, 26, '#ffffff');
+          for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 50 ? 1.4 : .5), true, true, '#fff2a8'); hero.hp = D.maxHP; hero.shield = Math.max(hero.shield, D.maxHP * .5); shake = 18; flashT = .2; sfx.boom();
+          fx1(1.2, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#fff6c0'; const yy = ty - 8 - p * 20; ctx.fillRect(Math.round(tx) - 2, Math.round(yy - 30), 5, 36); ctx.fillRect(Math.round(tx) - 12, Math.round(yy - 20), 25, 5); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(tx), Math.round(yy - 30), 1, 36); ctx.fillRect(Math.round(tx) - 12, Math.round(yy - 18), 25, 1); ctx.globalAlpha = 1; }); });
+      break; }
+    case 'guard': {   // гигантский щит врезается в землю, купол из шестиугольников
+      hero.iframe = 3; const SC0 = { S: '#5a6a8a', W: '#ffffff', B: '#8fb0d0', G: '#ffd84a' };
+      fx1(.35, p => { art('shield', SC0, hero.x + hero.face * 8, hero.y - 60 + 52 * p * p, 3, 0, 1, '#ffffff'); },
+        () => { shake = 18; flashT = .15; sfx.boom(); groundMark(hero.x + hero.face * 8, hero.y + 2, 30, '#8fb0d0');
+          for (const m of live()) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1; m.kx += dx / d * 300; m.ky += dy / d * 300; if (!m.boss) m.frz = 3; hitMob(m, dmg * .9, true, true, '#8fb0d0'); }
+          for (let i = 0; i < 3; i++) ring(hero.x, hero.y - 3, 25 + i * 20, i % 2 ? '#ffffff' : '#8fb0d0'); });
+      fx1(3.3, p => { art('shield', SC0, hero.x + hero.face * 8, hero.y - 8, 3, 0, Math.min(1, (1 - p) * 4), '#ffffff');
+        const R = 22; ctx.globalAlpha = .55; for (let i = 0; i < 10; i++) for (let j = 0; j < 4; j++) { const a = i / 10 * 3.1416 + .0 + (j % 2) * .16, rr = R * (1 - j * .22); const px = hero.x + Math.cos(Math.PI + a) * rr, py = hero.y - 2 - Math.abs(Math.sin(a)) * rr * .9; circ(px, py, 2.5, (i + j) % 3 ? '#8fb0d0' : '#ffffff', 6, 1, time * 2); } ctx.globalAlpha = 1; });
+      break; }
+    case 'mage': {   // небо горит, огромные метеоры с хвостами и дымом, финальный гигант
+      fx1(2.2, p => { tint('#ff5a00', .18 + .06 * Math.sin(time * 9)); for (let i = 0; i < 3 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY + H, vx: rnd() * 10 - 5, vy: -40, l: 1, c: rnd() < .5 ? '#ff9a3c' : '#ffdd66', f: 1 }); });
+      for (let i = 0; i < 12; i++) later(.1 + i * .12, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const mx = m.x, my = m.y;
+        dropFx(mx + 50, my - 100, m, .35, '#ff7a20', 6, () => { ring(mx, my - 2, 22, '#ff9a3c'); burst(mx, my - 3, '#ff9a3c', 22, 60); burst(mx, my - 3, '#555555', 10, 25); hitAround(mx, my, 22, dmg * .4, '#ff9a3c'); groundMark(mx, my + 2, 22, '#ff9a3c'); shake = Math.max(shake, 6); sfx.boom(); }); });
+      later(1.6, () => { const t = live().sort((a, b) => b.hp - a.hp)[0]; if (!t) return; const tx = t.x, ty = t.y;
+        fx1(.5, p => { const e = p * p, x = tx + 80 * (1 - e), y = ty - 3 - 150 * (1 - e); ctx.globalAlpha = .5; for (let j = 1; j < 10; j++) dot(x + j * 5, y - j * 9, 14 - j, j % 2 ? '#ff5a00' : '#ffcc33'); ctx.globalAlpha = 1; dot(x, y, 14, '#ff7a20'); dot(x, y, 9, '#ffdd66'); dot(x, y, 4, '#ffffff'); },
+          () => { for (let i = 0; i < 3; i++) ring(tx, ty - 2, 30 + i * 22, i % 2 ? '#ffdd66' : '#ff6622'); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 60 ? 1.2 : .3), true, true, '#ff9a3c'); groundMark(tx, ty + 2, 30, '#ff9a3c'); groundMark(tx + 12, ty, 24, '#ff6622'); groundMark(tx - 12, ty + 3, 24, '#ff6622'); shake = 20; flashT = .2; sfx.boom(); }); });
+      break; }
+    case 'sham': {   // грозовой фронт, толстые ветвистые молнии, вспышки
+      fx1(1.6, p => { const a = p < .15 ? p / .15 : p > .8 ? (1 - p) / .2 : 1; tint('#05081a', .45 * a); ctx.globalAlpha = .8 * a; for (let i = 0; i < 60; i++) { const x = camX + (i * 23 % (W + 20)) - 10 + Math.sin(time * 1.5 + i) * 4, y = camY + (i * 7 % 14); dot(x, y, 8, i % 4 ? '#1e2236' : '#323a5a'); } ctx.globalAlpha = 1; });
+      for (let r = 0; r < 4; r++) later(.2 + r * .3, () => { for (const m of live()) { const x0 = m.x + (rnd() - .5) * 20; let px = x0, py = camY + 8; const steps = 6; for (let s = 1; s <= steps; s++) { const nx = x0 + (m.x - x0) * s / steps + (s < steps ? (rnd() - .5) * 10 : 0), ny = camY + 8 + (m.y - 3 - camY - 8) * s / steps; bolt3(px, py, nx, ny, r % 2 ? '#ffffff' : '#99eeff', 1); if (rnd() < .3) bolts.push({ x1: nx, y1: ny, x2: nx + (rnd() - .5) * 14, y2: ny + 6, l: .1, c: '#ccf6ff' }); px = nx; py = ny; } hitMob(m, dmg * .3, true, r === 3, '#ccf6ff'); groundMark(m.x, m.y + 2, 10, '#99eeff'); } flashT = .12; shake = 8; tone(2000, .15, 'square', .04, 100); tone(60, .4, 'sawtooth', .05, 30, .05); });
+      for (let i = 0; i < 3; i++) totems.push({ x: hx + (i - 1) * 14, y: hy + 6, t: 14, cd: .3 });
+      break; }
+    case 'arch': {   // светящаяся стрела в небо, волны ливня, гигантская стрела в сильнейшего
+      const AC = { W: '#ffffff', S: '#5cff8a', G: '#2f8a4f' };
+      fx1(.35, p => { art('arrow', AC, hx, hy - 10 - p * 90, 2, 0, 1, '#5cff8a'); });
+      fx1(2.2, p => tint('#002a10', .2));
+      for (let w = 0; w < 4; w++) for (let i = 0; i < 18; i++) later(.4 + w * .4 + i * .015, () => { const all = live(); const m = all[Math.floor(rnd() * all.length)]; if (!m) return; const x = m.x + (rnd() - .5) * 10;
+        fx1(.18, p => art('arrow', AC, x - 6 * (1 - p), m.y - 60 + 56 * p, 1, Math.PI + .1, 1), () => { if (!m.dead) hitMob(m, dmg * .05, false, false, '#5cff8a'); burst(x, m.y - 3, '#5cff8a', 3, 20); }); });
+      later(2.2, () => { const t = live().sort((a, b) => b.hp - a.hp)[0]; if (!t) return; fx1(.25, p => art('arrow', AC, t.x, t.y - 100 + 94 * p, 4, Math.PI, 1, '#ffffff'), () => { ring(t.x, t.y - 2, 30, '#5cff8a'); hitMob(t, dmg * 1.5, true, true, '#5cff8a'); groundMark(t.x, t.y + 2, 20, '#ffffff'); shake = 12; flashT = .1; sfx.boom(); }); });
+      break; }
+    case 'assa': {   // тьма, герой-тень, огромные разрезы, финальный «щелчок» — все враги рассечены
+      const tg = near(12);
+      fx1(.4 + tg.length * .1 + .5, p => { tint('#0a0014', .6); });
+      tg.forEach((m, i) => later(.15 + i * .1, () => { if (m.dead) return; const px0 = hero.x, py0 = hero.y; blinkTo(m, true); bolts.push({ x1: px0, y1: py0 - 4, x2: hero.x, y2: hero.y - 4, l: .3, c: '#9a7aff' }); burst(hero.x, hero.y - 4, '#4a3a6a', 10, 40); tone(1300 + i * 60, .05, 'triangle', .03, 500);
+        const mx = m.x, my = m.y - 4, a0 = rnd() * 3.14; fx1(.8, p => { const L = 30 * Math.min(1, p * 6); ctx.globalAlpha = 1 - p * .6; for (let j = -L; j <= L; j++) { pix(mx + Math.cos(a0) * j, my + Math.sin(a0) * j, '#ffffff'); pix(mx + Math.cos(a0) * j, my + Math.sin(a0) * j + 1, '#9a7aff'); } ctx.globalAlpha = 1; }); }));
+      later(.3 + tg.length * .1 + .3, () => { flashT = .2; shake = 14; ring(hero.x, hero.y - 3, 40, '#9a7aff'); for (const m of tg) if (!m.dead) { hitMob(m, dmg * 2, true, true, '#9a7aff'); burst(m.x, m.y - 4, '#ffffff', 12, 50); } tone(3000, .05, 'square', .05, 800); tone(80, .3, 'sawtooth', .05, 40, .05); });
+      hero.iframe = tg.length * .1 + 1; break; }
+    case 'gamb': {   // веер гигантских карт кружится, каждая переворачивается, золотой дождь
+      const cards = [0, 1, 2, 3, 4].map(() => Math.floor(rnd() * 5)), SUIT = ['♥', '♦', '♣', '♠', '★'], COL = ['#ff4466', '#ffd84a', '#5cff8a', '#222244', '#44ffaa'];
+      fx1(1.8, p => { tint('#001a10', .25); for (let i = 0; i < 5; i++) { const a = -2.4 + i * .45 + Math.sin(time * 2) * .05, R = 26 * Math.min(1, p * 4), x = hero.x + Math.cos(a) * R, y = hero.y - 8 + Math.sin(a) * R; const flip = Math.abs(Math.cos(Math.min(1, Math.max(0, p * 3 - i * .3)) * Math.PI)), w = Math.max(1, 3 * flip);
+        ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a + 1.57); ctx.scale(w / 3, 1); ctx.drawImage(artCv('card', { K: '#000', W: i === 4 && cards[i] === 4 ? '#c8ffe8' : '#ffffff' }), -10, -15, 21, 30); ctx.restore();
+        if (p * 3 - i * .3 > .5) { ctx.fillStyle = COL[cards[i]]; ctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6); } }
+        if (parts.length < 600) parts.push({ x: camX + rnd() * W, y: camY, vx: 0, vy: 60, l: 1.5, c: rnd() < .5 ? '#ffd84a' : '#fff2a0' }); });
+      cards.forEach((s, i) => later(.4 + i * .25, () => { const nm = ['♥ ЧЕРВИ', '♦ БУБНЫ', '♣ ТРЕФЫ', '♠ ПИКИ', '★ ДЖОКЕР'][s], col = ['#ff4466', '#ffd84a', '#5cff8a', '#e9e4ff', '#44ffaa'][s];
+        ftext(hero.x + (i - 2) * 14, hero.y - 44, nm, col, .9, 1.2); ring(hero.x, hero.y - 3, 26 + i * 6, col);
         if (s === 0) hero.hp = D.maxHP; if (s === 1) { giveBurst(zs() * D.gainMult * 40); if (rnd() < .15) giveChest('c', 'флеш-рояль'); } if (s === 2) for (const m of live()) { m.psn = Math.max(m.psn || 0, D.hit * 3); m.psnT = 4; }
-        for (const m of live()) hitMob(m, dmg * (s === 3 ? .6 : s === 4 ? 1 : .25), s >= 3, s === 4, col); tone(1600 + i * 200, .06, 'triangle', .03); }); break;
-    case 'alch': {
+        for (const m of live()) hitMob(m, dmg * (s === 3 ? .6 : s === 4 ? 1 : .25), s >= 3, s === 4, col); tone(1600 + i * 200, .06, 'triangle', .03); if (s === 4) { flashT = .15; shake = 10; } }));
+      break; }
+    case 'alch': {   // гигантские колбы дугой, ядовитые грибы-взрывы, пузыри по экрану
+      const all = live(), FC = { W: '#e6e6e6', G: '#3a6a12', L: '#b6ff3c', B: '#ffffff' };
+      fx1(2, p => { tint('#0a2a00', .22); for (let i = 0; i < 5 && parts.length < 600; i++) parts.push({ x: camX + rnd() * W, y: camY + H, vx: 0, vy: -30 - rnd() * 40, l: 1.4, c: rnd() < .5 ? '#b6ff3c' : '#e8ff8a', f: 1 }); });
+      all.slice(0, 14).forEach((m, i) => later(.05 + i * .05, () => { if (m.dead) return; const x0 = hero.x, y0 = hero.y - 8, tx = m.x, ty = m.y - 2;
+        fx1(.45, p => { const x = x0 + (tx - x0) * p, y = y0 + (ty - y0) * p - Math.sin(p * Math.PI) * 30; art('flask', FC, x, y, 1.5, p * 12, 1); }, () => { if (clouds.length < 40) clouds.push({ x: tx, y: ty + 1, r: 14, dps: D.hit * 2, t: 4, acid: true }); burst(tx, ty, '#b6ff3c', 14, 40); groundMark(tx, ty + 2, 14, '#b6ff3c'); }); }));
+      all.forEach((m, i) => later(1 + i * .05, () => { if (m.dead) return; const mx = m.x, my = m.y;
+        fx1(.6, p => { const r = 4 + p * 14; ctx.globalAlpha = 1 - p; dot(mx, my - 6 - p * 14, r, '#b6ff3c'); dot(mx, my - 6 - p * 14, r * .6, '#e8ff8a'); ctx.fillStyle = '#7aa02a'; ctx.fillRect(Math.round(mx) - 1, Math.round(my - 6 - p * 14), 3, Math.round(6 + p * 14)); ctx.globalAlpha = 1; });
+        ring(mx, my - 2, 16, '#b6ff3c'); hitAround(mx, my, 16, dmg * .5, '#b6ff3c'); tone(500 + i * 20, .05, 'square', .02, 150); shake = Math.max(shake, 4); })); break; }
+    case 'priest': {   // небеса: нимб и крылья над героем, широкие столпы, падающие перья
+      fx1(1.8, p => { tint('#fff6c0', .22 * (1 - p)); const hy2 = hero.y - 26; ctx.globalAlpha = .9; circ(hero.x, hy2, 10, '#ffe08a', 30, .35, time); circ(hero.x, hy2, 9, '#ffffff', 20, .35, -time);
+        for (let s = -1; s <= 1; s += 2) for (let f = 0; f < 8; f++) for (let j = 0; j < 16 - f * 1.5; j++) pix(hero.x + s * (4 + j), hy2 + 4 + f * 2 - j * .5 + Math.sin(time * 6) * (j / 8), f % 2 ? '#ffffff' : '#fff6c0'); ctx.globalAlpha = 1;
+        if (parts.length < 600) parts.push({ x: camX + rnd() * W, y: camY, vx: Math.sin(time * 3) * 10, vy: 22, l: 2.5, c: '#ffffff', f: 1 }); });
+      live().forEach((m, i) => later(.2 + i * .05, () => { if (m.dead) return; const mx = m.x, my = m.y;
+        fx1(.7, p => { const w = Math.round(10 * (1 - p)) + 2; ctx.globalAlpha = 1 - p * .6; ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(mx - w / 2), Math.round(camY - 6), w, Math.round(my - camY + 6)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(mx - w / 6), Math.round(camY - 6), Math.max(1, Math.round(w / 3)), Math.round(my - camY + 6)); ctx.globalAlpha = 1; circ(mx, my, 12 * (1 - p) + 4, '#ffe08a', 20); });
+        groundMark(mx, my + 2, 16, '#fff6c0'); hitMob(m, dmg * 1.1, true, true, '#fff6c0'); tone(880 + i * 30, .1, 'sine', .02, 1760); }));
+      hero.hp = D.maxHP; hero.psnT = 0; hero.slowT = 0; break; }
+    case 'monk': {   // золотое пламя ауры, огромные ладони-удары, финальная ладонь с неба
+      const tg = near(6), PC = { W: '#ffcc66' };
+      fx1(2.2, p => { tint('#2a1400', .2); for (let i = 0; i < 4 && parts.length < 600; i++) parts.push({ x: hero.x + (rnd() - .5) * 14, y: hero.y - rnd() * 6, vx: 0, vy: -60, l: .4, c: rnd() < .5 ? '#ffaa55' : '#ffe08a', f: 1 }); });
+      for (let i = 0; i < 30; i++) later(.1 + i * .055, () => { const m = tg[i % Math.max(1, tg.length)]; if (!m || m.dead) return; hero.fists = .1; hero.swingA = Math.atan2(m.y - hero.y, m.x - hero.x); hitMob(m, dmg * .14, false, i % 6 === 0, '#ffaa55'); if (i % 3 === 0) tone(300 + i * 10, .03, 'square', .02);
+        const px = m.x + (rnd() - .5) * 10, py = m.y - 6 + (rnd() - .5) * 6, rr = (rnd() - .5) * .8; fx1(.3, p => art('palm', PC, px, py, 1.5 + p, rr, 1 - p, '#ffffff')); });
+      later(1.9, () => { const t = tg[0]; if (!t) return; const tx = t.x, ty = t.y;
+        fx1(.35, p => art('palm', PC, tx, ty - 80 + 72 * p * p, 5, 0, 1, '#ffffff'), () => { for (let i = 0; i < 3; i++) ring(tx, ty - 2, 24 + i * 16, i % 2 ? '#ffffff' : '#ffaa55'); for (const m of live()) hitMob(m, dmg * (Math.hypot(m.x - tx, m.y - ty) < 45 ? 1.2 : .3), true, true, '#ffaa55'); groundMark(tx, ty + 2, 28, '#ffffff'); shake = 18; flashT = .15; sfx.boom(); }); });
+      break; }
+    case 'chrono': {   // огромный циферблат на весь экран, стрелки назад, мир в синеве, стекло разбивается
+      const st = live(); later(.1, () => { hero.stopT = 3; for (const m of st) { m.frz = Math.max(m.frz || 0, 3); m.stopD = 0; } });
+      fx1(3.1, p => { const R = Math.min(W, H) * .42, cx = hero.x, cy = hero.y - 4; ctx.globalAlpha = .85;
+        circ(cx, cy, R, '#88aaff', 90, .85); circ(cx, cy, R - 3, '#ffffff', 60, .85); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 - 1.57; for (let j = 0; j < (i % 3 ? 3 : 7); j++) pix(cx + Math.cos(a) * (R - 6 - j), cy + Math.sin(a) * (R - 6 - j) * .85, '#ffffff'); }
+        const ah = -1.57 - p * 6.283 * 4, am = -1.57 - p * 6.283 * .5; for (let r = 0; r < R - 8; r++) pix(cx + Math.cos(ah) * r, cy + Math.sin(ah) * r * .85, '#ffffff'); for (let r = 0; r < R * .6; r++) { pix(cx + Math.cos(am) * r, cy + Math.sin(am) * r * .85, '#88aaff'); pix(cx + Math.cos(am) * r + 1, cy + Math.sin(am) * r * .85, '#88aaff'); } ctx.globalAlpha = 1; });
+      later(3.1, () => { hero.stopT = 0; flashT = .3; shake = 16;
+        fx1(.6, p => { ctx.globalAlpha = 1 - p; for (let k2 = 0; k2 < 10; k2++) { let a = k2 / 10 * 6.283, px = hero.x, py = hero.y - 4; for (let s = 0; s < 40; s++) { a += (Math.sin(k2 * 7 + s) * .3); px += Math.cos(a) * 2; py += Math.sin(a) * 1.6; pix(px, py, '#ffffff'); } } ctx.globalAlpha = 1; });
+        for (const m of st) { const d0 = m.stopD || 0; m.stopD = undefined; if (!m.dead) { ring(m.x, m.y - 3, 12, '#88aaff'); hitMob(m, dmg * .6 + d0 * 2, true, true, '#88aaff'); } } sfx.boom(); tone(3000, .2, 'triangle', .04, 200); }); break; }
+    case 'rune': {   // гигантский многослойный магический круг, руны загораются по очереди, столпы
       const all = live();
-      fx1(1.6, p => { for (let i = 0; i < 6; i++) if (rnd() < .5 && parts.length < 500) parts.push({ x: camX + rnd() * W, y: camY + H, vx: 0, vy: -30 - rnd() * 30, l: 1.2, c: rnd() < .5 ? '#b6ff3c' : '#e8ff8a', f: 1 }); });
-      all.forEach((m, i) => later(.1 + i * .03, () => { if (m.dead) return; const x0 = hero.x, y0 = hero.y - 6, tx = m.x, ty = m.y - 2;
-        fx1(.35, p => { const x = x0 + (tx - x0) * p, y = y0 + (ty - y0) * p - Math.sin(p * Math.PI) * 18; dot(x, y, 2, '#b6ff3c'); pix(x, y - 2, '#e6e6e6'); }, () => { if (clouds.length < 40) clouds.push({ x: tx, y: ty + 1, r: 12, dps: D.hit * 2, t: 4, acid: true }); burst(tx, ty, '#b6ff3c', 8, 30); }); }));
-      all.forEach((m, i) => later(.9 + i * .05, () => { if (m.dead) return; ring(m.x, m.y - 2, 14, '#b6ff3c'); burst(m.x, m.y - 3, '#b6ff3c', 12, 40); hitAround(m.x, m.y, 14, dmg * .5, '#b6ff3c'); tone(700, .04, 'square', .02, 200); })); break; }
-    case 'priest':
-      fx1(1.2, p => { ctx.globalAlpha = .25 * (1 - p); ctx.fillStyle = '#fff6c0'; ctx.fillRect(camX - 4, camY - 4, W + 8, H + 8); ctx.globalAlpha = 1; circ(hero.x, hero.y - 12, 5, '#ffe08a', 14, .4, p * 6); });
-      live().forEach((m, i) => later(.15 + i * .04, () => { if (m.dead) return; const mx = m.x, my = m.y;
-        fx1(.5, p => { const w = Math.round(5 * (1 - p)) + 1; ctx.globalAlpha = 1 - p * .7; ctx.fillStyle = '#fff6c0'; ctx.fillRect(Math.round(mx - w / 2), Math.round(camY - 4), w, Math.round(my - camY + 1)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(mx), Math.round(camY - 4), 1, Math.round(my - camY + 1)); ctx.globalAlpha = 1; });
-        ring(mx, my - 2, 10, '#fff6c0'); hitMob(m, dmg * 1.1, true, true, '#fff6c0'); }));
-      hero.hp = D.maxHP; hero.psnT = 0; hero.slowT = 0; break;
-    case 'monk': { const tg = live().sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y)).slice(0, 6);
-      fx1(1.9, p => { for (let i = 0; i < 3; i++) if (parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 10, y: hero.y - rnd() * 4, vx: 0, vy: -40, l: .3, c: rnd() < .5 ? '#ffaa55' : '#ffe08a', f: 1 }); });
-      for (let i = 0; i < 40; i++) later(.15 + i * .04, () => { const m = tg[i % Math.max(1, tg.length)]; if (!m || m.dead) return; hero.fists = .1; hero.swingA = Math.atan2(m.y - hero.y, m.x - hero.x); hitMob(m, dmg * .12, false, i % 8 === 0, '#ffaa55'); if (i % 4 === 0) tone(300 + i * 10, .03, 'square', .02);
-        const px = m.x + (rnd() - .5) * 8, py = m.y - 4 + (rnd() - .5) * 6; fx1(.25, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#ffcc99'; ctx.fillRect(Math.round(px) - 2, Math.round(py) - 1, 4, 4); for (let f = 0; f < 4; f++) pix(px - 2 + f, py - 2 - (f % 2), '#ffcc99'); ctx.globalAlpha = 1; }); }); break; }
-    case 'chrono': { const st = live(); later(.1, () => { hero.stopT = 3; for (const m of st) { m.frz = Math.max(m.frz || 0, 3); m.stopD = 0; } });
-      fx1(3.1, p => { const R = 30; ctx.globalAlpha = .8; circ(hero.x, hero.y - 4, R, '#88aaff', 48, .8); circ(hero.x, hero.y - 4, R - 2, '#ffffff', 12, .8); const ah = -1.57 + p * 6.283 * 3, am = -1.57 + p * 6.283 * .25;
-        for (let r = 0; r < R - 6; r++) pix(hero.x + Math.cos(ah) * r, hero.y - 4 + Math.sin(ah) * r * .8, '#ffffff'); for (let r = 0; r < R - 14; r++) pix(hero.x + Math.cos(am) * r, hero.y - 4 + Math.sin(am) * r * .8, '#88aaff'); ctx.globalAlpha = 1; });
-      later(3.1, () => { hero.stopT = 0; flashT = .2; shake = 12; for (const m of st) { const d0 = m.stopD || 0; m.stopD = undefined; if (!m.dead) { ring(m.x, m.y - 3, 10, '#88aaff'); hitMob(m, dmg * .6 + d0 * 2, true, true, '#88aaff'); } } sfx.boom(); }); break; }
-    case 'rune':
-      fx1(1.8, p => { const a = p < .2 ? p / .2 : p > .8 ? (1 - p) / .2 : 1, R = 34 * a; ctx.globalAlpha = .8; circ(hero.x, hero.y, R, '#bb88ff', 50, .55, p * 2); circ(hero.x, hero.y, R * .7, '#e0ccff', 30, .55, -p * 3);
-        for (let i = 0; i < 6; i++) { const an = i / 6 * 6.283 + p * 2, gx = hero.x + Math.cos(an) * R * .85, gy = hero.y + Math.sin(an) * R * .85 * .55; pix(gx, gy - 1, '#ffffff'); pix(gx - 1, gy, '#bb88ff'); pix(gx + 1, gy, '#bb88ff'); pix(gx, gy + 1, '#ffffff'); } ctx.globalAlpha = 1; });
-      live().forEach((m, i) => runes.push({ x: m.x, y: m.y, t: .5 + i * .08, m, r: 16, res: false, big: dmg * .7 })); break;
-    case 'necro':
-      fx1(1.5, p => { ctx.globalAlpha = .5 * (1 - p); circ(hero.x, hero.y, 10 + p * 30, '#7affb0', 40, .5); ctx.globalAlpha = 1; for (let i = 0; i < 2; i++) if (parts.length < 500) { const a = rnd() * 6.28, r = rnd() * 30; parts.push({ x: hero.x + Math.cos(a) * r, y: hero.y + Math.sin(a) * r * .5, vx: 0, vy: -25, l: .6, c: rnd() < .5 ? '#7affb0' : '#2a5a3a', f: 1 }); } });
-      for (let i = 0; i < 10; i++) later(.15 + i * .06, () => { const a = i / 10 * 6.283, x = hero.x + Math.cos(a) * 14, y = hero.y + Math.sin(a) * 9; allies.push({ x, y, t: 15, cd: .3, face: 1 }); burst(x, y - 3, '#7affb0', 8, 30); for (let j = 0; j < 4; j++) parts.push({ x: x + (rnd() - .5) * 4, y, vx: 0, vy: -20, l: .4, c: '#5a4a3a' }); });
-      later(.8, () => { for (const m of live()) { bolts.push({ x1: hero.x, y1: hero.y - 5, x2: m.x, y2: m.y - 3, l: .25, c: '#7affb0' }); hitMob(m, dmg * .8, true, true, '#7affb0'); } }); break;
-    case 'reap': hero.souls = 5 + Math.floor(25 * cq(1));
-      for (let s2 = 0; s2 < 3; s2++) later(.2 + s2 * .25, () => { const a0 = s2 * 2.1;
-        fx1(.3, p => { const R = 60; ctx.globalAlpha = 1 - p * .5; for (let s = 0; s < 30; s++) { const a = a0 + (s / 29) * 6.283 * p; for (let r = R - 4; r < R; r++) pix(hero.x + Math.cos(a) * r, hero.y - 4 + Math.sin(a) * r * .7, r === R - 1 ? '#ffffff' : '#ff44ff'); } ctx.globalAlpha = 1; });
-        ring(hero.x, hero.y - 3, 60, '#ff44ff'); for (const m of live()) hitMob(m, dmg * .45, true, s2 === 2, '#ff44ff'); tone(200, .12, 'sawtooth', .04, 80); }); break;
+      fx1(2.4, p => { const a = p < .15 ? p / .15 : p > .85 ? (1 - p) / .15 : 1, R = 70 * a; tint('#14002a', .3 * a); ctx.globalAlpha = .85;
+        circ(hero.x, hero.y, R, '#bb88ff', 120, .55, p * 2); circ(hero.x, hero.y, R * .82, '#e0ccff', 90, .55, -p * 3); circ(hero.x, hero.y, R * .55, '#bb88ff', 60, .55, p * 5); circ(hero.x, hero.y, R * .3, '#ffffff', 30, .55, -p * 7);
+        for (let i = 0; i < 12; i++) { const an = i / 12 * 6.283 + p * 2, gx = hero.x + Math.cos(an) * R * .91, gy = hero.y + Math.sin(an) * R * .91 * .55; ctx.fillStyle = i % 2 ? '#ffffff' : '#bb88ff'; ctx.fillRect(Math.round(gx) - 1, Math.round(gy) - 2, 3, 1); ctx.fillRect(Math.round(gx), Math.round(gy) - 2, 1, 5); ctx.fillRect(Math.round(gx) - 1, Math.round(gy) + 1, 3, 1); }
+        for (let i = 0; i < 6; i++) { const a1 = i / 6 * 6.283 + p, a2 = (i + 2) / 6 * 6.283 + p; line(hero.x + Math.cos(a1) * R * .55, hero.y + Math.sin(a1) * R * .3, hero.x + Math.cos(a2) * R * .55, hero.y + Math.sin(a2) * R * .3, '#bb88ff'); } ctx.globalAlpha = 1; });
+      all.forEach((m, i) => { runes.push({ x: m.x, y: m.y, t: .6 + i * .08, m, r: 18, res: false, big: dmg * .7 });
+        later(.6 + i * .08, () => { const mx = m.x, my = m.y; fx1(.5, p => { ctx.globalAlpha = 1 - p; ctx.fillStyle = '#bb88ff'; ctx.fillRect(Math.round(mx) - 2, Math.round(camY - 6), 5, Math.round(my - camY + 6)); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(mx), Math.round(camY - 6), 1, Math.round(my - camY + 6)); ctx.globalAlpha = 1; }); tone(300 + i * 40, .06, 'square', .02, 900); }); });
+      break; }
+    case 'necro': {   // земля трескается, туман, череп над героем, руки мертвецов, луч тьмы
+      const SK = { W: '#d8e8d8', K: '#7affb0' };
+      fx1(2, p => { tint('#001a0a', .4); const a = Math.min(1, p * 4); art('skull', SK, hero.x, hero.y - 34 + Math.sin(time * 3) * 2, 2.5 * a, 0, a, '#7affb0'); for (let i = 0; i < 3 && parts.length < 600; i++) { const an = rnd() * 6.28, r = rnd() * 50; parts.push({ x: hero.x + Math.cos(an) * r, y: hero.y + Math.sin(an) * r * .5, vx: 0, vy: -20, l: .8, c: rnd() < .5 ? '#7affb0' : '#1a3a26', f: 1 }); } });
+      for (let i = 0; i < 10; i++) later(.2 + i * .07, () => { const a = i / 10 * 6.283, x = hero.x + Math.cos(a) * 18, y = hero.y + Math.sin(a) * 11; groundMark(x, y + 2, 10, '#7affb0');
+        fx1(.4, p => { ctx.fillStyle = '#d8e8d8'; const hh = Math.round(6 * p); ctx.fillRect(Math.round(x), Math.round(y - hh), 1, hh); ctx.fillRect(Math.round(x) - 2, Math.round(y - hh), 5, 1); }, () => { allies.push({ x, y, t: 15, cd: .3, face: 1 }); burst(x, y - 3, '#7affb0', 10, 30); }); });
+      later(1.1, () => { for (const m of live()) { bolt3(hero.x, hero.y - 34, m.x, m.y - 3, '#7affb0', 1); hitMob(m, dmg * .8, true, true, '#7affb0'); groundMark(m.x, m.y + 2, 10, '#7affb0'); } flashT = .15; shake = 12; tone(70, .6, 'sawtooth', .06, 35); tone(400, .3, 'square', .03, 100); });
+      break; }
+    case 'reap': {   // гигантская коса трижды проходит по кругу со шлейфом, души высасываются из врагов
+      hero.souls = 5 + Math.floor(25 * cq(1)) + (aw() ? 20 : 0);
+      fx1(1.6, p => { tint('#14001a', .35); for (const m of live()) if (rnd() < .15 && parts.length < 600) orbs.push({ x: m.x, y: m.y - 4, vx: 0, vy: -30, c: '#ff44ff', t: 0 }); });
+      for (let s2 = 0; s2 < 3; s2++) later(.15 + s2 * .35, () => { const a0 = s2 * 2.1, dir = s2 % 2 ? -1 : 1;
+        fx1(.35, p => { const R = 70; for (let tr = 0; tr < 5; tr++) { const a = a0 + dir * 6.283 * Math.max(0, p - tr * .03); ctx.globalAlpha = (1 - tr * .2) * (1 - p * .4);
+          for (let r = 10; r < R; r++) pix(hero.x + Math.cos(a) * r, hero.y - 4 + Math.sin(a) * r * .7, '#3a2a3a');
+          for (let b = 0; b < 26; b++) { const ba = a + dir * b * .045, br = R - b * .9; for (let w = 0; w < 4; w++) pix(hero.x + Math.cos(ba) * (br - w), hero.y - 4 + Math.sin(ba) * (br - w) * .7, w === 0 ? '#ffffff' : tr ? '#ff44ff' : '#c9ced6'); } } ctx.globalAlpha = 1; });
+        ring(hero.x, hero.y - 3, 66, '#ff44ff'); for (const m of live()) hitMob(m, dmg * .45, true, s2 === 2, '#ff44ff'); shake = 10; tone(200 - s2 * 30, .15, 'sawtooth', .05, 70); });
+      break; }
   }
 }
 
