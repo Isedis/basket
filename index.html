@@ -412,7 +412,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113034430';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113035658';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -5042,10 +5042,17 @@ requestAnimationFrame(frame);
 function frame(now) {
   const real = Math.min(.05, (now - last) / 1000); last = now;
   slowT -= real; flashT -= real;
-  const us = ultFrame(real) * evFrame(real);
-  if (hitStop > 0) hitStop -= real; else { const d = (slowT > 0 ? real * .3 : real) * us; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
-  render();
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame);   // следующий кадр заказываем первым: ошибка в кадре не останавливает бой
+  try {
+    const us = ultFrame(real) * evFrame(real);
+    if (hitStop > 0) hitStop -= real; else { const d = (slowT > 0 ? real * .3 : real) * us; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
+    render();
+  } catch (e) { frameErr(e); }
+}
+function frameErr(e) {
+  console.error(e); US = null; EV = null; hitStop = 0; slowT = 0;   // сбрасываем «замораживающие» состояния
+  if (!frameErr.t || performance.now() - frameErr.t > 5000) { frameErr.t = performance.now();
+    try { feed('Ошибка: ' + String(e && e.message || e).slice(0, 60), '#ff5544'); } catch (_) {} }
 }
 </script>
 </body>
