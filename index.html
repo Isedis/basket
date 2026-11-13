@@ -207,6 +207,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #clsc b{font-weight:normal}
 #clsc .cs{display:flex;justify-content:space-between;gap:6px}
 #clsc .cs span{white-space:nowrap;flex:none}
+#clsc .ca{justify-content:space-between}
 #clsc .cs em{font-style:normal;color:var(--dim);text-align:right}
 #croll{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:30;background:#120f1c;border:3px solid #f2c94c;padding:14px 18px;text-align:center;font-size:13px;min-width:230px;pointer-events:none;box-shadow:0 0 0 3px #000,0 0 30px #000}
 #croll{pointer-events:auto!important;cursor:pointer}
@@ -412,7 +413,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113035658';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113060703';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4098,8 +4099,8 @@ function updateUI() {
   const fav = biomeOf(S.zone).fav;
   for (const g of groups) if (g) {
     const e = g.e;
-    g.nm.innerHTML = EFF[e].n + (thrL(EFF[e].k) ? ` <i style="color:#ffe08a;font-style:normal">${pxImg('star', '#ffe08a', 7)}${thrL(EFF[e].k)}</i>` : '') + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
-    g.fm.textContent = formName(e, F(e));
+    g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
+    { const th = thrL(EFF[e].k), fh = formName(e, F(e)) + (th ? ` <span style="color:#ffe08a">${pxImg('star', '#ffe08a', 6)}${th}</span>` : ''); if (g.fm.innerHTML !== fh) g.fm.innerHTML = fh; }
     const locked = !gcnt[e]; g.el.classList.toggle('lock', locked);
     if (locked) { g.fm.textContent = EFF[e].d; g.cnt.innerHTML = pxImg('lock', '#8a83a6', 8); g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
     else { g.cnt.textContent = gcnt[e]; g.val.textContent = fmt(D.T[e]); }
@@ -4174,7 +4175,7 @@ function renderAuto() {
 }
 $('autobox').onclick = e => { const lk = e.target.closest('[data-t]'); if (lk) { tSel = +lk.dataset.t; openTree(); return; } const el = e.target.closest('[data-a]'); if (!el) return; au(el.dataset.a); S.meta.auto[el.dataset.a] = !S.meta.auto[el.dataset.a]; renderAuto(); save(); };
 $('clsbox').onclick = e => { const el = e.target.closest('[data-c]'); if (!el) return; const c = CLASSES[el.dataset.c]; if (!(S.meta.seen || {})[el.dataset.c]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[c.br].n + '»'); return; } openCT(el.dataset.c); };
-$('clsc').onclick = () => openClassTab();
+$('clsc').onclick = () => { S.meta.clsOpen = !S.meta.clsOpen; renderCls.h = ''; renderCls(); };
 $('clsopen').onclick = () => openClassTab();
 $('perkb').onclick = () => openPerks();
 const applyAp = () => { $('apb').textContent = 'Перки: ' + (S.meta.autoPerk ? 'АВТО' : 'ВРУЧНУЮ'); };
@@ -4187,7 +4188,13 @@ $('ascbox').onclick = e => { const b = e.target.closest('[data-asc]'); if (b) { 
   if (e.target.id === 'ascb' && S.meta.guard) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
-  const C = CL(), c0 = S.cst || [0, 0];
+  const C = CL(), c0 = S.cst || [0, 0], fp = ctPts(cls());
+  const attrLine = `<div class="cs ca">` + ATTRS.map((A, j) => `<span style="color:${A.c}">${j === mainAttr() ? '◆' : ''}${A.n.slice(0, 3)} <b style="color:#e9e4ff">×${attrMul(j).toFixed(2)}</b></span>`).join('') + `</div>`;
+  if (!S.meta.clsOpen) {
+    const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b> <b style="color:#e9e4ff">ур.${clsLv()}</b></span><em>${fp ? '<b style="color:#5cff8a">очков пути: ' + fp + '</b> · ' : ''}${pxImg('star', '#ffe08a', 7)}${thrTotal()} · подробнее ▾</em></div>` + attrLine;
+    if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
+    return renderClsAwk(C);
+  }
   const h = `<div class="cs"><span><b style="color:${C.c}">${C.n.toUpperCase()}</b></span><em>мастерство ×${clsPow().toFixed(2)} · ${BRANCHES[C.br].n}</em></div>` + `<div class="cs"><span style="color:${C.c}">Мастерство ${clsLv()}</span><em>${fmt(cm(cls()).xp)} / ${fmt(cxpNeed(clsLv()))} опыта · +${clsLv() * 4}% урона и HP</em></div>` +
     `<div class="cs"><span style="color:${C.c}">Ульта</span><em>${(aw() ? '★ ' : '') + ULTS[cls()][0]}${aw() ? ' ×2' : ''}</em></div>` +
     `<div class="cs"><span style="color:${C.c}">Стиль: ${CSTY[cls()][sty()][0]}</span><em>${CSTY[cls()][sty()][1]}</em></div>` +
@@ -4195,7 +4202,10 @@ function renderCls() {
     `<div class="cs"><span style="color:${aw() ? C.c : '#777'}">${aw() ? '★ ' : pxImg('lock', '#777', 8)}${AWK[cls()][0]}</span><em>${aw() ? AWK[cls()][1] : 'пробуждение: заполни ветку класса'}</em></div>` +
     `<div class="cs"><span style="color:#e9e4ff">Атрибуты</span><em>пороги ${pxImg('star', '#ffe08a', 7)}${thrTotal()}</em></div>` + ATTRS.map((A, j) => `<div class="cs"><span style="color:${A.c}">${j === mainAttr() ? '◆ ' : ''}${A.n} <b style="color:#e9e4ff">${fmt(Math.floor((S.attr && S.attr[j]) || 0))}</b></span><em>${A.e.slice(0, 2).map(k => EFF[EI[k]].n.toLowerCase()).join(', ')}… ×${attrMul(j).toFixed(2)}</em></div>`).join('') +
     C.st.map(([n, f], j) => `<div class="cs"><span style="color:${C.c}">${n} <b style="color:#e9e4ff">${fmt(c0[j])}</b></span><em>${f(cq(j))}</em></div>`).join('');
-  if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h; }
+  if (h !== renderCls.h) { renderCls.h = h; $('clsc').innerHTML = h + '<div class="cs"><span></span><em>свернуть ▴</em></div>'; }
+  renderClsAwk(C);
+}
+function renderClsAwk(C) {
   if (aw()) { const M = S.meta; if (!M.awk) M.awk = {}; if (!M.awk[cls()]) { M.awk[cls()] = 1; toast('ПРОБУЖДЕНИЕ: ' + C.n.toUpperCase() + '!', AWK[cls()][0] + ' · ульта ×2 · новый облик', 3500); awakenFx(); } }
 }
 function clsReveal() {
@@ -4521,7 +4531,7 @@ $('tclose').onclick = () => { tree.hidden = true; navOn('nFight'); };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
 $('tfit').onclick = () => fitTree();
-function openTree() { tree.hidden = false; setTMode(tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
+function openTree() { tree.hidden = false; setTMode(S.meta.tMode || tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
 function sizeTree() {
   tDPR = Math.min(3, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
   tcv.width = Math.round(tW * tDPR); tcv.height = Math.round(tH * tDPR); tcv.style.width = tW + 'px'; tcv.style.height = tH + 'px';
@@ -4572,7 +4582,7 @@ function renderHint() {
   const tip = D.lim === 'dmg' ? 'упираешься в урон вожака — узлы с <b style="color:#5cff8a">!</b> добавят урона'
     : D.lim === 'surv' ? 'вожак убивает героя — узлы с <b style="color:#5cff8a">!</b> добавят живучести'
     : 'стены нет — узлы с <b style="color:#5cff8a">!</b> ускорят рост';
-  $('thint').innerHTML = `Все 8 ветвей работают сразу · у каждого таланта до 50 уровней<br>Совет: ${tip}` +
+  $('thint').innerHTML = `Совет: ${tip}` +
     (TAL.constel ? `<br>Созвездий: <b style="color:#ffe08a">${TAL.constel}</b> · награды ×${Math.pow(1.25, TAL.constel).toFixed(2)}` : '');
 }
 /* ---------- дерево: режим списка, фильтры, наборы ---------- */
@@ -4586,7 +4596,7 @@ function nodeIconURL(nd, col) {
   ICONS[iconOf(nd.k)].forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') x.fillRect(i + 1, j + 1, 1, 1); }));
   return icCacheT[k] = c.toDataURL();
 }
-function setTMode(m) { tMode = m; $('thint').hidden = m !== 'map'; $('tview').hidden = m !== 'map'; $('tinfo').hidden = m !== 'map'; $('tlist').hidden = m !== 'list'; renderTBar(); if (m === 'list') renderTList(); else { sizeTree(); drawTree(); } }
+function setTMode(m) { tMode = m; S.meta.tMode = m; $('thint').hidden = m !== 'map'; $('tview').hidden = m !== 'map'; $('tinfo').hidden = m !== 'map'; $('tlist').hidden = m !== 'list'; renderTBar(); if (m === 'list') renderTList(); else { sizeTree(); drawTree(); } }
 function renderTBar() {
   const F = [['buy', 'Можно купить'], ['rec', 'Совет'], ['special', 'Особые'], ['sets', 'Наборы'], ['all', 'Все']];
   let h = `<div class="trow"><button class="tch${tMode === 'map' ? ' on' : ''}" data-m="map">КАРТА</button><button class="tch${tMode === 'list' ? ' on' : ''}" data-m="list">СПИСОК</button><span class="tsp"></span><button class="tch" data-best="1">★ ЛУЧШЕЕ ЗА ДУШИ</button></div>`;
