@@ -364,7 +364,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113020508';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113021146';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3780,42 +3780,81 @@ function nodeShape(c, nd, x, y, r) {
   else if (nd.auto) { const q = r * .85; c.rect(x - q, y - q, q * 2, q * 2); }
   else c.arc(x, y, r, 0, 6.2832);
 }
+// кэш готовых картинок узлов: форма + свечение + иконка рисуются один раз на размер/цвет/состояние
+const nodeCache = new Map();
+function nodeImg(nd, r, col, st, tagc) {
+  const shp = nd.id === 0 ? 'o' : nd.k.startsWith('ks') ? 's' : nd.nt ? 'd' : nd.alt != null ? 'h' : nd.auto ? 'q' : 'c', ic = iconOf(nd.k);
+  const R = Math.max(2, Math.round(r * tDPR)), key = shp + ic + col + st + (tagc || '') + R;
+  let cv2 = nodeCache.get(key); if (cv2) return cv2;
+  if (nodeCache.size > 700) nodeCache.clear();
+  const pad = Math.ceil(R * 2.7) + 6, S2 = pad * 2; cv2 = document.createElement('canvas'); cv2.width = cv2.height = S2; const c = cv2.getContext('2d'), x = pad, y = pad, own = st === 'own';
+  const fake = { id: nd.id, k: nd.k, nt: nd.nt, alt: nd.alt, auto: nd.auto };
+  if (own) { const gr = c.createRadialGradient(x, y, 0, x, y, R * 2.6); gr.addColorStop(0, col + (shp === 's' || shp === 'd' ? '88' : '55')); gr.addColorStop(1, col + '00'); c.fillStyle = gr; c.fillRect(0, 0, S2, S2); }
+  nodeShape(c, fake, x, y, R + 1.5 * tDPR); c.fillStyle = '#000'; c.fill();
+  if (own) { const fg = c.createRadialGradient(x - R * .3, y - R * .3, 0, x, y, R * 1.2); fg.addColorStop(0, shade(col, .45)); fg.addColorStop(1, shade(col, -.25)); c.fillStyle = fg; }
+  else c.fillStyle = st === 'open' ? '#1e1830' : '#100c1a';
+  nodeShape(c, fake, x, y, R); c.fill();
+  c.lineWidth = Math.max(1, R / 8); c.strokeStyle = own ? shade(col, .5) : st === 'open' ? shade(col, -.2) : '#2a2440'; nodeShape(c, fake, x, y, R); c.stroke();
+  if (tagc) { c.strokeStyle = tagc; c.globalAlpha = .8; c.lineWidth = 1.5 * tDPR; nodeShape(c, fake, x, y, R + 3.5 * tDPR); c.stroke(); c.globalAlpha = 1; }
+  const icn = ICONS[ic], ps = Math.floor(R * 1.2 / 5);
+  if (ps >= 1) { c.fillStyle = own ? 'rgba(0,0,0,.75)' : st === 'open' ? col : shade(col, -.55); const ox = Math.round(x - 2.5 * ps), oy = Math.round(y - 2.5 * ps); for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (icn[j][i] === '#') c.fillRect(ox + i * ps, oy + j * ps, ps, ps); }
+  cv2.pad = pad; nodeCache.set(key, cv2); return cv2;
+}
+// фон (градиент, туманности, кольца) кэшируется, пока камера стоит
+const tbg = document.createElement('canvas'); let tbgKey = '';
+function drawTreeBg(c) {
+  const key = [Math.round(cam.x), Math.round(cam.y), cam.z.toFixed(3), tW, tH].join();
+  if (key !== tbgKey) {
+    tbgKey = key; tbg.width = Math.round(tW * tDPR); tbg.height = Math.round(tH * tDPR); const b = tbg.getContext('2d'); b.setTransform(tDPR, 0, 0, tDPR, 0, 0);
+    const [cx0, cy0] = toScr(0, 0);
+    const g = b.createRadialGradient(cx0, cy0, 0, cx0, cy0, Math.max(tW, tH) * .9); g.addColorStop(0, '#1c1233'); g.addColorStop(.5, '#0e0a1c'); g.addColorStop(1, '#05040a'); b.fillStyle = g; b.fillRect(0, 0, tW, tH);
+    BRANCHES.forEach(br => { const [ca, sa] = br.dir, [nx, ny] = toScr(ca * 190, sa * 190), rr = 170 * cam.z; const gg = b.createRadialGradient(nx, ny, 0, nx, ny, rr); gg.addColorStop(0, br.c + '30'); gg.addColorStop(1, br.c + '00'); b.fillStyle = gg; b.fillRect(nx - rr, ny - rr, rr * 2, rr * 2); });
+    b.globalAlpha = .12; b.strokeStyle = '#8a7acc'; b.lineWidth = 1; b.beginPath(); for (let i = 1; i <= 13; i++) { b.moveTo(cx0 + (26 * i + 14) * cam.z, cy0); b.arc(cx0, cy0, (26 * i + 14) * cam.z, 0, 6.2832); } b.stroke(); b.globalAlpha = 1;
+  }
+  c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(tbg, 0, 0); c.setTransform(tDPR, 0, 0, tDPR, 0, 0);
+}
+let tReq = 0;
+const reqTree = () => { if (!tReq) tReq = requestAnimationFrame(() => { tReq = 0; drawTree(); }); };
 function drawTree() {
   if (tree.hidden || tMode !== 'map') return;
-  const c = tctx, now = performance.now(), T = now / 1000; c.setTransform(tDPR, 0, 0, tDPR, 0, 0);
-  // космос: градиент, туманности ветвей, звёзды
-  const [cx0, cy0] = toScr(0, 0);
-  let g = c.createRadialGradient(cx0, cy0, 0, cx0, cy0, Math.max(tW, tH) * .9); g.addColorStop(0, '#1c1233'); g.addColorStop(.5, '#0e0a1c'); g.addColorStop(1, '#05040a'); c.fillStyle = g; c.fillRect(0, 0, tW, tH);
-  BRANCHES.forEach((b, bi) => { const [ca, sa] = b.dir, [nx, ny] = toScr(ca * 190, sa * 190), rr = 170 * cam.z; const gg = c.createRadialGradient(nx, ny, 0, nx, ny, rr); gg.addColorStop(0, b.c + '30'); gg.addColorStop(1, b.c + '00'); c.fillStyle = gg; c.fillRect(nx - rr, ny - rr, rr * 2, rr * 2); });
-  for (const st of TSTARS) { const [x, y] = toScr(st.x * .9 + cam.x * .25, st.y * .9 + cam.y * .25); if (x < 0 || y < 0 || x > tW || y > tH) continue; c.globalAlpha = .35 + .35 * Math.sin(T * 1.3 + st.p); c.fillStyle = '#ffffff'; c.fillRect(Math.round(x), Math.round(y), st.s, st.s); }
-  c.globalAlpha = .12; c.strokeStyle = '#8a7acc'; c.lineWidth = 1; for (let i = 1; i <= 13; i++) { c.beginPath(); c.arc(cx0, cy0, (26 * i + 14) * cam.z, 0, 6.2832); c.stroke(); } c.globalAlpha = 1;
-  // связи: свечение у купленных, бегущие огоньки
-  for (const nd of TN) if (nd.p >= 0) {
-    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y), col = nodeCol(nd), own = TL(nd.id) > 0, avail = TL(pn.id) > 0;
-    if (nd.alt != null) c.setLineDash([4, 4]);
-    if (own) { c.globalAlpha = .25; c.strokeStyle = col; c.lineWidth = 6 * Math.min(1.5, cam.z); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
-    c.globalAlpha = own ? 1 : avail ? .55 : .25; c.strokeStyle = own ? col : avail ? shade(col, -.35) : '#3a3260'; c.lineWidth = (own ? 2.5 : 1.5) * Math.min(1.5, Math.max(.7, cam.z / 1.4));
-    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]);
-    if (own && cam.z > .5) { const f = (T * .6 + nd.id * .37) % 1; c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x1 + (x2 - x1) * f) - 1, Math.round(y1 + (y2 - y1) * f) - 1, 2, 2); }
-  }
+  const c = tctx, now = performance.now(), T = now / 1000, far = cam.z < .9;
+  drawTreeBg(c);
+  // звёзды (вдали — без мерцания)
+  c.fillStyle = '#ffffff';
+  for (const st of TSTARS) { const [x, y] = toScr(st.x * .9 + cam.x * .25, st.y * .9 + cam.y * .25); if (x < 0 || y < 0 || x > tW || y > tH) continue; c.globalAlpha = far ? .5 : .35 + .35 * Math.sin(T * 1.3 + st.p); c.fillRect(Math.round(x), Math.round(y), st.s, st.s); }
   c.globalAlpha = 1;
+  // связи: группами, одним проходом на стиль
+  const grp = new Map(), glow = new Map(), dots = [];
+  const add = (m, key, x1, y1, x2, y2) => { let p = m.get(key); if (!p) m.set(key, p = new Path2D()); p.moveTo(x1, y1); p.lineTo(x2, y2); };
+  for (const nd of TN) if (nd.p >= 0) {
+    const pn = TN[nd.p], [x1, y1] = toScr(pn.x, pn.y), [x2, y2] = toScr(nd.x, nd.y);
+    if (Math.max(x1, x2) < 0 || Math.min(x1, x2) > tW || Math.max(y1, y2) < 0 || Math.min(y1, y2) > tH) continue;
+    const col = nodeCol(nd), own = TL(nd.id) > 0, avail = TL(pn.id) > 0, dash = nd.alt != null ? 1 : 0;
+    add(grp, (own ? 'o' : avail ? 'a' : 'l') + dash + (own ? col : avail ? shade(col, -.35) : '#3a3260'), x1, y1, x2, y2);
+    if (own) { if (!far) add(glow, col, x1, y1, x2, y2); if (!far) dots.push([x1, y1, x2, y2, nd.id]); }
+  }
+  const lw = Math.min(1.5, Math.max(.7, cam.z / 1.4));
+  c.globalAlpha = .25; c.lineWidth = 6 * Math.min(1.5, cam.z); for (const [col, p] of glow) { c.strokeStyle = col; c.stroke(p); }
+  for (const [key, p] of grp) { const kind = key[0], dash = key[1] === '1'; c.globalAlpha = kind === 'o' ? 1 : kind === 'a' ? .55 : .25; c.strokeStyle = key.slice(2); c.lineWidth = (kind === 'o' ? 2.5 : 1.5) * lw; if (dash) c.setLineDash([4, 4]); c.stroke(p); if (dash) c.setLineDash([]); }
+  c.globalAlpha = 1; c.fillStyle = '#ffffff';
+  for (const [x1, y1, x2, y2, id] of dots) { const f = (T * .6 + id * .37) % 1; c.fillRect(Math.round(x1 + (x2 - x1) * f) - 1, Math.round(y1 + (y2 - y1) * f) - 1, 2, 2); }
   for (const sp of tSparks) { const a = TN[sp.a], b = TN[sp.b], t = sp.t; const [x, y] = toScr(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); c.fillStyle = sp.c; c.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); }
-  // узлы
-  const pulse = .55 + .45 * Math.sin(T * 3);
+  // узлы из кэша картинок
+  const pulse = .55 + .45 * Math.sin(T * 3), txt = [];
+  c.setTransform(1, 0, 0, 1, 0, 0);
   for (const nd of TN) {
     const [x, y] = toScr(nd.x, nd.y), r = nodeSize(nd) * cam.z * (nd.nt ? .62 : .55); if (x < -30 || y < -30 || x > tW + 30 || y > tH + 30) continue;
-    const col = nodeCol(nd), l = TL(nd.id), open = tOpen(nd), buy = canBuy(nd), blocked = nodeBlocked(nd), tag = tagOf(nd);
-    if (l || nd.id === 0) { const gr = c.createRadialGradient(x, y, 0, x, y, r * 2.6); gr.addColorStop(0, col + (nd.nt || nd.k.startsWith('ks') ? '88' : '55')); gr.addColorStop(1, col + '00'); c.fillStyle = gr; c.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2); }
-    if (buy) { c.globalAlpha = pulse; c.strokeStyle = '#5cff8a'; c.lineWidth = 2; nodeShape(c, nd, x, y, r + 5); c.stroke(); c.globalAlpha = 1; }
-    nodeShape(c, nd, x, y, r + 1.5); c.fillStyle = '#000'; c.fill();
-    if (l || nd.id === 0) { const fg = c.createRadialGradient(x - r * .3, y - r * .3, 0, x, y, r * 1.2); fg.addColorStop(0, shade(col, .45)); fg.addColorStop(1, shade(col, -.25)); c.fillStyle = fg; }
-    else c.fillStyle = open ? '#1e1830' : '#100c1a';
-    nodeShape(c, nd, x, y, r); c.fill();
-    c.lineWidth = Math.max(1, cam.z * .8); c.strokeStyle = l ? shade(col, .5) : open && !blocked ? shade(col, -.2) : '#2a2440'; nodeShape(c, nd, x, y, r); c.stroke();
-    if (tag && (nd.nt || nd.alt != null)) { c.strokeStyle = TAGS[tag]; c.globalAlpha = .8; c.lineWidth = 1.5; nodeShape(c, nd, x, y, r + 3.5); c.stroke(); c.globalAlpha = 1; }
-    if (nd.id === 0) { c.strokeStyle = '#ff88ff'; c.lineWidth = 2; c.setLineDash([4, 6]); c.lineDashOffset = -T * 20; c.beginPath(); c.arc(x, y, r + 7, 0, 6.2832); c.stroke(); c.setLineDash([]); }
-    const ic = ICONS[iconOf(nd.k)], ps = Math.floor(r * 1.2 / 5);
-    if (ps >= 1) { c.fillStyle = l || nd.id === 0 ? 'rgba(0,0,0,.75)' : open ? col : shade(col, -.55); const ox = Math.round(x - 2.5 * ps), oy = Math.round(y - 2.5 * ps); for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(ox + i * ps, oy + j * ps, ps, ps); }
+    const col = nodeCol(nd), l = TL(nd.id), open = tOpen(nd), blocked = nodeBlocked(nd), tag = tagOf(nd);
+    const st = l || nd.id === 0 ? 'own' : open && !blocked ? 'open' : 'lock';
+    const im = nodeImg(nd, r, col, st, tag && (nd.nt || nd.alt != null) && !far ? TAGS[tag] : '');
+    c.drawImage(im, Math.round(x * tDPR - im.pad), Math.round(y * tDPR - im.pad));
+    if (canBuy(nd) || blocked || nd.id === tSel || tRec.has(nd.id) || (l && cam.z > .9) || ((nd.nt || nd.k.startsWith('ks')) && cam.z > 1.3) || nd.id === 0) txt.push([nd, x, y, r, l, col, blocked]);
+  }
+  c.setTransform(tDPR, 0, 0, tDPR, 0, 0);
+  // поверх: подсветка доступных, выбор, совет, уровни, названия
+  for (const [nd, x, y, r, l, col, blocked] of txt) {
+    if (canBuy(nd)) { c.globalAlpha = far ? .9 : pulse; c.strokeStyle = '#5cff8a'; c.lineWidth = 2; nodeShape(c, nd, x, y, r + 5); c.stroke(); c.globalAlpha = 1; }
+    if (nd.id === 0 && !far) { c.strokeStyle = '#ff88ff'; c.lineWidth = 2; c.setLineDash([4, 6]); c.lineDashOffset = -T * 20; c.beginPath(); c.arc(x, y, r + 7, 0, 6.2832); c.stroke(); c.setLineDash([]); }
     if (blocked) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - r * .7, y - r * .7); c.lineTo(x + r * .7, y + r * .7); c.moveTo(x + r * .7, y - r * .7); c.lineTo(x - r * .7, y + r * .7); c.stroke(); }
     if (nd.id === tSel) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.setLineDash([5, 4]); c.lineDashOffset = T * 15; c.beginPath(); c.arc(x, y, r + 9, 0, 6.2832); c.stroke(); c.setLineDash([]); }
     if (tRec.has(nd.id)) { c.font = `${Math.max(8, Math.round(6 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText('!', x, y - r - 5); c.fillStyle = '#5cff8a'; c.fillText('!', x, y - r - 5); }
@@ -3830,6 +3869,7 @@ function drawTree() {
     c.font = `${Math.max(7, Math.round(4.5 * cam.z))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
     const t1 = b.n + (tb.full ? ' ★' : ''), t2 = (tb.pts || 0) + ' очк. · ×' + (tb.bm || 1).toFixed(2) + (tb.ms ? ' · рубеж ' + tb.ms : '');
     c.lineWidth = 4; c.strokeStyle = '#000'; c.fillStyle = tb.full ? '#ffe08a' : b.c; c.strokeText(t1, x, y); c.fillText(t1, x, y);
+    if (far && cam.z < .55) return;
     c.font = `${Math.max(6, Math.round(3.3 * cam.z))}px "Press Start 2P", monospace`; c.fillStyle = '#e9e4ff'; const dy = Math.max(10, 6 * cam.z);
     c.strokeText(t2, x, y + dy); c.fillText(t2, x, y + dy);
     const t3 = CLS_KEYS.filter(k => CLASSES[k].br === bi).map(k => (k === cls() ? '► ' : '') + CLASSES[k].n).join(' · ');
@@ -3917,7 +3957,7 @@ tview.addEventListener('pointermove', e => {
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; tMoved += Math.abs(dx) + Math.abs(dy);
   if (tPtr.size === 1) { cam.x -= dx / cam.z; cam.y -= dy / cam.z; }
   else if (tPtr.size === 2) { const [a, b] = [...tPtr.values()], dd = Math.hypot(a.x - b.x, a.y - b.y); if (tPinch) cam.z = clamp(cam.z * dd / tPinch, .35, 5); tPinch = dd; }
-  drawTree();
+  reqTree();
 });
 const tUp = e => {
   const had = tPtr.has(e.pointerId); tPtr.delete(e.pointerId); if (tPtr.size < 2) tPinch = 0;
@@ -3928,8 +3968,8 @@ const tUp = e => {
   if (best >= 0 && bd < nodeSize(TN[best]) * .9 + 6 / cam.z) { tSel = best; renderTInfo(); drawTree(); }
 };
 tview.addEventListener('pointerup', tUp); tview.addEventListener('pointercancel', e => { tPtr.delete(e.pointerId); tPinch = 0; });
-tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); drawTree(); }, { passive: false });
-setInterval(() => { if (!tree.hidden && !tRaf && tMode === 'map') drawTree(); }, 50);   // плавная анимация звёзд и огоньков
+tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); reqTree(); }, { passive: false });
+setInterval(() => { if (!tree.hidden && !tRaf && tMode === 'map' && !tPtr.size && cam.z >= .9) reqTree(); }, 80);   // анимация звёзд и огоньков; вдали почти статично
 window.addEventListener('resize', () => { if (!tree.hidden) { sizeTree(); drawTree(); } });
 
 /* ---------- нижнее меню и шторки ---------- */
