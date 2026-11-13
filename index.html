@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113232857';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113234041';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1879,7 +1879,7 @@ function renderCT() {
   const tabs = `<div class="trow" style="margin:8px 0"><button class="tch${ctTab === 'tree' ? ' on' : ''}" data-ct="tree">ВЕТКА${pts ? ' · +' + pts : ''}</button><button class="tch${ctTab === 'rel' ? ' on' : ''}" data-ct="rel">РЕЛИКВИЯ${relPending(k) ? ' · +' + relPending(k) : ''}</button><button class="tch${ctTab === 'leg' ? ' on' : ''}" data-ct="leg">НАСЛЕДИЕ</button><button class="tch${ctTab === 'all' ? ' on' : ''}" data-ct="all">КОЛЛЕКЦИЯ ${Object.keys(S.meta.seen || {}).length}/16</button></div>`;
   let h = tabs;
   if (ctTab === 'tree') {
-    h += `<div class="ctsum">Путь класса: 3 ступени · каждый уровень мастерства = 1 очко · вложено ${pSpent(k)} / ${pTotal()}${cur ? '' : ' · работает, когда играешь этим классом'}</div><canvas id="ptc" style="width:100%;height:${PTH}px;display:block;border-radius:6px"></canvas><div id="pinfo" class="pinfo"></div>`;
+    h += `<div class="ctsum">Ветка-символ класса: 3 ступени (+4-я после Вознесения), ромбы — сигнатурные узлы · уровень мастерства = 1 очко · вложено ${pSpent(k)} / ${pTotal()}${cur ? '' : ' · работает, когда играешь этим классом'}</div><canvas id="ptc" style="width:100%;height:${PTH}px;display:block;border-radius:6px"></canvas><div id="pinfo" class="pinfo"></div>`;
   } else if (ctTab === 'rel') h += relHTML(k);
   else if (ctTab === 'leg') h += legHTML();
   else {
@@ -1890,7 +1890,7 @@ function renderCT() {
   }
   $('ctdyn').innerHTML = h;
   if (ctTab === 'tree') { renderPInfo(); if (!pRaf) pRaf = requestAnimationFrame(drawPath);
-    if (renderCT.sc !== k) { renderCT.sc = k; const cv = $('ptc'), f = formOf(k); setTimeout(() => { $('ctbody').scrollTop = cv.offsetTop + (PTH - 70 - (f - 1) * 172) - $('ctbody').clientHeight + 60; }, 30); } }
+    if (renderCT.sc !== k) { renderCT.sc = k; const cv = $('ptc'), f = formOf(k); setTimeout(() => { $('ctbody').scrollTop = cv.offsetTop + pathTierY(cv.clientWidth, f) - $('ctbody').clientHeight + 160; }, 30); } }
 }
 $('ctbody').addEventListener('click', e => {
   if (e.target.id === 'ptc') { const r = e.target.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = null, bd = 30;
@@ -1971,6 +1971,7 @@ const PATH = {
   necro: [[['Костяной шип', 'volley', 5], ['Высасывание', 'leech'], ['Трупный взрыв', 'boom'], ['Проклятие', 'mark']], [['Легион', 'summon', 2], ['Тёмная аура', 'pulse', 6], ['Чума', 'chain'], ['Костяной щит', 'shield', 7]], [['Черепа', 'orbit'], ['Жатва', 'exec'], ['Тьма с небес', 'sky', 5], ['Филактерия', 'revive']]],
   reap:  [[['Широкий взмах', 'nova', 4], ['Сбор душ', 'leech'], ['Стремительность', 'fury'], ['Метка жнеца', 'mark']], [['Души вокруг', 'orbit'], ['Казнь', 'exec'], ['Летящая коса', 'volley', 4], ['Тень жнеца', 'double']], [['Призраки', 'summon', 2], ['Час смерти', 'sky', 5], ['Чума душ', 'chain'], ['Бессмертие', 'revive']]],
 };
+const ckey = () => (typeof ctK !== 'undefined' && ctK && !$('ctree').hidden) ? ctK : cls();
 const PFX = {   // описание эффекта по уровню L и параметру p
   nova: (L, p) => `каждый ${p}-й удар — взрыв ×${(.8 + .6 * L).toFixed(1)} по площади`, chain: L => `шанс ${10 * L}%: разряд по ${2 + L} врагам`,
   bounce: L => `удар перескакивает ещё на ${L} врага`, orbit: L => `${L} сферы кружат вокруг и бьют врагов`, trail: L => `след жжёт врагов: ${pct(.25 * L)} удара/с`,
@@ -1979,10 +1980,11 @@ const PFX = {   // описание эффекта по уровню L и пар
   shield: (L, p) => `каждые ${p}с щит ${6 * L}% HP`, exec: L => `враги ниже ${8 * L}% HP гибнут от удара`, mark: L => `удары метят врагов: по ним +${10 * L}% урона`,
   slow: L => `враги рядом замедлены и получают +${5 * L}% урона`, volley: (L, p) => `каждый ${p}-й удар — залп из ${2 + L} снарядов`, fury: L => `+${6 * L}% скорости атаки`,
   crit: L => `+${4 * L}% крита и +${10 * L}% силы крита`, tough: L => `+${10 * L}% HP и +${3 * L}% брони`, revive: L => `раз за жизнь встаёт с ${30 * L}% HP`,
-  ultc: L => `ульта копится на ${15 * L}% быстрее`, double: L => `шанс ${5 * L}% ударить дважды`, giant: L => `+${12 * L}% урона`,
+  ultc: L => `ульта копится на ${15 * L}% быстрее`,
+  sig0: L => `«${CLASSES[ckey()].st[0][0]}» сильнее на ${8 * L}%`, sig1: L => `«${CLASSES[ckey()].st[1][0]}» сильнее на ${8 * L}%`, sigU: L => `урон ульты +${25 * L}%`, sigA: L => `+${8 * L}% урона и HP этим классом`, double: L => `шанс ${5 * L}% ударить дважды`, giant: L => `+${12 * L}% урона`,
 };
 const PICON = { nova: 'star', chain: 'bolt', bounce: 'swap', orbit: 'eye', trail: 'flame', pulse: 'spike', sky: 'bolt', summon: 'skull', boom: 'flame', leech: 'drop', shield: 'shield', exec: 'sword',
-  mark: 'eye', slow: 'clock', volley: 'sword', fury: 'wing', crit: 'eye', tough: 'heart', revive: 'heart', ultc: 'star', double: 'fist', giant: 'fist' };
+  mark: 'eye', slow: 'clock', volley: 'sword', fury: 'wing', crit: 'eye', tough: 'heart', revive: 'heart', ultc: 'star', double: 'fist', giant: 'fist', sig0: 'star', sig1: 'star', sigU: 'bolt', sigA: 'fist' };
 const PIDS = ['A', 'B', 'X', 'Y'];
 const P_MAX = 3, P_TOTAL = 27;
 const pL = (k, t, id) => { const c = cm(k); return (c.cp && c.cp[t + id]) || 0; };
@@ -2007,8 +2009,11 @@ const CAP4 = {
   necro: ['Армия тьмы', 'каждые 8с 6 скелетов и луч тьмы по всем (×5)'], reap: ['Конец всего', 'каждые 6с коса во весь экран (×10)'],
 };
 const pMax = (t, id) => t === 4 && id === 'V' ? 1 : P_MAX;
-function pNode(k, t, id) { if (t < 4) return PATH[k][t - 1][PIDS.indexOf(id)]; if (id === 'V') return [CAP4[k][0], 'cap4', 0]; return PATH4[id]; }
-const pTotal = () => S.meta.asc ? 52 : 27;
+function sigNode(k, t, id) { const C = CLASSES[k], s0 = C.st[0][0], s1 = C.st[1][0];
+  if (t === 1) return id === 'S' ? [s0, 'sig0', 0] : [s1, 'sig1', 0]; if (t === 2) return id === 'S' ? ['Мастер: ' + s0, 'sig0', 0] : ['Мастер: ' + s1, 'sig1', 0];
+  if (t === 3) return id === 'S' ? ['Ульта «' + ULTS[k][0] + '»', 'sigU', 0] : ['Суть: ' + C.n, 'sigA', 0]; return id === 'S' ? ['Звезда: ' + s0, 'sig0', 0] : ['Звёздная ульта', 'sigU', 0]; }
+function pNode(k, t, id) { if (id === 'S' || id === 'T') return sigNode(k, t, id); if (t < 4) return PATH[k][t - 1][PIDS.indexOf(id)]; if (id === 'V') return [CAP4[k][0], 'cap4', 0]; return PATH4[id]; }
+const pTotal = () => S.meta.asc ? 76 : 45;
 function cap4Tick(dt) {
   const k = cls(), c = CL().c, T = (key, per) => { PT[key] = (PT[key] ?? per) - dt; if (PT[key] <= 0) { PT[key] = per; return true; } return false; };
   const all = () => mobs.filter(m => !m.dead), name = CAP4[k][0], lbl = () => fxLabel(name, hero.x, hero.y - 22, c), H = D.hit;
@@ -2049,6 +2054,7 @@ function calcPath() {
   const k = cls(); PFXL = [];
   for (let t = 1; t <= 3; t++) PIDS.forEach((id, j) => { const L = pL(k, t, id); if (L) { const [n, ty, p] = PATH[k][t - 1][j]; PFXL.push({ n, ty, p: p || 0, L, t, id }); } });
   for (const id of PIDS4) { const L = pL(k, 4, id); if (!L || id === 'V') continue; const [n, ty, p] = PATH4[id]; PFXL.push({ n, ty, p: p || 0, L: L * 2, t: 4, id }); }   // звёздные узлы вдвое сильнее
+  for (let t = 1; t <= 4; t++) for (const id of ['S', 'T']) { const L = pL(k, t, id); if (!L) continue; const [n, ty] = sigNode(k, t, id); PFXL.push({ n, ty, p: 0, L: t === 4 ? L * 2 : L, t, id }); }   // сигнатурные узлы класса
   PFXL.push(...perkFx(), ...relFx());   // перки жизни
 }
 const pfx = ty => PFXL.filter(e => e.ty === ty);
@@ -2131,7 +2137,10 @@ function pathMods() {
     if (e.ty === 'fury') D.aps = Math.min(14, D.aps * (1 + .06 * L));
     if (e.ty === 'crit') { D.crit = Math.min(.95, D.crit + .04 * L); D.critM *= 1 + .1 * L; }
     if (e.ty === 'tough') { D.maxHP *= 1 + .1 * L; D.armor = Math.min(.95, D.armor + .03 * L); }
-    if (e.ty === 'giant') D.hit *= 1 + .12 * L; }
+    if (e.ty === 'giant') D.hit *= 1 + .12 * L;
+    if (e.ty === 'sig0' && D.cq) D.cq[0] = Math.min(1.5, D.cq[0] * (1 + .08 * L) + .02 * L); if (e.ty === 'sig1' && D.cq) D.cq[1] = Math.min(1.5, D.cq[1] * (1 + .08 * L) + .02 * L);
+    if (e.ty === 'sigA') { D.hit *= 1 + .08 * L; D.maxHP *= 1 + .08 * L; } }
+  D.ultSig = PFXL.filter(e => e.ty === 'sigU').reduce((a, e) => a + .25 * e.L, 0);
   const f = formOf(cls()); D.hit *= 1 + .15 * (f - 1); D.maxHP *= 1 + .15 * (f - 1);   // каждая эволюция: +15% урона и HP
 }
 function pathHit(t, dmg, crit) {
@@ -2241,70 +2250,133 @@ function heroCols(k, rk, v) {
   return { 1: cp[1] || a, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' };
 }
 
-/* ---------- экран пути класса: дерево снизу вверх ---------- */
+/* ---------- экран пути класса: узлы выстроены символом класса, своя атмосфера ---------- */
 let pSel = null, pRaf = 0;
-const PTH = 1000;
+const PTH = 1300;
+// символы классов: штрихи в поле 100×160 (y вниз)
+const PSYM = {
+  war: [[[50, 4], [50, 108]], [[24, 124], [50, 114], [76, 124]], [[50, 128], [50, 156]]],
+  bers: [[[50, 22], [50, 156]], [[50, 20], [18, 10], [8, 40], [18, 70], [50, 58]], [[52, 34], [82, 26], [90, 52]]],
+  pal: [[[50, 50], [50, 156]], [[16, 12], [84, 12], [84, 48], [16, 48], [16, 12]]],
+  guard: [[[50, 156], [16, 116], [10, 40], [22, 12], [50, 22], [78, 12], [90, 40], [84, 116], [50, 156]], [[50, 40], [50, 120]]],
+  mage: [[[42, 156], [56, 44]], [[56, 44], [36, 24], [56, 2], [76, 24], [56, 44]]],
+  sham: [[[50, 156], [50, 42]], [[50, 70], [12, 56], [26, 84], [50, 78]], [[50, 78], [74, 84], [88, 56], [50, 70]], [[36, 30], [50, 8], [64, 30], [50, 42], [36, 30]]],
+  arch: [[[38, 4], [70, 30], [82, 80], [70, 130], [38, 156]], [[38, 4], [38, 156]], [[12, 100], [92, 60]]],
+  assa: [[[16, 154], [84, 6]], [[84, 154], [16, 6]]],
+  gamb: [[[16, 8], [84, 8], [84, 152], [16, 152], [16, 8]], [[50, 46], [72, 80], [50, 114], [28, 80], [50, 46]]],
+  alch: [[[42, 6], [42, 56], [10, 146], [90, 146], [58, 56], [58, 6]], [[30, 116], [70, 108]]],
+  priest: [[[50, 4], [50, 156]], [[22, 56], [78, 48]], [[30, 22], [50, 10], [70, 22], [50, 34], [30, 22]]],
+  monk: [[[50, 8], [86, 30], [94, 80], [86, 130], [50, 152], [14, 130], [6, 80], [14, 30], [50, 8]], [[50, 8], [28, 44], [50, 80], [72, 116], [50, 152]]],
+  chrono: [[[14, 6], [86, 6], [50, 80], [86, 154], [14, 154], [50, 80], [14, 6]]],
+  rune: [[[50, 4], [88, 46], [50, 88], [12, 46], [50, 4]], [[50, 88], [16, 156]], [[50, 88], [84, 156]]],
+  necro: [[[20, 74], [16, 36], [50, 6], [84, 36], [80, 74], [66, 94], [66, 120], [34, 120], [34, 94], [20, 74]], [[40, 140], [60, 136]]],
+  reap: [[[72, 156], [40, 8]], [[40, 8], [10, 20], [2, 52], [18, 40], [46, 26]]],
+};
+// атмосфера: [верх, низ, частицы]
+const CATM = {
+  war: ['#1c1610', '#07050a', 'spark'], bers: ['#2a0a08', '#0a0204', 'ember'], pal: ['#2a2410', '#0a0804', 'ray'], guard: ['#141c26', '#05080c', 'glint'],
+  mage: ['#1e0a2e', '#06020c', 'arcane'], sham: ['#0a1a2e', '#02060c', 'rain'], arch: ['#0c1e12', '#020604', 'leaf'], assa: ['#140c22', '#020106', 'smoke'],
+  gamb: ['#0a1e16', '#020604', 'suit'], alch: ['#161e06', '#040602', 'bubble'], priest: ['#2a2616', '#0a0904', 'ray'], monk: ['#2a180a', '#0a0502', 'petal'],
+  chrono: ['#0c122e', '#02040c', 'gear'], rune: ['#1c0a2e', '#05020c', 'glyph'], necro: ['#071c10', '#010402', 'fog'], reap: ['#1e0820', '#050106', 'soul'],
+};
+const PSEQ = ['A', 'S', 'X', 'Y', 'T', 'B'], PSEQ4 = ['A', 'B', 'C', 'S', 'X', 'Y', 'D', 'E', 'F', 'T', 'Z', 'W', 'V'];
+const pathLayC = {};
 function pathLayout(W) {
-  const pos = [], base = t => PTH - 70 - (t - 1) * 172;
-  for (let t = 1; t <= 3; t++) { const by = base(t);
-    pos.push({ kind: 'plat', t, x: W / 2, y: by });
-    pos.push({ kind: 'node', t, id: 'A', x: W * .2, y: by - 52 }, { kind: 'node', t, id: 'B', x: W * .8, y: by - 52 });
-    pos.push({ kind: 'node', t, id: 'X', x: W * .3, y: by - 116 }, { kind: 'node', t, id: 'Y', x: W * .7, y: by - 116 }); }
-  const cy = base(3) - 172;
-  pos.push({ kind: 'crown', t: 4, x: W / 2, y: cy });
-  const N4 = { A: [.2, 70], B: [.5, 74], C: [.8, 70], X: [.18, 136], Y: [.42, 136], D: [.78, 136], E: [.3, 200], F: [.7, 200], Z: [.36, 262], W: [.64, 262], V: [.5, 324] };
-  for (const id in N4) pos.push({ kind: 'node', t: 4, id, x: W * N4[id][0], y: cy - N4[id][1] });
-  pos.push({ kind: 'plat', t: 5, x: W / 2, y: cy - 384 });
-  return pos;
+  const k = ctK || cls(), key = k + '|' + Math.round(W); if (pathLayC[key]) return pathLayC[key];
+  const strokes = PSYM[k], seg = st => { let l = 0; for (let i = 1; i < st.length; i++) l += Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); return l; };
+  const lens = strokes.map(seg), tot = lens.reduce((a, b) => a + b, 0), N = 31;
+  const cnt = lens.map(l => Math.max(2, Math.round(l / tot * N))); let sum = cnt.reduce((a, b) => a + b, 0);
+  while (sum > N) { const i = cnt.indexOf(Math.max(...cnt)); cnt[i]--; sum--; } while (sum < N) { const i = lens.indexOf(Math.max(...lens)); cnt[i]++; sum++; }
+  const pts = [];
+  strokes.forEach((st, si) => { const closed = st[0][0] === st[st.length - 1][0] && st[0][1] === st[st.length - 1][1], L = lens[si], n = cnt[si];
+    for (let j = 0; j < n; j++) { let d = L * (closed ? j / n : n === 1 ? 0 : j / (n - 1)), i = 1; while (i < st.length - 1 && d > Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1])) { d -= Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]); i++; }
+      const a = st[i - 1], b = st[i], sl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, f = Math.min(1, d / sl); pts.push({ fx: a[0] + (b[0] - a[0]) * f, fy: a[1] + (b[1] - a[1]) * f, si, j, closed, n }); } });
+  const sx = W * .84 / 100, ox = W * .08, sy = (PTH - 200) / 160, oy = 90;
+  pts.forEach(p => { p.x = ox + p.fx * sx; p.y = oy + p.fy * sy; });
+  // раздвигаем слишком близкие узлы
+  for (let it = 0; it < 60; it++) for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) { const A = pts[a], B = pts[b]; let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy); if (d >= 46) continue; if (d < .01) { dx = 1; dy = 0; d = 1; } const push = (46 - d) / 2; A.x -= dx / d * push; A.y -= dy / d * push; B.x += dx / d * push; B.y += dy / d * push; A.y = clamp(A.y, 80, PTH - 60); B.y = clamp(B.y, 80, PTH - 60);
+    A.x = clamp(A.x, 22, W - 22); B.x = clamp(B.x, 22, W - 22); }
+  const ord = pts.slice().sort((a, b) => b.y - a.y || a.x - b.x);
+  ord.forEach((p, i) => { p.kind = 'node'; if (i < 18) { p.t = 1 + Math.floor(i / 6); p.id = PSEQ[i % 6]; } else { p.t = 4; p.id = PSEQ4[i - 18]; } });
+  const edges = []; strokes.forEach((st, si) => { const sp = pts.filter(p => p.si === si).sort((a, b) => a.j - b.j); for (let i = 1; i < sp.length; i++) edges.push([sp[i - 1], sp[i]]); if (sp.length && sp[0].closed) edges.push([sp[sp.length - 1], sp[0]]); });
+  const bands = [6, 12, 18].map(i => (ord[i - 1].y + ord[i].y) / 2);
+  const out = ord; out.edges = edges; out.bands = bands; out.bottom = ord[0].y + 40; out.top = ord[ord.length - 1].y - 46; return pathLayC[key] = out;
 }
+function pathAtmo(c, W, H, T, k) {
+  const A = CATM[k], col = CLASSES[k].c, g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, A[0]); g.addColorStop(1, A[1]); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const ty = A[2], R = i => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1;
+  for (let i = 0; i < 46; i++) { const r1 = R(i), r2 = R(i + 99), r3 = R(i + 199); let x = r1 * W, y = r2 * H; const sp = 10 + r3 * 20;
+    switch (ty) {
+      case 'spark': case 'ember': case 'soul': case 'bubble': { y = (H - ((T * sp + r2 * H) % H)); x += Math.sin(T * 1.5 + i) * 6; c.globalAlpha = .35 + .4 * r3;
+        c.fillStyle = ty === 'spark' ? (i % 3 ? '#ffaa44' : '#ffee88') : ty === 'ember' ? (i % 3 ? '#ff3322' : '#ff8844') : ty === 'soul' ? (i % 2 ? col : '#ffffff') : '#d8ff7a';
+        if (ty === 'bubble') { c.strokeStyle = '#b6ff3c'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, 2 + r3 * 4, 0, 6.283); c.stroke(); } else c.fillRect(Math.round(x), Math.round(y), ty === 'soul' ? 3 : 2, ty === 'soul' ? 3 : 2); break; }
+      case 'rain': { y = (T * 160 * (.6 + r3) + r2 * H) % H; c.globalAlpha = .35; c.fillStyle = '#7ad8ff'; c.fillRect(Math.round(x), Math.round(y), 1, 8); if (i === 0 && Math.sin(T * .7) > .985) { c.globalAlpha = .12; c.fillStyle = '#cfefff'; c.fillRect(0, 0, W, H); } break; }
+      case 'leaf': case 'petal': { y = (T * sp * 1.2 + r2 * H) % H; x = (x + Math.sin(T + i) * 20 + T * 8) % W; c.globalAlpha = .55; c.fillStyle = ty === 'leaf' ? (i % 2 ? '#5cff8a' : '#2a8a4a') : (i % 2 ? '#ffaacc' : '#ffd0e0'); c.fillRect(Math.round(x), Math.round(y), 3, 2); c.fillRect(Math.round(x) + 1, Math.round(y) - 1, 1, 1); break; }
+      case 'ray': if (i < 7) { c.globalAlpha = .06 + .04 * Math.sin(T * .6 + i); c.fillStyle = ty === 'ray' && k === 'priest' ? '#fff6c0' : '#ffe08a'; c.beginPath(); const x0 = r1 * W; c.moveTo(x0 - 10, 0); c.lineTo(x0 + 20, 0); c.lineTo(x0 + 120, H); c.lineTo(x0 + 60, H); c.fill(); } else if (i < 30) { c.globalAlpha = .3 + .3 * Math.sin(T * 2 + i); c.fillStyle = '#fff6c0'; c.fillRect(Math.round(x), Math.round((y + T * 6) % H), 1, 1); } break;
+      case 'glint': { const ph = (T * .5 + r3) % 1; if (ph < .15) { const a = 1 - ph / .15; c.globalAlpha = a; c.fillStyle = '#ffffff'; c.fillRect(Math.round(x) - 3, Math.round(y), 7, 1); c.fillRect(Math.round(x), Math.round(y) - 3, 1, 7); } break; }
+      case 'arcane': case 'glyph': { const a = T * (.2 + r3 * .3) + i; x += Math.cos(a) * 14; y += Math.sin(a) * 10; c.globalAlpha = .25 + .35 * Math.sin(T * 2 + i); c.fillStyle = ty === 'glyph' ? '#bb88ff' : (i % 3 ? '#c06bff' : '#ff8844');
+        const gx = Math.round(x), gy = Math.round(y); c.fillRect(gx, gy, 4, 1); c.fillRect(gx + (i % 4), gy - 3, 1, 4); if (ty === 'glyph') c.fillRect(gx, gy + 3, 4, 1); break; }
+      case 'smoke': case 'fog': { x = (x + T * (4 + r3 * 6)) % (W + 60) - 30; c.globalAlpha = ty === 'fog' ? .08 : .07; c.fillStyle = ty === 'fog' ? '#7affb0' : '#6a5aa0'; c.beginPath(); c.arc(x, y, 18 + r3 * 26, 0, 6.283); c.fill(); break; }
+      case 'suit': { y = (T * sp + r2 * H) % H; c.globalAlpha = .3; c.fillStyle = i % 2 ? '#ff4466' : '#44ffaa'; const sx = Math.round(x), sy = Math.round(y); c.fillRect(sx + 1, sy, 1, 1); c.fillRect(sx, sy + 1, 3, 1); c.fillRect(sx + 1, sy + 2, 1, 1); break; }
+      case 'gear': if (i < 6) { const gx = r1 * W, gy = r2 * H, rr = 14 + r3 * 22, a0 = T * (i % 2 ? .4 : -.4); c.globalAlpha = .12; c.strokeStyle = '#88aaff'; c.lineWidth = 2; c.beginPath(); c.arc(gx, gy, rr, 0, 6.283); c.stroke();
+        for (let tt = 0; tt < 10; tt++) { const a = a0 + tt / 10 * 6.283; c.fillStyle = '#88aaff'; c.fillRect(gx + Math.cos(a) * (rr + 3) - 2, gy + Math.sin(a) * (rr + 3) - 2, 4, 4); } } break;
+    } }
+  c.globalAlpha = 1;
+}
+function pathTierY(W, f) { const L = pathLayout(W); return f <= 1 ? L.bottom : f >= 4 ? L.top : L.bands[f - 2]; }
 function drawPath() {
   const cv = $('ptc'); if (!cv || $('ctree').hidden) { pRaf = 0; return; }
   const k = ctK, C = CLASSES[k], W = cv.clientWidth, dpr = Math.min(3, devicePixelRatio || 1);
   if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(PTH * dpr); }
   const c = cv.getContext('2d'), T = performance.now() / 1000; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
-  const g = c.createLinearGradient(0, 0, 0, PTH); g.addColorStop(0, '#120a22'); g.addColorStop(1, '#07050e'); c.fillStyle = g; c.fillRect(0, 0, W, PTH);
-  for (let i = 0; i < 50; i++) { const sx = (i * 97) % W, sy = (i * 53) % PTH; c.globalAlpha = .25 + .25 * Math.sin(T * 1.2 + i); c.fillStyle = '#fff'; c.fillRect(sx, sy, 1, 1); } c.globalAlpha = 1;
-  const L = pathLayout(W), P = (t, id) => L.find(p => p.t === t && (id ? p.id === id : p.kind !== 'node'));
-  const line = (a, b, on, avail) => { c.strokeStyle = on ? C.c : avail ? shade(C.c, -.45) : '#2a2440'; c.lineWidth = on ? 3 : 2; c.globalAlpha = on ? 1 : .8; if (on) { c.save(); c.globalAlpha = .25; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.restore(); }
-    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.globalAlpha = 1; if (on) { const f = (T * .5 + a.x * .01) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1, a.y + (b.y - a.y) * f - 1, 2, 2); } };
-  for (let t = 1; t <= 3; t++) { const pl = P(t), op = tierOpen(k, t), A = P(t, 'A'), B = P(t, 'B'), X = P(t, 'X'), Y = P(t, 'Y'), nx = P(t + 1) || L.find(p => p.kind === 'crown');
-    line(pl, A, pL(k, t, 'A') > 0, op); line(pl, B, pL(k, t, 'B') > 0, op); line(A, X, pL(k, t, 'X') > 0, op); line(B, Y, pL(k, t, 'Y') > 0, op);
-    line(X, nx, tierDone(k, t) && pFork(k, t) === 'X', op); line(Y, nx, tierDone(k, t) && pFork(k, t) === 'Y', op); }
-  { const op = tierOpen(k, 4), cr = L.find(p => p.kind === 'crown'), Q = id => P(4, id), on = id => pL(k, 4, id) > 0;
-    [['A', cr], ['B', cr], ['C', cr]].forEach(([i, f]) => line(f, Q(i), on(i), op)); line(Q('A'), Q('X'), on('X'), op); line(Q('B'), Q('Y'), on('Y'), op); line(Q('C'), Q('D'), on('D'), op);
-    line(Q('X'), Q('E'), on('E'), op); line(Q('Y'), Q('E'), on('E'), op); line(Q('D'), Q('F'), on('F'), op); line(Q('E'), Q('Z'), on('Z'), op); line(Q('F'), Q('W'), on('W'), op);
-    line(Q('Z'), Q('V'), on('V'), op); line(Q('W'), Q('V'), on('V'), op); line(Q('V'), P(5), tierDone(k, 4), op);
-    if (!S.meta.asc) { c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#7ad8ff'; c.fillText('4-я ступень откроется после Вознесения', W / 2, cr.y - 200); } }
-  // платформы-облики
-  for (const p of L) if (p.kind === 'plat' || p.kind === 'crown') {
-    const f = p.kind === 'crown' ? 3 : p.t === 5 ? 4 : p.t, got = p.kind === 'crown' ? tierDone(k, 3) : p.t === 5 ? tierDone(k, 4) : f === 1 || tierDone(k, f - 1), cur = p.kind !== 'crown' && formOf(k) === f;
-    const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, 60); gr.addColorStop(0, (got ? C.c : '#3a3260') + (cur ? '66' : '33')); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - 60, p.y - 60, 120, 120);
-    c.fillStyle = got ? shade(C.c, -.3) : '#1e1830'; c.beginPath(); c.ellipse(p.x, p.y + 14, 34, 8, 0, 0, 6.283); c.fill(); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.stroke();
-    if (p.kind === 'crown') { c.fillStyle = got ? C.c : '#3a3260'; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 - 1.57, rr = i % 2 ? 9 : 20; c.lineTo(p.x + Math.cos(a) * rr, p.y - 8 + Math.sin(a) * rr); } c.closePath(); c.fill(); c.beginPath();
-      c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = got ? '#fff' : '#5a5470'; c.fillText('ПРОБУЖДЕНИЕ', p.x, p.y + 34); c.fillStyle = got ? C.c : '#5a5470'; c.fillText('«' + AWK[k][0] + '»', p.x, p.y + 45); continue; }
-    const pat = evoPat(k, f), sc = 4, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got);
-    const bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0; c.drawImage(spr, Math.round(p.x - pat[0].length * sc / 2), Math.round(p.y + 12 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc);
-    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = got ? (cur ? '#fff' : C.c) : '#5a5470'; c.fillText((cur ? '► ' : '') + evoName(k, f), p.x, p.y + 34);
-  }
+  pathAtmo(c, W, PTH, T, k);
+  const L = pathLayout(W), on = p => pL(k, p.t, p.id) > 0, prog = Math.min(1, pSpent(k) / pTotal());
+  const yP = L.bottom - (L.bottom - L.top) * prog;
+  // гигантский символ класса: тусклый контур + наполнение светом снизу вверх
+  const strokeAll = (w, col, a) => { c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); for (const [a1, b1] of L.edges) { c.moveTo(a1.x, a1.y); c.lineTo(b1.x, b1.y); } c.stroke(); };
+  strokeAll(26, C.c, .06); strokeAll(3, '#3a3260', .9);
+  c.save(); c.beginPath(); c.rect(0, yP, W, PTH - yP); c.clip(); strokeAll(30, C.c, .18 + .06 * Math.sin(T * 2)); strokeAll(12, C.c, .35); c.restore();
+  if (prog > 0 && prog < 1) { c.globalAlpha = .7; c.fillStyle = C.c; for (let x = 0; x < W; x += 6) c.fillRect(x + (Math.floor(T * 8) % 6), Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); }
+  c.globalAlpha = 1;
+  // линии символа: зажжённые — яркие с бегущим светом
+  for (const [a, b] of L.edges) { const lit = on(a) && on(b); if (!lit) continue; c.globalAlpha = .3; c.strokeStyle = C.c; c.lineWidth = 9; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    c.globalAlpha = 1; c.lineWidth = 3; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); const f = (T * .6 + a.x * .013) % 1; c.fillStyle = '#ffffff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
+  // полосы ступеней: эволюция облика
+  const band = (y, f, txt, got, cur) => { c.globalAlpha = got ? .9 : .5; c.fillStyle = got ? C.c : '#3a3260'; for (let x = 4; x < W - 4; x += 8) c.fillRect(x, Math.round(y), 4, 1); c.globalAlpha = 1;
+    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 46;
+    let bx = W / 2, bs = -1; for (const cx of [W / 2, tw / 2 + 4, W - tw / 2 - 4]) { let d = 1e9; for (const q of L) { const dx = Math.max(0, Math.abs(q.x - cx) - tw / 2), dy = Math.max(0, Math.abs(q.y - y) - 11); d = Math.min(d, Math.hypot(dx, dy)); } if (d > bs + 2) { bs = d; bx = cx; } }
+    c.fillStyle = '#0a0614'; c.fillRect(bx - tw / 2, y - 11, tw, 22); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.strokeRect(bx - tw / 2, y - 11, tw, 22);
+    if (f) { const pat = evoPat(k, f), sc = 1.5, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got); c.drawImage(spr, Math.round(bx - tw / 2 + 4), Math.round(y - pat.length * sc / 2), Math.round(pat[0].length * sc), Math.round(pat.length * sc)); }
+    c.fillStyle = got ? (cur ? '#ffffff' : C.c) : '#6a6290'; c.fillText((cur ? '► ' : '') + txt, bx + 10, y + 3); };
+  const fNow = formOf(k);
+  band(L.bottom, 1, 'I · ' + evoName(k, 1), true, fNow === 1);
+  band(L.bands[0], 2, 'II · ' + evoName(k, 2), tierDone(k, 1), fNow === 2);
+  band(L.bands[1], 3, 'III · ' + evoName(k, 3), tierDone(k, 2), fNow === 3);
+  band(L.bands[2], 0, 'ПРОБУЖДЕНИЕ «' + AWK[k][0] + '»', tierDone(k, 3), false);
+  band(L.top, 4, S.meta.asc ? 'IV · ' + evoName(k, 4) : 'IV · после Вознесения', tierDone(k, 4), fNow === 4);
+  if (!S.meta.asc) { c.globalAlpha = .55; c.fillStyle = '#05030c'; c.fillRect(0, L.top + 14, W, L.bands[2] - L.top - 26); c.globalAlpha = 1; c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#7ad8ff'; c.textAlign = 'center'; c.fillText('4-я ступень откроется после Вознесения', W / 2, (L.top + L.bands[2]) / 2); }
   // узлы
-  for (const p of L) if (p.kind === 'node') {
-    const [nm, ty] = pNode(k, p.t, p.id), lv = pL(k, p.t, p.id), op = tierOpen(k, p.t), can = pCanBuy(k, p.t, p.id), blk = !!FORK[p.id] && pL(k, p.t, FORK[p.id]) > 0, r = p.id === 'V' ? 21 : 17;
-    if (lv) { const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4); gr.addColorStop(0, C.c + '77'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - r * 2.4, p.y - r * 2.4, r * 4.8, r * 4.8); }
+  for (const p of L) {
+    const [nm, ty] = pNode(k, p.t, p.id), lv = pL(k, p.t, p.id), op = tierOpen(k, p.t), can = pCanBuy(k, p.t, p.id), blk = !!FORK[p.id] && pL(k, p.t, FORK[p.id]) > 0, sig = p.id === 'S' || p.id === 'T', r = p.id === 'V' ? 18 : 14;
+    if (lv) { const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.6); gr.addColorStop(0, C.c + '88'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(p.x - r * 2.6, p.y - r * 2.6, r * 5.2, r * 5.2); }
     if (can) { c.globalAlpha = .55 + .45 * Math.sin(T * 3); c.strokeStyle = '#5cff8a'; c.lineWidth = 2; c.beginPath(); c.arc(p.x, p.y, r + 5, 0, 6.283); c.stroke(); c.globalAlpha = 1; }
-    c.beginPath(); if (p.id === 'V') { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 - 1.57, rr = i % 2 ? r * .55 : r * 1.1; c.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr); } c.closePath(); } else if (FORK[p.id]) { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; c.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); } c.closePath(); } else c.arc(p.x, p.y, r, 0, 6.283);
-    c.fillStyle = lv ? C.c : op ? '#1e1830' : '#100c1a'; c.fill(); c.strokeStyle = lv ? '#ffffff' : op ? shade(C.c, -.2) : '#2a2440'; c.lineWidth = 2; c.stroke();
-    const ic = ICONS[PICON[ty] || 'star'], ps = 4; c.fillStyle = lv ? 'rgba(0,0,0,.75)' : op ? C.c : '#3a3260'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(p.x - 10 + i * ps, p.y - 10 + j * ps, ps, ps);
-    for (let i = 0; i < pMax(p.t, p.id); i++) { c.fillStyle = i < lv ? '#ffe08a' : '#2a2440'; c.fillRect(p.x - 8 + i * 6, p.y + r + 3, 4, 4); }
-    c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = lv ? '#fff' : op ? '#a59fc0' : '#4a4470'; c.fillText(nm, p.x, p.y + r + 16);
-    if (blk) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(p.x - 9, p.y - 9); c.lineTo(p.x + 9, p.y + 9); c.moveTo(p.x + 9, p.y - 9); c.lineTo(p.x - 9, p.y + 9); c.stroke(); }
+    c.beginPath();
+    if (p.id === 'V') { for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 - 1.57, rr = i % 2 ? r * .55 : r * 1.1; c.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr); } c.closePath(); }
+    else if (FORK[p.id]) { for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; c.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); } c.closePath(); }
+    else if (sig) { c.moveTo(p.x, p.y - r - 2); c.lineTo(p.x + r + 2, p.y); c.lineTo(p.x, p.y + r + 2); c.lineTo(p.x - r - 2, p.y); c.closePath(); }
+    else c.arc(p.x, p.y, r, 0, 6.283);
+    c.fillStyle = lv ? C.c : op ? '#1e1830' : '#100c1a'; c.fill(); c.strokeStyle = lv ? '#ffffff' : sig && op ? '#ffe08a' : op ? shade(C.c, -.2) : '#2a2440'; c.lineWidth = 2; c.stroke();
+    const ic = ICONS[PICON[ty] || 'star'], ps = 3; c.fillStyle = lv ? 'rgba(0,0,0,.75)' : op ? (sig ? '#ffe08a' : C.c) : '#3a3260'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(p.x - 7.5 + i * ps, p.y - 7.5 + j * ps, ps, ps);
+    for (let i = 0; i < pMax(p.t, p.id); i++) { c.fillStyle = i < lv ? '#ffe08a' : '#2a2440'; c.fillRect(p.x - 8 + i * 6, p.y + r + 3, 4, 3); }
+    if ((pSel && pSel.t === p.t && pSel.id === p.id) || (can && !lv)) { c.font = '6px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(nm).width; c.fillStyle = 'rgba(5,3,12,.75)'; c.fillRect(p.x - tw / 2 - 2, p.y + r + 8, tw + 4, 9); c.fillStyle = lv ? '#fff' : '#a59fc0'; c.fillText(nm, p.x, p.y + r + 15); }
+    if (blk) { c.strokeStyle = '#ff4f6d'; c.lineWidth = 2; c.beginPath(); c.moveTo(p.x - 8, p.y - 8); c.lineTo(p.x + 8, p.y + 8); c.moveTo(p.x + 8, p.y - 8); c.lineTo(p.x - 8, p.y + 8); c.stroke(); }
     if (pSel && pSel.t === p.t && pSel.id === p.id) { c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.setLineDash([4, 3]); c.lineDashOffset = T * 12; c.beginPath(); c.arc(p.x, p.y, r + 9, 0, 6.283); c.stroke(); c.setLineDash([]); }
-    if ((p.id === 'X' || p.id === 'Z') && op) { c.font = '6px "Press Start 2P", monospace'; c.fillStyle = '#f2c94c'; c.fillText('ИЛИ', (p.x + L.find(q => q.t === p.t && q.id === FORK[p.id]).x) / 2, p.y + 3); }
   }
   pRaf = requestAnimationFrame(drawPath);
 }
 function renderPInfo() {
   const k = ctK, C = CLASSES[k], el = $('pinfo'); if (!el) return;
-  if (!pSel) { el.innerHTML = `<span class="k">Тапни узел. Заполни ступень (оба узла и одну ветку развилки на 3/3) — герой эволюционирует.</span>`; return; }
+  if (!pSel) { el.innerHTML = `<span class="k">Тапни узел. Заполни ступень (оба круглых узла и одну ветку развилки на 3/3) — герой эволюционирует. Ромбы — сигнатурные узлы класса: по желанию, но сильно качают его фишки.</span>`; return; }
   const { t, id } = pSel, [nm, ty, p] = pNode(k, t, id), lv = pL(k, t, id), can = pCanBuy(k, t, id), mx = pMax(t, id), m2 = t === 4 ? 2 : 1;
   const other = FORK[id] || null, op = tierOpen(k, t), DS = (L2) => ty === 'cap4' ? CAP4[k][1] : PFX[ty](L2 * m2, p);
   el.innerHTML = `<h3 style="color:${C.c}">${nm}${other ? ' <span style="color:#f2c94c">⇄ ВЫБОР</span>' : ''}</h3><span class="k">Ступень ${t}${t === 4 ? ' (звёздная, вдвое сильнее)' : ''} · ур. ${lv}/${mx}</span><br>` +
@@ -3996,7 +4068,7 @@ function clsUlt(dmg) {
 function fireUlt() {
   if (ultCd > 0 || US || skyOn('nv_noult')) return;
   ultCd = skyOn('nv_ultonly') ? 3 : Math.max(3, ULT_CD - (trHas('glass') ? 2 : 0) - relUltCd()); ult = 0;
-  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM() * (1 + skyV('ult')) * relUltM();
+  const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM() * (1 + skyV('ult')) * relUltM() * (1 + (D.ultSig || 0));
   const fd = dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')); ultStart(fd);
   if (skyOn('sk_ult2')) later(2.2, () => { if (deathT <= 0) clsUlt(fd * .6); });   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
