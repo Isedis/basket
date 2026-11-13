@@ -474,7 +474,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113083303';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261113225653';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -779,7 +779,8 @@ function zkKill(m) {
   const h = hazard();
   if (m.harvest) { giveChest('c', 'жатва'); burst(m.x, m.y - 4, '#ff44ff', 20, 50); }
   if (skyOn('sk_harvest') && !m.boss && !m.obj && (S.hv = (S.hv || 0) + 1) % 150 === 0) { spawnMob(false); const o = mobs[mobs.length - 1]; o.hp *= 10; o.max *= 10; o.sz = 1.5; o.rare = true; o.harvest = 1; o.role = null; fxLabel('Жатва!', o.x, o.y - 14, '#ff44ff'); }
-  if (!m.obj && ((m.boss && skyOn('sk_bosschest')) || (m.rare && skyOn('sk_goldchest') && rnd() < .05) || ((m.boss || m.rare) && rnd() < skyV('chestc')))) giveChest('c', 'звезда');
+  if (!m.obj && ((m.boss && skyOn('sk_bosschest')) || ((m.boss || m.rare) && rnd() < skyV('chestc')))) giveChest('c', 'звезда');
+  if (m.boss && skyOn('sk_comet')) later(.35, () => { ring(m.x, m.y - 4, 60, '#fff6a0'); burst(m.x, m.y - 6, '#fff6a0', 30, 80); for (const o of mobs) if (!o.dead && !o.obj) hitMob(o, D.hit * 20, true, false, '#fff6a0'); fxLabel('Комета', m.x, m.y - 20, '#fff6a0'); });
   if (m.loot) { S.runSouls = (S.runSouls || 0) + m.loot * 2; ftext(m.x, m.y - 14, '+' + fmt(m.loot * 2) + ' душ', '#ffd84a', 1, 1); }
   if (m.obj === 'crystal') { burst(m.x, m.y - 6, '#7ad8ff', 24, 60); ring(m.x, m.y - 4, 30, '#7ad8ff'); later(.05, () => hitAround(m.x, m.y, 32, D.hit * 12, '#7ad8ff', m)); }
   if (m.obj === 'portal') { addSouls(bossSouls(S.zone) * .25, m); burst(m.x, m.y - 6, '#b06aff', 24, 50); feed('Портал закрыт', '#b06aff'); }
@@ -830,7 +831,7 @@ const HAZ = [null,
   { k: 'crystal', n: 'Кристаллы', c: '#7ad8ff', d: 'разбей кристалл — он взорвётся по врагам' },
   { k: 'spore', n: 'Споры', c: '#d080ff', d: 'облака спор замедляют всех внутри' },
 ];
-const hazard = () => S.zone <= 50 && !skyOn('nv_day') ? HAZ[Math.floor((S.zone - 1) / ZONES_PER_BIOME)] || null : null;
+const hazard = () => S.zone <= 50 ? HAZ[Math.floor((S.zone - 1) / ZONES_PER_BIOME)] || null : null;
 let HZ = { z: -1, pools: [] };
 function hzStart() {
   HZ = { z: S.zone, pools: [], torn: null, t: 3 }; const h = hazard(); if (!h) return;
@@ -2209,7 +2210,6 @@ const PK = {}; PERKS.forEach(p => PK[p.k] = p);
 const perkL = k => (S.perks && S.perks[k]) || 0;
 const lvNeed = L => Math.floor(15 * Math.pow(1.22, L));
 function lifeXP(v) {
-  if (skyOn('sk_lvl')) v *= 1.5;
   S.lxp = (S.lxp || 0) + v; S.lvl = S.lvl || 1;
   while (S.lxp >= lvNeed(S.lvl)) { S.lxp -= lvNeed(S.lvl); S.lvl++; S.pend = (S.pend || 0) + 1;
     ring(hero.x, hero.y - 4, 14, '#ffe08a'); ftext(hero.x, hero.y - 20, 'УРОВЕНЬ ' + S.lvl + '!', '#ffe08a', 1.1, 1); tone(784, .08, 'square', .04); tone(1175, .12, 'square', .04, 0, .07);
@@ -2307,13 +2307,13 @@ const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(n.k === 'power' ? 1.25 : 1.6
 const SKY_RING = [0, 120, 270, 430, 600], SKY_NEED = [0, 1, 3, 6, 10];
 const GREEK = 'αβγδεζηθικλμνξοπρστυφχψω';
 // суммарная сила ключа на всём Небосводе (в «старых уровнях» для power/path/souls/cheap/legacy/xp/world)
-const SKY_TOT = { power: 40, path: 3, souls: 10, cheap: 10, legacy: 5, xp: 8, world: 10, hit: 3, hp: 4, aps: .5, ult: 3, boss: 2, gain: 2, rare: 1, trs: 2, sparks: 1, eff: .6, echo: .5, dust: 2, chestc: .3, wdmg: 3 };
+const SKY_TOT = { power: 40, path: 3, souls: 10, cheap: 10, legacy: 5, xp: 8, world: 10, hit: 2, hp: 4, aps: .5, ult: 3, boss: 2, gain: 2, rare: 1, critd: 1, sparks: 1, eff: .6, echo: .5, dust: 2, chestc: .3, wdmg: 3 };
 const SKY_KEY = {
   power: v => 'урон и HP ×' + fmt(Math.pow(10, .5 * v)), path: v => 'старт жизни с ' + (10 * v).toFixed(1) + '-й зоны', souls: v => 'души ×' + (1 + .5 * v).toFixed(2),
   cheap: v => 'таланты дешевле на ' + (5 * v).toFixed(1) + '%', legacy: v => 'после смерти остаётся ' + (5 * v).toFixed(1) + '% статов', xp: v => 'опыт мастерства ×' + (1 + .25 * v).toFixed(2),
   world: v => 'урон врагов за 50-й зоной −' + (5 * v).toFixed(1) + '%', hit: v => '+' + pct(v) + ' урона', hp: v => '+' + pct(v) + ' HP', aps: v => '+' + pct(v) + ' скорости атаки',
   ult: v => '+' + pct(v) + ' урона ульты', boss: v => '+' + pct(v) + ' урона по вожакам', gain: v => '+' + pct(v) + ' прироста статов', rare: v => 'золотые враги +' + pct(v),
-  trs: v => 'сокровища чаще на ' + pct(v), sparks: v => '+' + pct(v) + ' искр', eff: v => '+' + pct(v) + ' ко всем эффектам', echo: v => 'после вознесения остаётся ' + pct(v) + ' дерева талантов',
+  critd: v => '+' + pct(v) + ' силы крита', sparks: v => '+' + pct(v) + ' искр', eff: v => '+' + pct(v) + ' ко всем эффектам', echo: v => 'после вознесения остаётся ' + pct(v) + ' дерева талантов',
   dust: v => '+' + pct(v) + ' пыли', chestc: v => pct(v) + ' шанс сундука с вожака и золотого', wdmg: v => '+' + pct(v) + ' урона за 50-й зоной',
 };
 const SKYB = [
@@ -2321,13 +2321,13 @@ const SKYB = [
   { n: 'Стойкость', c: '#8fb0d0', k: [['hp', 1], ['world', 1]], nt: ['sk_phx', 'sk_bossregen'], fig: 'Черепаха', sh: 'ring', fb: ['hp', .5] },
   { n: 'Время', c: '#66ccff', k: [['aps', 1], ['ult', 1]], nt: ['sk_ult2', 'sk_rush'], fig: 'Часы', sh: 'hour', fb: ['aps', .1] },
   { n: 'Души', c: '#ff44ff', k: [['souls', 2], ['sparks', 1]], nt: ['sk_soulboss', 'sk_harvest'], fig: 'Ворон', sh: 'wing', fb: ['sparks', .15] },
-  { n: 'Удача', c: '#ffd84a', k: [['rare', 1], ['trs', 1]], nt: ['sk_goldchest', 'sk_lucky'], fig: 'Кот', sh: 'cat', fb: ['trs', .5] },
+  { n: 'Удача', c: '#ffd84a', k: [['rare', 1], ['critd', 1]], nt: ['sk_meteor', 'sk_lucky'], fig: 'Кот', sh: 'cat', fb: ['critd', .5] },
   { n: 'Класс', c: '#c06bff', k: [['xp', 2], ['hit', 1]], nt: ['sk_mast', 'sk_awake'], fig: 'Маска', sh: 'mask', fb: ['xp', 1] },
   { n: 'Снаряжение', c: '#ff9a3c', k: [['dust', 1], ['chestc', 1]], nt: ['sk_bosschest', 'sk_pity'], fig: 'Наковальня', sh: 'anvil', fb: ['dust', .5] },
   { n: 'Миры', c: '#7affb0', k: [['world', 1], ['wdmg', 1]], nt: ['sk_titan', 'sk_wslow'], fig: 'Глобус', sh: 'ring', fb: ['wdmg', 1] },
   { n: 'Вожаки', c: '#ff2a4a', k: [['boss', 2], ['power', 1]], nt: ['sk_judge', 'sk_weak'], fig: 'Корона', sh: 'crown', fb: ['boss', .5] },
-  { n: 'Эхо', c: '#ccccff', k: [['echo', 1], ['cheap', 1], ['legacy', 1]], nt: ['sk_autotree', 'sk_keepsoul'], fig: 'Колокол', sh: 'bell', fb: ['echo', .1] },
-  { n: 'Порядок', c: '#e0c080', k: [['path', 1], ['gain', 1]], nt: ['sk_perks', 'sk_lvl'], fig: 'Весы', sh: 'scales', fb: ['gain', .5] },
+  { n: 'Эхо', c: '#ccccff', k: [['echo', 1], ['cheap', 1], ['legacy', 1]], nt: ['sk_autotree', 'sk_comet'], fig: 'Колокол', sh: 'bell', fb: ['echo', .1] },
+  { n: 'Порядок', c: '#e0c080', k: [['path', 1], ['gain', 1]], nt: ['sk_perks', 'sk_starshield'], fig: 'Весы', sh: 'scales', fb: ['gain', .5] },
   { n: 'Звёздное пламя', c: '#fff6a0', k: [['eff', 1], ['power', 1]], nt: ['sk_form', 'sk_spec'], fig: 'Феникс', sh: 'wing', fb: ['eff', .15] },
 ];
 const SKY_NT = {
@@ -2335,13 +2335,13 @@ const SKY_NT = {
   sk_phx: ['Звёздное перо', 'раз за жизнь спасает от смерти (вместе с Пером феникса — дважды)'], sk_bossregen: ['Второе дыхание', 'в бою с вожаком +3% HP в секунду'],
   sk_ult2: ['Эхо ульты', 'ульта бьёт второй раз через миг (60% силы)'], sk_rush: ['Рывок жизни', 'первые 30 секунд жизни атака ×2'],
   sk_soulboss: ['Пожиратель', 'вожаки дают души ×2'], sk_harvest: ['Жатва', 'каждый 150-й враг — мини-вожак с сундуком'],
-  sk_goldchest: ['Золотая жила', 'золотые враги роняют сундук с шансом 5%'], sk_lucky: ['Под звездой', 'золотые враги ×2 чаще'],
+  sk_meteor: ['Звездопад', 'каждые 6с звезда падает на сильнейшего врага (×40 удара)'], sk_lucky: ['Под звездой', 'золотые враги ×2 чаще'],
   sk_mast: ['Наставник', '+5 очков пути каждому классу'], sk_awake: ['Пробуждённый свет', 'пробуждённые классы бьют ×1.5'],
   sk_bosschest: ['Трофей вожака', 'каждый вожак роняет сундук'], sk_pity: ['Счастливая подкова', 'эпик+ гарантирован каждый 5-й сундук'],
   sk_titan: ['Охотник на титанов', 'трофеи титанов ×2 сильнее'], sk_wslow: ['Тяжесть миров', 'враги за 50-й зоной на 25% медленнее'],
   sk_judge: ['Терпение', 'вожак казнит, только если бой займёт больше 60с (а не 40с)'], sk_weak: ['Точный глаз', 'слабое место вожака ×2'],
-  sk_autotree: ['Звёздная память', 'после вознесения дерево талантов само докупается'], sk_keepsoul: ['Сбережение', 'при вознесении остаётся 10% душ'],
-  sk_perks: ['Подготовка', 'каждая жизнь начинается с 2 перками на выбор'], sk_lvl: ['Быстрый рост', 'опыт уровня героя ×1.5'],
+  sk_autotree: ['Звёздная память', 'после вознесения дерево талантов само докупается'], sk_comet: ['Комета', 'смерть вожака обрушивает комету на всех врагов (×20 удара)'],
+  sk_perks: ['Подготовка', 'каждая жизнь начинается с 2 перками на выбор'], sk_starshield: ['Звёздный щит', 'при HP ниже 30% — 3с неуязвимости (раз в 20с)'],
   sk_form: ['Ранний расцвет', 'формы эффектов наступают втрое раньше'], sk_spec: ['Призвание', 'специализация ×2 вместо ×1.5'],
 };
 const SKY_KS = [
@@ -2350,7 +2350,7 @@ const SKY_KS = [
   ['nv_loyal', 'Верность', 'класс не меняется после смерти, мастерство ×3', 'nv_wander', 'Странник', 'души ×2'],
   ['nv_greed', 'Алчность', 'души ×5, враги ×3 крепче', 'nv_ascetic', 'Аскеза', 'души ×0.5, искры ×2'],
   ['nv_horde', 'Орда', 'врагов ×2, прирост статов ×2', 'nv_duel', 'Дуэль', 'врагов вдвое меньше, они ×4 крепче, прирост ×4'],
-  ['nv_night', 'Вечная ночь', 'в каждой зоне ночь: золотые ×2.5', 'nv_day', 'Вечный день', 'опасности биомов отключены'],
+  ['nv_night', 'Вечная ночь', 'в каждой зоне ночь: золотые ×2.5', 'nv_day', 'Вечный день', 'золотых врагов нет, урон ×5'],
 ];
 const SKY_SH = {
   zig: [[0, 0], [1, -.6], [2, 0], [3, -.6], [4, 0], [5, -.7], [5.6, -1.4], [6.4, -1.2]], ring: [[0, 0], [.9, -.9], [2.1, -1.1], [3.1, -.5], [3.3, .6], [2.4, 1.3], [1.1, 1.2], [.2, .7], 'loop'],
@@ -2414,6 +2414,7 @@ const skyOn = k => !!SKYF[k];
 function skyMods() {
   D.hit *= 1 + skyV('hit'); D.maxHP *= 1 + skyV('hp'); D.aps = Math.min(14, D.aps * (1 + skyV('aps'))); D.gainMult *= 1 + skyV('gain'); D.rare = Math.min(.7, D.rare * (1 + skyV('rare')) * (skyOn('sk_lucky') ? 2 : 1));
   if (S.zone > 50) D.hit *= 1 + skyV('wdmg');
+  D.critM *= 1 + skyV('critd'); if (skyOn('nv_day')) { D.hit *= 5; D.rare = 0; }
   if (skyOn('sk_crit')) D.critM *= 1.5; if (skyOn('sk_awake') && aw()) D.hit *= 1.5;
   if (skyOn('nv_glass')) { D.hit *= 100; D.maxHP *= .1; } if (skyOn('nv_tank')) { D.maxHP *= 100; D.hit *= .3; }
   if (skyOn('nv_noult')) D.hit *= 20; if (skyOn('nv_ultonly')) D.hit *= .5;
@@ -2437,59 +2438,75 @@ const scam = { x: 0, y: 0, z: .55 }; let sSel = 0, sW = 0, sH = 0, sDPR = 1, sRa
 const sPtr = new Map(); let sMoved = 0, sPinch = 0;
 const SKY_BG = Array.from({ length: 260 }, (_, i) => ({ x: (Math.sin(i * 12.9898) * 43758.5453 % 1) * 1500 - 750, y: (Math.sin(i * 78.233) * 12543.31 % 1) * 1500 - 750, r: (i % 7 === 0) ? 1.6 : .8, t: i * .7 }));
 function openSky() { calcSky(); $('sky').hidden = false; setSMode(sMode); sizeSky(); if (!openSky.fit) { openSky.fit = 1; skyFit(); } renderSInfo(); reqSky(); }
-function skyFit() { let lr = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; scam.x = 0; scam.y = 0; scam.z = Math.min(sW, sH) / (2 * SKY_RING[lr] + 90); reqSky(); }
+function skyFit() { let lr = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; scam.x = 0; scam.y = 0; scam.z = Math.min(sW, sH) / (2 * SKY_RING[lr] + 170); reqSky(); }
 function sizeSky() { const v = $('sview'), r = v.getBoundingClientRect(); sDPR = Math.min(2, window.devicePixelRatio || 1); sW = r.width; sH = r.height; const c = $('scv'); c.width = Math.round(sW * sDPR); c.height = Math.round(sH * sDPR); c.style.width = sW + 'px'; c.style.height = sH + 'px'; sBg = null; }
 function reqSky() { if (!sRaf) sRaf = requestAnimationFrame(() => { sRaf = 0; drawSky(); }); }
 const s2x = x => (x - scam.x) * scam.z + sW / 2, s2y = y => (y - scam.y) * scam.z + sH / 2;
 function skyStar(c, x, y, r, col, pts) { c.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = i / (pts * 2) * Math.PI * 2 - Math.PI / 2, rr = i % 2 ? r * .42 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fillStyle = col; c.fill(); }
+const skyGlowC = {};
+function skyGlow(col, r) { const k = col + r; if (skyGlowC[k]) return skyGlowC[k]; const c = document.createElement('canvas'); c.width = c.height = r * 2; const x = c.getContext('2d'), g = x.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, col); g.addColorStop(.25, col + 'aa'); g.addColorStop(1, col + '00'); x.fillStyle = g; x.fillRect(0, 0, r * 2, r * 2); return skyGlowC[k] = c; }
+// туманности: по 3 облака цвета ветви в её секторе
+const SKY_NEB = []; SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2; [[170, 70], [330, 95], [500, 120]].forEach(([r, s0], k) => SKY_NEB.push({ x: Math.cos(a + (k - 1) * .08) * r, y: Math.sin(a + (k - 1) * .08) * r, s: s0, c: B.c })); });
+let skyShoot = null;
 function drawSky() {
   const c = $('scv').getContext('2d'); c.setTransform(sDPR, 0, 0, sDPR, 0, 0);
-  // фон: глубокий космос + млечный путь (кэш на размер экрана)
   if (!sBg) { sBg = document.createElement('canvas'); sBg.width = Math.max(1, Math.round(sW)); sBg.height = Math.max(1, Math.round(sH)); const b = sBg.getContext('2d');
-    const g = b.createRadialGradient(sW / 2, sH / 2, 0, sW / 2, sH / 2, Math.max(sW, sH) * .8); g.addColorStop(0, '#120a26'); g.addColorStop(1, '#03020a'); b.fillStyle = g; b.fillRect(0, 0, sW, sH);
-    b.globalAlpha = .12; for (let i = 0; i < 40; i++) { const t = i / 40, x = t * sW, y = sH * (.25 + .5 * t) + Math.sin(t * 9) * 20; const gg = b.createRadialGradient(x, y, 0, x, y, 60); gg.addColorStop(0, i % 3 ? '#6a5aa0' : '#a07ac0'); gg.addColorStop(1, 'rgba(0,0,0,0)'); b.fillStyle = gg; b.fillRect(x - 60, y - 60, 120, 120); } b.globalAlpha = 1; }
+    const g = b.createRadialGradient(sW / 2, sH * .45, 0, sW / 2, sH / 2, Math.max(sW, sH) * .85); g.addColorStop(0, '#160c30'); g.addColorStop(.6, '#080418'); g.addColorStop(1, '#020108'); b.fillStyle = g; b.fillRect(0, 0, sW, sH);
+    b.globalAlpha = .1; for (let i = 0; i < 46; i++) { const t = i / 46, x = t * sW * 1.2 - sW * .1, y = sH * (.15 + .6 * t) + Math.sin(t * 8) * 26; const gg = b.createRadialGradient(x, y, 0, x, y, 70); gg.addColorStop(0, i % 3 ? '#7a6ac0' : '#c08ae0'); gg.addColorStop(1, 'rgba(0,0,0,0)'); b.fillStyle = gg; b.fillRect(x - 70, y - 70, 140, 140); } b.globalAlpha = 1; }
   c.drawImage(sBg, 0, 0, sW, sH);
   const z = scam.z, tm = performance.now() / 1000, far = z < .45;
-  // фоновые звёзды (параллакс)
-  for (const s of SKY_BG) { const x = (s.x - scam.x * .3) * Math.max(.4, z * .6) + sW / 2, y = (s.y - scam.y * .3) * Math.max(.4, z * .6) + sH / 2; if (x < -2 || y < -2 || x > sW + 2 || y > sH + 2) continue; c.globalAlpha = .35 + .3 * Math.sin(tm * 1.3 + s.t); c.fillStyle = '#cfd6ff'; c.fillRect(x, y, s.r, s.r); }
+  // туманности ветвей (двигаются вместе с картой)
+  c.globalCompositeOperation = 'lighter';
+  for (const n of SKY_NEB) { const x = s2x(n.x), y = s2y(n.y), r = n.s * z * 1.4; if (x < -r || y < -r || x > sW + r || y > sH + r) continue; c.globalAlpha = .13; c.drawImage(skyGlow(n.c, 64), x - r, y - r, r * 2, r * 2); }
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  // фоновые мерцающие звёзды (параллакс)
+  for (const s0 of SKY_BG) { const x = (s0.x - scam.x * .3) * Math.max(.4, z * .6) + sW / 2, y = (s0.y - scam.y * .3) * Math.max(.4, z * .6) + sH / 2; if (x < -2 || y < -2 || x > sW + 2 || y > sH + 2) continue; const a = .3 + .35 * Math.sin(tm * 1.3 + s0.t); c.globalAlpha = a; c.fillStyle = s0.r > 1 ? '#fff6e0' : '#cfd6ff'; c.fillRect(x, y, s0.r, s0.r); if (s0.r > 1 && a > .55) { c.globalAlpha = a * .5; c.fillRect(x - 2, y + .3, 5, .6); c.fillRect(x + .3, y - 2, .6, 5); } }
   c.globalAlpha = 1;
-  // кольца и туман закрытых колец
-  for (let r = 1; r <= 4; r++) { const op = skyRingOpen(r); c.beginPath(); c.arc(s2x(0), s2y(0), SKY_RING[r] * z, 0, Math.PI * 2); c.strokeStyle = op ? 'rgba(160,150,255,.16)' : 'rgba(80,70,120,.25)'; c.setLineDash(op ? [] : [4, 6]); c.lineWidth = 1; c.stroke(); c.setLineDash([]); }
-  { let lr = 0; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; if (lr < 4) { c.save(); c.beginPath(); c.rect(0, 0, sW, sH); c.arc(s2x(0), s2y(0), SKY_RING[lr] * z, 0, Math.PI * 2, true); c.fillStyle = 'rgba(3,2,10,.62)'; c.fill('evenodd'); c.restore();
-    c.font = `${Math.max(8, Math.round(10 * Math.min(1.4, z * 1.6)))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = '#6a6290';
-    const rr = (SKY_RING[lr] + 26) * z; c.fillText('кольцо ' + (lr + 1) + ' откроется на ' + SKY_NEED[lr + 1] + '-м вознесении', s2x(0), s2y(0) - rr); } }
-  // связи
-  c.lineWidth = Math.max(1, 1.4 * z);
-  for (const n of SN) { if (n.p < 0) continue; const p = SN[n.p], lit = SL(n.id) > 0 && SL(p.id) > 0, op = skyRingOpen(n.ring);
-    c.strokeStyle = lit ? SKYB[n.br].c : op ? 'rgba(150,140,200,.22)' : 'rgba(80,70,120,.12)'; c.globalAlpha = lit ? .75 : 1;
-    if (n.tp === 'fig' && SN[n.p].tp === 'fig') continue;
-    c.beginPath(); c.moveTo(s2x(p.x), s2y(p.y)); c.lineTo(s2x(n.x), s2y(n.y)); c.stroke(); }
+  // падающая звезда
+  if (!skyShoot && Math.random() < .01) skyShoot = { x: Math.random() * sW, y: Math.random() * sH * .5, t: 0 };
+  if (skyShoot) { const S0 = skyShoot; S0.t += .09; const x = S0.x + S0.t * 120, y = S0.y + S0.t * 60, gr = c.createLinearGradient(x - 40, y - 20, x, y); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,255,255,' + Math.max(0, .8 - S0.t * .6) + ')');
+    c.strokeStyle = gr; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 40, y - 20); c.lineTo(x, y); c.stroke(); if (S0.t > 1.3) skyShoot = null; }
+  // кольца
+  let lr = 0; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r;
+  for (let r = 1; r <= 4; r++) { const op = r <= lr; c.beginPath(); c.arc(s2x(0), s2y(0), SKY_RING[r] * z, 0, Math.PI * 2); c.strokeStyle = op ? 'rgba(170,160,255,.18)' : 'rgba(90,80,140,.25)'; c.setLineDash(op ? [2, 5] : [4, 8]); c.lineWidth = 1; c.stroke(); c.setLineDash([]);
+    if (op && !far) { c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = 'rgba(170,160,255,.35)'; c.fillText(['', 'I', 'II', 'III', 'IV'][r], s2x(0), s2y(0) - SKY_RING[r] * z + 10); } }
+  if (lr < 4) { const R0 = SKY_RING[lr] * z, cx = s2x(0), cy = s2y(0), fg = c.createRadialGradient(cx, cy, R0, cx, cy, R0 + 80 * Math.max(.5, z));
+    fg.addColorStop(0, 'rgba(3,2,10,0)'); fg.addColorStop(1, 'rgba(3,2,10,.78)'); c.save(); c.beginPath(); c.rect(0, 0, sW, sH); c.arc(cx, cy, R0, 0, Math.PI * 2, true); c.fillStyle = fg; c.fill('evenodd'); c.restore();
+    c.font = `${Math.max(8, Math.round(10 * Math.min(1.4, z * 1.6)))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = '#7a72a8'; c.fillText('✦ кольцо ' + ['', 'I', 'II', 'III', 'IV'][lr + 1] + ' — на ' + SKY_NEED[lr + 1] + '-м вознесении', cx, cy - (SKY_RING[lr] + 40) * z); }
+  // связи + бегущий свет по зажжённым
+  c.lineWidth = Math.max(1, 1.3 * z);
+  for (const n of SN) { if (n.p < 0) continue; if (n.tp === 'fig' && SN[n.p].tp === 'fig') continue; const p = SN[n.p], lit = SL(n.id) > 0 && SL(p.id) > 0, op = skyRingOpen(n.ring);
+    const x1 = s2x(p.x), y1 = s2y(p.y), x2 = s2x(n.x), y2 = s2y(n.y); if (Math.max(x1, x2) < -10 || Math.min(x1, x2) > sW + 10 || Math.max(y1, y2) < -10 || Math.min(y1, y2) > sH + 10) continue;
+    c.strokeStyle = lit ? SKYB[n.br].c : op ? 'rgba(150,140,210,.2)' : 'rgba(80,70,120,.1)'; c.globalAlpha = lit ? .55 : 1; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    if (lit && !far) { const f = (tm * .6 + n.id * .37) % 1; c.globalAlpha = .9; c.fillStyle = '#ffffff'; c.fillRect(x1 + (x2 - x1) * f - 1, y1 + (y2 - y1) * f - 1, 2, 2); } }
   c.globalAlpha = 1;
   // рисунки созвездий
   for (const B of SKYB) { if (!B.figIds) continue; const ids = B.figIds.slice(); if (B.figLoop) ids.push(ids[0]);
-    c.strokeStyle = B.figDone ? B.c : 'rgba(200,190,255,.28)'; c.lineWidth = B.figDone ? Math.max(1.5, 2.2 * z) : Math.max(1, z); c.setLineDash(B.figDone ? [] : [3, 4]);
-    if (B.figDone) { c.shadowColor = B.c; c.shadowBlur = 8; }
-    c.beginPath(); ids.forEach((id, i) => { const n = SN[id]; i ? c.lineTo(s2x(n.x), s2y(n.y)) : c.moveTo(s2x(n.x), s2y(n.y)); }); c.stroke(); c.setLineDash([]); c.shadowBlur = 0;
-    if (!far) { const m = SN[B.figIds[3]]; c.font = `${Math.round(Math.max(7, 9 * z * 1.4))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = B.figDone ? B.c : 'rgba(200,190,255,.4)'; c.fillText(B.fig, s2x(m.x), s2y(m.y) - 22 * z - 6); } }
-  // названия ветвей
+    const path = () => { c.beginPath(); ids.forEach((id, i) => { const n = SN[id]; i ? c.lineTo(s2x(n.x), s2y(n.y)) : c.moveTo(s2x(n.x), s2y(n.y)); }); };
+    if (B.figDone) { c.globalCompositeOperation = 'lighter'; c.strokeStyle = B.c; c.globalAlpha = .25; c.lineWidth = Math.max(4, 7 * z); path(); c.stroke(); c.globalAlpha = .9; c.lineWidth = Math.max(1.5, 2 * z); path(); c.stroke(); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
+    else { const lit = B.figIds.filter(id => SL(id) > 0).length; c.strokeStyle = lit ? B.c : 'rgba(200,190,255,.3)'; c.globalAlpha = lit ? .45 : 1; c.setLineDash([3, 4]); c.lineWidth = Math.max(1, z); path(); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+    if (!far) { const m = SN[B.figIds[3]]; c.font = `${Math.round(Math.max(7, 9 * z * 1.4))}px "Press Start 2P", monospace`; c.textAlign = 'center'; c.fillStyle = B.figDone ? B.c : 'rgba(200,190,255,.45)'; c.fillText(B.fig + (B.figDone ? ' ✦' : ''), s2x(m.x), s2y(m.y) - 22 * z - 6); } }
+  // названия ветвей — по краю открытого неба
   c.textAlign = 'center';
-  let lrO = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lrO = r;
-  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[lrO] + 22; c.font = `${Math.round(Math.max(7, 9 * Math.min(1.3, z * 1.6)))}px "Press Start 2P", monospace`; c.fillStyle = B.c; c.globalAlpha = .9; c.fillText(B.n, s2x(Math.cos(a) * r), s2y(Math.sin(a) * r)); });
+  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[Math.max(1, lr)] + 22; c.font = `${Math.round(Math.max(7, 9 * Math.min(1.3, z * 1.6)))}px "Press Start 2P", monospace`; c.fillStyle = B.c; c.globalAlpha = .9; c.fillText(B.n, s2x(Math.cos(a) * r), s2y(Math.sin(a) * r)); });
   c.globalAlpha = 1;
   // звёзды
-  for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -20 || y < -20 || x > sW + 20 || y > sH + 20) continue;
-    const L = SL(n.id), op = skyRingOpen(n.ring), can = skyCan(n), open = skyOpen(n) && !skyBlocked(n), col = n.br < 0 ? '#ffffff' : SKYB[n.br].c;
-    const base = n.tp === 'root' ? 9 : n.tp === 'ks' ? 8 : n.tp === 'nt' ? 7 : n.tp === 'fig' ? 4.5 : 3.6, r = Math.max(far ? 1.2 : 2, base * Math.min(1.6, z * 1.5));
-    if (!op) { c.fillStyle = 'rgba(90,80,130,.5)'; c.fillRect(x - 1, y - 1, 2, 2); continue; }
-    if (far) { c.fillStyle = L ? col : can ? '#ffffff' : 'rgba(170,160,220,.45)'; c.fillRect(x - r / 2, y - r / 2, r, r); continue; }
-    if (L) { c.shadowColor = col; c.shadowBlur = n.tp === 'star' || n.tp === 'fig' ? 6 : 14; }
-    const tw = .8 + .2 * Math.sin(tm * 3 + n.id);
-    if (n.tp === 'ks') { c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillStyle = L ? col : skyBlocked(n) ? '#2a2236' : '#1a1428'; c.fillRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.strokeStyle = L ? '#ffffff' : can ? '#ffffff' : 'rgba(200,190,255,.5)'; c.lineWidth = 1.5; c.strokeRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.restore(); }
-    else skyStar(c, x, y, r * (L ? tw : 1), L ? col : open ? 'rgba(220,215,255,.55)' : 'rgba(140,130,190,.35)', n.tp === 'nt' || n.tp === 'root' ? 8 : 4);
-    c.shadowBlur = 0;
-    if (n.tp === 'nt' && !L) { c.beginPath(); c.arc(x, y, r + 3, 0, Math.PI * 2); c.strokeStyle = can ? '#ffffff' : 'rgba(200,190,255,.35)'; c.lineWidth = 1; c.stroke(); }
-    if (can) { c.beginPath(); c.arc(x, y, r + 2 + 1.5 * Math.sin(tm * 5), 0, Math.PI * 2); c.strokeStyle = 'rgba(92,255,138,.9)'; c.lineWidth = 1.2; c.stroke(); }
-    if (n.id === sSel) { c.beginPath(); c.arc(x, y, r + 6, 0, Math.PI * 2); c.strokeStyle = '#ffe08a'; c.lineWidth = 2; c.stroke(); }
+  for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -24 || y < -24 || x > sW + 24 || y > sH + 24) continue;
+    const L = SL(n.id), op = skyRingOpen(n.ring), can = skyCan(n), open = skyOpen(n) && !skyBlocked(n), col = n.br < 0 ? '#fff6e0' : SKYB[n.br].c;
+    const base = n.tp === 'root' ? 11 : n.tp === 'ks' ? 8 : n.tp === 'nt' ? 7 : n.tp === 'fig' ? 4.5 : 3.6, r = Math.max(far ? 1.3 : 2, base * Math.min(1.6, z * 1.5));
+    if (!op) { c.fillStyle = 'rgba(90,80,130,.45)'; c.fillRect(x - .8, y - .8, 1.6, 1.6); continue; }
+    if (far) { if (L) { c.globalAlpha = .5; c.drawImage(skyGlow(col, 16), x - r * 2, y - r * 2, r * 4, r * 4); c.globalAlpha = 1; } c.fillStyle = L ? col : can ? '#ffffff' : 'rgba(170,160,220,.45)'; c.fillRect(x - r / 2, y - r / 2, r, r); continue; }
+    const tw = .85 + .15 * Math.sin(tm * 2.4 + n.id * 1.3);
+    if (L) { const gr = r * (n.tp === 'star' || n.tp === 'fig' ? 3 : 4.5) * tw; c.globalCompositeOperation = 'lighter'; c.globalAlpha = .55; c.drawImage(skyGlow(col, 32), x - gr, y - gr, gr * 2, gr * 2); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; }
+    if (n.tp === 'root') { c.save(); c.translate(x, y); c.rotate(tm * .2); c.globalAlpha = .5; c.fillStyle = '#fff6e0'; for (let k = 0; k < 8; k++) { c.rotate(Math.PI / 4); c.fillRect(-.8, r * .8, 1.6, r * (1.2 + .3 * Math.sin(tm * 2 + k))); } c.restore(); c.globalAlpha = 1; }
+    if (n.tp === 'ks') { c.save(); c.translate(x, y); c.rotate(Math.PI / 4 + (L ? tm * .3 : 0)); c.fillStyle = L ? col : skyBlocked(n) ? '#241c30' : '#151022'; c.fillRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.strokeStyle = L || can ? '#ffffff' : 'rgba(200,190,255,.5)'; c.lineWidth = 1.5; c.strokeRect(-r * .7, -r * .7, r * 1.4, r * 1.4); c.restore();
+      if (skyBlocked(n)) { c.strokeStyle = 'rgba(255,80,80,.6)'; c.beginPath(); c.moveTo(x - r * .6, y - r * .6); c.lineTo(x + r * .6, y + r * .6); c.stroke(); } }
+    else skyStar(c, x, y, r * (L ? tw : 1), L ? col : open ? 'rgba(225,220,255,.6)' : 'rgba(140,130,190,.32)', n.tp === 'nt' || n.tp === 'root' ? 8 : 4);
+    if (L && (n.tp !== 'ks')) { c.fillStyle = '#ffffff'; c.globalAlpha = .9; c.fillRect(x - .8, y - .8, 1.6, 1.6); if (n.tp === 'nt' || n.tp === 'root') { c.globalAlpha = .6 * tw; c.fillRect(x - r * 1.6, y - .4, r * 3.2, .8); c.fillRect(x - .4, y - r * 1.6, .8, r * 3.2); } c.globalAlpha = 1; }
+    if (n.tp === 'nt' && !L) { c.beginPath(); c.arc(x, y, r + 3, 0, Math.PI * 2); c.strokeStyle = can ? 'rgba(255,255,255,.9)' : 'rgba(200,190,255,.3)'; c.lineWidth = 1; c.stroke(); }
+    if (can) { const pr = r + 2.5 + 1.5 * Math.sin(tm * 4 + n.id); c.globalAlpha = .35 + .3 * Math.sin(tm * 4 + n.id); c.drawImage(skyGlow('#5cff8a', 16), x - pr * 1.6, y - pr * 1.6, pr * 3.2, pr * 3.2); c.globalAlpha = 1; }
+    if (n.id === sSel) { c.save(); c.translate(x, y); c.rotate(tm * 1.2); c.strokeStyle = '#ffe08a'; c.lineWidth = 1.6; c.setLineDash([4, 3]); c.beginPath(); c.arc(0, 0, r + 7, 0, Math.PI * 2); c.stroke(); c.restore(); c.setLineDash([]); }
     if (L && n.max > 1 && z > 1.6) { c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#fff'; c.fillText(L, x, y + r + 9); } }
 }
 function skyNodeDesc(n, L) {
@@ -2558,7 +2575,7 @@ function skyInit() {
   $('slist2').onclick = e => { const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.s1) skyBuy(SN[+t.dataset.s1], false); if (t.dataset.smx) skyBuy(SN[+t.dataset.smx], true);
     if (t.dataset.sgo) { sSel = +t.dataset.sgo; const n = SN[sSel]; scam.x = n.x; scam.y = n.y; scam.z = Math.max(scam.z, 1.2); setSMode('map'); renderSInfo(); } };
-  setInterval(() => { if (!$('sky').hidden && sMode === 'map' && !sPtr.size && scam.z >= .45) reqSky(); }, 90);
+  setInterval(() => { if (!$('sky').hidden && sMode === 'map' && !sPtr.size) reqSky(); }, 60);
   window.addEventListener('resize', () => { if (!$('sky').hidden) { sizeSky(); reqSky(); } });
 }
 
@@ -2591,7 +2608,7 @@ function ascend() {
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
   const keepN = {}, ef = Math.min(.5, skyV('echo')); for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
-  M.nodes = keepN; M.souls = skyOn('sk_keepsoul') ? Math.floor(M.souls * .1) : 0;
+  M.nodes = keepN; M.souls = 0;
   S.runSouls = 0; S.meta = M;
   rebirth(true); if (skyOn('sk_autotree')) bestBuy(true); ascScene(g);
   setTimeout(() => { if (!EV) openSky(); else setTimeout(openSky, 2500); }, 3500);
@@ -2815,7 +2832,7 @@ function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i 
 let ZQ = .006, ZC = .0004, ZWK = 25;
 const zx1 = z => ZQ * z * z + ZC * z * z * z;
 // этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
-const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0) ** 2; };
+const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0 + (W0 === 100 ? 1 : 0)) ** 2; };   // 2-й этап: стена ровно на 100-й
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
 const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * (worldIdx(z) === 4 ? 1.2 : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
@@ -3232,6 +3249,7 @@ function bossJudge(bm, dt) {
 function hurtHero(dmg, unblock) {
   if (!unblock) { dmg = clsBlock(dmg); if (dmg <= 0) return 0; }
   if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
+  if (!unblock && skyOn('sk_starshield') && hero.hp - dmg < D.maxHP * .3 && time > (hero.ssT || 0)) { hero.ssT = time + 20; hero.iframe = 3; ring(hero.x, hero.y - 4, 16, '#fff6a0'); burst(hero.x, hero.y - 6, '#fff6a0', 16, 40); fxLabel('Звёздный щит', hero.x, hero.y - 18, '#fff6a0'); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; hero.hurt = .1; ntHurt();
@@ -3964,6 +3982,8 @@ function emit(rate, dt, mk) { if (!S.fxLow && parts.length < 500 && rnd() < dt *
 let clones = [], holes = [], crows = [];
 function nfxTick(dt) {
   S.lt = (S.lt || 0) + dt; if (skyOn('nv_noult')) ult = 0;
+  if (skyOn('sk_meteor')) { PT.smet = (PT.smet ?? 3) - dt; if (PT.smet <= 0) { const t = mobs.filter(m => !m.dead && !m.obj && Math.hypot(m.x - hero.x, m.y - hero.y) < 80).sort((a, b) => b.hp - a.hp)[0];
+    if (t) { PT.smet = 6; bolt3(t.x + 18, t.y - 70, t.x, t.y - 4, '#fff6a0', 1); ring(t.x, t.y - 2, 14, '#fff6a0'); burst(t.x, t.y - 4, '#fff6a0', 14, 50); hitMob(t, D.hit * 40, true, true, '#fff6a0'); fxLabel('Звездопад', t.x, t.y - 16, '#fff6a0'); } } }
   if (bossAlive && skyOn('sk_bossregen')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * dt);
   const live3 = () => mobs.filter(m => !m.dead && !m.obj);
   if (D.beam > .02) { PT.beam = (PT.beam ?? 3) - dt; if (PT.beam <= 0) { const t = live3().filter(m => Math.hypot(m.x - hero.x, m.y - hero.y) < 70).sort((a, b) => b.hp - a.hp)[0];
@@ -4011,7 +4031,7 @@ const TREAS = [
 ];
 const trHas = k => !!(S.meta && S.meta.tr && S.meta.tr[k]);
 const trCount = () => TREAS.filter(t => trHas(t.k)).length;
-function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2) * (1 + skyV('trs')); if (rnd() < ch) trDrop(m.x, m.y); }
+function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2); if (rnd() < ch) trDrop(m.x, m.y); }
 function trDrop(x, y) {
   const M = S.meta; if (!M.tr) M.tr = {}; const t = TREAS[Math.floor(rnd() * TREAS.length)];
   if (M.tr[t.k]) { addSouls(bossSouls(S.zone) * 2); feed('Дубль сокровища «' + t.n + '» → души', t.c); return; }
