@@ -468,7 +468,7 @@ function pxURL(n, col = '#ffffff', sc = 3) {
 }
 const pxImg = (n, col, h = 9) => `<img class="pxi" src="${pxURL(n, col)}" style="height:${h}px" alt="">`;
 function applyNavIcons() {
-  const map = { nFight: 'sword', nStats: 'stats', treeb: 'star', nCls: 'helm', gearb: 'chest', nSouls: 'soul', nSet: 'gear' };
+  const map = { nFight: 'sword', nHero: 'helm', nUp: 'star', nMenu: 'gear' };
   for (const id in map) { const i = $(id).querySelector('i'); i.className = 'px'; i.textContent = ''; i.style.setProperty('--ic', `url(${pxURL(map[id])})`); }
 }
 

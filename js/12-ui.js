@@ -118,7 +118,7 @@ $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts =
 $('spdb').onclick = () => { S.fast = !S.fast; updateUI(); tone(S.fast ? 880 : 440, .08, 'square', .04, S.fast ? 1320 : 330); };
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); audio(); };
 let tab = 'S', lastSpec;
-function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('dlist').hidden = t !== 'D'; $('tabD').classList.toggle('on', t === 'D'); if (t === 'D') renderSouls(); $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
+function setTab(t) { tab = t; $('slist').hidden = t !== 'S'; $('ylist').hidden = t !== 'Y'; $('tabD').classList.toggle('on', t === 'D'); if (t === 'D') renderSouls(); $('tabS').classList.toggle('on', t === 'S'); $('tabY').classList.toggle('on', t === 'Y'); if (t === 'Y') renderSyn(); }
 $('tabD').onclick = () => setTab('D'); $('tabS').onclick = () => setTab('S'); $('tabY').onclick = () => setTab('Y');
 function renderSyn() {
   const R = D.R || {}; let h = '';

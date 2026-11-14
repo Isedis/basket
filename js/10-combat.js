@@ -428,7 +428,7 @@ function ultRelease() {
   clsUlt(US.dmg);
   if (ntL(5, 1)) hero.shield = Math.max(hero.shield, D.maxHP * .1 * ntL(5, 1));
   if (ctL('U3')) later(.5, () => { ult = Math.max(ult, .3); });
-  if (legOn('twin')) later(.9, () => { clsUlt(US.dmg); flashT = .15; shake = 10; });
+  if (legOn('twin')) { const ud = US.dmg; later(.9, () => { clsUlt(ud); flashT = .15; shake = 10; }); }   // к повтору ульта уже закончилась — урон запоминаем заранее
 }
 // реальное время: заряд почти останавливает мир
 let usReal = 0;

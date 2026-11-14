@@ -1,21 +1,96 @@
 'use strict';
-/* ---------- нижнее меню и шторки ---------- */
-function navOn(id) { for (const b of document.querySelectorAll('.nb')) b.classList.toggle('on', b.id === id); }
-function showSheet(name) {
-  $('panel').classList.toggle('open', name === 'stats' || name === 'souls');
-  $('settings').classList.toggle('open', name === 'set');
-  if (name !== 'none') { $('tree').hidden = true; $('gear').hidden = true; }
-  $('ctree').hidden = true;
-  if (name === 'stats') setTab('S'); if (name === 'souls') setTab('D');
-  navOn({ fight: 'nFight', stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name] || '');
-  setTimeout(resize, 30);
+/* ---------- навигация: 4 раздела, вкладки сверху, один экран за раз ---------- */
+// БОЙ · ГЕРОЙ (статы, алтарь, вещи, класс) · ПРОКАЧКА (таланты, ветка, тотем, небосвод) · МЕНЮ (жизнь, автоматика, настройки).
+// Все экраны — на весь экран между строкой зоны/HP и нижним меню; кнопок «Закрыть» нет. Вкладки открываются постепенно.
+const UI_SEC = {
+  hero: [['stats', 'Статы'], ['altar', 'Алтарь'], ['gear', 'Вещи'], ['cls', 'Класс']],
+  up: [['tal', 'Таланты'], ['branch', 'Ветка'], ['totem', 'Тотем'], ['sky', 'Небосвод']],
+};
+const UI_NAME = { stats: 'Статы', altar: 'Алтарь силы', gear: 'Вещи', cls: 'Класс', tal: 'Таланты', branch: 'Ветка класса', totem: 'Тотем душ', sky: 'Небосвод' };
+function uiOpen(sub) {
+  const M = S.meta, cl = M.cl || {};
+  switch (sub) {
+    case 'stats': case 'cls': return true;
+    case 'altar': return stats.length >= 4 || (M.best || 0) >= 6;
+    case 'gear': { const g = G(), c = g.chests || {}; return (M.best || 0) >= 4 || (c.c || 0) + (c.r || 0) + (c.e || 0) + (c.w || 0) > 0 || Object.values(g.eq || {}).some(Boolean); }
+    case 'tal': return (M.rebirths || 0) >= 1;
+    case 'branch': return Object.values(cl).some(c => c.lv >= 1);
+    case 'totem': return !!(M.totem && M.totem.n) || !TN.some(nd => nd.alt == null && tOpen(nd) && !nodeBlocked(nd) && TL(nd.id) < nMax(nd)) && (M.rebirths || 0) >= 1;
+    case 'sky': return (M.asc || 0) > 0 || !!M.sparks;
+  }
+  return false;
 }
-const sheetToggle = name => () => { const id = { stats: 'nStats', souls: 'nSouls', set: 'nSet' }[name]; showSheet($(id).classList.contains('on') ? 'fight' : name); };
-$('nFight').onclick = () => showSheet('fight');
-$('nCls').onclick = () => { if (!$('ctree').hidden && ctK === cls()) { $('ctree').hidden = true; navOn('nFight'); } else openClassTab(); };
-$('nStats').onclick = sheetToggle('stats');
-$('nSouls').onclick = sheetToggle('souls');
-$('nSet').onclick = sheetToggle('set');
+let uiSec = 'fight';
+const uiSub = { hero: 'stats', up: 'tal' };
+// закрыть всё, что может лежать поверх
+function uiHideAll() {
+  $('panel').classList.remove('open'); $('settings').classList.remove('open');
+  for (const id of ['tree', 'gear', 'ctree', 'totem', 'altar', 'sky', 'opening']) { const e = $(id); if (e) e.hidden = true; }
+  const c = $('croll'); if (c) c.hidden = true; const pi = $('info'); if (pi) pi.hidden = true;
+}
+function uiTap() { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} sfx.tap(); }
+function go(sec, sub) {
+  if (sec === 'fight') { uiHideAll(); uiSec = 'fight'; $('subnav').hidden = true; navOn('nFight'); setTimeout(resize, 30); return; }
+  if (sec === 'menu') { uiHideAll(); uiSec = 'menu'; $('subnav').hidden = true; navOn('nMenu'); $('settings').classList.add('open'); renderSouls(); return; }
+  const list = UI_SEC[sec].filter(([k]) => uiOpen(k)); if (!list.length) return;
+  if (!sub || !list.some(([k]) => k === sub)) sub = list.some(([k]) => k === uiSub[sec]) ? uiSub[sec] : list[0][0];
+  uiHideAll(); uiSec = sec; uiSub[sec] = sub; (S.meta.uiNew || {})[sub] && delete S.meta.uiNew[sub];
+  renderSubnav(); navOn(sec === 'hero' ? 'nHero' : 'nUp');
+  switch (sub) {
+    case 'stats': $('panel').classList.add('open'); setTab('S'); break;
+    case 'altar': openAltar(); break;
+    case 'gear': $('gear').hidden = false; renderGear(); break;
+    case 'cls': ctTab = ctTab === 'tree' ? 'rel' : ctTab; openCT(cls()); break;
+    case 'tal': openTree(); break;
+    case 'branch': ctTab = 'tree'; openCT(cls()); break;
+    case 'totem': openTotem(); break;
+    case 'sky': openSky(); break;
+  }
+  navOn(sec === 'hero' ? 'nHero' : 'nUp'); $('subnav').hidden = false;
+}
+function renderSubnav() {
+  const sec = uiSec, el = $('subnav'); if (!UI_SEC[sec]) return; const nw = S.meta.uiNew || {};
+  const h = UI_SEC[sec].filter(([k]) => uiOpen(k)).map(([k, n]) => `<button class="sn${uiSub[sec] === k ? ' on' : ''}" data-sub="${k}">${n}${nw[k] ? '<b class="dot"></b>' : ''}</button>`).join('');
+  if (el.dataset.h !== h) { el.dataset.h = h; el.innerHTML = h; }
+}
+// старые вызовы («показать шторку», «подсветить кнопку») — через новые разделы
+function navOn(id) {
+  const m = { nFight: 'nFight', nStats: 'nHero', nCls: 'nHero', gearb: 'nHero', treeb: 'nUp', nSouls: 'nMenu', nSet: 'nMenu', nHero: 'nHero', nUp: 'nUp', nMenu: 'nMenu' }[id] || '';
+  for (const b of document.querySelectorAll('#nav .nb')) b.classList.toggle('on', b.id === m);
+  if (m === 'nFight' && uiSec !== 'fight') { uiSec = 'fight'; $('subnav').hidden = true; }
+}
+function showSheet(name) {
+  if (name === 'none') { $('panel').classList.remove('open'); $('settings').classList.remove('open'); return; }
+  if (name === 'stats') return go('hero', 'stats');
+  if (name === 'souls' || name === 'set') return go('menu');
+  go('fight');
+}
+$('nFight').onclick = () => { uiTap(); go('fight'); };
+$('nHero').onclick = () => { uiTap(); go('hero'); };
+$('nUp').onclick = () => { uiTap(); go('up'); };
+$('nMenu').onclick = () => { uiTap(); go('menu'); };
+$('subnav').onclick = e => { const b = e.target.closest('[data-sub]'); if (!b) return; uiTap(); go(uiSec, b.dataset.sub); };
+// раздел ПРОКАЧКА появляется после первой смерти; новые вкладки — с пометкой и сообщением
+function uiTick() {
+  const M = S.meta; if (!M.uiSeen) { M.uiSeen = {}; for (const s of [...UI_SEC.hero, ...UI_SEC.up]) if (uiOpen(s[0])) M.uiSeen[s[0]] = 1; }   // старые сохранения: всё уже открытое не помечаем
+  if (!M.uiNew) M.uiNew = {};
+  for (const [k] of [...UI_SEC.hero, ...UI_SEC.up]) if (!M.uiSeen[k] && uiOpen(k)) { M.uiSeen[k] = 1; M.uiNew[k] = 1; toast('ОТКРЫТ РАЗДЕЛ: ' + UI_NAME[k].toUpperCase(), (UI_SEC.hero.some(s => s[0] === k) ? 'Герой' : 'Прокачка') + ' → ' + UI_NAME[k]); }
+  $('nUp').hidden = !UI_SEC.up.some(([k]) => uiOpen(k));
+  const nw = M.uiNew;
+  $('nHero').classList.toggle('has', ['stats', 'altar', 'gear', 'cls'].some(k => nw[k]) || $('nCls').classList.contains('has') || !$('gbadge').hidden);
+  $('nUp').classList.toggle('has', ['tal', 'branch', 'totem', 'sky'].some(k => nw[k]) || $('treeb').classList.contains('has'));
+  $('nMenu').classList.toggle('has', $('nSouls').classList.contains('has'));
+  if (uiSec !== 'fight' && uiSec !== 'menu') renderSubnav();
+  // карточка класса не висит вечно: прячется через 6 с
+  { const c = $('croll'); if (c && !c.hidden) { c._t = c._t || performance.now(); if (performance.now() - c._t > 6000) { c.hidden = true; c._t = 0; } } else if (c) c._t = 0; }
+}
+setInterval(uiTick, 700);
+// перенос блока «Жизнь» (души, завершить жизнь, вознесение, автоматика) в МЕНЮ
+{ const d = $('dlist'), s = $('lifebox'); if (d && s) { s.appendChild(d); d.hidden = false; d.classList.add('menulife'); }
+  for (const id of ['tbtn', 'totb', 'clsopen']) { const e = $(id); if (e) e.hidden = true; } const tb = $('tabD'); if (tb) tb.hidden = true; }
+// верх экранов: строка зоны/HP остаётся видна, вкладки раздела — под ней
+function uiLayout() { const h = $('hud').getBoundingClientRect().height; document.documentElement.style.setProperty('--hudh', Math.round(h) + 'px'); }
+addEventListener('resize', uiLayout); setTimeout(uiLayout, 50); setInterval(uiLayout, 2000);
 
 /* ---------- обновление игры ---------- */
 // берём свежую страницу в обход кэша и сравниваем номер сборки
