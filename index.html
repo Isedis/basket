@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114121508';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114121953';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2115,7 +2115,7 @@ const AWK = {
   reap:  ['Пожиратель душ', '+20 душ максимум; при полном запасе — взрыв душ по всем'],
 };
 const TIERS = [[5, '#c08040', 'бронза'], [10, '#d8e0ea', 'серебро'], [20, '#ffd84a', 'золото'], [30, '#ff66ff', 'радуга']];
-const cxpNeed = l => Math.floor(160 * Math.pow(l + 1, 1.5));
+const cxpNeed = l => Math.floor(160 * Math.pow(l + 1, 1.4));   // кривая положе: поздние уровни дорожают медленнее
 function cm(k) { const M = S.meta; if (!M.cl) M.cl = {}; if (!M.cl[k]) M.cl[k] = { xp: 0, lv: 0 }; return M.cl[k]; }
 const clsLv = k => cm(k || cls()).lv;
 const awake = k => ctFull(k || cls());   // пробуждение: вся ветка класса заполнена
@@ -2123,7 +2123,9 @@ const aw = () => awake();
 const tierOf = l => { let t = null; for (const x of TIERS) if (l >= x[0]) t = x; return t; };
 function clsXP(v) {
   if (skyOn('nv_loyal')) v *= 3;
-  v *= relMxp();
+  v *= relMxp() * 1.6;   // класс качается быстрее
+  // общий опыт: все уже встреченные классы получают 15% опыта текущего (тихо, без тостов)
+  for (const k of CLS_KEYS) if (k !== cls() && S.meta.seen && S.meta.seen[k]) { const o = cm(k); o.xp += v * .15; while (o.xp >= cxpNeed(o.lv)) { o.xp -= cxpNeed(o.lv); o.lv++; } }
   const c = cm(cls()); c.xp += v;
   let up = 0; while (c.xp >= cxpNeed(c.lv)) { c.xp -= cxpNeed(c.lv); c.lv++; up++; }
   if (!up) return;
