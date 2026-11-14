@@ -75,8 +75,8 @@ function crowd() { return Math.min(45, Math.round(crowd0() * .75 * skyCrowdM()))
 function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
 let deathT = 0;
-function heroDeath() {
-  if (deathT <= 0 && (S.phx || 0) < (trHas('phoenix') ? 1 : 0) + (skyOn('sk_phx') ? 1 : 0)) { S.phx = (S.phx || 0) + 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
+function heroDeath(force) {   // force — «Завершить жизнь»: без пера феникса и прочих воскрешений
+  if (!force && deathT <= 0 && (S.phx || 0) < (trHas('phoenix') ? 1 : 0) + (skyOn('sk_phx') ? 1 : 0)) { S.phx = (S.phx || 0) + 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
   hero.hp = 0; if (deathT > 0) return;
   deathT = 1.4; slowT = 1.2; flashT = .3; shake = 12; hero.iframe = 3;
   for (let i = 0; i < 4; i++) burst(hero.x, hero.y - 4, ['#ff3355', '#ffffff', '#ff44ff', CL().c][i], 14, 60);

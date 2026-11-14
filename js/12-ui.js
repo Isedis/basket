@@ -189,8 +189,7 @@ function autoPathSpend() {
 $('apb').onclick = () => { S.meta.autoPerk = !S.meta.autoPerk; applyAp(); autoKick(); save(); };
 $('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) return; if (b.dataset.pk) { takePerk(b.dataset.pk); if (S.pend) openPerks(); else $('perkbox').hidden = true; } else $('perkbox').hidden = true; };
 let endConfirm = 0;
-$('endb').onclick = () => { if (deathT > 0) return; if (performance.now() > endConfirm) { endConfirm = performance.now() + 3000; $('endb').textContent = 'ТОЧНО? +' + fmt(S.runSouls || 0) + ' ДУШ — ТАПНИ ЕЩЁ'; setTimeout(() => { $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; }, 3000); return; }
-  endConfirm = 0; $('endb').textContent = 'ЗАВЕРШИТЬ ЖИЗНЬ'; showSheet('fight'); heroDeath(); };
+$('endb').onclick = () => { if (deathT > 0) return; uiTap && uiTap(); go('fight'); heroDeath(true); };   // с первого нажатия, мимо воскрешений
 $('ascbox').onclick = e => { if (e.target.id === 'skyb') { openSky(); return; } const b = e.target.closest('[data-asc]'); if (b) { ascBuy(b.dataset.asc); return; }
   if (e.target.id === 'ascb' && S.meta.guard) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
