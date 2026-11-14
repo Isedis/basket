@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114010551';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114013316';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2901,7 +2901,7 @@ function skyInit() {
 
 function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
 const wallZ = () => (S.meta.asc ? 100 : 50);
-const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); return Math.floor(Math.sqrt(cyc / 50) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 10) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };
+const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); if (cyc < 100) return 0; return Math.floor(60 * Math.pow(Math.log10(cyc), 1.5) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 50) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };   // ~1.5–6К за вознесение
 // Страж стены: огромный, почти неуязвим без звёзд созвездий
 const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
 const guardDef = () => 1 - guardMul();
@@ -2927,7 +2927,8 @@ function ascend() {
   M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0;   // в новом цикле Стража нужно победить снова
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
-  const keepN = {}, ef = Math.min(.8, .3 + skyV('echo'));   // базовое Эхо 30%: вознесение не начинает дерево с нуля for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
+  // базовое Эхо 30%: вознесение не начинает дерево с нуля
+  const keepN = {}, ef = Math.min(.8, .3 + skyV('echo')); for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
   M.nodes = keepN; M.souls = 0;
   S.runSouls = 0; S.meta = M;
   rebirth(true); if (skyOn('sk_autotree')) bestBuy(true); ascScene(g);
