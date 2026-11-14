@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261113235421';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114000202';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -2257,7 +2257,18 @@ function heroCols(k, rk, v) {
 
 /* ---------- экран пути класса: огромный пиксельный символ класса + дерево узлов поверх ---------- */
 let pSel = null, pRaf = 0;
-const PTH = 1760, PBAND = 400;
+const PTH = 2000, PBAND = 400;
+// мини-атрибутика героя на фоне ветки (иконки 5×5)
+const CATTR = { war: ['sword', 'shield', 'crown'], bers: ['sword', 'flame', 'drop'], pal: ['shield', 'star', 'crown'], guard: ['shield', 'gear', 'spike'], mage: ['flame', 'book', 'star'], sham: ['bolt', 'drop', 'wing'],
+  arch: ['wing', 'eye', 'spike'], assa: ['drop', 'eye', 'spike'], gamb: ['clover', 'crown', 'star'], alch: ['drop', 'flame', 'gear'], priest: ['star', 'heart', 'book'], monk: ['fist', 'hand', 'wing'],
+  chrono: ['clock', 'gear', 'star'], rune: ['book', 'eye', 'star'], necro: ['skull', 'drop', 'eye'], reap: ['skull', 'wing', 'spike'] };
+function pathAttr(c, W, H, T, k) {
+  const ic = CATTR[k], col = CLASSES[k].c, R = i => ((Math.sin(i * 78.233 + 3.1) * 12543.31) % 1 + 1) % 1;
+  for (let i = 0; i < 34; i++) { const pat = ICONS[ic[i % ic.length]], ps = 3 + Math.floor(R(i + 5) * 3), x = Math.round(R(i) * (W - 30) + 6), y = Math.round(R(i + 50) * (H - 300) + 260 + Math.sin(T * .6 + i) * 4);
+    c.globalAlpha = .17 + .1 * R(i + 9) + .05 * Math.sin(T * 1.2 + i); c.fillStyle = i % 4 ? col : '#ffe08a';
+    for (let j = 0; j < 5; j++) for (let q = 0; q < 5; q++) if (pat[j][q] === '#') c.fillRect(x + q * ps, y + j * ps, ps, ps); }
+  c.globalAlpha = 1;
+}
 // большие символы классов: примитивы в поле 100×300 (y вниз). материалы: 1 основной, 2 тёмный, 3 золото, 4 сияние, 5 стекло
 const SYM2 = {
   war: [['poly', 1, [[44, 22], [50, 4], [56, 22], [57, 198], [43, 198]]], ['line', 2, 50, 26, 50, 188, 2], ['poly', 3, [[16, 198], [84, 198], [88, 212], [12, 212]]], ['circ', 4, 50, 205, 4],
@@ -2374,14 +2385,22 @@ function drawPath() {
   const c = cv.getContext('2d'), T = performance.now() / 1000; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
   pathAtmo(c, W, PTH, T, k);
   const L = pathLayout(W), on = p => p.id ? pL(k, p.t, p.id) > 0 : true, prog = Math.min(1, pSpent(k) / pTotal()), yP = L.bottom + 40 - (L.bottom + 40 - L.top) * prog;
-  // огромный пиксельный символ класса: тёмный целиком, снизу вверх загорается по мере вложений
-  const dim = symArt(k, Math.round(W), false), lit = symArt(k, Math.round(W), true);
-  const ax = (W - dim.aw) / 2, ay = PTH - dim.ah - 30;
-  c.drawImage(dim, ax, ay, dim.aw, dim.ah);
-  c.save(); c.beginPath(); c.rect(0, yP, W, PTH - yP); c.clip();
-  c.globalAlpha = .35 + .1 * Math.sin(T * 1.6); const gl = c.createRadialGradient(W / 2, (yP + PTH) / 2, 10, W / 2, (yP + PTH) / 2, Math.max(W, PTH - yP)); gl.addColorStop(0, C.c + '55'); gl.addColorStop(1, C.c + '00'); c.fillStyle = gl; c.fillRect(0, yP, W, PTH - yP);
-  c.globalAlpha = .9; c.drawImage(lit, ax, ay, lit.aw, lit.ah); c.restore(); c.globalAlpha = 1;
-  if (prog > 0 && prog < 1) { c.fillStyle = '#ffffff'; for (let x = 0; x < W; x += 5) { c.globalAlpha = .4 + .4 * Math.sin(x * .3 + T * 6); c.fillRect(x, Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); } c.globalAlpha = 1; }
+  pathAttr(c, W, PTH, T, k);
+  // сияние, поднимающееся снизу вверх по мере вложений
+  { const gl = c.createLinearGradient(0, yP - 120, 0, PTH); gl.addColorStop(0, C.c + '00'); gl.addColorStop(.25, C.c + '22'); gl.addColorStop(1, C.c + '44'); c.globalAlpha = .7 + .15 * Math.sin(T * 1.6); c.fillStyle = gl; c.fillRect(0, yP - 120, W, PTH - yP + 120); c.globalAlpha = 1; }
+  if (prog > 0 && prog < 1) { c.fillStyle = '#ffffff'; for (let x = 0; x < W; x += 5) { c.globalAlpha = .35 + .35 * Math.sin(x * .3 + T * 6); c.fillRect(x, Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); } c.globalAlpha = 1; }
+  // портрет героя в рамке: текущий облик
+  { const f = formOf(k), pat = evoPat(k, f), cx = W / 2, cy = 120, fw = 176, sc = Math.floor(130 / Math.max(pat.length, pat[0].length)), bob = Math.round(Math.sin(T * 2) * 3);
+    const gr = c.createRadialGradient(cx, cy, 10, cx, cy, 120); gr.addColorStop(0, C.c + '66'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(cx - 130, cy - 130, 260, 260);
+    c.fillStyle = '#07040f'; c.fillRect(cx - fw / 2, cy - fw / 2, fw, fw);
+    const bg = c.createRadialGradient(cx, cy + 20, 4, cx, cy, fw * .7); bg.addColorStop(0, shade(C.c, -.35)); bg.addColorStop(1, '#07040f'); c.fillStyle = bg; c.fillRect(cx - fw / 2 + 6, cy - fw / 2 + 6, fw - 12, fw - 12);
+    for (let i = 0; i < 12; i++) { const a = T * .5 + i / 12 * 6.283, rr = 58 + Math.sin(T * 2 + i) * 4; c.globalAlpha = .5; c.fillStyle = i % 3 ? C.c : '#ffffff'; c.fillRect(Math.round(cx + Math.cos(a) * rr), Math.round(cy + 6 + Math.sin(a) * rr * .4), 2, 2); } c.globalAlpha = 1;
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(cx, cy + 62, 46, 8, 0, 0, 6.283); c.fill();
+    const spr = sprite(pat, heroCols(k, 6, '#ffe08a'), 'pp' + k + f + true); c.drawImage(spr, Math.round(cx - pat[0].length * sc / 2), Math.round(cy + 62 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc);
+    c.strokeStyle = '#ffd84a'; c.lineWidth = 4; c.strokeRect(cx - fw / 2, cy - fw / 2, fw, fw); c.strokeStyle = '#5a3a10'; c.lineWidth = 2; c.strokeRect(cx - fw / 2 + 5, cy - fw / 2 + 5, fw - 10, fw - 10);
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.fillStyle = '#ffd84a'; c.fillRect(cx + dx * fw / 2 - 7, cy + dy * fw / 2 - 7, 14, 14); c.fillStyle = C.c; c.fillRect(cx + dx * fw / 2 - 3, cy + dy * fw / 2 - 3, 6, 6); }
+    c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; const nm = evoName(k, f).toUpperCase(), tw = c.measureText(nm).width + 24; c.fillStyle = '#0a0614'; c.fillRect(cx - tw / 2, cy + fw / 2 + 4, tw, 20); c.strokeStyle = C.c; c.lineWidth = 2; c.strokeRect(cx - tw / 2, cy + fw / 2 + 4, tw, 20);
+    c.fillStyle = C.c; c.fillText(nm, cx, cy + fw / 2 + 18); c.font = '7px "Press Start 2P", monospace'; c.fillStyle = '#a59fc0'; c.fillText('мастерство ' + cm(k).lv + ' · облик ' + ['', 'I', 'II', 'III', 'IV'][f], cx, cy + fw / 2 + 38); }
   // затемнение под узлами, чтобы дерево читалось поверх рисунка
   c.fillStyle = 'rgba(4,2,10,.28)'; c.fillRect(0, 0, W, PTH);
   // связи
@@ -2390,11 +2409,17 @@ function drawPath() {
       const f = (T * .6 + a.x * .013 + a.y * .007) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
     else { c.strokeStyle = op ? shade(C.c, -.4) : '#2a2440'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.setLineDash([]); } }
   // полосы ступеней
+  const plat = (y, f, got, cur, awk) => { const pat = evoPat(k, f), sc = 4, x = W / 2, bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0;
+    if (got) { const gr = c.createRadialGradient(x, y - 24, 4, x, y - 24, 70); gr.addColorStop(0, (awk ? '#ffffff' : C.c) + '55'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(x - 70, y - 94, 140, 140); }
+    c.fillStyle = got ? shade(C.c, -.45) : '#16122a'; c.beginPath(); c.ellipse(x, y, 34, 7, 0, 0, 6.283); c.fill(); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.stroke();
+    const spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got);
+    if (awk && got) { c.globalAlpha = .5 + .3 * Math.sin(T * 4); const sl = sprite(pat, { 1: C.c, 2: C.c, 3: C.c, 4: C.c, 5: C.c, 6: C.c, 7: C.c }, 'pa' + k + f); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(x - pat[0].length * sc / 2) + dx, Math.round(y + 2 - pat.length * sc + bob) + dy, pat[0].length * sc, pat.length * sc); c.globalAlpha = 1; }
+    c.drawImage(spr, Math.round(x - pat[0].length * sc / 2), Math.round(y + 2 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc); };
+  { const fN = formOf(k); plat(L.bottom, 1, true, fN === 1); plat(L.bands[0], 2, tierDone(k, 1), fN === 2); plat(L.bands[1], 3, tierDone(k, 2), fN === 3); plat(L.bands[2], 3, tierDone(k, 3), false, true); if (S.meta.asc) plat(L.top, 4, tierDone(k, 4), fN === 4); }
   const band = (y, f, txt, got, cur) => { c.globalAlpha = got ? .9 : .5; c.fillStyle = got ? C.c : '#3a3260'; for (let x = 4; x < W - 4; x += 8) c.fillRect(x, Math.round(y), 4, 1); c.globalAlpha = 1;
-    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 46, bx = W / 2;
+    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 20, bx = W / 2;
     c.fillStyle = '#0a0614'; c.fillRect(bx - tw / 2, y + 8, tw, 22); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.strokeRect(bx - tw / 2, y + 8, tw, 22);
-    if (f) { const pat = evoPat(k, f), sc = 1.5, spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got); c.drawImage(spr, Math.round(bx - tw / 2 + 4), Math.round(y + 19 - pat.length * sc / 2), Math.round(pat[0].length * sc), Math.round(pat.length * sc)); }
-    c.fillStyle = got ? (cur ? '#ffffff' : C.c) : '#6a6290'; c.fillText((cur ? '► ' : '') + txt, bx + 10, y + 22); };
+    c.fillStyle = got ? (cur ? '#ffffff' : C.c) : '#6a6290'; c.fillText((cur ? '► ' : '') + txt, bx, y + 22); };
   const fNow = formOf(k);
   band(L.bottom, 1, 'I · ' + evoName(k, 1), true, fNow === 1);
   band(L.bands[0], 2, 'II · ' + evoName(k, 2), tierDone(k, 1), fNow === 2);
