@@ -47,7 +47,14 @@ function go(sec, sub) {
     case 'sky': openSky(); break;
   }
   navOn(sec === 'hero' ? 'nHero' : 'nUp'); $('subnav').hidden = false;
+  // карты получают размер только после раскладки экрана — пересчитываем размер и масштаб чуть позже
+  setTimeout(() => { try {
+    if (sub === 'tal') { const small = !uiFit.tal; sizeTree(); if (small) { fitTree(); uiFit.tal = 1; } drawTree(); }
+    if (sub === 'sky') { sizeSky(); if (!uiFit.sky) { skyFit(); uiFit.sky = 1; } reqSky(); }
+    if (sub === 'altar') sizeAltar(); if (sub === 'totem') sizeTotem();
+  } catch (e) {} }, 80);
 }
+const uiFit = {};
 function renderSubnav() {
   const sec = uiSec, el = $('subnav'); if (!UI_SEC[sec]) return; const nw = S.meta.uiNew || {};
   const h = UI_SEC[sec].filter(([k]) => uiOpen(k)).map(([k, n]) => `<button class="sn${uiSub[sec] === k ? ' on' : ''}" data-sub="${k}">${n}${nw[k] ? '<b class="dot"></b>' : ''}</button>`).join('');

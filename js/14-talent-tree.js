@@ -137,8 +137,9 @@ function bestBuy(quiet) {
   refreshTree();
 }
 function fitTree() {
+  if (tW < 60 || tH < 60) { cam.z = 0; return; }   // окно ещё без размера — впишем, когда появится
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const nd of TN) { x0 = Math.min(x0, nd.x); x1 = Math.max(x1, nd.x); y0 = Math.min(y0, nd.y); y1 = Math.max(y1, nd.y); }
-  cam.x = (x0 + x1) / 2; cam.y = (y0 + y1) / 2; cam.z = Math.min(tW / (x1 - x0 + 60), tH / (y1 - y0 + 60)); drawTree();
+  cam.x = (x0 + x1) / 2; cam.y = (y0 + y1) / 2; cam.z = clamp(Math.min(tW / (x1 - x0 + 60), tH / (y1 - y0 + 60)), .2, 5); drawTree();
 }
 
 /* ---------- красивая карта дерева ---------- */
@@ -189,6 +190,7 @@ let tReq = 0;
 const reqTree = () => { if (!tReq) tReq = requestAnimationFrame(() => { tReq = 0; drawTree(); }); };
 function drawTree() {
   if (tree.hidden || tMode !== 'map') return;
+  if (cam.z < .1) { if (tview.clientHeight < 60) return; sizeTree(); if (tW >= 60 && tH >= 60) fitTree(); if (cam.z < .1) return; }   // масштаб испорчен — вписываем заново
   const c = tctx, now = performance.now(), T = now / 1000, far = cam.z < .9;
   drawTreeBg(c);
   // звёзды (вдали — без мерцания)

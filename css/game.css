@@ -583,3 +583,10 @@ img.pxi{width:auto!important;opacity:1!important;flex:none}
 /* фильтры дерева талантов — одна строка с прокруткой и затуханием справа (видно, что дальше есть ещё) */
 #tbar .trow{flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
 #tbar .tch{flex:none}
+/* текст на полосках вверху — в одну строку, лишнее уходит в многоточие (не вылезает на вкладки) */
+#hud .bar>b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+/* открытие сундука — непрозрачный фон поверх всего, включая вкладки */
+#opening{background:rgba(6,4,12,.985)!important;z-index:20!important}
+/* панели описаний снизу не съедают карту: на маленьком экране — до ~40% высоты с прокруткой */
+#tinfo,#sinfo,#alinfo,#totinfo{max-height:40%;overflow-y:auto}
+#tview,#sview,#alview,#totview{min-height:150px!important}
