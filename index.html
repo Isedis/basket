@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114115634';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114120137';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4989,6 +4989,9 @@ function shooter(m, dt, mdmg) {
 }
 // атаки вожака с предупреждением
 function bossAI(bm, dt) {
+  // рывок: вожака не удержать на расстоянии — если он далеко от героя дольше 3 с, прыгает прямо к нему
+  { const far = Math.hypot(hero.x - bm.x, hero.y - bm.y) > 34; bm.farT = far ? (bm.farT || 0) + dt : 0;
+    if (bm.farT > 3 && !tele.some(t => t.b === bm)) { bm.farT = 0; tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 16, t: .9, max: .9, dmg: zoneDmg(S.zone) * bm.dm * 3, act: 'jump' }); fxLabel('Рывок вожака', bm.x, bm.y - 18, '#ff6b6b'); } }
   bm.atkT = (bm.atkT === undefined ? 3 : bm.atkT) - dt;
   if (bm.atkT > 0 || tele.some(t => t.b === bm)) return;
   const iv = 5 * (bm.phase === 2 ? .5 : bm.phase === 1 ? .7 : 1); bm.atkT = iv * (.8 + rnd() * .4);
@@ -5285,6 +5288,7 @@ function update(dt) {
     }
     // отбрасывание: отскок от краёв и столкновения с другими врагами
     const kv = Math.hypot(m.kx, m.ky);
+    if (m.boss) { m.kx = 0; m.ky = 0; }   // вожака не отбрасывает — его не затолкать к краю
     m.x += m.kx * dt; m.y += m.ky * dt;
     if (kv > 25) {
       if ((m.x < 3 && m.kx < 0) || (m.x > AW - 3 && m.kx > 0)) m.kx *= -.6;
