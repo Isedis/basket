@@ -35,6 +35,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #hud .zt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bdf}
 #hud .zt b{font-weight:normal;color:#ffe08a}
 #kills{color:#ff44ff;white-space:nowrap}
+#thr{white-space:nowrap;font-size:8px}
 #hpbar{height:13px} #hpbar>b{line-height:13px;font-size:8px}
 .nb .dot{position:absolute;top:5px;right:12px;width:8px;height:8px;border-radius:50%;background:#ff4f6d;border:1px solid #000;display:none}
 .nb.has .dot{display:block}
@@ -428,7 +429,7 @@ html,body{font-size:10px}
 <body>
 <div id="app">
   <div id="hud">
-    <div class="r hr1"><span class="zt"><b id="znum">Зона 1</b> <span id="zname">Луг</span> <span id="zmodl"></span></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="kills">0</span></div>
+    <div class="r hr1"><span class="zt"><b id="znum">Зона 1</b> <span id="zname">Луг</span> <span id="zmodl"></span></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="thr"></span><span id="kills">0</span></div>
     <div class="bar" id="zbar"><i></i><b></b></div>
     <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
     <span id="rank" hidden></span>
@@ -517,7 +518,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114082030';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114082342';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1508,7 +1509,7 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => .55 * soulMul0();
+const soulMul = () => .55 * soulMul0() * (1 + .3 * (threatM() - 1));
 const soulMul0 = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1) * skySoulM() * relSoulM() * (1 + .5 * (S.meta.asc || 0));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1) * (skyOn('sk_soulboss') ? 2 : 1);
 function addSouls(v, m) {
@@ -3160,6 +3161,8 @@ const zx1 = z => ZQ * z * z + ZC * z * z * z;
 // этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
 const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0 + (W0 === 100 ? 1 : 0)) ** 2; };   // 2-й этап: стена ровно на 100-й
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
+// угроза жизни: чем дольше живёт герой, тем злее враги и щедрее награды
+const threatM = () => Math.pow(2, (S.lt || 0) / (S.meta.asc ? 70 : 45));   // удвоение каждые 45с жизни (70с после Вознесения — подъём длиннее)
 let MOBDMG = 5;   // толпа опасна: урон обычных врагов ×5 (влияет и на ближний бой вожаков)
 const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * (worldIdx(z) === 4 ? 1.2 : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
@@ -3512,7 +3515,7 @@ function spawnMob(boss) {
   { const a = rnd() * 6.2832, rr = Math.hypot(W, H) * .55 + 4 + rnd() * 12; x = clamp(hero.x + Math.cos(a) * rr, 2, AW - 2); y = clamp(hero.y + Math.sin(a) * rr, 7, AH - 1); }
   const rare = !boss && (S.forceRare > 0 ? (S.forceRare--, true) : rnd() < D.rare * (S.zmod === 'night' ? 2.5 : S.zmod === 'gold' ? 3 : 1));
   const af = rollAff(boss, ev && ev.type === 'elite' && !boss ? 2 + Math.floor(rnd() * 2) : 0), na = popc(af);
-  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1) * skyHpM();
+  const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1) * skyHpM() * Math.sqrt(threatM());
   mobs.push({ t, x, y, h: b.h[k % b.h.length] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (S.zone > 50 && skyOn('sk_wslow') ? .75 : 1) * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
@@ -4522,7 +4525,7 @@ function update(dt) {
   effMech(dt);
 
   // мобы
-  const mdmg = zoneDmg(S.zone) * MOBDMG * (on('x_swarm') ? 1.2 : 1) * (S.zmod === 'storm' ? 1.2 : 1) * (ev && ev.type === 'moon' ? 1.5 : 1);
+  const mdmg = zoneDmg(S.zone) * MOBDMG * threatM() * (on('x_swarm') ? 1.2 : 1) * (S.zmod === 'storm' ? 1.2 : 1) * (ev && ev.type === 'moon' ? 1.5 : 1);
   const tots = mobs.filter(o => o.obj === 'totem' && !o.dead);
   for (const m of mobs) {
     if (m.dead) continue;
@@ -5043,6 +5046,8 @@ function updateUI() {
   $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + rankName(heroRank());
   { const pb = $('perkb'); pb.hidden = !S.pend || S.meta.autoPerk; pb.textContent = '★ ПЕРК' + (S.pend > 1 ? ' ×' + S.pend : ''); }
   $('kills').textContent = fmt(S.runSouls || 0) + ' душ';
+  { const t = threatM(), el = $('thr'); el.textContent = t >= 1.1 ? 'угроза ×' + t.toFixed(1) : ''; el.style.color = t >= 4 ? '#ff2a4a' : t >= 2 ? '#ff7a44' : '#ffd84a';
+    if (t >= 2) tip('threat', 'Угроза растёт', 'Чем дольше живёт герой, тем злее враги — но и душ за них больше. Рискни или переродись.'); }
   const ex = $('ex');
   if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = '×' + exMult().toFixed(2); } else ex.style.display = 'none';
   // статы
