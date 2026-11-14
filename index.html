@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114115006';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114115234';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4304,13 +4304,14 @@ function bossJudge(bm, dt) {
     else { bm.jt = 0; bm.jhp = bm.hp; }
   }
 }
-// плавная смерть: один удар сразу снимает не больше C от макс. HP (обычные враги 9%, взрывы 15%, вожак 25%),
-// остальное уходит в «рану» (hero.pool) и стекает в HP за ~0.5–1 с — урон тот же, но без мгновенных ваншотов
+// плавная смерть («натиск»): весь урон копится в ране (hero.pool) и стекает в HP с ограниченной скоростью hero.pr (доля макс. HP в секунду):
+// сначала 8%/с, пока натиск держится — +25% каждые 5 с, когда спадает — скорость падает и рана затягивается. Урон не теряется, но гибель — долгая борьба
 function hurtHero(dmg, unblock, cap, quiet) {
-  if (!unblock) { dmg = clsBlock(dmg); if (dmg <= 0) return 0; const c = (D.maxHP || 1) * (cap || .09); if (dmg > c) { hero.pool = (hero.pool || 0) + dmg - c; dmg = c; } }
+  if (!unblock) { dmg = clsBlock(dmg); if (dmg <= 0) return 0; }
   if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
   if (!unblock && skyOn('sk_starshield') && hero.hp - dmg < D.maxHP * .3 && time > (hero.ssT || 0)) { hero.ssT = time + 20; hero.iframe = 3; ring(hero.x, hero.y - 4, 16, '#fff6a0'); burst(hero.x, hero.y - 6, '#fff6a0', 16, 40); fxLabel('Звёздный щит', hero.x, hero.y - 18, '#fff6a0'); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
+  if (!unblock) { hero.pool = (hero.pool || 0) + dmg; hero.poolT = time; hero.hurt = .1; ntHurt(); return dmg; }
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; if (!quiet) { hero.hurt = .1; ntHurt(); }
   if (hero.hp <= 0) { hero.pool = 0;
@@ -5196,7 +5197,10 @@ function update(dt) {
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
   hero.slowT = (hero.slowT || 0) - dt;
   hero.rageT = (hero.rageT || 0) - dt; if (hero.rageT <= 0) hero.rage = 0;
-  if (hero.pool > 0 && deathT <= 0 && hero.iframe <= 0) { const d = Math.min(hero.pool, hero.pool * (1 - Math.exp(-dt / .45)) + D.maxHP * .02 * dt); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
+  { const M = D.maxHP || 1, press = (hero.pool || 0) > M * .05;
+    hero.pr = press ? Math.min(4, (hero.pr || .08) * Math.pow(1.25, dt / 5)) : Math.max(.08, (hero.pr || .08) * Math.pow(.7, dt));
+    if (hero.pool > 0 && deathT <= 0 && hero.iframe <= 0) { const d = Math.min(hero.pool, M * hero.pr * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
+    if (hero.pool > 0 && time - (hero.poolT || 0) > 2) hero.pool *= Math.pow(.8, dt); }   // без новых ударов рана затягивается
   if (hero.psnT > 0) { hero.psnT -= dt; hero.hp -= hero.psnD * dt * (1 - D.armor); if (hero.hp <= 0 && deathT <= 0) { hero.hp = 0; hurtHero(1, true); } if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
   PT.phx = (PT.phx || 0) - dt;
   if (legOn('phoenix') && hero.hp < D.maxHP * .1 && PT.phx <= 0) { PT.phx = 60; hero.hp = D.maxHP; burst(hero.x, hero.y - 4, '#ff9a3c', 30, 50); ring(hero.x, hero.y - 4, 20, '#ff9a3c'); feed('Феникс: полное исцеление!', '#ff9a3c'); flashT = .1; }
@@ -6025,7 +6029,7 @@ function rebirth(fromAsc) {
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
   if (skyOn('sk_perks')) S.pend = 2;
-  rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; hero.psnT = 0; hero.slowT = 0; hero.pool = 0; hero.iframe = 1.5; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; hero.psnT = 0; hero.slowT = 0; hero.pool = 0; hero.pr = .08; hero.iframe = 1.5; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
