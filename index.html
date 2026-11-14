@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114120520';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114121030';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4295,7 +4295,10 @@ function heroDeath() {
 function bossJudge(bm, dt) {
   bm.jt = (bm.jt || 0) + dt;
   // ярость: вместо мгновенной казни вожак свирепеет — урон растёт: +6%/с, и каждую секунду прирост ещё на 0.6%, герой гибнет от нарастающего натиска
-  if (bm.fury) { bm.furyT = (bm.furyT || 0) + dt; bm.fury *= Math.pow(1.06 + .006 * bm.furyT, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury; if (rnd() < dt * Math.min(20, 3 * bm.fury)) burst(bm.x + (rnd() - .5) * 12, bm.y - 6 - rnd() * 8, rnd() < .5 ? '#ff2222' : '#ff9a3c', 2, 30); }
+  if (bm.fury) { bm.furyT = (bm.furyT || 0) + dt; bm.fury *= Math.pow(1.06 + .006 * bm.furyT, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury;
+    // аура ярости: урон каждую секунду мимо уворота, блока, отражения и неуязвимости, на любом расстоянии (щит поглощает)
+    { let a = zoneDmg(S.zone) * bm.dm0 * 1.5 * (bm.fury - .5) * (1 - D.armor) * dt; if (hero.shield > 0) { const k = Math.min(hero.shield, a); hero.shield -= k; a -= k; } hero.pool = (hero.pool || 0) + a; hero.poolT = time; hero.hitT = time;
+      bm.auT = (bm.auT || 0) - dt; if (bm.auT <= 0) { bm.auT = 1; ring(bm.x, bm.y - 6, 22 + Math.min(30, bm.furyT), '#ff2222'); bolts.push({ x1: bm.x, y1: bm.y - 8, x2: hero.x, y2: hero.y - 5, l: .12, c: '#ff3322' }); } } if (rnd() < dt * Math.min(20, 3 * bm.fury)) burst(bm.x + (rnd() - .5) * 12, bm.y - 6 - rnd() * 8, rnd() < .5 ? '#ff2222' : '#ff9a3c', 2, 30); }
   if (bm.exec) { bm.exec -= dt; if (bm.exec <= 0) { bm.exec = 0; bm.jt = 0; bm.jhp = bm.hp; if (!bm.dead) { ring(hero.x, hero.y - 3, 22, '#ff2222'); shake = 14; sfx.boom(); hero.iframe = 0; const was = deathT; hurtHero(D.maxHP * 1e3 + hero.shield, true); if (deathT === was && hero.hp > 0) feed('Герой устоял перед казнью!', '#5cff8a'); } } return; }
   if (bm.jhp === undefined) bm.jhp = bm.hp;
   if (bm.jt >= 6) {
@@ -5203,7 +5206,7 @@ function update(dt) {
   { const M = D.maxHP || 1, press = (hero.pool || 0) > M * .05, healed = Math.max(0, hero.hp - (hero.lastHp ?? hero.hp));
     // pr — разрешённая ЧИСТАЯ потеря HP (доля в секунду): рана снимает отлеченное + pr; 4%/с, под натиском +15% каждые 5 с
     hero.pr = press ? Math.min(1, (hero.pr || .04) * Math.pow(1.15, dt / 5)) : Math.max(.04, (hero.pr || .04) * Math.pow(.9, dt));
-    if (hero.pool > 0 && deathT <= 0 && hero.iframe <= 0) { const d = Math.min(hero.pool, healed + M * hero.pr * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
+    if (hero.pool > 0 && deathT <= 0) { const d = Math.min(hero.pool, healed + M * hero.pr * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
     if (hero.pool > 0 && time - (hero.poolT || 0) > 2) hero.pool *= Math.pow(.8, dt);   // без новых ударов рана затягивается
     hero.lastHp = hero.hp; }
   if (hero.psnT > 0) { hero.psnT -= dt; hero.hp -= hero.psnD * dt * (1 - D.armor); if (hero.hp <= 0 && deathT <= 0) { hero.hp = 0; hurtHero(1, true); } if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
