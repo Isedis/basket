@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114115234';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114115330';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -5198,7 +5198,7 @@ function update(dt) {
   hero.slowT = (hero.slowT || 0) - dt;
   hero.rageT = (hero.rageT || 0) - dt; if (hero.rageT <= 0) hero.rage = 0;
   { const M = D.maxHP || 1, press = (hero.pool || 0) > M * .05;
-    hero.pr = press ? Math.min(4, (hero.pr || .08) * Math.pow(1.25, dt / 5)) : Math.max(.08, (hero.pr || .08) * Math.pow(.7, dt));
+    hero.pr = press ? Math.min(8, (hero.pr || .08) * Math.pow(hero.hp > M * .9 ? 1.6 : 1.03, dt / 5)) : Math.max(.08, (hero.pr || .08) * Math.pow(.85, dt));   // пока HP почти полное — натиск разгоняется, когда HP тает — растёт еле-еле
     if (hero.pool > 0 && deathT <= 0 && hero.iframe <= 0) { const d = Math.min(hero.pool, M * hero.pr * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
     if (hero.pool > 0 && time - (hero.poolT || 0) > 2) hero.pool *= Math.pow(.8, dt); }   // без новых ударов рана затягивается
   if (hero.psnT > 0) { hero.psnT -= dt; hero.hp -= hero.psnD * dt * (1 - D.armor); if (hero.hp <= 0 && deathT <= 0) { hero.hp = 0; hurtHero(1, true); } if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
