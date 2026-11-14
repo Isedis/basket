@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114003720';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114010551';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3163,6 +3163,19 @@ const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
 const bossAffN = z => z < 6 ? 0 : Math.min(Math.min(AFF.length, 1 + Math.floor(z / 8)), Math.floor(z / 12) + 1);
 // готовность к вожаку: успеет ли герой убить его, пока сам держится
+// быстрый старт после вознесений: проматываем зоны с 1-й, пока герой к ним готов (не телепорт — иначе петля смертей)
+function fastStart(target) {
+  let it = 0;
+  while (S.zone < target && it++ < 4000) {
+    if (it % 5 === 0) recalc();
+    if (S.zk >= zoneNeed()) { recalc(); if (readiness() >= 1.3) { S.zone++; S.zk = 0; continue; } break; }
+    const k = Math.max(1, zoneNeed() - S.zk), g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')), picks = Math.min(stats.length, 12);
+    for (let q = 0; q < picks; q++) { const st = pickStat(); st.v += g / picks * (.6 + rnd() * .8); tryEvolve(st, true); }
+    S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); checkUnlocks(true);
+  }
+  S.zk = 0; mobs = []; bossAlive = false;
+  if (S.zone > 1) feed('Звёздный старт: сразу ' + S.zone + '-я зона', '#7ad8ff');
+}
 function readiness() {
   const z = S.zone;
   const bh = zoneHP(z) * 1.15 * 1.1 * bossMult(z) * (1 + .6 * bossAffN(z));
@@ -5269,9 +5282,11 @@ function rebirth(fromAsc) {
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
-  { const sz = Math.min(Math.floor(10 * ascL('path') + 1e-6) + Math.min(20, 10 * (M.asc || 0)) + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); if (sz > 1) { S.zone = sz; S.zk = 0; } }
+  { const sz = Math.min(Math.floor(10 * ascL('path') + 1e-6) + Math.min(20, 10 * (M.asc || 0)) + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); S.fastTo = sz > 1 ? sz : 0; }
   if (M.autoTal) bestBuy(true);
-  calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc(); hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
+  calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc();
+  if (S.fastTo) { fastStart(S.fastTo); S.fastTo = 0; for (let e = 0; e < NE; e++) groupOf(e); recalc(); }
+  hero.hp = D.maxHP; hero.x = AW / 2; hero.y = AH / 2;
   buildGround(); save(); updateUI(); renderSouls();
   flashT = .5; slowT = .6; shake = 10;
   if (fromAsc) toast('ВОЗНЕСЕНИЕ #' + M.asc, 'стена теперь на 100-й зоне · дерево Вознесения во вкладке ДУШИ', 4000);
