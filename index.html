@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114120137';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114120520';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4294,8 +4294,8 @@ function heroDeath() {
 // бой с вожаком без таймера: если видно, что вожака не одолеть (за 40с не убьёшь), он казнит героя — без долгого ожидания
 function bossJudge(bm, dt) {
   bm.jt = (bm.jt || 0) + dt;
-  // ярость: вместо мгновенной казни вожак свирепеет — урон +8% в секунду, герой гибнет от нарастающего натиска
-  if (bm.fury) { bm.fury *= Math.pow(1.08, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury; if (rnd() < dt * Math.min(20, 3 * bm.fury)) burst(bm.x + (rnd() - .5) * 12, bm.y - 6 - rnd() * 8, rnd() < .5 ? '#ff2222' : '#ff9a3c', 2, 30); }
+  // ярость: вместо мгновенной казни вожак свирепеет — урон растёт: +6%/с, и каждую секунду прирост ещё на 0.6%, герой гибнет от нарастающего натиска
+  if (bm.fury) { bm.furyT = (bm.furyT || 0) + dt; bm.fury *= Math.pow(1.06 + .006 * bm.furyT, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury; if (rnd() < dt * Math.min(20, 3 * bm.fury)) burst(bm.x + (rnd() - .5) * 12, bm.y - 6 - rnd() * 8, rnd() < .5 ? '#ff2222' : '#ff9a3c', 2, 30); }
   if (bm.exec) { bm.exec -= dt; if (bm.exec <= 0) { bm.exec = 0; bm.jt = 0; bm.jhp = bm.hp; if (!bm.dead) { ring(hero.x, hero.y - 3, 22, '#ff2222'); shake = 14; sfx.boom(); hero.iframe = 0; const was = deathT; hurtHero(D.maxHP * 1e3 + hero.shield, true); if (deathT === was && hero.hp > 0) feed('Герой устоял перед казнью!', '#5cff8a'); } } return; }
   if (bm.jhp === undefined) bm.jhp = bm.hp;
   if (bm.jt >= 6) {
@@ -4311,7 +4311,7 @@ function hurtHero(dmg, unblock, cap, quiet) {
   if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
   if (!unblock && skyOn('sk_starshield') && hero.hp - dmg < D.maxHP * .3 && time > (hero.ssT || 0)) { hero.ssT = time + 20; hero.iframe = 3; ring(hero.x, hero.y - 4, 16, '#fff6a0'); burst(hero.x, hero.y - 6, '#fff6a0', 16, 40); fxLabel('Звёздный щит', hero.x, hero.y - 18, '#fff6a0'); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
-  if (!unblock) { if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); } hero.pool = (hero.pool || 0) + dmg; hero.poolT = time; hero.hurt = .1; ntHurt(); return dmg; }
+  if (!unblock) { hero.hitT = time; if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); } hero.pool = (hero.pool || 0) + dmg; hero.poolT = time; hero.hurt = .1; ntHurt(); return dmg; }
   if (hero.shield > 0 && !quiet) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; if (!quiet) { hero.hurt = .1; ntHurt(); }
   if (hero.hp <= 0) { hero.pool = 0;
@@ -5143,7 +5143,7 @@ function effMech(dt) {
       for (const m of mobs) if (!m.dead && Math.hypot(m.x - ox, m.y - 3 - oy) < 6) { hitMob(m, D.hit * .5, false, false, '#99eeff'); break; } } } }
   if (fs >= 4) { PT.sky -= dt; if (PT.sky <= 0) { PT.sky = 3 / (fs - 3); const m = randMob(); if (m) { fxLabel('Небесный гром', m.x, m.y - 14, '#ccf6ff'); bolts.push({ x1: m.x + (rnd() - .5) * 8, y1: -4, x2: m.x, y2: m.y - 3, l: .15, c: '#ccf6ff' }); hitMob(m, D.hit * 1.2, true, true, '#99eeff'); sfx.tap(); flashT = Math.max(flashT, .03); } } }
   if (ft >= 3) { PT.nova -= dt; if (PT.nova <= 0) { PT.nova = 4; ring(hero.x, hero.y - 3, 14, '#cc9966'); hitAround(hero.x, hero.y, 14, D.hit * D.thorns * (1 + .5 * (ft - 3)), '#cc9966'); } }
-  if (fr >= 2 && hero.hp >= D.maxHP * .999) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
+  if (fr >= 2 && hero.hp >= D.maxHP * .999 && time - (hero.hitT ?? -9) > 3) hero.shield = Math.min(D.maxHP * Math.min(1.5, .15 * (fr - 1)), hero.shield + D.maxHP * D.regen * dt * 2);
   // ядовитые облака
   for (const c of clouds) { c.t -= dt; for (const m of mobs) if (!m.dead && Math.hypot(m.x - c.x, m.y - c.y) < c.r) { if (c.acid && aw() && cls() === 'alch') m.slowT = Math.max(m.slowT || 0, .2); trackDmg(c.acid ? 'Кислота' : c.fire ? 'Огонь' : 'Яд', Math.min(c.dps * dt, Math.max(0, m.hp))); m.hp -= c.dps * dt * (m.guard ? guardMul() : 1); if (m.hp <= 0) { m.dead = true; killMob(m); } } }
   clouds = clouds.filter(c => c.t > 0);
