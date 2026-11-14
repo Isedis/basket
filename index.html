@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114083626';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114084925';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1046,7 +1046,353 @@ const CLS_SPR = {
   necro: { p: ["..2222..", ".222222.", ".253352.", ".255552.", ".244442.", ".222222.", ".2.22.2.", "..2..2.."], pal: { 2: '#1c2a22', 5: '#d8e8d8' } },
   reap:  { p: ["..2222..", ".222222.", ".223322.", ".222222.", "2224222.", ".222222.", "2.2..2.2", "........"], pal: { 2: '#1a1020', 3: '#ff44ff' } },
 };
-const heroPat = () => framePat(evoPat(cls(), shownForm(cls())), heroFrame);
+/* ---------- герои 16×16: тело (12 строк) + ноги (генерируются) + оружие (рисуется линией под любым углом) ---------- */
+// 1 броня · 9 блик брони · 2 тёмная ткань · 4 цвет класса · 8 тень цвета класса · 5 кожа · 3 глаза · 6 золото · 7 белый · 0 контур (авто)
+const H16 = {
+  war: { b: [
+    "......8844......",
+    ".....844........",
+    ".....1999911....",
+    "....119999911...",
+    "....1132132.1...",
+    "....111111111...",
+    "...99.61116.99..",
+    "..9911144411199.",
+    "..1911484841191.",
+    "..55.1144411.5..",
+    ".....6666666....",
+    ".....1144411....",
+  ], legs: ['2', '1'], w: { t: 'sword', h: 2, b: 7 } },
+  bers: { b: [
+    "....4......4....",
+    "....44.66.44....",
+    ".....555555.....",
+    "....55555555....",
+    "....53355335....",
+    "....55588555....",
+    "...5555555555...",
+    "..555588885555..",
+    "..55.558855.55..",
+    "..55.666666.55..",
+    ".....844448.....",
+    ".....848848.....",
+  ], legs: ['8', '2'], w: { t: 'axe', h: 9, b: 0 } },
+  pal: { b: [
+    "......6666......",
+    ".....199991.....",
+    "....19999991....",
+    "....11555511....",
+    "....11353511....",
+    "....11555511....",
+    "...661111116....",
+    "..9911777711196.",
+    "..1911764671191.",
+    "..11.1766671.1..",
+    ".....1677761....",
+    ".....6611166....",
+  ], legs: ['1', '6'], w: { t: 'hammer', h: 7, b: 0 } },
+  guard: { b: [
+    ".....999999.....",
+    "....19999991....",
+    "....11111111....",
+    "....13311331....",
+    "....11111111....",
+    "...9911221199...",
+    "..991111111199..",
+    "..111144441144..",
+    "..119144411464..",
+    "..11.1444114664.",
+    ".....1222114664.",
+    ".....11..11.44..",
+  ], legs: ['2', '1'], w: { t: 'mace', h: 4, b: 0 } },
+  mage: { b: [
+    "........4.......",
+    ".......448......",
+    "......44448.....",
+    "....444444488...",
+    "...8888888888...",
+    ".....553355.....",
+    ".....555555.....",
+    "....44477444....",
+    "...444474448....",
+    "..5444474448.5..",
+    "...444474448....",
+    "...444474448....",
+  ], legs: ['robe', '4'], w: { t: 'staff', h: 11, b: 0, head: 'orb' } },
+  sham: { b: [
+    "...4..4..4......",
+    "...44.4.44......",
+    "....777777......",
+    "....555555......",
+    "....535535......",
+    "....555555......",
+    "...5266662......",
+    "..55288882255...",
+    "..5.284482..5...",
+    "..5.288882..5...",
+    "....266662......",
+    "....244442......",
+  ], legs: ['2', '5'], w: { t: 'staff', h: 10, b: 0, head: 'fork' } },
+  arch: { b: [
+    "......4444......",
+    ".....444448.....",
+    "....44444488....",
+    "....45555548....",
+    "....45355358....",
+    "....8555555.....",
+    ".....885588.....",
+    "...2222222222...",
+    "..522244422225..",
+    "..5.2244422..5..",
+    "....6666666.....",
+    ".....22.22......",
+  ], legs: ['2', '1'], w: { t: 'bow' } },
+  assa: { b: [
+    "......2222......",
+    ".....222222.....",
+    "....22222222....",
+    "....22233222....",
+    "....22888822....",
+    "....22888822....",
+    "....22222222....",
+    "...2222442222...",
+    "..522244442225..",
+    "..9.22244222.5..",
+    "..9.88888888....",
+    "....22222222....",
+  ], legs: ['2', '2'], w: { t: 'dagger', h: 1, b: 4 } },
+  gamb: { b: [
+    "................",
+    ".....222222.....",
+    ".....222222.....",
+    "...2224444222...",
+    ".....555555.....",
+    ".....535535.....",
+    ".....555755.....",
+    "....22477422....",
+    "...2224774222...",
+    "..5.24477442.5..",
+    "....22444422....",
+    "....22222222....",
+  ], legs: ['2', '1'], w: { t: 'rapier', h: 1, b: 8 } },
+  alch: { b: [
+    "......2222......",
+    ".....222222.....",
+    "....22777722....",
+    "....27342437....",
+    "....55555555....",
+    ".....555555.....",
+    ".....555555.....",
+    "....99111199....",
+    "...4114444114...",
+    "..5.1144441..5..",
+    "....11444411....",
+    "....11666611....",
+  ], legs: ['2', '1'], w: { t: 'flask' } },
+  priest: { b: [
+    "................",
+    "......6666......",
+    ".....666666.....",
+    ".....555555.....",
+    ".....535535.....",
+    ".....555555.....",
+    "....11155111....",
+    "...1111661111...",
+    "..511166661115..",
+    "..5.1111611.5...",
+    "....1111611.....",
+    "....1111611.....",
+  ], legs: ['robe', '1'], w: { t: 'staff', h: 11, b: 0, head: 'cross' } },
+  monk: { b: [
+    "................",
+    "......5555......",
+    ".....555555.....",
+    ".....555555.....",
+    ".....535535.....",
+    ".....555555.....",
+    "......5555......",
+    "...5544444455...",
+    "..55.444444.55..",
+    "..55.444444.55..",
+    "..77.222222.77..",
+    ".....844448.....",
+  ], legs: ['4', '5'], w: { t: 'fist' } },
+  chrono: { b: [
+    ".....666666.....",
+    "....61111116....",
+    "....11777711....",
+    "....11555511....",
+    "....11353511....",
+    "....11555511....",
+    "....44166144....",
+    "...4444664444...",
+    "..54447667445...",
+    "..5.4447664.5...",
+    "....4446664.....",
+    "....44444444....",
+  ], legs: ['robe', '4'], w: { t: 'staff', h: 10, b: 0, head: 'clock' } },
+  rune: { b: [
+    "......2222......",
+    ".....224422.....",
+    "....22222222....",
+    "....22555522....",
+    "....22353522....",
+    "....22555522....",
+    "....22244222....",
+    "...4222442224...",
+    "..542224422245..",
+    "..5.4222224.5...",
+    "....22444422....",
+    "....22222222....",
+  ], legs: ['2', '1'], w: { t: 'runeblade', h: 2, b: 6 } },
+  necro: { b: [
+    "......2222......",
+    ".....222222.....",
+    "....22222222....",
+    "....22555522....",
+    "....22343422....",
+    "....22555522....",
+    "...2222552222...",
+    "..222247742222..",
+    "..522244442225..",
+    "..5.22477422.5..",
+    "....22244222....",
+    "....22244222....",
+  ], legs: ['robe', '2'], w: { t: 'staff', h: 11, b: 0, head: 'skull' } },
+  reap: { b: [
+    "......2222......",
+    ".....222222.....",
+    "....22222222....",
+    "....22888822....",
+    "....22833822....",
+    "....22888822....",
+    "...2222222222...",
+    "..222222222222..",
+    "..7.22244222.7..",
+    "..7.22222222.7..",
+    "....22222222....",
+    "....22222222....",
+  ], legs: ['robe', '2'], w: { t: 'scythe', h: 13, b: 0 } },
+};
+// ноги: 4 строки, три кадра (стойка, шаг, проход)
+function legRows(k, f) {
+  const [a, b] = H16[k].legs, R = s => s.replace(/p/g, a).replace(/s/g, b);
+  if (a === 'robe') { const c = b; return ({
+    idle: ["....cccccccc....", "...cccccccccc...", "...8cccccccc8...", "....22....22...."],
+    walk: ["....cccccccc....", "...ccccccccccc..", "...8ccccccccc8..", "...22......22..."],
+    walk2: ["....cccccccc....", "..ccccccccccc...", "..8ccccccccc8...", ".....22..22....."] }[f] || ["....cccccccc....", "...cccccccccc...", "...8cccccccc8...", "....22....22...."]).map(s => s.replace(/c/g, c)); }
+  return ({
+    idle: [".....pp..pp.....", ".....pp..pp.....", ".....pp..pp.....", "....sss..sss...."],
+    walk: [".....pp..pp.....", "....pp....pp....", "...pp......pp...", "..sss......sss.."],
+    walk2: [".....pp.pp......", ".....pp.pp......", "......ppp.......", ".....ssss......."] }[f] || [".....pp..pp.....", ".....pp..pp.....", ".....pp..pp.....", "....sss..sss...."]).map(R);
+}
+const WREST = { sword: 40, axe: 30, hammer: 25, mace: 35, staff: 8, dagger: 75, rapier: 65, runeblade: 40, scythe: 12, bow: 0, flask: 0, fist: 0 };
+// оружие линией: угол 0 — вверх, + — вперёд (по часовой)
+function plotWeapon(g, k, px, py, deg, atk) {
+  const w = H16[k].w, H = g.length, Wd = g[0].length, th = deg * Math.PI / 180, dx = Math.sin(th), dy = -Math.cos(th), nx = Math.cos(th), ny = Math.sin(th);
+  const back = deg < -20 && deg > -200, sp = (x, y, ch) => { x = Math.round(x); y = Math.round(y); if (y >= 0 && y < H && x >= 0 && x < Wd && (!back || g[y][x] === '.')) g[y][x] = ch; };
+  const at = (t, o, ch) => sp(px + dx * t + nx * o, py + dy * t + ny * o, ch);
+  const line = (t0, t1, ch, o = 0) => { for (let t = t0; t <= t1; t += .5) at(t, o, ch); };
+  switch (w.t) {
+    case 'sword': at(-1, 0, '6'); line(0, w.h - 1, '2'); for (let o = -2; o <= 2; o++) at(w.h, o, '6'); line(w.h + 1, w.h + w.b, '9'); line(w.h + 1, w.h + w.b - 1, '7', .7); at(w.h + w.b + 1, 0, '7'); break;
+    case 'axe': line(-1, w.h, '2'); for (let t = w.h - 3; t <= w.h; t++) for (let o = 1; o <= 3; o++) at(t, o, o === 3 ? '7' : '9'); at(w.h - 4, 2, '9'); at(w.h + 1, 2, '9'); at(w.h - 1, -1, '1'); at(w.h - 2, -1, '1'); at(w.h + 1, 0, '6'); break;
+    case 'hammer': line(-1, w.h, '2'); for (let t = w.h; t <= w.h + 2; t++) for (let o = -2; o <= 2; o++) at(t, o, Math.abs(o) === 2 ? '6' : t === w.h + 1 ? '7' : '6'); break;
+    case 'mace': line(0, w.h, '2'); for (let t = w.h; t <= w.h + 2; t++) for (let o = -1; o <= 1; o++) at(t, o, o === 0 && t === w.h + 1 ? '9' : '1'); at(w.h + 1, -2, '7'); at(w.h + 1, 2, '7'); at(w.h + 3, 0, '7'); break;
+    case 'staff': line(-3, w.h, '2'); { const e = w.h, hd = w.head;
+      if (hd === 'orb') { for (let t = e; t <= e + 2; t++) for (let o = -1; o <= 1; o++) at(t, o, '4'); at(e + 1, 0, '7'); at(e + 2, -1, '7'); at(e, -2, '6'); at(e, 2, '6'); }
+      if (hd === 'fork') { at(e, -1, '6'); at(e, 1, '6'); at(e + 1, -2, '6'); at(e + 1, 2, '6'); at(e + 2, -2, '7'); at(e + 2, 2, '7'); at(e + 1, 0, '4'); at(e + 2, 0, '7'); }
+      if (hd === 'cross') { line(e, e + 3, '6'); at(e + 2, -1, '6'); at(e + 2, 1, '6'); at(e + 2, -2, '7'); at(e + 2, 2, '7'); at(e + 4, 0, '7'); }
+      if (hd === 'clock') { for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; at(e + 2 + Math.cos(a) * 2.2, Math.sin(a) * 2.2, '6'); } at(e + 2, 0, '7'); at(e + 3, 0, '4'); }
+      if (hd === 'skull') { for (let t = e; t <= e + 2; t++) for (let o = -1; o <= 1; o++) at(t, o, '7'); at(e + 1, -1, '3'); at(e + 1, 1, '3'); at(e, 0, '9'); at(e + 3, 0, '7'); } } break;
+    case 'dagger': at(0, 0, '2'); at(1, -1, '6'); at(1, 1, '6'); line(1.5, 1 + w.b, '9'); line(2, w.b, '7', .7); break;
+    case 'rapier': at(-1, 0, '6'); at(0, 0, '2'); at(1, -1, '6'); at(1, 1, '6'); at(1, 0, '6'); line(2, 1 + w.b, '7'); break;
+    case 'runeblade': line(0, w.h - 1, '2'); for (let o = -2; o <= 2; o++) at(w.h, o, '4'); line(w.h + 1, w.h + w.b, '4'); line(w.h + 1, w.h + w.b - 1, '7', .7); at(w.h + 3, 0, '7'); at(w.h + w.b + 1, 0, '7'); break;
+    case 'scythe': line(-3, w.h, '2'); for (let i = 0; i <= 7; i++) { const t = w.h + 1 - i * i / 10; at(t, -i, '9'); if (i > 0 && i < 7) at(t - 1, -i, '7'); } at(w.h + 1, 0, '6'); break;
+    case 'bow': { const pull = atk ? 2 : 0; for (let i = -5; i <= 5; i++) { const c = Math.round(2 - (i * i) / 12.5 * 2); sp(px + 1 + c, py + i, Math.abs(i) === 5 ? '6' : '2'); }
+      for (let i = -4; i <= 4; i++) sp(px + 1 - pull * (1 - Math.abs(i) / 5), py + i, '7');
+      if (atk) for (let i = -1; i <= 6; i++) sp(px - 1 + i, py, i === 6 ? '7' : '9'); } break;
+    case 'flask': { const fx = px + dx * (atk ? 5 : 1), fy = py + dy * (atk ? 5 : 1) - 2; sp(fx, fy - 2, '7'); for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) sp(fx + x, fy + y, y === -1 && x === 0 ? '7' : '4'); sp(fx - 1, fy - 1, '7'); } break;
+    case 'fist': if (atk) { for (let i = 1; i <= 3; i++) sp(px + i, py - 1, '5'); sp(px + 4, py - 1, '7'); sp(px + 4, py - 2, '7'); sp(px + 4, py, '7'); } break;
+  }
+}
+// украшения обликов (координаты относительно тела 16×16)
+const WING = ["....79", "...799", "..7994", ".79944", "799444", "79944.", "7944..", "794...", "74....", "7....."];
+function deco16(g, kind, L, T, big) {
+  const H = g.length, Wd = g[0].length;
+  const set = (r, c, ch, force) => { r += T; c += L; if (r >= 0 && r < H && c >= 0 && c < Wd && (force || g[r][c] === '.')) g[r][c] = ch; };
+  switch (kind) {
+    case 'cape': for (let r = 6; r < 16; r++) { const w = 1 + Math.floor((r - 6) / (big ? 2.5 : 3.5)); for (let i = 0; i < w; i++) set(r, 3 - i, i === w - 1 ? '8' : '4'); } break;
+    case 'pads': for (const c of [2, 3, 12, 13]) { set(6, c, '6', 1); set(5, c, c === 3 || c === 12 ? '7' : '6', 1); } set(5, 1, '6'); set(5, 14, '6'); if (big) { set(4, 2, '6'); set(4, 13, '6'); set(6, 1, '6'); set(6, 14, '6'); } break;
+    case 'crown': for (let c = 5; c <= 10; c++) { set(0, c, '6', 1); set(-1, c, c % 2 ? '6' : '4'); } set(-2, 5, '6'); set(-2, 7, '7'); set(-2, 8, '6'); set(-2, 10, '6'); set(-3, 7, '7'); break;
+    case 'horns': for (const [r, c] of [[2, 3], [1, 2], [0, 2], [-1, 1], [-2, 1]]) { set(r, c, '7'); set(r, 15 - c, '7'); } if (big) { set(-3, 2, '9'); set(-3, 13, '9'); } break;
+    case 'halo': { const y = big ? -4 : -3; for (let c = 5; c <= 10; c++) set(y, c, c === 7 ? '7' : '6'); set(y + 1, 4, '6'); set(y + 1, 11, '6'); set(y - 1, 7, '7'); } break;
+    case 'wings': WING.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '.') return; const r = 3 + j - (big ? 1 : 0), dc = 5 - i + (big ? 0 : -1); set(r, 1 - dc, ch); set(r, 14 + dc, ch); })); break;
+    case 'flame': for (let c = 4; c <= 11; c++) { const h = 1 + ((c * 7) % 3); for (let i = 1; i <= h; i++) set(-i + 1, c, i === h ? '7' : i > 1 ? '6' : '4'); } break;
+    case 'hat': for (let c = 2; c <= 13; c++) set(2, c, '4', 1); for (let r = -4; r <= 1; r++) { const hw = Math.max(0, Math.round((r + 4) * .7)); for (let c = 7 - hw; c <= 8 + hw; c++) set(r, c, r === 0 ? '6' : '4', 1); } set(-5, 9, '4'); set(-6, 10, '6'); break;
+    case 'mitre': for (let r = -3; r <= 1; r++) for (let c = 5 + Math.max(0, -r - 1); c <= 10 - Math.max(0, -r - 1); c++) set(r, c, c === 7 || c === 8 || r === 0 ? '6' : '7', 1); break;
+    case 'crest': for (let r = -3; r <= 1; r++) { set(r, 7, '4'); set(r, 8, '8'); } for (let c = 3; c <= 6; c++) set(-3 + Math.floor((7 - c) / 2), c, '4'); set(-3, 9, '6'); break;
+    case 'feathers': for (const [c, h, ch] of [[4, 3, '4'], [6, 4, '7'], [9, 4, '6'], [11, 3, '4']]) for (let i = 0; i < h; i++) set(-i, c, i === h - 1 ? '7' : ch); break;
+    case 'orbs': for (const [r, c, ch] of [[4, -1, '7'], [10, 16, '7'], ...(big ? [[1, 16, '6'], [13, -1, '6']] : [])]) { set(r, c, ch); set(r + 1, c, '4'); set(r, c + 1, '4'); } break;
+    case 'star': for (const [r, c, ch] of [[-3, 13, '7'], [-4, 13, '6'], [-2, 13, '6'], [-3, 12, '6'], [-3, 14, '6'], [-5, 13, '7']]) set(r, c, ch); break;
+  }
+}
+// облик: 1 — 16, 2 — 20, 3 — 24, 4 — 28 пикселей; mode: 'still' (с оружием в покое), иначе кадр боя
+const PAD16 = [0, 2, 4, 6], TOP16 = [0, 4, 8, 12];
+const h16Cache = new Map();
+function pat16(k, form, frame = 'idle', ang = null, atk = false, M = 0) {
+  const key = k + form + frame + ang + atk + M; let o = h16Cache.get(key); if (o) return o;
+  const fi = Math.max(0, Math.min(3, form - 1)), L = PAD16[fi] + M, T = TOP16[fi] + M, Wd = 16 + 2 * L, Hh = 16 + T;
+  const g = Array.from({ length: Hh }, () => Array(Wd).fill('.'));
+  let body = H16[k].b.slice();
+  if (frame === 'breath') body = ['................', ...body.slice(0, 11)];
+  if (frame === 'atk') body = body.map((r, i) => i < 10 ? '.' + r.slice(0, 15) : r);
+  if (frame === 'hurt') body = body.map((r, i) => (i < 10 ? r.slice(1) + '.' : r).replace(/3/g, '7'));
+  if (frame === 'walk' || frame === 'walk2') body = [...body];
+  const rows = [...body, ...legRows(k, frame === 'walk' || frame === 'walk2' ? frame : 'idle')];
+  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.') g[T + j][L + i] = ch; }));
+  if (form >= 2) { const r = g[T + 10]; for (let c = L + 4; c <= L + 11; c++) if (r[c] !== '.' && r[c] !== '5') r[c] = '6'; }
+  if (form >= 4) for (const r of g) for (let c = 0; c < Wd; c++) if (r[c] === '3') r[c] = '7';
+  const ev = EVO[k]; if (form >= 2) for (const d of (form >= 4 ? [...new Set([...ev[2], 'wings', 'halo', 'orbs', 'pads'])] : ev[form - 1])) deco16(g, d, L, T, form >= 3);
+  const sh = frame === 'atk' ? 1 : frame === 'hurt' ? -1 : 0, by = frame === 'breath' ? 1 : 0;
+  plotWeapon(g, k, L + 13 + sh, T + 9 + by, ang == null ? WREST[H16[k].w.t] : ang, atk);
+  // контур
+  const out = g.map(r => r.slice());
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < Wd; x++) if (g[y][x] === '.' && ((g[y - 1] && g[y - 1][x] !== '.') || (g[y + 1] && g[y + 1][x] !== '.') || (g[y][x - 1] && g[y][x - 1] !== '.') || (g[y][x + 1] && g[y][x + 1] !== '.'))) out[y][x] = '0';
+  o = out.map(r => r.join('')); if (h16Cache.size > 800) h16Cache.clear(); h16Cache.set(key, o); return o;
+}
+// обрезка пустых полей (симметрично по ширине, ноги остаются внизу)
+const cropCache = new Map();
+function crop16(P) {
+  let o = cropCache.get(P); if (o) return o;
+  const W = P[0].length; let t = 0; while (t < P.length - 1 && !/[^.]/.test(P[t])) t++;
+  let l = 0; while (l < W / 2 && P.every(r => r[l] === '.' && r[W - 1 - l] === '.')) l++;
+  o = P.slice(t).map(r => r.slice(l, W - l)); if (o[0].length % 2) o = o.map(r => r + '.'); if (o.length % 2) o = ['.'.repeat(o[0].length), ...o];
+  cropCache.set(P, o); return o;
+}
+// уменьшенная копия (для эффектов на холсте мира: силуэты, обводки, следы)
+const HSC = .75, halfCache = new Map();   // пиксель героя = 3/4 пикселя мира
+function half16(P) {
+  let o = halfCache.get(P); if (o) return o;
+  const f = HSC, H = Math.round(P.length * f), W = Math.round(P[0].length * f) & ~1; o = [];
+  for (let y = 0; y < H; y++) { let s = ''; for (let x = 0; x < W; x++) { let ch = '.'; for (let yy = Math.floor(y / f); yy < Math.min(P.length, Math.ceil((y + 1) / f)) && ch === '.'; yy++) for (let xx = Math.floor(x / f); xx < Math.min(P[0].length, Math.ceil((x + 1) / f)); xx++) { const c = P[yy][xx]; if (c !== '.' && c !== '0') { ch = c; break; } } s += ch; } o.push(s); }
+  if (halfCache.size > 400) halfCache.clear(); halfCache.set(P, o); return o;
+}
+
+// текущий кадр боя в высоком разрешении: тело + оружие под углом замаха
+let heroKey = '';
+function heroHi() {
+  const k = cls(), f = shownForm(k), w = H16[k].w.t; let ang = null, atk = false;
+  if (hero.spin > 0) { ang = (Math.floor(time * 24) * 45) % 360; atk = true; }
+  else if (hero.sweep > 0) { ang = -120 + (1 - hero.sweep / .5) * 280; atk = true; }
+  else if (hero.cast > 0 || hero.fists > 0) { ang = w === 'staff' ? 75 : 60; atk = true; }
+  else if (hero.swing > 0) { const p = 1 - hero.swing / (hero.swDur || .13), r = WREST[w]; ang = p < .3 ? r + (-110 - r) * p / .3 : -110 + 235 * Math.min(1, (p - .3) / .45); atk = true; }
+  else if (heroFrame === 'breath') ang = WREST[w] + 5;
+  if (ang != null) ang = Math.round(ang / 15) * 15;
+  heroKey = k + f + heroFrame + ang + atk;
+  return pat16(k, f, heroFrame, ang, atk, 10);
+}
+const heroPat = () => half16(heroHi());
+const hTop = () => Math.round(TOP16[Math.max(0, Math.min(3, shownForm(cls()) - 1))] * HSC);
 /* ---------- кадры анимации героя ---------- */
 // из одного спрайта класса строим кадры: шаг (ноги врозь), замах (корпус вперёд), удар по герою (откат), вдох
 let heroFrame = 'idle';
@@ -1067,7 +1413,7 @@ function pickHeroFrame() {
   hero.walkT = mv > .05 ? .15 : (hero.walkT || 0) - .033;
   if (hero.swing > 0 || hero.cast > 0 || hero.spin > 0 || hero.fists > 0 || hero.sweep > 0) return 'atk';
   if (hero.hurt > 0) return 'hurt';
-  if (hero.walkT > 0) return Math.floor(time * 10) % 2 ? 'walk' : 'idle';
+  if (hero.walkT > 0) return ['walk', 'idle', 'walk2', 'idle'][Math.floor(time * 10) % 4];
   return Math.floor(time * 1.6) % 2 ? 'breath' : 'idle';
 }
 
@@ -1135,10 +1481,10 @@ function runCard(cv, mode, getK, alive) {
     for (const p of ps) { p.y += p.vy / 60; p.l -= 1 / 60; x.globalAlpha = Math.max(0, p.l); x.fillStyle = Math.random() < .5 ? C.c : '#ffffff'; x.fillRect(Math.round(p.x), Math.round(p.y), 3, 3); }
     for (let i = ps.length - 1; i >= 0; i--) if (ps[i].l <= 0) ps.splice(i, 1);
     x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
-    const P = framePat(evoPat(k, formOf(k)), mode === 'dead' ? 'hurt' : Math.floor(t * 1.6) % 2 ? 'breath' : 'idle');
+    const P = pat16(k, formOf(k), mode === 'dead' ? 'hurt' : Math.floor(t * 1.6) % 2 ? 'breath' : 'idle');
     const cols = mode === 'dead' ? { 1: '#ff3355', 2: '#aa2233', 3: '#ffffff', 4: '#ff5577', 5: '#ff8899', 6: '#ff5577', 7: '#ff8899' } : heroCols(k, 2, '#ffe08a');
     const spr = sprite(P, cols, 'card' + k + mode + P.join(''));
-    const S2 = Math.floor(64 / P.length), off = mode === 'dead' ? Math.min(12, t * 8) : 0;
+    const S2 = Math.max(2, Math.floor(64 / P.length)), off = mode === 'dead' ? Math.min(12, t * 8) : 0;
     x.fillStyle = '#000'; x.globalAlpha *= .4; x.beginPath(); x.ellipse(cx, cy + 32, 22, 5, 0, 0, 6.283); x.fill(); x.globalAlpha = mode === 'dead' ? Math.max(.15, 1 - t * .6) : 1;
     x.drawImage(spr, cx - P[0].length * S2 / 2, cy + 4 * 8 - P.length * S2 + off, P[0].length * S2, P.length * S2);
     x.globalAlpha = 1;
@@ -1263,6 +1609,7 @@ const trophyMul = () => Math.pow(skyOn('sk_titan') ? 20 : 10, Object.keys(S.meta
 const sprCache = new Map();
 function sprite(pat, cols, key) {
   let c = sprCache.get(key); if (c) return c;
+  if (cols[1] && !cols[0]) { const flat = cols[1] === cols[2] && cols[2] === cols[4]; cols = { 0: flat ? cols[1] : '#0c0814', 8: cols[4] && (flat ? cols[4] : shade(cols[4], -.4)), 9: cols[1] && (flat ? cols[1] : shade(cols[1], .4)), ...cols }; }
   const PW = pat[0].length, PH = pat.length;
   c = document.createElement('canvas'); c.width = PW; c.height = PH; c.ox = (PW - 8) / 2; c.oy = PH - 8;
   const x = c.getContext('2d');
@@ -1283,17 +1630,32 @@ const ARMOR = ['#8a8f99', '#b07a3c', '#c9ced6', '#f2c94c', '#4fd6e8', '#a26bff',
 const RANKS = ['Новобранец', 'Драчун', 'Боец', 'Воин', 'Ветеран', 'Рыцарь', 'Чемпион', 'Герой', 'Легенда', 'Полубог', 'Бог войны', 'Титан', 'Пожиратель миров', 'Абсолют'];
 function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
 function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
-function heroSprite(r, flash, ex) {
-  const P = heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;
-  const fm = shownForm(k);
-  if (flash) return sprite(P, { 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa', 6: '#ff8888', 7: '#ffffff' }, 'hf' + k + fm + heroFrame);
-  if (hero.tintT > 0) return sprite(P, { 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3), 6: hero.tint, 7: '#ffffff' }, 'ht' + k + fm + heroFrame + hero.tint);
+function heroSprite(r, flash, ex, hi) {
+  const P = hi ? heroHi() : heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;
+  const fm = heroKey + (hi ? 'H' : '');
+  if (flash) return sprite(P, { 0: '#2a0008', 1: '#ff4444', 2: '#aa2222', 3: '#fff', 4: '#ff8888', 5: '#ffaaaa', 6: '#ff8888', 7: '#ffffff', 8: '#cc3333', 9: '#ff9999' }, 'hf' + fm);
+  if (hero.tintT > 0) return sprite(P, { 0: '#0c0814', 1: hero.tint, 2: shade(hero.tint, -.4), 3: '#fff', 4: hero.tint, 5: shade(hero.tint, .3), 6: hero.tint, 7: '#ffffff', 8: shade(hero.tint, -.25), 9: shade(hero.tint, .4) }, 'ht' + fm + hero.tint);
   let a = ARMOR[r % ARMOR.length], v = r >= 6 ? '#77ffff' : '#ffe08a';
   if (D.top && D.R[EFF[D.top[0]].k] >= 3) { a = shade(EFF[D.top[0]].c, -.1); v = EFF[D.top[2]].c; }
   const c1 = cp[1] || (ex ? shade(a, -.35) : a);
-  return sprite(P, { 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: ex ? shade(cc, -.35) : cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' }, 'h' + k + fm + heroFrame + c1 + v + (ex ? 'e' : ''));
+  const c4 = ex ? shade(cc, -.35) : cc;
+  return sprite(P, { 0: '#0c0814', 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: c4, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff', 8: shade(c4, -.4), 9: shade(c1, .4) }, 'h' + fm + c1 + v + (ex ? 'e' : ''));
 }
-const silhouette = c => sprite(heroPat(), { 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c }, 'hs' + cls() + shownForm(cls()) + heroFrame + c);
+const silhouette = c => sprite(heroPat(), { 0: c, 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c, 8: c, 9: c }, 'hs' + heroKey + c);
+
+// герой в двойном разрешении поверх мира + след взмаха
+function drawHeroHi(d, k, sx, sy) {
+  const spr = heroSprite(d.rk, d.flash, d.ex, true), PW = spr.width, PH = spr.height, hk = Math.max(1, Math.round(k * HSC));
+  const cx = Math.round((d.x - camX + sx) * k), X = cx - Math.round(PW * hk / 2), Y = Math.round((d.y - camY + sy) * k) - PH * hk;
+  fctx.save(); fctx.imageSmoothingEnabled = false; if (d.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); }
+  fctx.drawImage(spr, X, Y, PW * hk, PH * hk);
+  const w = H16[cls()].w, p = hero.swing > 0 ? 1 - hero.swing / (hero.swDur || .13) : -1;
+  if (p > .3 && w.b !== undefined && w.t !== 'bow' && w.t !== 'flask' && w.t !== 'fist') {
+    const len = (w.h || 0) + (w.b || 0) + 1, px0 = cx + 5.5 * hk, py0 = Y + (PH - 6.5) * hk, a1 = -110, a2 = -110 + 235 * Math.min(1, (p - .3) / .45);
+    fctx.fillStyle = '#ffffff'; for (let a = a1; a < a2 - 10; a += 7) { const th = a * Math.PI / 180, rr = len * hk; fctx.globalAlpha = .55 * (a - a1) / (a2 - a1 + 1);
+      fctx.fillRect(Math.round(px0 + Math.sin(th) * rr), Math.round(py0 - Math.cos(th) * rr), Math.ceil(hk), Math.ceil(hk)); fctx.fillRect(Math.round(px0 + Math.sin(th) * (rr - hk)), Math.round(py0 - Math.cos(th) * (rr - hk)), Math.ceil(hk), Math.ceil(hk)); } }
+  fctx.restore(); fctx.globalAlpha = 1;
+}
 
 /* ---------- состояние ---------- */
 const SAVE_KEY = 'inf_brawl_save_v1';
@@ -1920,7 +2282,7 @@ const sprURL = {};
 function clsSprURL(k, known) {
   const key = k + known + formOf(k); if (sprURL[key]) return sprURL[key];
   const C = CLASSES[k], P = CLS_SPR[k], EP = evoPat(k, formOf(k)), cv2 = document.createElement('canvas'); cv2.width = EP[0].length; cv2.height = EP.length; const x = cv2.getContext('2d');
-  const cols = known ? heroCols(k, 2, '#ffe08a') : { 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450', 6: '#3a3450', 7: '#3a3450' };
+  const cols = known ? heroCols(k, 2, '#ffe08a') : { 0: '#16122a', 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450', 6: '#3a3450', 7: '#3a3450', 8: '#2a2440', 9: '#3a3450' };
   EP.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
   return sprURL[key] = cv2.toDataURL();
 }
@@ -2010,6 +2372,7 @@ function decorate(g, kind, big) {
 }
 const evoCache = {};
 function evoPat(k, form) {
+  if (H16[k]) return crop16(pat16(k, Math.max(1, form), 'idle', null, false, 8));
   const key = k + form; if (evoCache[key]) return evoCache[key];
   const P = CLS_SPR[k].p; if (form <= 1) return evoCache[key] = P;
   const big = form >= 3, W = form >= 4 ? 14 : big ? 12 : 10, H = W, L = (W - 8) / 2, T = H - 8;
@@ -2318,7 +2681,7 @@ function drawEvoBanner(k) {
 // палитра героя для крупных картинок
 function heroCols(k, rk, v) {
   const cp = CLS_SPR[k].pal || {}, a = ARMOR[rk % ARMOR.length], cc = CLASSES[k].c;
-  return { 1: cp[1] || a, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff' };
+  const c1 = cp[1] || a; return { 0: '#0c0814', 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: cc, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff', 8: shade(cc, -.4), 9: shade(c1, .4) };
 }
 
 /* ---------- экран пути класса: огромный пиксельный символ класса + дерево узлов поверх ---------- */
@@ -2475,7 +2838,7 @@ function drawPath() {
       const f = (T * .6 + a.x * .013 + a.y * .007) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
     else { c.strokeStyle = op ? shade(C.c, -.4) : '#2a2440'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.setLineDash([]); } }
   // полосы ступеней
-  const plat = (y, f, got, cur, awk) => { const pat = evoPat(k, f), sc = 4, x = W / 2, bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0;
+  const plat = (y, f, got, cur, awk) => { const pat = evoPat(k, f), sc = 2, x = W / 2, bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0;
     if (got) { const gr = c.createRadialGradient(x, y - 24, 4, x, y - 24, 70); gr.addColorStop(0, (awk ? '#ffffff' : C.c) + '55'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(x - 70, y - 94, 140, 140); }
     c.fillStyle = got ? shade(C.c, -.45) : '#16122a'; c.beginPath(); c.ellipse(x, y, 34, 7, 0, 0, 6.283); c.fill(); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.stroke();
     const spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got);
@@ -4141,10 +4504,11 @@ function drawCutIn(k) {
   fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh);
   fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
   fctx.globalAlpha = a * .25; for (let i = 0; i < 14; i++) { const lx = ((i * 97 + t * 900) % (w * 2)) - w; fctx.fillRect(lx, -bh / 2, 2 * DPR, bh); } fctx.globalAlpha = a;   // полосы скорости
-  const CP = framePat(evoPat(k, formOf(k)), 'atk'), sc = Math.floor(bh / (CP.length + 1)), spr = sprite(CP, heroCols(k, 2, '#ffffff'), 'cut' + k + CP.length);
-  fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR;
-  fctx.globalAlpha = a * .5; fctx.drawImage(silhouette(c), px - sc, -sc * 4.5, sc * 8, sc * 8); fctx.globalAlpha = a;
-  fctx.drawImage(spr, px, -sc * 4.5 + sc * .5, sc * 8, sc * 8);
+  const CP = pat16(k, formOf(k), 'atk', 105, true), sc0 = Math.floor(bh * .92 / CP.length), sc = sc0 * CP[0].length / 9, spr = sprite(CP, heroCols(k, 2, '#ffffff'), 'cut' + k + CP.length);
+  const csl = sprite(CP, { 0: c, 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c, 8: c, 9: c }, 'cuts' + k + CP.length + c);
+  fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR, pw = CP[0].length * sc0, ph = CP.length * sc0;
+  fctx.globalAlpha = a * .5; fctx.drawImage(csl, px - sc0 * 2, -ph / 2 - sc0, pw, ph); fctx.globalAlpha = a;
+  fctx.drawImage(spr, px, -ph / 2, pw, ph);
   const fs = Math.round(bh * .2), name = (US.aw ? '★ ' : '') + ULTS[k][0].toUpperCase();
   fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000';
   const tx = -w * .32 + sc * 9;
@@ -4942,6 +5306,7 @@ function render() {
   fctx.setTransform(1, 0, 0, 1, 0, 0);
   fctx.clearRect(0, 0, fx.width, fx.height);
   const k = SC * DPR, base = Math.max(8, Math.round(SC * 2)) * DPR;
+  if (heroHiD) drawHeroHi(heroHiD, k, sx, sy);
   fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.lineJoin = 'round';
   for (const t of texts) {
     const a = 1 - Math.max(0, (t.t - t.life * .6) / (t.life * .4));
@@ -5014,7 +5379,9 @@ function render() {
   }
 }
 // герой поверх всех эффектов: чёрный контур + спрайт; указатель, когда на экране тесно
+let heroHiD = null;
 function drawHeroTop(rk) {
+  heroHiD = null;
   if (deathT > 0 || hero.iframe > 0 && Math.sin(time * 40) > 0) return;
   const x = Math.round(hero.x - 4), y = Math.round(hero.y - 8 - (hero.lift || 0)), moving = heroFrame === 'walk';
   const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0, y0 = y + hop - (moving ? 1 : 0);
@@ -5023,9 +5390,9 @@ function drawHeroTop(rk) {
   const busy = parts.length > 120 || mobs.length > 14;
   if (busy) { ctx.globalAlpha = .5; ctx.fillStyle = '#0a0612'; for (let dy = -7; dy <= 7; dy++) { const w = Math.round(8 * Math.sqrt(1 - (dy / 7.5) ** 2)); ctx.fillRect(Math.round(hero.x) - w, Math.round(hero.y - 5) + dy, w * 2, 1); }
     const hol = silhouette('#000'); ctx.globalAlpha = .9; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y0 + dy, hero.face); }
-  ctx.globalAlpha = 1; flip(spr, x, y0, hero.face);
-  if (S.meta.asc) { const hc = ASC_HALO[(S.meta.asc - 1) % ASC_HALO.length], hy = y0 - (spr.oy || 0) - 2; ctx.globalAlpha = .7 + .2 * Math.sin(time * 3); for (let i = -2; i <= 2; i++) pix(hero.x + i, hy - (Math.abs(i) === 2 ? 0 : 1), hc); ctx.globalAlpha = 1; }
-  if (busy) { const top = y0 - (spr.oy || 0) - 4 + (Math.sin(time * 4) > 0 ? 0 : -1), cx = Math.round(hero.x), c = CL().c;
+  ctx.globalAlpha = 1; heroHiD = { rk, x: hero.x, y: hero.y - (hero.lift || 0) + hop - (moving ? .5 : 0), face: hero.face, flash: hero.hurt > 0, ex: S.hpf < .35 };
+  if (S.meta.asc) { const hc = ASC_HALO[(S.meta.asc - 1) % ASC_HALO.length], hy = y0 - hTop() - 2; ctx.globalAlpha = .7 + .2 * Math.sin(time * 3); for (let i = -2; i <= 2; i++) pix(hero.x + i, hy - (Math.abs(i) === 2 ? 0 : 1), hc); ctx.globalAlpha = 1; }
+  if (busy) { const top = y0 - hTop() - 4 + (Math.sin(time * 4) > 0 ? 0 : -1), cx = Math.round(hero.x), c = CL().c;
     const t2 = top - 2; ctx.fillStyle = '#000'; ctx.fillRect(cx - 4, t2 - 1, 9, 2); ctx.fillRect(cx - 3, t2 + 1, 7, 1); ctx.fillRect(cx - 2, t2 + 2, 5, 1); ctx.fillRect(cx - 1, t2 + 3, 3, 1); ctx.fillRect(cx, t2 + 4, 1, 1);
     ctx.fillStyle = c; ctx.fillRect(cx - 3, t2, 7, 1); ctx.fillRect(cx - 2, t2 + 1, 5, 1); ctx.fillRect(cx - 1, t2 + 2, 3, 1); ctx.fillStyle = '#fff'; ctx.fillRect(cx, t2 + 3, 1, 1); }
 }
@@ -5054,7 +5421,7 @@ function drawHero(rk) {
       if (rnd() < .4 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 9, vx: 0, vy: -18, l: .5, c: rnd() < .5 ? CL().c : '#ffffff', f: 1 }); }
     if (tr) { ctx.globalAlpha = .9; const sl = silhouette(tr[0] === 30 ? hsl2hex(Math.floor(time * 4) % 12 * 30, 90, 65) : tr[1]); for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(sl, x + ox, y0 + oy, hero.face); ctx.globalAlpha = 1; } }
   const hol = silhouette('#000'); if (!tierOf(clsLv())) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) flip(hol, x + dx, y + hop - (moving ? 1 : 0) + dy, hero.face);
-  flip(spr, x, y + hop - (moving ? 1 : 0), hero.face); ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1;
   drawPathFx();
   const ac = ARMOR[(rk + 4) % ARMOR.length];
   // шипы
