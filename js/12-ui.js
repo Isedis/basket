@@ -163,7 +163,7 @@ $('perkb').onclick = () => openPerks();
 const SHK_N = ['ВЫКЛ', 'СЛАБАЯ', 'ПОЛНАЯ'];
 const applyShk = () => { $('shkb').textContent = 'Тряска: ' + SHK_N[S.meta.shk ?? 1]; };
 $('shkb').onclick = () => { S.meta.shk = ((S.meta.shk ?? 1) + 1) % 3; applyShk(); shake = 10; save(); };
-const AUTOS = [['apb', 'autoPerk', 'Перки'], ['aub', 'autoUlt', 'Ульта'], ['atb', 'autoTal', 'Таланты после смерти'], ['acb', 'autoPath', 'Путь класса']];
+const AUTOS = [['apb', 'autoPerk', 'Перки'], ['aub', 'autoUlt', 'Ульта'], ['atb', 'autoTal', 'Таланты'], ['acb', 'autoPath', 'Ветка класса']];
 const applyAp = () => { const M = S.meta; AUTOS.forEach(([id, k, n]) => $(id).textContent = n + ': ' + (M[k] ? 'АВТО' : 'ВРУЧНУЮ'));
   $('aall').textContent = 'АВТОИГРА: ' + (AUTOS.every(a => M[a[1]]) ? 'ВКЛ' : AUTOS.some(a => M[a[1]]) ? 'ЧАСТИЧНО' : 'ВЫКЛ'); };
 function autoKick() { if (S.meta.autoPerk) lifeXP(0); autoPathSpend(); }

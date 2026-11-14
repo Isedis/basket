@@ -374,11 +374,12 @@ function render() {
   if (feedArr.length) {
     const fs3 = Math.round(base * .7 / DPR) * DPR;
     fctx.font = `${fs3}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs3 / 3); fctx.strokeStyle = '#000';
-    const y0 = (H - (ult >= 1 ? 14 : 7)) * k;
+    const y0 = (H - 17) * k, maxW = fx.width - 6 * k - (combo >= 3 ? 34 * k : 0);   // над надписью ульты и не заезжая на комбо
     feedArr.forEach((f, i) => {
-      const yy = y0 - (feedArr.length - 1 - i) * fs3 * 1.5;
+      const yy = y0 - (feedArr.length - 1 - i) * fs3 * 1.5; let s = f.s;
+      if (fctx.measureText(s).width > maxW) { while (s.length > 4 && fctx.measureText(s + '…').width > maxW) s = s.slice(0, -1); s += '…'; }
       fctx.globalAlpha = .8 * clamp(1 - (f.t - 2) / 1, 0, 1);
-      fctx.strokeText(f.s, 3 * k, yy); fctx.fillStyle = f.c; fctx.fillText(f.s, 3 * k, yy);
+      fctx.strokeText(s, 3 * k, yy); fctx.fillStyle = f.c; fctx.fillText(s, 3 * k, yy);
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
   }
@@ -409,7 +410,7 @@ function render() {
   if (combo >= 3) {
     const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
     const fs = Math.round(base * (.9 + comboPop * 2) / DPR) * DPR, fs2 = Math.round(base * .7 / DPR) * DPR;
-    const bw = 30 * k, cx = fx.width - 4 * k - bw, cy = (H - (ult >= 1 ? 14 : 7)) * k - fs2 * 1.3 - 6 * DPR - fs * .9;
+    const bw = 30 * k, cx = fx.width - 4 * k - bw, cy = (H - 17) * k - fs2 * 1.3 - 6 * DPR - fs * .9;
     fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
     fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = col;
     fctx.strokeText('КОМБО ' + combo, cx, cy); fctx.fillText('КОМБО ' + combo, cx, cy);

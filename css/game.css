@@ -571,3 +571,15 @@ html,body{font-size:10px}
 /* --- меню --- */
 #settings .menulife{font-size:11px!important}
 #settings .mgrid .btn,.btn.big2{font-size:10px!important}
+/* мелкие пиксельные иконки не растягиваются ни в одном блоке */
+img.pxi{width:auto!important;opacity:1!important;flex:none}
+/* ряды фильтров и внутренние вкладки — переносятся, а не обрезаются справа */
+.trow{flex-wrap:wrap!important;overflow:visible!important}
+.tch{flex:1 1 auto;text-align:center;font-size:9px!important;min-height:34px;background:linear-gradient(#2a2238,#1a1426);border:2px solid var(--st0);border-radius:0;box-shadow:inset 1px 1px 0 #3d3252;color:#b8acd8}
+.tch.on{color:var(--ink)!important;background:linear-gradient(#ffe8a0,#e0b85a)!important;border-color:#3a2408!important;box-shadow:inset 1px 1px 0 #fff4c8}
+/* прокрутка: содержимое мягко уходит под шапку и нижнее меню, а не обрезается резко */
+#settings .setb,#gbody,#ctbody,#tlist,#totinfo,#slist2{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}
+#settings .shead{flex:none}
+/* фильтры дерева талантов — одна строка с прокруткой и затуханием справа (видно, что дальше есть ещё) */
+#tbar .trow{flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
+#tbar .tch{flex:none}
