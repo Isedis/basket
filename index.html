@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114115438';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114115634';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4311,8 +4311,8 @@ function hurtHero(dmg, unblock, cap, quiet) {
   if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
   if (!unblock && skyOn('sk_starshield') && hero.hp - dmg < D.maxHP * .3 && time > (hero.ssT || 0)) { hero.ssT = time + 20; hero.iframe = 3; ring(hero.x, hero.y - 4, 16, '#fff6a0'); burst(hero.x, hero.y - 6, '#fff6a0', 16, 40); fxLabel('Звёздный щит', hero.x, hero.y - 18, '#fff6a0'); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
-  if (!unblock) { hero.pool = (hero.pool || 0) + dmg; hero.poolT = time; hero.hurt = .1; ntHurt(); return dmg; }
-  if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
+  if (!unblock) { if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); } hero.pool = (hero.pool || 0) + dmg; hero.poolT = time; hero.hurt = .1; ntHurt(); return dmg; }
+  if (hero.shield > 0 && !quiet) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; if (!quiet) { hero.hurt = .1; ntHurt(); }
   if (hero.hp <= 0) { hero.pool = 0;
     if (au('reb') && !S.second) { S.second = true; hero.hp = D.maxHP * .5; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'ВТОРОЙ ШАНС!', '#ff44ff', 1.2, 1.2); ring(hero.x, hero.y - 4, 20, '#ff44ff'); flashT = .1; }
