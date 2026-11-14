@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114014250';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114080043';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1508,7 +1508,8 @@ const ta = k => TAL[k] || 0;
 const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
-const soulMul = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1) * skySoulM() * relSoulM() * (1 + .5 * (S.meta.asc || 0));   // корень: души не разгоняются снежным комом
+const soulMul = () => .55 * soulMul0();
+const soulMul0 = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1) * skySoulM() * relSoulM() * (1 + .5 * (S.meta.asc || 0));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1) * (skyOn('sk_soulboss') ? 2 : 1);
 function addSouls(v, m) {
   S.runSf = (S.runSf || 0) + v * soulMul(); const n = Math.floor(S.runSf); if (n <= 0) return;
@@ -1628,7 +1629,7 @@ const AWK = {
   reap:  ['Пожиратель душ', '+20 душ максимум; при полном запасе — взрыв душ по всем'],
 };
 const TIERS = [[5, '#c08040', 'бронза'], [10, '#d8e0ea', 'серебро'], [20, '#ffd84a', 'золото'], [30, '#ff66ff', 'радуга']];
-const cxpNeed = l => Math.floor(100 * Math.pow(l + 1, 1.5));
+const cxpNeed = l => Math.floor(160 * Math.pow(l + 1, 1.5));
 function cm(k) { const M = S.meta; if (!M.cl) M.cl = {}; if (!M.cl[k]) M.cl[k] = { xp: 0, lv: 0 }; return M.cl[k]; }
 const clsLv = k => cm(k || cls()).lv;
 const awake = k => ctFull(k || cls());   // пробуждение: вся ветка класса заполнена
@@ -1791,7 +1792,7 @@ const REL_T = [
 ];
 const relS = k => { const M = S.meta; if (!M.rel) M.rel = {}; return M.rel[k] || (M.rel[k] = { xp: 0, lv: 0, ch: {} }); };
 const relLv = k => (S.meta.rel && S.meta.rel[k] && S.meta.rel[k].lv) || 0;
-const relNeed = L => Math.floor(40 * Math.pow(L + 1, 1.7));
+const relNeed = L => Math.floor(64 * Math.pow(L + 1, 1.7));
 const relCh = (k, t) => { const r = S.meta.rel && S.meta.rel[k]; return r && r.ch ? r.ch[t] : undefined; };
 const relOpt = (k, key) => { let v = 0; REL_T.forEach((pair, t) => { const c = relCh(k, t); if (c != null && pair[c][2][key]) v += pair[c][2][key]; }); return v; };
 const relPending = k => { const L = relLv(k); let n = 0; for (let t = 0; t < 10; t++) if (L >= (t + 1) * 10 && relCh(k, t) == null) n++; return n; };
@@ -2489,7 +2490,7 @@ const PERKS = [
 ];
 const PK = {}; PERKS.forEach(p => PK[p.k] = p);
 const perkL = k => (S.perks && S.perks[k]) || 0;
-const lvNeed = L => Math.floor(15 * Math.pow(1.22, L));
+const lvNeed = L => Math.floor(25 * Math.pow(1.25, L));
 function lifeXP(v) {
   S.lxp = (S.lxp || 0) + v; S.lvl = S.lvl || 1;
   while (S.lxp >= lvNeed(S.lvl)) { S.lxp -= lvNeed(S.lvl); S.lvl++; S.pend = (S.pend || 0) + 1;
@@ -3147,7 +3148,7 @@ function clsBlock(dmg) {
 }
 
 function zs() { return Math.pow(1.08, S.zone - 1); }
-function zoneNeed() { return 12 + S.zone * 2; }
+function zoneNeed() { return 18 + S.zone * 3; }   // темп: в 1.5 раза больше убийств на зону
 // сила зоны фиксирована и не зависит от героя: сначала тяжело, потом разносишь
 let ZHP = 1.5, ZDM = 1.4, ZB = 9, ZK = 1.2, ZT = 12;
 // рост зоны: в начале круче (герой растёт взрывно), дальше ×1.5 за зону
@@ -3252,6 +3253,7 @@ function recalc() {
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
   ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods(); skyMods(); relMods();
+  D.aps = Math.min(8, D.aps * .7);   // темп боя: удары реже и читаемее
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }
 const furyM = () => 1 + (1 - S.hpf) * D.furyK;
@@ -3558,7 +3560,7 @@ function splat(m) {
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
   g.globalAlpha = 1;
 }
-function crowd() { return Math.min(70, Math.round(crowd0() * skyCrowdM())); }   // не больше 70 врагов на поле
+function crowd() { return Math.min(45, Math.round(crowd0() * .75 * skyCrowdM())); }   // спокойнее: меньше врагов на поле   // не больше 70 врагов на поле
 function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
 let deathT = 0;
@@ -3672,7 +3674,7 @@ function killMob(m) {
   if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
   addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20), m);
-  if (m.boss) { S.siege = 0; giveChest(isLegend(S.zone) ? 'r' : 'c', isLegend(S.zone) ? 'легенда' : 'вожак'); }
+  if (m.boss) { S.siege = 0; if (isLegend(S.zone)) giveChest('r', 'легенда'); else if (rnd() < .4) giveChest('c', 'вожак'); }
   if (ev && ev.type === 'treasure' && !m.boss && rnd() < .04) giveChest('c', 'сокровищница');
   if (D.dust > .01 && rnd() < D.dust) { G().dust += Math.max(1, Math.round((1 + S.zone / 10) * (1 + skyV('dust')))); fxLabel('Пыль', m.x, m.y - 12, '#c9b07a'); }
   if (D.leech > .002) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.leech);
@@ -4452,7 +4454,7 @@ function update(dt) {
   spawnT -= dt;
   const want = Math.floor((bossAlive ? Math.ceil(crowd() / 2) : crowd()) * (ev && ev.type === 'inv' ? 2.5 : 1));
   zoneTick(dt);
-  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .1 : .3) / (1 + ta('spawn')); }
+  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
   // без таймеров: вожак приходит, как заполнилась полоска; если герой еле убивает врагов — приходит сам («чует слабость»)
@@ -4500,7 +4502,7 @@ function update(dt) {
     if (Math.hypot(pr.x - hero.x, pr.y - (hero.y - 4)) < 3.5) { pr.t = 0; if (hero.iframe <= 0 && rnd() >= D.dodge) { const pd = hurtHero(pr.dmg * (1 - D.armor)); if (pr.web) { hero.slowT = Math.max(hero.slowT || 0, 2); fxLabel('Паутина', hero.x, hero.y - 16, '#e8e8e8'); } if (texts.length < 7) ftext(hero.x, hero.y - 10, '-' + fmt(pd), '#ffdd44', .8, .6); } } }
   proj = proj.filter(pr => pr.t > 0 && pr.x > -10 && pr.x < AW + 10 && pr.y > -10 && pr.y < AH + 10);
   if (ev) { ev.t -= dt; if (ev.t <= 0) { if (ev.type === 'gob') { const g = mobs.find(m => m.goblin); if (g) { g.dead = true; burst(g.x, g.y - 3, '#ffd84a', 12, 30); feed('Гоблин сбежал...', '#aaaaaa'); } } else { feed(EVS[ev.type].n + ' закончилось', '#aaaaaa'); if (ev.type === 'moon') giveChest(rnd() < .5 ? 'e' : 'r', 'кровавая луна'); if (ev.type === 'inv') giveChest('c', 'нашествие'); } ev = null; } }
-  else if (!bossAlive && S.zone >= 3) { evNext -= dt; if (evNext <= 0) { evNext = 90 + rnd() * 70; startEvent(); } }
+  else if (!bossAlive && S.zone >= 3) { evNext -= dt; if (evNext <= 0) { evNext = 150 + rnd() * 90; startEvent(); } }
   if (tgt) {
     hero.face = tgt.x >= hero.x ? 1 : -1;
     const reachH = Math.max(clsReach(), tgt.role === 'archer' || tgt.role === 'shaman' || tgt.goblin ? 40 : 0);
