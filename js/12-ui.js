@@ -14,7 +14,7 @@ function updateUI() {
   if (time > dsT) { dsT = time + 1; renderDS(); }
   if (S.hpf < .35) tip('ex', 'Мало здоровья', 'При низком HP награды меньше. Броня, регенерация и вампиризм помогают держаться.');
   const b = biomeOf(S.zone);
-  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : hazard() ? '◆ ' + hazard().n : curWorld() ? '◆ ' + { heat: 'жар', fly: 'небо', shield: 'щиты', phase: 'тени', grav: 'разломы' }[curWorld().rule] : ''; $('zmodl').style.color = zm() ? zm().c : hazard() ? hazard().c : curWorld() ? curWorld().c : ''; $('znum').textContent = 'Зона ' + S.zone + ' ·';
+  $('zname').textContent = b.name; $('zmodl').textContent = zm() ? '◆ ' + zm().n : hazard() ? '◆ ' + hazard().n : curWorld() ? '◆ ' + { heat: 'жар', fly: 'небо', shield: 'щиты', phase: 'тени', grav: 'разломы' }[curWorld().rule] : ''; $('zmodl').style.color = zm() ? zm().c : hazard() ? hazard().c : curWorld() ? curWorld().c : ''; $('znum').textContent = 'Зона ' + S.zone;
   const need = zoneNeed();
   if (bossAlive) { zbarI.style.width = '100%'; zbarI.style.background = '#ff2a2a'; zbarB.textContent = isLegend(S.zone) ? 'ЛЕГЕНДА!' : 'ВОЖАК!'; }
   else if (S.zk >= need) { zbarI.style.width = '100%'; zbarI.style.background = '#ff9a3c'; zbarB.textContent = 'ВОЖАК ИДЁТ!'; }
@@ -27,7 +27,7 @@ function updateUI() {
   $('rank').textContent = 'Ур.' + (S.lvl || 1) + ' · ' + rankName(heroRank());
   { const pb = $('perkb'); pb.hidden = !S.pend || S.meta.autoPerk; pb.textContent = '★ ПЕРК' + (S.pend > 1 ? ' ×' + S.pend : ''); }
   $('kills').textContent = fmt(S.runSouls || 0) + ' душ';
-  { const t = threatM(), el = $('thr'); el.textContent = t >= 1.1 ? 'угроза ×' + t.toFixed(1) : ''; el.style.color = t >= 4 ? '#ff2a4a' : t >= 2 ? '#ff7a44' : '#ffd84a';
+  { const t = threatM(), el = $('thr'); el.textContent = t >= 1.1 ? '☠×' + (t >= 10 ? t.toFixed(0) : t.toFixed(1)) : '';   // угроза: коротко, чтобы влезло название зоны el.style.color = t >= 4 ? '#ff2a4a' : t >= 2 ? '#ff7a44' : '#ffd84a';
     if (t >= 2) tip('threat', 'Угроза растёт', 'Чем дольше живёт герой, тем злее враги — но и душ за них больше. Рискни или переродись.'); }
   const ex = $('ex');
   if (S.hpf < .35) { ex.style.display = 'inline'; ex.textContent = '×' + exMult().toFixed(2); } else ex.style.display = 'none';

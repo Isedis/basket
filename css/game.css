@@ -513,3 +513,61 @@ html,body{font-size:10px}
 #settings .mgrid .btn{margin:0;min-height:48px;font-size:9px}
 #settings .menulife{border:0;margin:0;padding:4px 10px}
 #settings .menulife .dim{display:none}
+
+/* ===================== ТЕМА: ФЭНТЕЗИ-RPG ===================== */
+/* камень, золото, дерево; пиксельные рамки из теней; шрифт крупнее */
+:root{--st0:#0b0812;--st1:#1a1426;--st2:#251d36;--st3:#352a4c;--st4:#4a3d66;--gold:#c9a24a;--gold2:#ffd84a;--goldd:#5a4214;--wood:#2a1a10;--wood2:#3e2817;--ink:#2a1a0a}
+html,body{font-size:10px}
+/* --- общие кнопки: каменная плашка с фаской --- */
+.btn{font-size:10px;color:#efe6ff;background:linear-gradient(#352a4c,#251d36);border:2px solid var(--st0);
+  box-shadow:inset 2px 2px 0 #5a4c7a,inset -2px -2px 0 #140f20;text-shadow:1px 1px 0 #000;border-radius:0}
+.btn:active{box-shadow:inset 2px 2px 0 #140f20,inset -2px -2px 0 #5a4c7a}
+.btn.big,.btn.big2{border-color:var(--st0);box-shadow:inset 2px 2px 0 #5a4c7a,inset -2px -2px 0 #140f20,0 0 0 2px var(--goldd)}
+.btn[disabled]{filter:grayscale(.7) brightness(.7)}
+/* --- заголовки экранов: деревянный баннер с золотой каймой --- */
+#thead,#ghead,#tothead,#alhead,#shead,#phead,.shead{background:linear-gradient(#3e2817,#2a1a10)!important;border-bottom:3px solid var(--gold)!important;
+  box-shadow:0 2px 0 var(--goldd),inset 0 2px 0 #5a3a20!important;color:var(--gold2)!important;font-size:11px!important;text-shadow:2px 2px 0 #000;padding:9px 10px!important}
+#cthead{background:linear-gradient(#3e2817,#2a1a10);border-bottom:3px solid var(--gold);box-shadow:0 2px 0 var(--goldd)}
+#thead b,#ghead b,#shead b{color:#fff;font-weight:normal}
+/* --- экраны: каменный фон --- */
+#tree,#gear,#ctree,#totem,#altar,#sky,.sheet{background-color:var(--st1)!important;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 2px,transparent 2px 6px)!important}
+#gbody,#tinfo,#sinfo,#alinfo,#totinfo{font-size:10px}
+.gsec,#settings .msec{font-size:11px!important;color:var(--gold2)!important;text-shadow:2px 2px 0 #000;border-bottom:2px solid var(--goldd)!important}
+.dim,.k{font-size:9px}
+#totsum small,#alsum small{font-size:8px!important}
+#totsum b,#alsum b{font-size:11px!important}
+#totsum div,#alsum div{background:linear-gradient(#251d36,#1a1426)!important;border:2px solid var(--st0)!important;box-shadow:inset 1px 1px 0 #4a3d66,0 0 0 1px var(--goldd)}
+
+/* --- нижнее меню: каменная плита, активный раздел — золотая плашка --- */
+#nav{background:linear-gradient(#251d36,#140f20)!important;border-top:3px solid var(--gold)!important;box-shadow:0 -2px 0 var(--goldd),0 -6px 12px rgba(0,0,0,.6);gap:4px;padding:5px 6px calc(5px + env(safe-area-inset-bottom,0px))!important}
+#nav .nb{font-size:10px;color:#9a8fbf;background:linear-gradient(#2a2238,#1a1426);border:2px solid var(--st0);box-shadow:inset 2px 2px 0 #3d3252,inset -2px -2px 0 #0e0a16;min-height:58px;text-shadow:1px 1px 0 #000}
+#nav .nb.on{color:var(--gold2);background:linear-gradient(#4a3a20,#2a1f10);box-shadow:inset 2px 2px 0 #8a6a2a,inset -2px -2px 0 #1a1208,0 0 0 2px var(--gold),0 0 12px -2px var(--gold2)!important;transform:translateY(-2px)}
+#nav .nb.on i.px{filter:drop-shadow(0 0 3px #ffd84a)}
+#nav .nb .dot{width:10px;height:10px;top:5px;right:calc(50% - 24px);box-shadow:0 0 6px #ff4f6d}
+/* --- вкладки раздела: деревянные таблички, выбранная — золотая --- */
+#subnav{background:linear-gradient(#2a1a10,#1e130b)!important;border-bottom:3px solid var(--gold)!important;box-shadow:0 2px 0 var(--goldd)!important;height:50px!important;padding:6px 6px!important;gap:5px!important}
+#subnav .sn{font-size:10px;color:#d8c8a0;background:linear-gradient(#4a3020,#2e1d10);border:2px solid #120a04;border-radius:0;box-shadow:inset 2px 2px 0 #6a4a30,inset -2px -2px 0 #1a0f06;text-shadow:1px 1px 0 #000}
+#subnav .sn.on{color:var(--ink);background:linear-gradient(#ffe8a0,#e0b85a);border-color:#3a2408;box-shadow:inset 2px 2px 0 #fff4c8,inset -2px -2px 0 #a07a2a,0 0 10px -2px var(--gold2);text-shadow:none}
+#tree,#gear,#ctree,#totem,#altar,#sky{top:calc(var(--hudh,52px) + 50px)!important}
+#panel.sheet{top:calc(var(--hudh,52px) + 48px)!important}
+
+/* --- верхняя строка: плашка зоны, угроза, души; толстые полосы в рамке --- */
+#hud{background:linear-gradient(#251d36,#160f22)!important;border-bottom:3px solid var(--gold)!important;box-shadow:0 2px 0 var(--goldd);padding:6px 8px 7px!important}
+#hud .hr1{font-size:10px;gap:6px}
+#hud .zt b{display:inline-block;color:var(--ink);background:linear-gradient(#ffe8a0,#d8a84a);padding:2px 6px;border:2px solid #3a2408;box-shadow:inset 1px 1px 0 #fff4c8;text-shadow:none;margin-right:4px}
+#zname{color:#e8d6a8!important}
+#thr{font-size:9px!important;padding:1px 4px;background:#2a0a10;border:1px solid #6a1a24}
+#thr:empty{display:none}
+#kills{font-size:10px;color:#ff8aff!important;text-shadow:0 0 6px #ff44ff}
+#hud .bar{border:2px solid var(--st0);box-shadow:0 0 0 1px var(--goldd);background:#120d1c}
+#zbar{height:12px!important;margin-top:5px!important}
+#zbar>i{background:linear-gradient(#ffe08a,#c9a24a)!important}
+#zbar>b{font-size:8px!important;line-height:12px!important}
+#hpbar{height:16px!important;margin-top:4px!important;background:#2a0a12!important}
+#hpbar>i:first-child{background:linear-gradient(#ff6b7d,#c8203a)!important}
+#hpbar>b{font-size:9px!important;line-height:16px!important}
+
+/* --- меню --- */
+#settings .menulife{font-size:11px!important}
+#settings .mgrid .btn,.btn.big2{font-size:10px!important}
