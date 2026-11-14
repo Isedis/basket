@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114080448';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114082030';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3160,6 +3160,7 @@ const zx1 = z => ZQ * z * z + ZC * z * z * z;
 // этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
 const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0 + (W0 === 100 ? 1 : 0)) ** 2; };   // 2-й этап: стена ровно на 100-й
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
+let MOBDMG = 5;   // толпа опасна: урон обычных врагов ×5 (влияет и на ближний бой вожаков)
 const zoneDmg = z => (z > 50 ? 1 - .05 * ascL('world') : 1) * (worldIdx(z) === 4 ? 1.2 : 1) * 2.2 * Math.pow(10, zoneLog(z) * Math.log(ZDM) / Math.log(ZHP) + .85 * zoneX(z));   // урон растёт медленнее здоровья: стена — «не пробить», а не «убили за секунду»
 const isLegend = z => z % 10 === 0;
 const bossMult = z => 18 * (isLegend(z) ? 4 : 1);
@@ -4521,7 +4522,7 @@ function update(dt) {
   effMech(dt);
 
   // мобы
-  const mdmg = zoneDmg(S.zone) * (on('x_swarm') ? 1.2 : 1) * (S.zmod === 'storm' ? 1.2 : 1) * (ev && ev.type === 'moon' ? 1.5 : 1);
+  const mdmg = zoneDmg(S.zone) * MOBDMG * (on('x_swarm') ? 1.2 : 1) * (S.zmod === 'storm' ? 1.2 : 1) * (ev && ev.type === 'moon' ? 1.5 : 1);
   const tots = mobs.filter(o => o.obj === 'totem' && !o.dead);
   for (const m of mobs) {
     if (m.dead) continue;
@@ -5279,7 +5280,7 @@ function rebirth(fromAsc) {
   S = Object.assign(freshS(), keep);
   stats = []; groups.length = 0; slist.innerHTML = ''; infoRef = null; infoEl.hidden = true;
   if (skyOn('sk_perks')) S.pend = 2;
-  rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
+  rollClass(); holy = []; pals = []; clones = []; holes = []; crows = []; EV = null; $('perkbox').hidden = true; ultQ = []; ufx = []; ultBan = null; ultCd = 0; US = null; hero.lift = 0; hero.stopT = 0; hero.psnT = 0; hero.slowT = 0; hero.iframe = 1.5; mobs = []; parts = []; orbs = []; texts = []; rings = []; clouds = []; bolts = []; ghosts = []; feedArr = [];
   bossAlive = false; bossCd = 0; combo = 0; ult = 0; synNew = []; formNew = []; D.spec = -1; lastSpec = undefined; hero.shield = 0;
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
