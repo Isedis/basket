@@ -5,6 +5,9 @@
 const $ = id => document.getElementById(id);
 // SIM = true — быстрый режим симуляции баланса: без чисто визуальных эффектов (частицы, тексты, звук, следы); логика боя та же
 var SIM = false;
+// двойной тап: true, если тот же ключ тапнули второй раз за 0.45 с (во всех экранах прокачки — купить узел)
+const dblT = { k: null, t: 0 };
+function dbl(key) { const now = performance.now(), ok = dblT.k === key && now - dblT.t < 450; dblT.k = ok ? null : key; dblT.t = now; return ok; }
 const rnd = Math.random;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const sat = (x, k) => x / (x + k);           // плавное насыщение 0..1, никогда не достигает 1

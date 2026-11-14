@@ -174,7 +174,7 @@ function update(dt) {
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
   for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 3);
   if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20 || (S.meta.autoUlt && bossAlive || S.meta.autoUlt && ultReadyT > 2)) fireUlt(true); }
-  if (S.meta.autoPath && (autoPathSpend.t = (autoPathSpend.t || 0) + dt) > 2) { autoPathSpend.t = 0; if (pPts(cls()) > 0) autoPathSpend(); }
+  if (S.meta.autoPath && (autoPathSpend.t = (autoPathSpend.t || 0) + dt) > 2) { autoPathSpend.t = 0; autoPathSpend(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
   decalT -= dt;
   if (decalT <= 0) { decalT = 1.5; const g = decal.getContext('2d'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.07)'; g.fillRect(0, 0, AW, AH); g.globalCompositeOperation = 'source-over'; }

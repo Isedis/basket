@@ -8,7 +8,7 @@ $('tclose').onclick = () => { tree.hidden = true; navOn('nFight'); };
 $('tzi').onclick = () => { cam.z = Math.min(5, cam.z * 1.3); drawTree(); };
 $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
 $('tfit').onclick = () => fitTree();
-function openTree() { tree.hidden = false; setTMode(S.meta.tMode || tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
+function openTree() { tip('dbl', 'Двойной тап', 'Тапни узел дважды подряд — сразу купишь уровень. Работает в талантах, ветке класса и на Небосводе.'); tree.hidden = false; setTMode(S.meta.tMode || tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
 function sizeTree() {
   tDPR = Math.min(3, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
   tcv.width = Math.round(tW * tDPR); tcv.height = Math.round(tH * tDPR); tcv.style.width = tW + 'px'; tcv.style.height = tH + 'px';
@@ -337,7 +337,7 @@ const tUp = e => {
   const r = tview.getBoundingClientRect(), sx = e.clientX - r.left, sy2 = e.clientY - r.top;
   const wx = (sx - tW / 2) / cam.z + cam.x, wy = (sy2 - tH / 2) / cam.z + cam.y;
   let best = -1, bd = 1e9; for (const nd of TN) { const d = Math.hypot(nd.x - wx, nd.y - wy); if (d < bd) { bd = d; best = nd.id; } }
-  if (best >= 0 && bd < nodeSize(TN[best]) * .9 + 6 / cam.z) { tSel = best; renderTInfo(); drawTree(); }
+  if (best >= 0 && bd < nodeSize(TN[best]) * .9 + 6 / cam.z) { const twice = dbl('t' + best); tSel = best; if (twice) buyNode(TN[best], false); renderTInfo(); drawTree(); }
 };
 tview.addEventListener('pointerup', tUp); tview.addEventListener('pointercancel', e => { tPtr.delete(e.pointerId); tPinch = 0; });
 tview.addEventListener('wheel', e => { e.preventDefault(); cam.z = clamp(cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), .35, 5); reqTree(); }, { passive: false });

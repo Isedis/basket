@@ -170,13 +170,21 @@ function autoKick() { if (S.meta.autoPerk) lifeXP(0); autoPathSpend(); }
 AUTOS.slice(1).forEach(([id, k]) => $(id).onclick = () => { S.meta[k] = !S.meta[k]; applyAp(); autoKick(); save(); });
 $('aall').onclick = () => { const on = !AUTOS.every(a => S.meta[a[1]]); AUTOS.forEach(a => S.meta[a[1]] = on); applyAp(); autoKick(); save();
   toast(on ? 'АВТОИГРА ВКЛЮЧЕНА' : 'АВТОИГРА ВЫКЛЮЧЕНА', on ? 'перки, ульта, таланты и путь класса — сами' : 'всё снова вручную'); };
-// авто-путь: тратит очки на самый низкий доступный узел (развилку выбирает случайно)
+// авто-путь: тратит очки всех классов. Порядок: основные узлы всех ступеней (открывают следующую ступень и облик) → сигнатуры S/T → малые узлы по цепочке.
+// Внутри группы — узел с наименьшим уровнем, развилку выбирает случайно
+const MIDS = Array.from({ length: 10 }, (_, i) => 'M' + i);
+function autoPathPick(k) {
+  for (const g of [0, 1, 2]) for (let t = 1; t <= 4; t++) { const grp = g === 0 ? (t < 4 ? PIDS : PIDS4).slice().sort(() => rnd() - .5) : g === 1 ? ['S', 'T'] : MIDS;
+    let best = null; for (const id of grp) if (pCanBuy(k, t, id) && (!best || pL(k, t, id) < pL(k, t, best))) best = id;
+    if (best) return [t, best]; }
+  return null;
+}
 function autoPathSpend() {
-  if (!S.meta.autoPath) return; const k = cls(); let n = 0;
-  while (pPts(k) > 0 && n++ < 200) { let best = null;
-    for (let t = 1; t <= 4 && !best; t++) { const ids = (t < 4 ? PIDS : PIDS4).slice().sort(() => rnd() - .5);
-      for (const id of ids) if (pCanBuy(k, t, id) && (!best || pL(k, t, id) < pL(k, best[0], best[1]))) best = [t, id]; }
-    if (!best) break; pBuy(k, best[0], best[1]); }
+  if (!S.meta.autoPath) return;
+  let any = 0;
+  for (const k of CLS_KEYS) { let n = 0; if (k !== cls() && !(S.meta.cl && S.meta.cl[k])) continue;
+    while (pPts(k) > 0 && n++ < 300) { const b = autoPathPick(k); if (!b) break; pBuy(k, b[0], b[1], true); any++; } }
+  if (any) { calcPath(); D.dirty = true; save(); if (ctK && !$('ctree').hidden) renderCT(); }
 }
 $('apb').onclick = () => { S.meta.autoPerk = !S.meta.autoPerk; applyAp(); autoKick(); save(); };
 $('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) return; if (b.dataset.pk) { takePerk(b.dataset.pk); if (S.pend) openPerks(); else $('perkbox').hidden = true; } else $('perkbox').hidden = true; };

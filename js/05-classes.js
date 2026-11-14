@@ -216,7 +216,7 @@ function ctDM(t) {
 
 /* интерфейс ветки класса */
 let ctK = null;
-function openCT(k) { if (k !== ctK) ctHeroK = null; ctK = k; $('ctree').hidden = false; renderCT(); }
+function openCT(k) { tip('dbl', 'Двойной тап', 'Тапни узел дважды подряд — сразу купишь уровень. Работает в талантах, ветке класса и на Небосводе.'); if (k !== ctK) ctHeroK = null; ctK = k; $('ctree').hidden = false; renderCT(); }
 
 /* ================= РЕЛИКВИИ КЛАССОВ И НАСЛЕДИЕ ================= */
 // Реликвия: своё оружие у каждого класса, уровень 1–100 за убийства этим классом; каждые 10 уровней — выбор 1 из 2 навсегда.
@@ -352,7 +352,7 @@ function renderCT() {
 $('ctbody').addEventListener('click', e => {
   if (e.target.id === 'ptc') { const r = e.target.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = null, bd = 30;
     for (const p of pathLayout(r.width)) if (p.kind === 'node') { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } }
-    if (best) { pSel = { t: best.t, id: best.id }; renderPInfo(); } return; }
+    if (best) { const twice = dbl('p' + ctK + best.t + best.id); pSel = { t: best.t, id: best.id }; if (twice) pBuy(ctK, best.t, best.id); renderPInfo(); } return; }
   const t = e.target.closest('[data-ct]'); if (t) { ctTab = t.dataset.ct; renderCT(); return; }
   const ro = e.target.closest('[data-rt]'); if (ro && !ro.disabled) { relPick(ro.dataset.rk, +ro.dataset.rt, +ro.dataset.rj); return; }
   const ck = e.target.closest('[data-ck]'); if (ck) { const k2 = ck.dataset.ck; if (!(S.meta.seen || {})[k2]) { toast('???', 'класс ещё не выпадал · ветвь «' + BRANCHES[CLASSES[k2].br].n + '»'); return; } ctHeroK = null; ctK = k2; ctTab = 'tree'; renderCT(); }
@@ -918,11 +918,11 @@ function renderPInfo() {
   if ($('pb1')) $('pb1').onclick = () => pBuy(k, t, id);
   if ($('pbr')) $('pbr').onclick = () => { cm(k).cp[t + id] = 0; D.dirty = true; calcPath(); recalc(); save(); renderCT(); };
 }
-function pBuy(k, t, id) {
+function pBuy(k, t, id, quiet) {   // quiet — из автоматики: без звука, пересчёта и сохранения на каждый узел
   if (!pCanBuy(k, t, id)) return;
   const f0 = formOf(k), a0 = tierDone(k, 3), c = cm(k); if (!c.cp) c.cp = {};
-  c.cp[t + id] = (c.cp[t + id] || 0) + 1; calcPath(); D.dirty = true; recalc(); save();
-  tone(660, .06, 'square', .03); tone(990, .08, 'square', .03, 0, .06);
+  c.cp[t + id] = (c.cp[t + id] || 0) + 1;
+  if (!quiet) { calcPath(); D.dirty = true; recalc(); save(); tone(660, .06, 'square', .03); tone(990, .08, 'square', .03, 0, .06); }
   const f1 = formOf(k), a1 = tierDone(k, 3);
   if ((f1 > f0 || (a1 && !a0)) && k === cls()) { $('ctree').hidden = true; navOn('nFight'); setTimeout(() => evolveStart(k, f1, a1 && !a0 ? 'ПРОБУЖДЕНИЕ' : f1 === 4 ? 'ВОЗНЕСЁННЫЙ ОБЛИК' : null), 250); return; }
   if (f1 > f0) toast('ЭВОЛЮЦИЯ: ' + evoName(k, f1).toUpperCase(), 'новый облик появится, когда выпадет ' + CLASSES[k].n, 3000);

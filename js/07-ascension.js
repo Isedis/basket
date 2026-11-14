@@ -168,7 +168,7 @@ function skyMigrate() {
 const scam = { x: 0, y: 0, z: .55 }; let sSel = 0, sW = 0, sH = 0, sDPR = 1, sRaf = 0, sMode = 'map', sFilt = 'buy', sBg = null;
 const sPtr = new Map(); let sMoved = 0, sPinch = 0;
 const SKY_BG = Array.from({ length: 260 }, (_, i) => ({ x: (Math.sin(i * 12.9898) * 43758.5453 % 1) * 1500 - 750, y: (Math.sin(i * 78.233) * 12543.31 % 1) * 1500 - 750, r: (i % 7 === 0) ? 1.6 : .8, t: i * .7 }));
-function openSky() { calcSky(); $('sky').hidden = false; setSMode(sMode); sizeSky(); if (!openSky.fit) { openSky.fit = 1; skyFit(); } renderSInfo(); reqSky(); }
+function openSky() { tip('dbl', 'Двойной тап', 'Тапни узел дважды подряд — сразу купишь уровень. Работает в талантах, ветке класса и на Небосводе.'); calcSky(); $('sky').hidden = false; setSMode(sMode); sizeSky(); if (!openSky.fit) { openSky.fit = 1; skyFit(); } renderSInfo(); reqSky(); }
 function skyFit() { let lr = 1; for (let r = 1; r <= 4; r++) if (skyRingOpen(r)) lr = r; scam.x = 0; scam.y = 0; scam.z = Math.min(sW, sH) / (2 * SKY_RING[lr] + 170); reqSky(); }
 function sizeSky() { const v = $('sview'), r = v.getBoundingClientRect(); sDPR = Math.min(2, window.devicePixelRatio || 1); sW = r.width; sH = r.height; const c = $('scv'); c.width = Math.round(sW * sDPR); c.height = Math.round(sH * sDPR); c.style.width = sW + 'px'; c.style.height = sH + 'px'; sBg = null; }
 function reqSky() { if (!sRaf) sRaf = requestAnimationFrame(() => { sRaf = 0; drawSky(); }); }
@@ -335,7 +335,7 @@ function skyInit() {
     sPtr.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (sPtr.size === 2) { const [a, b] = [...sPtr.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (sPinch) scam.z = clamp(scam.z * d / sPinch, .15, 3); sPinch = d; sMoved += 10; }
     reqSky(); });
-  const up = e => { const was = sPtr.size; sPtr.delete(e.pointerId); if (was === 1 && sMoved < 8) { const r = v.getBoundingClientRect(), id = skyPick(e.clientX - r.left, e.clientY - r.top); if (id >= 0) { sSel = id; renderSInfo(); reqSky(); } } if (sPtr.size < 2) sPinch = 0; };
+  const up = e => { const was = sPtr.size; sPtr.delete(e.pointerId); if (was === 1 && sMoved < 8) { const r = v.getBoundingClientRect(), id = skyPick(e.clientX - r.left, e.clientY - r.top); if (id >= 0) { const twice = dbl('s' + id); sSel = id; if (twice) skyBuy(SN[id], false); renderSInfo(); reqSky(); } } if (sPtr.size < 2) sPinch = 0; };
   v.addEventListener('pointerup', up); v.addEventListener('pointercancel', up);
   v.addEventListener('wheel', e => { e.preventDefault(); scam.z = clamp(scam.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), .15, 3); reqSky(); }, { passive: false });
   $('szi').onclick = () => { scam.z = Math.min(3, scam.z * 1.4); reqSky(); }; $('szo').onclick = () => { scam.z = Math.max(.15, scam.z / 1.4); reqSky(); };
