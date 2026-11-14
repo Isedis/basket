@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114121030';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114121508';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4394,7 +4394,7 @@ function killMob(m) {
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) fxLabel('Ядовитое облако', m.x, m.y - 12, '#88ee22');
   if (F(EI.poison) >= 2 && m.psnT > 0 && clouds.length < 20) clouds.push({ x: m.x, y: m.y - 2, r: 8 + 2 * Math.min(6, F(EI.poison) - 2), dps: m.psn * .6, t: 3 });
   if (ksL(0, 0) && rnd() < .02 * ksL(0, 0)) { burst(m.x, m.y - 3, '#ff3322', 14, 50); ring(m.x, m.y - 3, 16, '#ff5544'); hitAround(m.x, m.y, 16, D.hit * 3 * ksL(0, 0), '#ff5544', m); }
-  if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); if (ultCd <= 0) { ult = 1; fireUlt(); } } }
+  if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); if (ultCd <= 0) { ult = 1; fireUlt(true); } } }
   if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
   addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20) * (m.hw ?? 1), m);
@@ -4689,7 +4689,7 @@ function drawUltScreen(sx, sy) {
 }
 // кат-ин: косая полоса с огромным портретом героя и названием ульты
 function drawCutIn(k) {
-  if (!US) return;
+  if (!US || US.auto) return;
   const t = US.t, w = fx.width, h = fx.height, a = t < .12 ? t / .12 : US.fired ? Math.max(0, 1 - US.rel / .25) : 1;
   if (a <= 0) return;
   const c = US.col, cy = h * .23, bh = h * .19, slide = (1 - Math.min(1, t / .18)) * w;
@@ -4879,11 +4879,11 @@ function clsUlt(dmg) {
   }
 }
 
-function fireUlt() {
+function fireUlt(auto) {
   if (ultCd > 0 || US || skyOn('nv_noult')) return;
   ultCd = skyOn('nv_ultonly') ? 3 : Math.max(3, ULT_CD - (trHas('glass') ? 2 : 0) - relUltCd()); ult = 0;
   const dmg = D.hit * 15 * (1 + ta('ultd')) * (1 + ta('x_ultra')) * (1 + D.crit * (D.critM - 1)) * comboM() * (1 + skyV('ult')) * relUltM() * (1 + (D.ultSig || 0));
-  const fd = dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')); ultStart(fd);
+  const fd = dmg * (aw() ? 2 : 1) * (1 + .15 * ctL('U1')); ultStart(fd); if (auto) US.auto = true;   // автоульта — без плашки с названием
   if (skyOn('sk_ult2')) later(2.2, () => { if (deathT <= 0) clsUlt(fd * .6); });   // заряд → кат-ин → удар; своя ульта у каждого класса, пробуждённая ×2
 }
 function onTap(e) {
@@ -5342,7 +5342,7 @@ function update(dt) {
   if (ultCd > 0) { ultCd -= dt; if (ultCd <= 0 && ult >= .999) { ult = 1; ultReadyT = 0; tone(660, .1, 'square', .04); tone(990, .2, 'square', .04, 0, .1); } }
   ultT -= dt; hurtV = Math.max(0, hurtV - dt * 1.5);
   for (const f of feedArr) f.t += dt; feedArr = feedArr.filter(f => f.t < 3);
-  if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20 || (S.meta.autoUlt && bossAlive || S.meta.autoUlt && ultReadyT > 2)) fireUlt(); }
+  if (ult >= 1) { ultReadyT += dt; if (ultReadyT > 20 || (S.meta.autoUlt && bossAlive || S.meta.autoUlt && ultReadyT > 2)) fireUlt(true); }
   if (S.meta.autoPath && (autoPathSpend.t = (autoPathSpend.t || 0) + dt) > 2) { autoPathSpend.t = 0; if (pPts(cls()) > 0) autoPathSpend(); }
   if (combo) { comboT -= dt; if (comboT <= 0) { if (combo >= 10) ftext(hero.x, hero.y - 14, 'комбо ' + combo + ' прервано', '#aaaaaa', .8, 1.2); combo = 0; } }
   decalT -= dt;
