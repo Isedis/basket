@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114102229';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114103107';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1023,7 +1023,7 @@ function biomeOf(z) {
   const bi = Math.floor((z - 1) / ZONES_PER_BIOME);
   const b = BIOMES[bi % BIOMES.length], cyc = Math.floor(bi / BIOMES.length);
   const sh = cyc * 53;
-  return { name: b.n + (cyc ? ' ' + roman(cyc + 1) : ''), g: b.g.map(c => cyc ? hueShift(c, sh) : c), m: b.m, h: b.h.map(h => h + sh), cyc, fav: b.f.map(k => EI[k]) };
+  return { bi: bi % BIOMES.length, name: b.n + (cyc ? ' ' + roman(cyc + 1) : ''), g: b.g.map(c => cyc ? hueShift(c, sh) : c), m: b.m, h: b.h.map(h => h + sh), cyc, fav: b.f.map(k => EI[k]) };
 }
 
 /* ---------- пиксельные спрайты 8x8 ---------- */
@@ -3975,6 +3975,122 @@ function resize() {
   camFX = clamp(hero.x - W / 2, 0, AW - W); camFY = clamp(hero.y - H / 2, 0, AH - H); camX = Math.round(camFX); camY = Math.round(camFY);
   buildGround();
 }
+/* ---------- сочность ударов: искры попаданий, осколки при смерти, души к счётчику ---------- */
+let impacts = [], deaths = [], wisps = [];
+function impact(x, y, crit, c) { if (S.fxLow || impacts.length > 28) return; impacts.push({ x, y, t: 0, crit, c: c || (crit ? '#ffdd33' : '#ffffff'), r: rnd() < .5 }); }
+function deathFx(m) {
+  if (S.fxLow) return;
+  if (deaths.length < 26) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1, s = 8 * m.sz;
+    deaths.push({ spr: mobSprite(m, false), x: m.x, y: m.y, s, t: 0, life: m.boss ? .9 : .45, kx: dx / d, ky: dy / d, v: (m.boss ? 30 : 55) * (.8 + rnd() * .4), spin: (rnd() - .5) * 2, boss: m.boss }); }
+  if (wisps.length < 18 && (m.boss || m.rare || rnd() < Math.min(1, 6 / (mobs.length + 1)))) wisps.push({ x: m.x, y: m.y - 4, vx: (rnd() - .5) * 60, vy: -40 - rnd() * 30, t: 0, c: m.rare ? '#ffd84a' : '#d38bff', tr: [] });
+}
+function juiceTick(dt) {
+  for (const p of impacts) p.t += dt; impacts = impacts.filter(p => p.t < (p.crit ? .16 : .1));
+  for (const p of deaths) p.t += dt; deaths = deaths.filter(p => p.t < p.life);
+  for (const w of wisps) { w.t += dt; const tx = camX + W - 12, ty = camY - 6, dx = tx - w.x, dy = ty - w.y, d = Math.hypot(dx, dy) || 1, k = Math.min(1, w.t * 1.6);
+    w.vx += (dx / d * 420 * k - w.vx * (1 - k) * 2) * dt; w.vy += (dy / d * 420 * k) * dt; const sp = Math.hypot(w.vx, w.vy), mx = 120 + 260 * k; if (sp > mx) { w.vx *= mx / sp; w.vy *= mx / sp; }
+    w.tr.push([w.x, w.y]); if (w.tr.length > 6) w.tr.shift(); w.x += w.vx * dt; w.y += w.vy * dt; if (d < 6 || w.t > 2) w.done = 1; }
+  wisps = wisps.filter(w => !w.done);
+}
+function drawJuice() {
+  // осколки: вспышка → четыре куска разлетаются
+  for (const p of deaths) { const k = p.t / p.life, s = p.s, x0 = p.x - s / 2, y0 = p.y - s;
+    if (p.t < .05) { ctx.globalAlpha = 1; ctx.drawImage(silMob(p.spr), Math.round(x0), Math.round(y0), s, s); continue; }
+    ctx.globalAlpha = Math.max(0, 1 - k * k);
+    const h = s / 2, sp = p.v * p.t, g = 90 * p.t * p.t;
+    for (let i = 0; i < 4; i++) { const qx = i % 2, qy = i >> 1, ox = (qx ? 1 : -1) * sp * .6 + p.kx * sp * .5, oy = (qy ? .4 : -1) * sp * .5 + p.ky * sp * .3 + g;
+      const sh = Math.max(1, Math.round(h * (1 - k * .5)));
+      ctx.drawImage(p.spr, qx * 4, qy * 4, 4, 4, Math.round(x0 + qx * h + ox), Math.round(y0 + qy * h + oy), sh, sh); }
+    if (p.boss && p.t < .3) { ctx.globalAlpha = .6 * (1 - p.t / .3); const r = 6 + p.t * 120; for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283; pix(p.x + Math.cos(a) * r, p.y - 4 + Math.sin(a) * r * .6, '#ffffff'); } } }
+  ctx.globalAlpha = 1;
+  // искры попаданий: крест → косой крест
+  for (const p of impacts) { const x = Math.round(p.x), y = Math.round(p.y), f = p.t / (p.crit ? .16 : .1), L = p.crit ? 4 : 2;
+    ctx.fillStyle = f < .45 ? '#ffffff' : p.c;
+    if (f < .45 ? !p.r : p.r) { ctx.fillRect(x - L, y, L * 2 + 1, 1); ctx.fillRect(x, y - L, 1, L * 2 + 1); }
+    else for (let i = 1; i <= L; i++) { pix(x - i, y - i, ctx.fillStyle); pix(x + i, y - i, ctx.fillStyle); pix(x - i, y + i, ctx.fillStyle); pix(x + i, y + i, ctx.fillStyle); }
+    if (p.crit) { ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 1, 3, 3); if (f > .3) { ctx.globalAlpha = 1 - f; const r = 3 + f * 7; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; pix(x + Math.cos(a) * r, y + Math.sin(a) * r, p.c); } ctx.globalAlpha = 1; } } }
+  // души летят к счётчику
+  for (const w of wisps) { w.tr.forEach((q, i) => { ctx.globalAlpha = (i + 1) / w.tr.length * .5; pix(q[0], q[1], w.c); }); ctx.globalAlpha = 1; ctx.fillStyle = w.c; ctx.fillRect(Math.round(w.x) - 1, Math.round(w.y), 3, 1); ctx.fillRect(Math.round(w.x), Math.round(w.y) - 1, 1, 3); pix(w.x, w.y, '#ffffff'); }
+}
+const silC = new WeakMap();
+function silMob(spr) { let c = silC.get(spr); if (c) return c; c = document.createElement('canvas'); c.width = spr.width; c.height = spr.height; const x = c.getContext('2d'); x.drawImage(spr, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); silC.set(spr, c); return c; }
+
+/* ---------- арены: детали зон, виньетка, частицы окружения ---------- */
+// a — основной, b — тень, c — блик, d — акцент; рисуются в слой земли
+const PROPS = {
+  tree:   ["....aaaa....", "..aaaaaaaa..", ".aacaaaaaab.", "aacaaaaaaabb", "aaaaaaaaaabb", ".aaaaaaaabb.", "..abbaabbb..", ".....dd.....", ".....dd.....", "....dddd...."],
+  pine:   [".....a.....", "....aaa....", "...acaab...", "....aab....", "..acaaabb..", ".aaaaaabbb.", "....aab....", ".acaaaabbb.", "aaaaaaabbbb", ".....d.....", ".....d....."],
+  bush:   [".aaaa..", "acaaab.", "aaaaabb", ".abbbb."],
+  flower: [".d.", "dcd", ".a."],
+  grass:  ["a.a.a", ".aaa.", "..a.."],
+  rock:   ["..aaa.", ".acaab", "aaaabb", ".abbb."],
+  boulder:["...aaaa...", ".aacaaab..", "acaaaaabb.", "aaaaaaabbb", ".aaaabbbb."],
+  mush:   [".ddddd.", "ddcdddd", "dcddddb", ".bbbbb.", "..aaa..", "..aaa.."],
+  bigmush:["...dddddd...", ".ddcddddddd.", "ddcdcddddddb", "dddddddddbbb", ".bbbbbbbbbb.", "....aaaa....", "....aaaa....", "....aaab....", "...aaaabb..."],
+  bone:   ["c...c", ".aaa.", "c...c"],
+  skull:  [".ccc.", "cbcbc", "ccccc", ".c.c."],
+  ribs:   ["c.c.c.c", "c.c.c.c", "ccccccc", ".c.c.c."],
+  tomb:   [".aaa.", "acaab", "aadab", "aaaab", "aaaab", "bbbbb"],
+  pillar: [".aaaa.", "acaaab", ".caab.", ".caab.", ".caab.", ".caab.", "acaaab", "bbbbbb"],
+  broken: [".a....", ".ca.a.", ".caab.", ".caab.", "acaaab", "bbbbbb"],
+  crystal:["..c..", ".cda.", ".cda.", "cddab", "cddab", ".bbb."],
+  shard:  [".c.", "cda", "cda", "bbb"],
+  ice:    ["..c...", ".ca..c", ".caa.a", "caaabb", "aaaabb"],
+  lava:   ["..dd...", ".dccd..", "dccccd.", ".dddd.."],
+  ember:  [".d.", "dcd", ".d."],
+  dtree:  ["a..a..a", ".a.a.a.", "..aaa..", "...a...", "...a...", "..aab..", ".aaabb."],
+  reed:   ["d.d", "a.a", "aaa", ".a."],
+  puddle: [".bbbbb.", "bccaaab", ".bbbbb."],
+  cloud:  ["..cccc...", ".ccccccc.", "cccccccca", ".aaaaaaa."],
+  tile:   ["dddd", "d..d", "d..d", "dddd"],
+  star:   [".c.", "cdc", ".c."],
+  vine:   ["a..", ".a.", ".aa", "a.a", ".a."],
+  coral:  ["d.d.d", ".ddd.", "..d..", ".dd.."],
+};
+// по биомам: [проп, вес, палитра {a,b,c,d}]
+const BPROPS = [
+  [['tree', 3, { a: '#3f8a3a', b: '#2a5e27', c: '#6ab85a', d: '#6a4a2a' }], ['bush', 4, { a: '#4a9a40', b: '#2f6a2a', c: '#7ac860' }], ['flower', 8, { a: '#3a7a30', c: '#ffffff', d: '#ff8ab0' }], ['flower', 6, { a: '#3a7a30', c: '#fff6a0', d: '#ffd84a' }], ['rock', 2, { a: '#8a8a90', b: '#5a5a62', c: '#b0b0b8' }], ['grass', 8, { a: '#5aa04a' }]],
+  [['pine', 5, { a: '#1f4a2a', b: '#143620', c: '#2f6a3a', d: '#4a3020' }], ['mush', 3, { a: '#e8dcc0', b: '#8a2020', c: '#ffffff', d: '#c03030' }], ['bush', 3, { a: '#24502c', b: '#163820', c: '#3a7044' }], ['rock', 2, { a: '#4a5048', b: '#30362f', c: '#6a7068' }], ['grass', 6, { a: '#2f6a36' }]],
+  [['reed', 6, { a: '#5a6a2a', d: '#8a6a3a' }], ['puddle', 4, { a: '#3a5a3a', b: '#22301a', c: '#6a8a5a' }], ['dtree', 2, { a: '#3a3020', b: '#241c10' }], ['mush', 2, { a: '#c8c0a0', b: '#4a5a20', c: '#d8ff8a', d: '#8ab030' }], ['grass', 6, { a: '#56663a' }]],
+  [['skull', 3, { b: '#3a2a10', c: '#e8e0c8' }], ['bone', 5, { a: '#d8d0b8', c: '#e8e0c8' }], ['ribs', 2, { c: '#d8d0b8' }], ['rock', 3, { a: '#a0804a', b: '#7a6034', c: '#c8a86a' }], ['boulder', 1, { a: '#9a7a44', b: '#6a522a', c: '#c0a060' }]],
+  [['tomb', 4, { a: '#6a6a78', b: '#40404a', c: '#9090a0', d: '#2a2a30' }], ['pillar', 2, { a: '#5a5a68', b: '#3a3a44', c: '#8a8a98' }], ['broken', 2, { a: '#5a5a68', b: '#3a3a44', c: '#8a8a98' }], ['skull', 2, { b: '#202028', c: '#c8c8b8' }], ['bone', 3, { a: '#b8b8a8', c: '#d8d8c8' }]],
+  [['ice', 5, { a: '#9ad0f0', b: '#6aa0c8', c: '#ffffff' }], ['rock', 3, { a: '#8aa0b0', b: '#607888', c: '#ffffff' }], ['pine', 2, { a: '#2a5a5a', b: '#1a4040', c: '#ffffff', d: '#4a3020' }], ['star', 4, { c: '#ffffff', d: '#c9e8ff' }]],
+  [['lava', 4, { c: '#ffd84a', d: '#ff5a1a' }], ['rock', 4, { a: '#3a2020', b: '#200e0e', c: '#6a3030' }], ['boulder', 2, { a: '#2a1616', b: '#160a0a', c: '#5a2a20' }], ['ember', 5, { c: '#ffe08a', d: '#ff6622' }]],
+  [['star', 8, { c: '#ffffff', d: '#b06aff' }], ['shard', 4, { a: '#5a3a9a', b: '#2a1a4a', c: '#c8a8ff', d: '#8a5ad8' }], ['crystal', 2, { a: '#4a2a8a', b: '#221040', c: '#d8b8ff', d: '#9a6ae8' }]],
+  [['crystal', 5, { a: '#4a7ab8', b: '#2a4a7a', c: '#c8f0ff', d: '#7ac0ff' }], ['shard', 6, { a: '#6a4ab8', b: '#3a2a6a', c: '#f0d8ff', d: '#b08aff' }], ['rock', 3, { a: '#3a4560', b: '#232d40', c: '#5a6a90' }]],
+  [['bigmush', 2, { a: '#e0d0c0', b: '#5a2a5a', c: '#ffffff', d: '#b04ac0' }], ['mush', 5, { a: '#e0d0c0', b: '#3a2a5a', c: '#d8ffd8', d: '#5ac0a0' }], ['mush', 4, { a: '#e0d0c0', b: '#5a1a2a', c: '#ffe0e0', d: '#e04a6a' }], ['star', 4, { c: '#d8ffb0', d: '#8ae05a' }]],
+  [['pillar', 3, { a: '#3a6a6a', b: '#204040', c: '#5a9a9a' }], ['broken', 3, { a: '#3a6a6a', b: '#204040', c: '#5a9a9a' }], ['coral', 4, { d: '#ff8a8a' }], ['puddle', 3, { a: '#2a6a7a', b: '#173a40', c: '#6ac0d0' }], ['vine', 4, { a: '#2a6a4a' }]],
+  [['dtree', 4, { a: '#2a2420', b: '#16120f' }], ['rock', 4, { a: '#4a403a', b: '#2a2420', c: '#6a5a50' }], ['ember', 3, { c: '#ffb070', d: '#a04a20' }], ['bone', 2, { a: '#8a8070', c: '#a8a090' }]],
+  [['cloud', 4, { a: '#d8d8e8', c: '#ffffff' }], ['tile', 4, { d: '#e8c060' }], ['pillar', 3, { a: '#f0e8d0', b: '#c8bc98', c: '#ffffff' }], ['star', 4, { c: '#ffffff', d: '#ffd84a' }]],
+];
+const AMB = ['firefly', 'firefly', 'spore', 'dust', 'dust', 'snow', 'ember', 'spark', 'spark', 'spore', 'bubble', 'ash', 'spark'];
+function propsGround(g, bi, sr) {
+  const L = BPROPS[bi]; if (!L) return; const tot = L.reduce((a, p) => a + p[1], 0), n = Math.round(AW * AH / 420);
+  const placed = [];
+  for (let i = 0; i < n; i++) { let r = sr() * tot, e = L[0]; for (const p of L) { r -= p[1]; if (r <= 0) { e = p; break; } }
+    const P = PROPS[e[0]], pw = P[0].length, ph = P.length, near = placed.length && sr() < .45 ? placed[placed.length - 1] : null;   // группы: рощи и россыпи
+    const x = Math.round(near ? clamp(near[0] + (sr() - .5) * 26, 0, AW - pw) : sr() * (AW - pw)), y = Math.round(near ? clamp(near[1] + (sr() - .5) * 18, 0, AH - ph) : sr() * (AH - ph));
+    if (placed.some(q => Math.abs(q[0] - x) < (q[2] + pw) / 2 + 1 && Math.abs(q[1] - y) < (q[3] + ph) / 2 + 1)) continue; placed.push([x, y, pw, ph]);
+    const big = ph >= 5; if (big) { g.globalAlpha = .28; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x + pw / 2 + 1, y + ph - .5, pw / 2, 1.5, 0, 0, 6.283); g.fill(); g.globalAlpha = 1; }
+    P.forEach((row, j) => [...row].forEach((ch, k) => { const col = e[2][ch]; if (ch !== '.' && col) { g.fillStyle = col; g.fillRect(x + k, y + j, 1, 1); } })); }
+}
+let vigC = null, vigK = '';
+function drawArenaFx() {
+  if (S.fxLow) return;
+  const b = biomeOf(S.zone), bi = b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, kind = AMB[bi] || 'spark';
+  for (let i = 0; i < 26; i++) { const ph = i * 7.31, sd = (i * 97.13) % 1;
+    let x, y, c, a = .7;
+    if (kind === 'snow' || kind === 'ash') { y = ((i * 41.7 + time * (kind === 'snow' ? 9 : 5)) % (H + 6)) - 3; x = ((i * 53.3 + Math.sin(time * .8 + ph) * 5) % W + W) % W; c = kind === 'snow' ? '#ffffff' : '#8a7a70'; a = .6; }
+    else if (kind === 'ember' || kind === 'bubble') { y = H + 3 - ((i * 41.7 + time * (kind === 'ember' ? 14 : 8)) % (H + 6)); x = ((i * 53.3 + Math.sin(time * 1.3 + ph) * 3) % W + W) % W; c = kind === 'ember' ? (i % 3 ? '#ff7a2a' : '#ffd84a') : '#9ae0ff'; a = .7; }
+    else { x = ((i * 53.3 + Math.sin(time * .5 + ph) * 12 + time * 2) % W + W) % W; y = ((i * 37.9 + Math.cos(time * .4 + ph) * 8) % H + H) % H; const bl = .5 + .5 * Math.sin(time * 2.2 + ph);
+      c = kind === 'firefly' ? '#d8ff7a' : kind === 'spore' ? '#b8f0a0' : kind === 'dust' ? '#e8d8a8' : '#ffffff'; a = kind === 'firefly' ? bl : kind === 'spark' ? bl * bl : .45; if (kind === 'spark' && sd > .5) c = b.g[2]; }
+    ctx.globalAlpha = a; pix(x, y, c); if (kind === 'firefly' && a > .7) { ctx.globalAlpha = a * .3; pix(x + 1, y, c); pix(x - 1, y, c); pix(x, y + 1, c); pix(x, y - 1, c); } }
+  ctx.globalAlpha = 1;
+  // виньетка: края темнее, центр (герой) светлее
+  const key = W + 'x' + H; if (vigK !== key) { vigK = key; vigC = document.createElement('canvas'); vigC.width = W; vigC.height = H; const v = vigC.getContext('2d'), gr = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.hypot(W, H) * .58);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(4,2,10,.55)'); v.fillStyle = gr; v.fillRect(0, 0, W, H); }
+  ctx.drawImage(vigC, 0, 0);
+}
 function buildGround() {
   const b = biomeOf(S.zone);
   ground = document.createElement('canvas'); ground.width = AW; ground.height = AH;
@@ -3988,6 +4104,7 @@ function buildGround() {
     g.fillRect(x, y, 1, 1); if (sr() < .5) { g.fillRect(x - 1, y + 1, 1, 1); g.fillRect(x + 1, y + 1, 1, 1); }
   }
   if (b.world != null) worldGround(g, b.world, sr);
+  propsGround(g, b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, sr);
   g.fillStyle = 'rgba(8,6,16,.4)'; g.fillRect(0, 0, AW, AH);   // приглушённый фон, чтобы бой читался
   decal = document.createElement('canvas'); decal.width = AW; decal.height = AH;
   for (let i = 0; i < AW * AH * .002; i++) {
@@ -4198,6 +4315,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.af & 1024 && !col && time > (m.rfT || 0)) { m.rfT = time + 1; hurtHero(zoneDmg(S.zone) * m.dm * .4 * (1 - D.armor)); if (texts.length < 7) ftext(hero.x, hero.y - 10, 'отражено', '#ffffff', .7, .6); }
   const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1;
   const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
+  m.sqT = time + (crit ? .14 : .1); m.sqx = dx / d; impact(m.x - dx / d * 2 * m.sz, m.y - 4 * m.sz, crit, col); if (crit && D.aps < 4) hitStop = Math.max(hitStop, .025);
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
   if (show && (D.aps < 5 || crit) && texts.length < (D.aps < 5 ? 10 : 5) && time > (hitMob.nt || 0)) { if (D.aps >= 5) hitMob.nt = time + .12; ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.3 : 1); }
   if (m.hp <= 0) { m.dead = true; killMob(m); }
@@ -4210,7 +4328,7 @@ function killMob(m) {
   combo++; comboT = comboTime(); comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008);
   if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
   if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { feed('Комбо ' + combo + '! награды ×' + comboM().toFixed(2), '#ffdd44'); sfx.combo(); comboPop = .4; if (combo === 10) tip('combo', 'Комбо', 'Убивай без пауз — растёт множитель наград (вверху справа). Тапы по врагам продлевают комбо.'); }
-  splat(m);
+  splat(m); if (!m.obj) deathFx(m); if (m.boss) { slowT = Math.max(slowT, .5); hitStop = Math.max(hitStop, .1); }
   const c = m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48);
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
   if (m.boss || m.rare) shake = Math.max(shake, m.boss ? 8 : 3);
@@ -5016,6 +5134,7 @@ function effMech(dt) {
 /* ---------- основной цикл ---------- */
 let spawnT = 0, pressT = 0, kpsT = 0, uiT = 0, saveT = 0;
 function update(dt) {
+  juiceTick(dt);
   if (US && performance.now() - usReal > 250) ultFrame(dt, true);   // окно в фоне или симуляция: ульта идёт по игровому времени
   time += dt; tapCd -= dt;
   const z = zs();
@@ -5246,10 +5365,11 @@ function render() {
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(x + 1, Math.round(o.y) - 1, s - 2, 1);
     const bob = Math.sin(time * 10 + o.x) > .6 ? -1 : 0;
     const ol = sprite(MOBS[o.t].p, { 1: '#000', 2: '#000', 3: '#000' }, 'mo' + o.t), os = s / 8;
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.drawImage(ol, x + dx * Math.max(1, Math.round(os)), y + bob + dy * Math.max(1, Math.round(os)), s, s);
+    const sq = o.sqT > time ? (o.sqT - time) / .14 : 0, sw = Math.round(s * (1 + .3 * sq)), sh2 = Math.round(s * (1 - .22 * sq)), xo = Math.round(x - (sw - s) / 2 + (o.sqx || 0) * 2 * sq), yo = y + (s - sh2);   // сплющивание при ударе
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.drawImage(ol, xo + dx * Math.max(1, Math.round(os)), yo + bob + dy * Math.max(1, Math.round(os)), sw, sh2);
     const fly = wRule('fly') ? -3 - Math.round(Math.sin(time * 3 + o.x) * 1.5) : 0;
     if (o.ph) ctx.globalAlpha = .25;
-    ctx.drawImage(mobSprite(o, o.fl > 0), x, y + bob + fly, s, s); ctx.globalAlpha = 1;
+    ctx.drawImage(mobSprite(o, o.fl > 0), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1;
     if (o.shd > 0) { ctx.globalAlpha = .55; circ(o.x, o.y - s / 2, s * .6 + 1, '#7ad8ff', 14, .9, time); ctx.globalAlpha = 1; }
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
@@ -5279,6 +5399,7 @@ function render() {
   }
   { const hx = hero.x, hy = hero.y - 4; for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3) * (Math.abs(p.x - hx) < 6 && Math.abs(p.y - hy) < 7 ? .3 : 1); pix(p.x, p.y, p.c); } }
   ctx.globalAlpha = 1;
+  drawJuice();
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
   ctx.globalAlpha = 1;
@@ -5298,6 +5419,7 @@ function render() {
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
   drawNfx();
   drawHazTop();
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); drawArenaFx(); ctx.restore();
   drawHeroTop(rk);
   // полоса вожака (экранные координаты)
   const boss = mobs.find(m => m.boss);
