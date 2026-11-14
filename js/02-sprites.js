@@ -433,6 +433,7 @@ const MARK_OF = { '#ff6622': 'burn', '#ff9a3c': 'crater', '#ff7744': 'burn', '#f
   '#ffe08a': 'holy', '#fff2a8': 'holy', '#fff6c0': 'holy', '#bb88ff': 'rune', '#7affb0': 'dark', '#ff44ff': 'dark', '#88aaff': 'rune', '#99eeff': 'crack', '#ccf6ff': 'crack' };
 let markN = 0, markT = 0;
 function groundMark(x, y, r, c) {
+  if (SIM) return;
   const t = MARK_OF[c]; if (!t || S.fxLow || !decal) return;
   if (time > markT) { markT = time + .5; markN = 0; } if (++markN > 8) return;   // не больше 16 следов в секунду
   const g = decal.getContext('2d'), R = Math.min(r, 30);

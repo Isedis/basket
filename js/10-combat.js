@@ -1,5 +1,6 @@
 'use strict';
 /* ---------- мобы ---------- */
+let mobId = 0;
 function spawnMob(boss) {
   const b = biomeOf(S.zone);
   const k = Math.floor(rnd() * b.m.length);
@@ -17,7 +18,7 @@ function spawnMob(boss) {
   const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1) * skyHpM() * Math.sqrt(threatM());
   mobs.push({ t, x, y, h: b.h[k % b.h.length] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (S.zone > 50 && skyOn('sk_wslow') ? .75 : 1) * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
-    cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
+    cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false, id: ++mobId });
   { const nm = mobs[mobs.length - 1]; if (!boss && hordeC() > 0) { nm.hw = spawnMob.hw ?? 1; if (HK > 0) { nm.hp *= HHP; nm.max *= HHP; } nm.sp *= 1 + .4 * hordeC(); }
     if (!boss && S.zmod === 'giant') { nm.hp *= 2; nm.max *= 2; nm.sz *= 1.3; }
     if (!boss && S.zmod === 'swarm') { nm.hp *= .5; nm.max *= .5; }
@@ -57,6 +58,7 @@ function explode(m) {
   }
 }
 function splat(m) {
+  if (SIM) return;
   if (S.fxLow) return;
   const g = decal.getContext('2d'), n = m.boss ? 40 : 8 * m.sz;
   g.fillStyle = shade(m.rare ? '#ffd84a' : hsl2hex(m.h, 55, 48), -.45);
@@ -118,7 +120,7 @@ function hurtHero(dmg, unblock, cap, quiet) {
   }
   return dmg;
 }
-function ring(x, y, r, c) { groundMark(x, y + 2, r, c); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
+function ring(x, y, r, c) { if (SIM) return; groundMark(x, y + 2, r, c); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
   if (m.dead) return;
@@ -173,7 +175,7 @@ function killMob(m) {
     const s = pickStat();
     let amt = base * (.5 + rnd()) * (fav.includes(s.e) ? 2 : 1);
     if (dbl > 0 && rnd() < dbl) amt *= 2;
-    if (orbs.length < (S.fxLow ? 20 : 120)) { const a = rnd() * 6.28; orbs.push({ x: m.x, y: m.y - 3, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55 - 20, c: EFF[s.e].c, t: 0 }); }
+    if (!SIM && orbs.length < (S.fxLow ? 20 : 120)) { const a = rnd() * 6.28; orbs.push({ x: m.x, y: m.y - 3, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55 - 20, c: EFF[s.e].c, t: 0 }); }
     s.v += amt; s.g = amt; s.at = now; tryEvolve(s);
     if (i === 0 && (m.boss || m.rare || time > gainFeedT)) { gainFeedT = time + .5; feed('+' + fmt(amt) + ' ' + s.name, EFF[s.e].c); }
   }
@@ -294,7 +296,7 @@ function heroStrike(t, fromWave) {
   if (fd >= 2) { ring(t.x, t.y - 3, 5 + Math.min(8, fd), '#ff8877'); if (fd >= 3) hitAround(t.x, t.y, 8 + 2 * Math.min(6, fd - 3), dmg * .25, '#ff8877', t); }
   if (crit && F(EI.crit) >= 3) { fxLabel('Звёздный крит', t.x, t.y - 16, '#ffee66'); burst(t.x, t.y - 4, '#ffee66', 10, 50); hitAround(t.x, t.y, 10 + Math.min(10, F(EI.crit) - 3) * 2, dmg * .3, '#ffee66', t); }
   if (crit && F(EI.critd) >= 1) { const a = rnd() * 3.14, L = 4 + Math.min(10, F(EI.critd) * 2); bolts.push({ x1: t.x - Math.cos(a) * L, y1: t.y - 3 - Math.sin(a) * L, x2: t.x + Math.cos(a) * L, y2: t.y - 3 + Math.sin(a) * L, l: .12, c: '#ff7a00' }); }
-  if (F(EI.vamp) >= 1 && orbs.length < 160) for (let i = 0; i < Math.min(3, F(EI.vamp)); i++) orbs.push({ x: t.x, y: t.y - 3, vx: (rnd() - .5) * 60, vy: -30 - rnd() * 30, c: '#dd2244', t: 0, v: 1 });
+  if (!SIM && F(EI.vamp) >= 1 && orbs.length < 160) for (let i = 0; i < Math.min(3, F(EI.vamp)); i++) orbs.push({ x: t.x, y: t.y - 3, vx: (rnd() - .5) * 60, vy: -30 - rnd() * 30, c: '#dd2244', t: 0, v: 1 });
   if (F(EI.cleave) >= 3 && hero.atkN % 4 === 0) {
     const rr = D.range * 1.6 + 4; ring(hero.x, hero.y - 4, rr, '#ff9988');
     hitAround(hero.x, hero.y, rr, dmg * .8, '#ff9988', t);
@@ -731,7 +733,7 @@ function renderDS() {
 }
 // короткая подпись эффекта героя при срабатывании (не чаще раза в 15с на эффект)
 const lblT = {};
-function fxLabel(key, x, y, c) { if (time - (lblT[key] ?? -99) < 15) return; lblT[key] = time; const L = S.meta.lbl || (S.meta.lbl = {}); if ((L[key] = (L[key] || 0) + 1) > 3) return; ftext(x, y, key, c, .85, 1.3); }   // название эффекта показываем первые 3 раза — потом игрок его знает
+function fxLabel(key, x, y, c) { if (SIM) return; if (time - (lblT[key] ?? -99) < 15) return; lblT[key] = time; const L = S.meta.lbl || (S.meta.lbl = {}); if ((L[key] = (L[key] || 0) + 1) > 3) return; ftext(x, y, key, c, .85, 1.3); }   // название эффекта показываем первые 3 раза — потом игрок его знает
 const RING_LABEL = { '#ff6622': 'Огненное кольцо', '#ff9a3c': 'Метеор', '#cc9966': 'Терновая волна', '#66ccff': 'Вихрь', '#ff9988': 'Вихрь клинков', '#ff5544': 'Мясник', '#aabbcc': 'Второе дыхание' };
 let hurtV = 0;
 const seenRole = {};

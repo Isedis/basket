@@ -30,10 +30,11 @@ function update(dt) {
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
   hero.slowT = (hero.slowT || 0) - dt;
   hero.rageT = (hero.rageT || 0) - dt; if (hero.rageT <= 0) hero.rage = 0;
-  { const M = D.maxHP || 1, press = (hero.pool || 0) > M * .05, healed = Math.max(0, hero.hp - (hero.lastHp ?? hero.hp));
-    // pr — разрешённая ЧИСТАЯ потеря HP (доля в секунду): рана снимает отлеченное + pr; 4%/с, под натиском +15% каждые 5 с
-    hero.pr = press ? Math.min(1, (hero.pr || .04) * Math.pow(1.15, dt / 5)) : Math.max(.04, (hero.pr || .04) * Math.pow(.9, dt));
-    if (hero.pool > 0 && deathT <= 0) { const d = Math.min(hero.pool, healed + M * hero.pr * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
+  { const M = D.maxHP || 1, press = (hero.pool || 0) > M * .05;
+    // pr — разрешённая ЧИСТАЯ потеря HP (доля в секунду): рана снимает постоянное лечение героя + pr; 4%/с, под натиском +15% каждые 5 с
+    hero.pr = press ? Math.min(6, (hero.pr || .04) * Math.pow(hero.hp > M * .9 ? 1.15 + .08 * Math.log10(1 + hero.pool / M) : 1.05, dt / 5)) : Math.max(.04, (hero.pr || .04) * Math.pow(.9, dt));   // пока HP почти полное — натиск разгоняется (быстрее, если рана огромная); когда HP тает — растёт медленно, чтобы борьба длилась
+    if (hero.pool > 0 && deathT <= 0) { const hr = M * ((D.regen || 0) + (D.vamp || 0) * (D.aps || 0));   // постоянное лечение героя в секунду (реген + вампиризм); разовые лечения и воскрешения рана не съедает
+      const d = Math.min(hero.pool, (hr + M * hero.pr) * dt + (hero.pool < M * .02 ? hero.pool : 0)); hero.pool -= d; hurtHero(d, true, 0, true); }   // рана стекает в HP
     if (hero.pool > 0 && time - (hero.poolT || 0) > 2) hero.pool *= Math.pow(.8, dt);   // без новых ударов рана затягивается
     hero.lastHp = hero.hp; }
   if (hero.psnT > 0) { hero.psnT -= dt; hero.hp -= hero.psnD * dt * (1 - D.armor); if (hero.hp <= 0 && deathT <= 0) { hero.hp = 0; hurtHero(1, true); } if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
@@ -152,9 +153,12 @@ function update(dt) {
     }
   }
   // расталкивание мобов
-  for (let i = 0; i < mobs.length; i++) for (let j = i + 1; j < mobs.length; j++) {
-    const a = mobs[i], b = mobs[j], dx = b.x - a.x, dy = b.y - a.y, r = 3.5 * (a.sz + b.sz), d2 = dx * dx + dy * dy;
-    if (d2 < r * r && d2 > .001) { const d = Math.sqrt(d2), p = (r - d) / d * .5; a.x -= dx * p * .5; a.y -= dy * p * .5; b.x += dx * p * .5; b.y += dy * p * .5; }
+  { // сетка 16×16: сравниваем только соседей по клеткам (было — все пары, при 230 врагах это 26 тыс. проверок за кадр)
+    const G = new Map(), CS = 16; for (const m of mobs) { if (m.id === undefined) m.id = ++mobId; const key = (Math.floor(m.x / CS) << 12) | Math.floor(m.y / CS); let c = G.get(key); if (!c) G.set(key, c = []); c.push(m); }
+    for (const m of mobs) { const cx = Math.floor(m.x / CS), cy = Math.floor(m.y / CS);
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) { const c = G.get(((cx + ox) << 12) | (cy + oy)); if (!c) continue;
+        for (const b of c) { if (b === m || b.id < m.id) continue; const a = m, dx = b.x - a.x, dy = b.y - a.y, r = 3.5 * (a.sz + b.sz), d2 = dx * dx + dy * dy;
+          if (d2 < r * r && d2 > .001) { const d = Math.sqrt(d2), p = (r - d) / d * .5; a.x -= dx * p * .5; a.y -= dy * p * .5; b.x += dx * p * .5; b.y += dy * p * .5; } } } }
   }
   mobs = mobs.filter(m => !m.dead);
 
@@ -178,8 +182,8 @@ function update(dt) {
   const rk = heroRank();
   if (rk >= 12 && rnd() < dt * (4 + rk / 3)) parts.push({ x: hero.x + (rnd() - .5) * 8, y: hero.y - rnd() * 8, vx: 0, vy: -15, l: .5, c: ARMOR[(rk + 3) % ARMOR.length] });
 
-  uiT -= dt; if (uiT <= 0) { uiT = .25; if (D.dirty) { recalc(); D.dirty = false; } updateUI(); }
-  saveT -= dt; if (saveT <= 0) { saveT = 5; save(); }
+  uiT -= dt; if (uiT <= 0) { uiT = .25; if (D.dirty) { recalc(); D.dirty = false; } if (SIM) { if (time > autoT) { autoT = time + 1; runAuto(); } } else updateUI(); }   // в симуляции — только автоигра, без интерфейса
+  saveT -= dt; if (saveT <= 0) { saveT = 5; if (!SIM) save(); }
 }
 
 function pix(x, y, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, 1, 1); }

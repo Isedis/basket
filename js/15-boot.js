@@ -45,7 +45,7 @@ if (location.search.includes('v=')) try { history.replaceState(null, '', locatio
 let cloud = null, cloudJson = null, cloudT = 0;
 let wiped = false;
 function save(force) {
-  if (!booted || wiped) return;
+  if (!booted || wiped || (SIM && !force)) return;   // в симуляции сохраняет только явный save(true)
   S.vals = stats.map(s => s.v); S.lv = stats.map(s => s.lvl); S.t = Date.now(); S.hpf = hero.hp / D.maxHP;
   const json = JSON.stringify(S);
   try { localStorage.setItem(SAVE_KEY, json); } catch (e) {}

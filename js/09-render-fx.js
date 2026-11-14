@@ -19,8 +19,9 @@ function resize() {
 }
 /* ---------- сочность ударов: искры попаданий, осколки при смерти, души к счётчику ---------- */
 let impacts = [], deaths = [], wisps = [];
-function impact(x, y, crit, c) { if (S.fxLow || impacts.length > 28) return; impacts.push({ x, y, t: 0, crit, c: c || (crit ? '#ffdd33' : '#ffffff'), r: rnd() < .5 }); }
+function impact(x, y, crit, c) { if (SIM || S.fxLow || impacts.length > 28) return; impacts.push({ x, y, t: 0, crit, c: c || (crit ? '#ffdd33' : '#ffffff'), r: rnd() < .5 }); }
 function deathFx(m) {
+  if (SIM) return;
   if (S.fxLow) return;
   if (deaths.length < 26) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1, s = 8 * m.sz;
     deaths.push({ spr: mobSprite(m, false), x: m.x, y: m.y, s, t: 0, life: m.boss ? .9 : .45, kx: dx / d, ky: dy / d, v: (m.boss ? 30 : 55) * (.8 + rnd() * .4), spin: (rnd() - .5) * 2, boss: m.boss }); }
@@ -134,6 +135,7 @@ function drawArenaFx() {
   ctx.drawImage(vigC, 0, 0);
 }
 function buildGround() {
+  if (SIM && ground) return;   // в симуляции фон арены не нужен
   const b = biomeOf(S.zone);
   ground = document.createElement('canvas'); ground.width = AW; ground.height = AH;
   const g = ground.getContext('2d');
@@ -160,6 +162,7 @@ let AC = null;
 function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
 const lastSnd = {};
 function tone(f, d, type = 'square', vol = .04, f2 = 0, delay = 0, tag = '', gap = 0) {
+  if (SIM) return;
   if (S.mute || !AC) return;
   const now = AC.currentTime;
   if (tag) { if (lastSnd[tag] && now - lastSnd[tag] < gap) return; lastSnd[tag] = now; }
@@ -213,6 +216,7 @@ let feedArr = [], gainFeedT = 0;
 function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
 const ftWordT = {};
 function ftext(x, y, s, c, size = 1, life = .9) {
+  if (SIM) return;
   // словесные надписи (не числа): каждая не чаще раза в 6с, чтобы бой не тонул в тексте
   if (!/^[-+0-9×]/.test(s) && size < 1.5) { if (time < (ftWordT[s] || 0)) return; ftWordT[s] = time + 6; }
   if (texts.length > 30) texts.shift();
@@ -220,6 +224,7 @@ function ftext(x, y, s, c, size = 1, life = .9) {
 }
 const mvCap = v => 170 * (1 - Math.exp(-v / 170));   // бег быстрый, но глазом видно
 function burst(x, y, c, n, sp = 30) {
+  if (SIM) return;
   if (S.fxLow) n = Math.ceil(n * .3);
   n = Math.ceil(n * Math.min(1, 150 / (parts.length + 1)));   // чем больше на экране, тем меньше новых искр
   for (let i = 0; i < n; i++) {
