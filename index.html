@@ -457,7 +457,7 @@ html,body{font-size:10px}
       <div id="clsbox" hidden></div>
       <div class="gsec" style="margin-top:14px">АВТОМАТИКА <span>меньше тыкать</span></div>
       <div id="autobox"></div>
-      <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Обычные враги доводят только до изнеможения, а вожак может убить. Если долго не проходишь зону, вожак приходит сам. Когда герой падает, он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
+      <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Погибнуть можно и от толпы, и от вожака — следи за здоровьем. Если долго не проходишь зону, вожак приходит сам. Когда герой падает, он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
     </div>
   </div>
   <div id="settings" class="sheet">
@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114080043';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114080448';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3593,7 +3593,6 @@ function hurtHero(dmg, unblock) {
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
   if (hero.shield > 0) { const a = Math.min(hero.shield, dmg); hero.shield -= a; dmg -= a; burst(hero.x, hero.y - 4, '#9fe8ff', 2, 20); }
   hero.hp -= dmg; hero.hurt = .1; ntHurt();
-  if (hero.hp <= 0 && !bossAlive && !unblock) hero.hp = 1;   // обычные враги доводят до изнеможения, убить может только вожак
   if (hero.hp <= 0) {
     if (au('reb') && !S.second) { S.second = true; hero.hp = D.maxHP * .5; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'ВТОРОЙ ШАНС!', '#ff44ff', 1.2, 1.2); ring(hero.x, hero.y - 4, 20, '#ff44ff'); flashT = .1; }
     else if (aw() && cls() === 'priest' && time > (hero.angT || 0)) { hero.angT = time + 30; hero.hp = D.maxHP; hero.iframe = 1.5; ftext(hero.x, hero.y - 16, 'АНГЕЛ-ХРАНИТЕЛЬ!', '#fff6c0', 1.2, 1.2); ring(hero.x, hero.y - 4, 24, '#fff6c0'); flashT = .15; }
@@ -4471,7 +4470,7 @@ function update(dt) {
   hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.regen * dt);
   hero.slowT = (hero.slowT || 0) - dt;
   hero.rageT = (hero.rageT || 0) - dt; if (hero.rageT <= 0) hero.rage = 0;
-  if (hero.psnT > 0) { hero.psnT -= dt; hero.hp = Math.max(1, hero.hp - hero.psnD * dt * (1 - D.armor)); if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
+  if (hero.psnT > 0) { hero.psnT -= dt; hero.hp -= hero.psnD * dt * (1 - D.armor); if (hero.hp <= 0 && deathT <= 0) { hero.hp = 0; hurtHero(1, true); } if (rnd() < dt * 8 && parts.length < 500) parts.push({ x: hero.x + (rnd() - .5) * 6, y: hero.y - 6, vx: 0, vy: -10, l: .4, c: '#88ee22', f: 1 }); }
   PT.phx = (PT.phx || 0) - dt;
   if (legOn('phoenix') && hero.hp < D.maxHP * .1 && PT.phx <= 0) { PT.phx = 60; hero.hp = D.maxHP; burst(hero.x, hero.y - 4, '#ff9a3c', 30, 50); ring(hero.x, hero.y - 4, 20, '#ff9a3c'); feed('Феникс: полное исцеление!', '#ff9a3c'); flashT = .1; }
   PT.unb = (PT.unb || 0) - dt;
