@@ -590,3 +590,4 @@ img.pxi{width:auto!important;opacity:1!important;flex:none}
 /* панели описаний снизу не съедают карту: на маленьком экране — до ~40% высоты с прокруткой */
 #tinfo,#sinfo,#alinfo,#totinfo{max-height:40%;overflow-y:auto}
 #tview,#sview,#alview,#totview{min-height:150px!important}
+@media (max-width:380px){#subnav .sn{font-size:8.5px;padding:0 2px}#subnav{gap:3px!important;padding:6px 4px!important}#nav .nb{font-size:9px}}

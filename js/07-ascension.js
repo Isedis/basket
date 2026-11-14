@@ -249,11 +249,16 @@ function drawSky() {
     for (let i = 1; i < ids.length; i++) { const a = SN[ids[i - 1]], b = SN[ids[i]], x1 = s2x(a.x), y1 = s2y(a.y), x2 = s2x(b.x), y2 = s2y(b.y);
       if (B.figDone) { c.globalAlpha = .35; c.fillStyle = B.c; pxLine(c, x1, y1, x2, y2, 1, ps + 2); c.globalAlpha = 1; c.fillStyle = Math.floor(tm * 3 + i) % 4 ? B.c : '#ffffff'; pxLine(c, x1, y1, x2, y2, 1, Math.max(1, ps)); }
       else { c.fillStyle = lit ? B.c : '#6a62a8'; c.globalAlpha = lit ? .7 : .6; pxLine(c, x1, y1, x2, y2, 3, 1); c.globalAlpha = 1; } }
-    if (z >= .6) { const m = SN[B.figIds[3]], fs = Math.round(Math.max(7, 8 * Math.min(1.6, z * 1.3))); c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const t = B.fig + (B.figDone ? ' !' : ''), tx = s2x(m.x), ty = s2y(m.y) - 22 * z - 6;
+    // названия фигур — только при приближении, иначе налезают на таблички ветвей
+    if (z >= 1.1) { const m = SN[B.figIds[3]], fs = Math.round(Math.max(7, 8 * Math.min(1.6, z * 1.3))); c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const t = B.fig + (B.figDone ? ' !' : ''), tx = s2x(m.x), ty = s2y(m.y) - 22 * z - 6;
       c.fillStyle = '#000'; c.fillText(t, tx + 1, ty + 1); c.fillStyle = B.figDone ? B.c : '#8a82c0'; c.fillText(t, tx, ty); } }
   // названия ветвей — золотые таблички по краю открытого неба
-  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, r = SKY_RING[Math.max(1, lr)] + 24, fs = Math.round(Math.max(7, 8 * Math.min(1.3, z * 1.6)));
-    c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const tx = Math.round(s2x(Math.cos(a) * r)), ty = Math.round(s2y(Math.sin(a) * r)), w = c.measureText(B.n).width + 8;
+  const plRects = [];   // таблички не налезают друг на друга: отодвигаем от центра, пока пересекаются
+  SKYB.forEach((B, bi) => { const a = bi / SKYB.length * Math.PI * 2 - Math.PI / 2, fs = Math.round(Math.max(7, 8 * Math.min(1.3, z * 1.6)));
+    c.font = `${fs}px "Press Start 2P", monospace`; c.textAlign = 'center'; const w = c.measureText(B.n).width + 8;
+    const r = SKY_RING[Math.max(1, lr)] + 24; let tx = Math.round(s2x(Math.cos(a) * r)), ty = Math.round(s2y(Math.sin(a) * r));
+    for (const q of plRects) if (Math.abs(q[1] - ty) < fs + 9) { const need = (q[2] + w) / 2 + 3 - Math.abs(q[0] - tx); if (need > 0) tx += (tx >= q[0] ? 1 : -1) * need; }   // расходятся в стороны
+    plRects.push([tx, ty, w]);
     c.fillStyle = '#0a0618'; c.fillRect(tx - w / 2, ty - fs - 3, w, fs + 7); c.fillStyle = B.c; c.fillRect(tx - w / 2, ty - fs - 3, w, 1); c.fillRect(tx - w / 2, ty + 3, w, 1); c.fillText(B.n, tx, ty); });
   // звёзды-спрайты
   for (const n of SN) { const x = s2x(n.x), y = s2y(n.y); if (x < -30 || y < -30 || x > sW + 30 || y > sH + 30) continue;
