@@ -149,6 +149,31 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 #rbtn{background:#7a2a8a}
 #rbtn[disabled]{opacity:.45}
 #tbtn{background:#2f5a8a}
+#altar{position:fixed;inset:0;z-index:8;background:#030209;display:flex;flex-direction:column;bottom:var(--navh)}
+#altar[hidden]{display:none}
+#alhead{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0c0820;border-bottom:3px solid #c9a24a;box-shadow:0 2px 0 #4a3510;font-size:10px;color:#ffe08a}
+#alhead span{flex:1}
+#alhead .btn{background:#2a1a5a;color:#ffe08a;border:2px solid #c9a24a}
+#alsum{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;background:#0a0718;border-bottom:2px solid #3a2a10}
+#alsum div{text-align:center;background:#0e0a26;border:1px solid #3a2a60;padding:4px 2px}
+#alsum small{display:block;font-size:6px;color:#8a83b6}
+#alsum b{display:block;font-weight:normal;font-size:10px;color:#fff;margin-top:2px}
+#alview{position:relative;flex:1;min-height:0;overflow:hidden}
+#alview canvas{position:absolute;inset:0}
+#alinfo{flex:none;min-height:118px;padding:8px 10px 10px;background:#0c0820;border-top:3px solid #c9a24a;box-shadow:inset 0 2px 0 #4a3510;font-size:9px;line-height:1.8}
+#alinfo h3{font-size:11px;font-weight:normal}
+#alinfo .tier{font-size:8px;color:#000;background:#ffd84a;padding:1px 4px;border-radius:2px}
+#alinfo .k{color:var(--dim)}
+#alinfo .albar{display:block;height:5px;background:#05030a;border:1px solid #000;margin:3px 0}
+#alinfo .albar u{display:block;height:100%}
+#altarbox{padding:0 8px 6px}
+#altarbox .altop{display:flex;gap:5px;margin-bottom:6px}
+#altarbox .altop div{flex:1;display:flex;align-items:center;gap:5px;padding:5px;background:#120e1e;border:2px solid var(--ec);border-radius:4px;min-width:0;font-size:7px}
+#altarbox .altop img{width:18px;height:18px;image-rendering:pixelated;flex:none}
+#altarbox .altop b{font-weight:normal;color:var(--ec);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#altarbox .altop small{color:#a59fc0;display:block}
+#altarbox #altb{width:100%;min-height:48px;background:#2a1a5a;color:#ffe08a;border:2px solid #ffd84a;box-shadow:inset 0 0 0 2px #120a30,0 0 10px -3px #ffd84a;font-size:11px;animation:altg 2s steps(2) infinite}
+@keyframes altg{50%{box-shadow:inset 0 0 0 2px #120a30,0 0 14px -2px #c06bff}}
 #sky{position:fixed;inset:0;z-index:8;background:#03020a;display:flex;flex-direction:column;bottom:var(--navh)}
 #sky[hidden]{display:none}
 #shead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#0c0820;border-bottom:3px solid #c9a24a;box-shadow:0 2px 0 #4a3510;font-size:9px;color:#ffe08a}
@@ -474,6 +499,7 @@ html,body{font-size:10px}
     </div>
     <div id="clsc"></div>
     <div id="sum"></div>
+    <div id="altarbox"></div>
     <div id="dsrc"><div class="dbar"></div><div class="dleg"></div></div>
     <div id="info" hidden></div>
     <div id="slist"></div>
@@ -539,6 +565,12 @@ html,body{font-size:10px}
   <div id="tlist" hidden></div>
   <div id="tinfo"></div>
 </div>
+<div id="altar" hidden>
+  <div id="alhead"><span>АЛТАРЬ СИЛЫ</span><button class="btn" id="allist">СПИСОК</button><button class="btn" id="alclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="alsum"></div>
+  <div id="alview"><canvas id="alcv"></canvas></div>
+  <div id="alinfo"></div>
+</div>
 <div id="sky" hidden>
   <div id="shead"><span>НЕБОСВОД</span><span>Искры: <b id="ssparks">0</b></span><button class="btn" id="sclose">✕ ЗАКРЫТЬ</button></div>
   <div id="sbar"></div>
@@ -550,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114083004';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114083626';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3325,16 +3357,101 @@ function groupOf(e) {
 }
 function applyGroup(g) { const o = !!S.open[g.e]; g.body.hidden = !o; g.el.classList.toggle('open', o); g.arrow.textContent = o ? '▴' : '▾'; }
 // пиксельные иконки эффектов для карточек-рун
-const EICON = { dmg: 'sword', hp: 'heart', aspd: 'wing', crit: 'eye', regen: 'grow', armor: 'shield', critd: 'dmg', vamp: 'drop', luck: 'clover', wis: 'book', move: 'wing', cleave: 'sword', dodge: 'swap', range: 'spike',
-  fire: 'flame', poison: 'drop', shock: 'bolt', thorns: 'spike', power: 'fist', fury: 'flame', bleed: 'drop', frost: 'cond', exec: 'skull', bounce: 'swap', grav: 'gear', spirit: 'surv', greed: 'crown', barrier: 'shield',
+const EICON = { dmg: 'sword', hp: 'heart', aspd: 'wing', crit: 'eye', regen: 'heart', armor: 'shield', critd: 'spike', vamp: 'drop', luck: 'clover', wis: 'book', move: 'wing', cleave: 'sword', dodge: 'swap', range: 'spike',
+  fire: 'flame', poison: 'drop', shock: 'bolt', thorns: 'spike', power: 'fist', fury: 'flame', bleed: 'drop', frost: 'cond', exec: 'skull', bounce: 'swap', grav: 'gear', spirit: 'wing', greed: 'crown', barrier: 'shield',
   det: 'flame', leech: 'drop', rage: 'fist', scrit: 'star', hunt: 'eye', energy: 'bolt', fear: 'skull', curio: 'book', trail: 'bolt', orbs: 'star', echo: 'clock', mark: 'eye', horde: 'hand', blink: 'wing', dust: 'clover',
-  quake: 'fist', beam: 'bolt', clone: 'surv', hole: 'gear', mirror: 'shield', crows: 'wing', ritual: 'skull' };
+  quake: 'fist', beam: 'bolt', clone: 'hand', hole: 'gear', mirror: 'shield', crows: 'wing', ritual: 'skull' };
 const effIcC = {};
 function effIconURL(e) { if (effIcC[e]) return effIcC[e]; const P = ICONS[EICON[EFF[e].k] || 'star'] || ICONS.star, c = document.createElement('canvas'); c.width = c.height = 7; const x = c.getContext('2d');
   x.fillStyle = '#000'; P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') for (const [dx, dy] of [[0, 1], [1, 0], [1, 1]]) x.fillRect(i + 1 + dx, j + 1 + dy, 1, 1); }));
   x.fillStyle = EFF[e].c; P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') x.fillRect(i + 1, j + 1, 1, 1); })); return effIcC[e] = c.toDataURL(); }
 // прогресс до следующей формы: форма = 1 + floor(log10(r/3)/1.5)
 function formProg(e) { const r = (D.R && D.R[EFF[e].k] || 0) * (1 + ta('form')); if (r < 3) return Math.max(0, r / 3); const v = Math.log10(r / 3) / 1.5; return v - Math.floor(v); }
+
+
+/* ================= АЛТАРЬ СИЛЫ — эпичное окно статов ================= */
+let alSel = -1, alRaf = 0, alW = 0, alH = 0, alDPR = 1, alPos = {};
+function openAltar() { $('altar').hidden = false; sizeAltar(); renderAltarInfo(); if (!alRaf) alRaf = requestAnimationFrame(drawAltar); }
+function sizeAltar() { const v = $('alview'), r = v.getBoundingClientRect(); alDPR = Math.min(2, devicePixelRatio || 1); alW = r.width; alH = r.height; const c = $('alcv'); c.width = Math.round(alW * alDPR); c.height = Math.round(alH * alDPR); c.style.width = alW + 'px'; c.style.height = alH + 'px'; }
+const alGemC = {};
+function alGem(col, tier, big) {   // пиксельный камень: огранка, свет сверху-слева, рамка цвета формы
+  const key = col + tier + big; if (alGemC[key]) return alGemC[key];
+  const P = big ? ['...#####...', '..#ooooo#..', '.#ooolooo#.', '#oollloooo#', '#oollooooo#', '#ooooooood#', '#oooooood#.', '.#ooooodd#.', '..#oooddd#.', '...#oddd#..', '....###....'] : ['..###..', '.#olo#.', '#ollo#.', '#ooood#', '.#ood#.', '..###..'];
+  const c = document.createElement('canvas'); c.width = P[0].length; c.height = P.length; const x = c.getContext('2d'), rim = tier >= 4 ? '#ffd84a' : tier >= 3 ? '#ffffff' : tier >= 1 ? shade(col, .35) : '#3a3260';
+  P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '.') return; x.fillStyle = ch === '#' ? rim : ch === 'l' ? shade(col, .55) : ch === 'd' ? shade(col, -.45) : col; x.fillRect(i, j, 1, 1); }));
+  return alGemC[key] = c;
+}
+function alLayout() {
+  const act = groups.filter(g => g && stats.some(s => s.e === g.e)).map(g => g.e).sort((a, b) => D.T[b] - D.T[a]);
+  const cx = alW / 2, cy = alH * .5, R = Math.min(alW, alH) / 2;
+  const rings = [[act.slice(0, 6), R * .42, .16, 1], [act.slice(6, 18), R * .64, -.1, 0], [act.slice(18), R * .86, .06, 0]];
+  return { act, cx, cy, R, rings };
+}
+function drawAltar() {
+  const cv = $('alcv'); if (!cv || $('altar').hidden) { alRaf = 0; return; }
+  const c = cv.getContext('2d'); c.setTransform(alDPR, 0, 0, alDPR, 0, 0); c.imageSmoothingEnabled = false;
+  const T = performance.now() / 1000, k = cls(), C = CL(), L = alLayout(), { cx, cy, R } = L;
+  // фон: тёмный зал с пиксельными звёздами и туманом цвета класса
+  const g = c.createRadialGradient(cx, cy, 10, cx, cy, Math.max(alW, alH) * .75); g.addColorStop(0, shade(C.c, -.6)); g.addColorStop(.45, '#0a0618'); g.addColorStop(1, '#030209'); c.fillStyle = g; c.fillRect(0, 0, alW, alH);
+  for (let i = 0; i < 90; i++) { const x = (i * 97.3) % alW, y = (i * 53.7 + i * i * .3) % alH, ph = Math.floor(T * 2 + i) % 7; c.fillStyle = ph ? '#4a4690' : '#ffffff'; c.fillRect(Math.round(x), Math.round(y), 1, 1); }
+  // руны на полу: кольца орбит
+  for (const [, rr] of L.rings) { const n = Math.floor(rr * 2 * Math.PI / 7); c.fillStyle = shade(C.c, -.35); for (let i = 0; i < n; i++) { if ((i + Math.floor(T * 4)) % 3 === 0) continue; const a = i / n * Math.PI * 2; c.fillRect(Math.round(cx + Math.cos(a) * rr), Math.round(cy + Math.sin(a) * rr * .55), 2, 1); } }
+  // столпы атрибутов по углам
+  const corners = [[.1, .2], [.9, .2], [.1, .86], [.9, .86]];
+  ATTRS.forEach((A, j) => { const [fx, fy] = corners[j], x = Math.round(alW * fx), y = Math.round(alH * fy), m = attrMul(j), h = Math.round(18 + Math.min(70, (m - 1) * 28)), main = j === mainAttr();
+    c.fillStyle = '#000'; c.fillRect(x - 7, y - h - 1, 14, h + 2); c.fillStyle = shade(A.c, -.55); c.fillRect(x - 6, y - h, 12, h); c.fillStyle = shade(A.c, -.3); c.fillRect(x - 6, y - h, 3, h);
+    for (let q = y - h + 4; q < y; q += 8) { c.fillStyle = shade(A.c, -.2); c.fillRect(x - 6, q, 12, 1); }
+    const oy = y - h - 9 + Math.round(Math.sin(T * 2 + j) * 2), gr = c.createRadialGradient(x, oy, 1, x, oy, 18); gr.addColorStop(0, A.c + 'cc'); gr.addColorStop(1, A.c + '00'); c.fillStyle = gr; c.fillRect(x - 18, oy - 18, 36, 36);
+    c.fillStyle = A.c; c.fillRect(x - 4, oy - 4, 8, 8); c.fillStyle = '#fff'; c.fillRect(x - 3, oy - 3, 3, 3);
+    c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#000'; c.fillText(A.n, x + 1, y + 11); c.fillStyle = main ? '#ffe08a' : A.c; c.fillText((main ? '◆' : '') + A.n, x, y + 10);
+    c.fillStyle = '#e9e4ff'; c.fillText('×' + m.toFixed(2), x, y + 20); });
+  // позиции камней
+  alPos = {};
+  L.rings.forEach(([list, rr, sp, big], ri) => list.forEach((e, i) => { const a = i / Math.max(1, list.length) * Math.PI * 2 + T * sp + ri; alPos[e] = { x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr * .55, big, depth: Math.sin(a), ring: ri }; }));
+  // лучи синергий
+  SYN.forEach((y, i) => { const l = sy(i), A = alPos[y.a], B = alPos[y.b]; if (!l || !A || !B) return; const col = EFF[y.a].c;
+    c.globalAlpha = .25 + .15 * Math.sin(T * 3 + i); c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); c.moveTo(A.x, A.y); c.lineTo(B.x, B.y); c.stroke();
+    c.globalAlpha = .9; c.strokeStyle = '#ffffff'; c.lineWidth = 1; c.stroke(); const f = (T * .5 + i * .3) % 1; c.fillStyle = col; c.fillRect(A.x + (B.x - A.x) * f - 2, A.y + (B.y - A.y) * f - 2, 4, 4); c.globalAlpha = 1; });
+  // камни за героем (верхняя половина орбиты)
+  const drawStone = e => { const P = alPos[e], f = F(e), col = EFF[e].c, big = P.big, sc = big ? 3 : 2, im = alGem(col, f, big), w = im.width * sc, h = im.height * sc, bob = Math.round(Math.sin(T * 2 + e) * 2);
+    const gr = c.createRadialGradient(P.x, P.y, 2, P.x, P.y, w); gr.addColorStop(0, col + (f >= 3 ? '88' : '44')); gr.addColorStop(1, col + '00'); c.fillStyle = gr; c.fillRect(P.x - w, P.y - w, w * 2, w * 2);
+    c.drawImage(im, Math.round(P.x - w / 2), Math.round(P.y - h / 2 + bob), w, h);
+    const ic = ICONS[EICON[EFF[e].k] || 'star'], ps = big ? 2 : 1; c.fillStyle = '#fff'; for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (ic[j][i] === '#') c.fillRect(Math.round(P.x - ps * 2.5 + i * ps), Math.round(P.y - ps * 2.5 + j * ps + bob), ps, ps);
+    if (f && (big || P.ring < 2 || e === alSel)) { c.font = (big ? 8 : 7) + 'px "Press Start 2P", monospace'; c.textAlign = 'center'; const t = f <= 4 ? roman(f) : String(f); c.fillStyle = '#000'; c.fillText(t, P.x + 1, P.y + h / 2 + 10 + bob); c.fillStyle = f >= 4 ? '#ffd84a' : col; c.fillText(t, P.x, P.y + h / 2 + 9 + bob); }
+    if (e === alSel) { const o = Math.round(w / 2 + 6), t2 = Math.floor(T * 6) % 2; c.fillStyle = '#ffe08a'; for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.fillRect(P.x + dx * o - (dx > 0 ? 4 : 0) - t2 * dx, P.y + dy * o + bob, 5, 1); c.fillRect(P.x + dx * o, P.y + dy * o - (dy > 0 ? 4 : 0) - t2 * dy + bob, 1, 5); } } };
+  const ords = Object.keys(alPos).map(Number).sort((a, b) => alPos[a].depth - alPos[b].depth);
+  ords.filter(e => alPos[e].depth < 0).forEach(drawStone);
+  // пьедестал и герой
+  { const pw = Math.min(120, R * .55), py = cy + 26; c.fillStyle = '#000'; c.beginPath(); c.ellipse(cx, py + 6, pw / 2 + 2, 12, 0, 0, 6.283); c.fill();
+    c.fillStyle = shade(C.c, -.55); c.beginPath(); c.ellipse(cx, py + 4, pw / 2, 10, 0, 0, 6.283); c.fill(); c.fillStyle = shade(C.c, -.25); c.beginPath(); c.ellipse(cx, py, pw / 2, 9, 0, 0, 6.283); c.fill();
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283 + T * .8; c.fillStyle = i % 2 ? C.c : '#ffffff'; c.fillRect(Math.round(cx + Math.cos(a) * pw * .42), Math.round(py + Math.sin(a) * 6), 2, 1); }
+    const gr = c.createRadialGradient(cx, py - 40, 4, cx, py - 40, 90); gr.addColorStop(0, C.c + '33'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(cx - 90, py - 130, 180, 180);
+    const f = formOf(k), pat = evoPat(k, f), sc = Math.max(3, Math.floor(Math.min(84, R * .5) / Math.max(pat.length, pat[0].length))), bob = Math.round(Math.sin(T * 1.6) * 3);
+    const spr = sprite(pat, heroCols(k, 6, '#ffe08a'), 'pp' + k + f + true), sl = sprite(pat, { 1: C.c, 2: C.c, 3: C.c, 4: C.c, 5: C.c, 6: C.c, 7: C.c }, 'pa' + k + f);
+    c.globalAlpha = .22 + .1 * Math.sin(T * 3); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(cx - pat[0].length * sc / 2) + dx, Math.round(py - pat.length * sc + bob) + dy, pat[0].length * sc, pat.length * sc); c.globalAlpha = 1;
+    c.drawImage(spr, Math.round(cx - pat[0].length * sc / 2), Math.round(py - pat.length * sc + bob), pat[0].length * sc, pat.length * sc); }
+  ords.filter(e => alPos[e].depth >= 0).forEach(drawStone);
+  // искры, поднимающиеся от пьедестала
+  for (let i = 0; i < 24; i++) { const ph = (T * .35 + i * .137) % 1, x = cx + Math.sin(i * 7.1 + T) * 40, y = cy + 20 - ph * R * .9; c.globalAlpha = 1 - ph; c.fillStyle = i % 3 ? C.c : '#ffffff'; c.fillRect(Math.round(x), Math.round(y), 2, 2); } c.globalAlpha = 1;
+  alRaf = requestAnimationFrame(drawAltar);
+}
+function renderAltarInfo() {
+  $('alsum').innerHTML = `<div><small>УРОН/С</small><b>${fmt(D.hit * D.aps * (1 + D.crit * (D.critM - 1)))}</b></div><div><small>ЗДОРОВЬЕ</small><b>${fmt(D.maxHP)}</b></div><div><small>ЭФФЕКТОВ</small><b>${groups.filter(g => g && stats.some(s => s.e === g.e)).length}</b></div><div><small>СИНЕРГИЙ</small><b>${SYN.filter((y, i) => sy(i)).length}/${SYN.length}</b></div>`;
+  const el = $('alinfo'); if (alSel < 0) { el.innerHTML = `<div class="k">Камни вокруг героя — его эффекты: ближе и крупнее — сильнее. Лучи — активные синергии, столпы — атрибуты. Тапни камень.</div>`; return; }
+  const e = alSel, E = EFF[e], f = F(e), cnt = stats.filter(s => s.e === e).length, j = ATTR_OF[E.k], th = thrL(E.k), syns = SYN.map((y, i) => ({ y, i })).filter(o => o.y.a === e || o.y.b === e);
+  el.innerHTML = `<h3 style="color:${E.c}">${E.n} <span class="tier">${f ? (f <= 4 ? roman(f) : f) : '—'}</span>${th ? ' ' + pxImg('star', '#ffe08a', 8) + th : ''}${D.spec === e ? ' <span style="color:#f2c94c">специализация ×1.5</span>' : ''}</h3>` +
+    `<div class="k">${formName(e, f)} · ${cnt} стат(ов) · сила ${fmt(D.T[e])}</div><i class="albar"><u style="width:${Math.round(formProg(e) * 100)}%;background:${E.c}"></u></i><div class="k">до следующей формы: ${Math.round(formProg(e) * 100)}%</div>` +
+    `<div>${effVal(e)}</div>` + (j != null ? `<div class="k">атрибут: <span style="color:${ATTRS[j].c}">${ATTRS[j].n} ×${attrMul(j).toFixed(2)}</span></div>` : '') +
+    (syns.length ? `<div class="k">синергии: ${syns.map(o => { const p = EFF[o.y.a === e ? o.y.b : o.y.a]; return `<span style="color:${sy(o.i) ? p.c : '#5a5470'}">${o.y.n} (+${p.n})${sy(o.i) ? ' ур.' + sy(o.i) : ''}</span>`; }).join(', ')}</div>` : '');
+}
+function altarInit() {
+  $('alclose').onclick = () => { $('altar').hidden = true; };
+  $('allist').onclick = () => { $('altar').hidden = true; S.showList = true; S.allStats = true; updateUI(); };
+  $('alview').addEventListener('pointerdown', e => { const r = $('alview').getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = -1, bd = 34;
+    for (const k in alPos) { const d = Math.hypot(alPos[k].x - x, alPos[k].y - y); if (d < bd) { bd = d; best = +k; } } alSel = best; renderAltarInfo(); });
+  setInterval(() => { if (!$('altar').hidden) renderAltarInfo(); }, 700);
+  window.addEventListener('resize', () => { if (!$('altar').hidden) sizeAltar(); });
+}
 
 /* ---------- подробности по тапу ---------- */
 let infoRef = null;
@@ -5123,11 +5240,15 @@ function updateUI() {
     if (fl) gfl[s.e] = true; gcnt[s.e] = (gcnt[s.e] || 0) + 1;
   }
   const fav = biomeOf(S.zone).fav;
+  { const ab = $('altarbox'), top3 = groups.filter(g => g && gcnt[g.e]).sort((a, b) => D.T[b.e] - D.T[a.e]).slice(0, 3);
+    const ah = `<div class="altop">${top3.map(g => { const f = F(g.e); return `<div style="--ec:${EFF[g.e].c}"><img src="${effIconURL(g.e)}"><span style="min-width:0"><b>${EFF[g.e].n}</b><small>форма ${f ? (f <= 4 ? roman(f) : f) : '—'}</small></span></div>`; }).join('')}</div><button class="btn" id="altb">АЛТАРЬ СИЛЫ</button>`;
+    if (ab.dataset.h !== ah) { ab.dataset.h = ah; ab.innerHTML = ah; $('altb').onclick = openAltar; }
+    slist.style.display = S.showList ? '' : 'none'; }
   { const act = groups.filter(g => g && gcnt[g.e]), ord = act.slice().sort((a, b) => D.T[b.e] - D.T[a.e]), top = new Set(ord.slice(0, 6));
     const hideN = S.allStats ? 0 : act.length - top.size, lockN = groups.filter(g => g && !gcnt[g.e]).length;
     for (const g of groups) if (g) { const hid = !S.allStats && !top.has(g); if (g.el.hidden !== hid) g.el.hidden = hid; }
     const sm = $('smore'); sm.hidden = tab !== 'S' || (hideN + lockN === 0 && !S.allStats);
-    sm.textContent = S.allStats ? '▴ только главные' : '▾ остальные статы: ' + hideN + (lockN ? ' · ' + lockN + ' закрыто' : ''); }
+    sm.hidden = tab !== 'S'; sm.textContent = !S.showList ? '▾ список эффектов' : S.allStats ? '▴ скрыть список' : '▾ остальные статы: ' + hideN + (lockN ? ' · ' + lockN + ' закрыто' : ''); }
   for (const g of groups) if (g) {
     const e = g.e;
     g.nm.innerHTML = EFF[e].n + (D.spec === e ? ' <s>★</s>' : '') + (fav.includes(e) ? ' <u>×2</u>' : '');
@@ -5172,7 +5293,7 @@ function updateUI() {
 }
 $('sum').onclick = () => { S.sumFull = !S.sumFull; $('dsrc').hidden = !S.sumFull; updateUI(); setTimeout(resize, 50); };
 $('dsrc').hidden = !S.sumFull;
-$('smore').onclick = () => { S.allStats = !S.allStats; updateUI(); };
+$('smore').onclick = () => { if (!S.showList) { S.showList = true; S.allStats = false; } else if (!S.allStats) S.allStats = true; else { S.showList = false; S.allStats = false; } updateUI(); };
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'Эффекты: ' + (S.fxLow ? 'МИНИМУМ' : 'ВСЕ'); }
 $('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
@@ -6103,7 +6224,7 @@ if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
 ntMigrate();
 if (!S.meta.pathMig) { S.meta.pathMig = 1; let had = 0; for (const k in (S.meta.cl || {})) { if (S.meta.cl[k].ct && Object.keys(S.meta.cl[k].ct).length) had = 1; S.meta.cl[k].ct = {}; } if (had) setTimeout(() => toast('ПУТЬ КЛАССА', 'ветки классов переделаны · очки мастерства возвращены', 4000), 2500); }
-skyMigrate(); calcSky(); skyInit();
+skyMigrate(); calcSky(); skyInit(); altarInit();
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
