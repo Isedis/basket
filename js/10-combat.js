@@ -177,7 +177,7 @@ function killMob(m) {
     if (dbl > 0 && rnd() < dbl) amt *= 2;
     if (!SIM && orbs.length < (S.fxLow ? 20 : 120)) { const a = rnd() * 6.28; orbs.push({ x: m.x, y: m.y - 3, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55 - 20, c: EFF[s.e].c, t: 0 }); }
     s.v += amt; s.g = amt; s.at = now; tryEvolve(s);
-    if (i === 0 && (m.boss || m.rare || time > gainFeedT)) { gainFeedT = time + .5; feed('+' + fmt(amt) + ' ' + s.name, EFF[s.e].c); }
+    if (i === 0 && (m.boss || time > gainFeedT)) { gainFeedT = time + 3; feed('+' + fmt(amt) + ' ' + s.name, EFF[s.e].c); }
   }
   D.dirty = true;
   if (m.rare) { sfx.rare(); if (texts.length < 10 && time > (S.rareTxt || 0)) { S.rareTxt = time + 2.5; ftext(m.x, m.y - 14, 'РЕДКИЙ!', '#ffd84a', 1.1, 1); } tip('rare', 'Золотой враг', 'Редкие золотые враги дают ×8 наград.'); } else sfx.kill();

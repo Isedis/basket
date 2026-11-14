@@ -316,8 +316,8 @@ function zkKill(m) {
   if (m.boss) return;
   const t = zTask(); if (!t) { S.zk += m.hw ?? 1; return; }
   const z = ztState();
-  if (m.obj === 'totem') { z.tot++; feed('Тотем разрушен ' + Math.min(3, z.tot) + '/3', '#c06bff'); }
-  else if (m.prey) { z.prey++; feed('Добыча ' + Math.min(4, z.prey) + '/4', '#ff5588'); }
+  if (m.obj === 'totem') { z.tot++; }   // прогресс задачи виден на полоске зоны
+  else if (m.prey) { z.prey++; }
   else if (!m.obj) z.nk++;
   zkCalc();
 }

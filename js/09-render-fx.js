@@ -193,7 +193,17 @@ const sfx = {
 const toastEl = $('toast');
 // баннер сверху: по одному за раз, остальные ждут в очереди
 const tq = []; let tBusy = false;
+// рядовые сообщения: по центру только первые 2 раза за игру (чтобы понять, что это), дальше — строкой в ленте.
+// Исключения: новый рекорд зоны и вожак на рекордной зоне; мастерство — только на рубежах облика
+const TOAST_MINOR = /^(ЗОНА |ВОЛНА |ЗАДАЧА|НОВЫЕ ЗЕМЛИ|ВОЖАК|ЛЕГЕНДА: |МАСТЕРСТВО |ДЖЕКПОТ|ПОСЛЕДНИЙ РЫВОК|ГОБЛИН|ОПАСНОСТЬ|ЯРОСТЬ ВОЖАКА|ПРОРЫВ|ОТСТУПЛЕНИЕ)/;
+function toastMinor(t) {
+  if (!TOAST_MINOR.test(t)) return false;
+  if (/^(ЗОНА |ВОЖАК: |ЛЕГЕНДА: |НОВЫЕ ЗЕМЛИ)/.test(t) && S.zone >= (S.meta.best || 0)) return false;
+  if (/^МАСТЕРСТВО /.test(t) && TIERS.some(x => t.endsWith(' ' + x[0]))) return false;
+  const k = t.replace(/[0-9.,:]+.*$/, '').trim(), C = S.meta.tc || (S.meta.tc = {}); C[k] = (C[k] || 0) + 1; return C[k] > 2;
+}
 function toast(t, sub, dur = 2400, cls = '') {
+  if (cls !== 'tip' && toastMinor(t)) { feed(t.replace(/!$/, '') + (sub ? ' · ' + sub : ''), '#c9c2e8'); return; }
   if (cls === 'tip') tq.unshift({ t, sub, dur, cls }); else { tq.push({ t, sub, dur, cls }); while (tq.length > 3) tq.splice(tq.findIndex(q => q.cls !== 'tip'), 1); }
   if (!tBusy) nextToast();
 }
@@ -213,7 +223,10 @@ function tip(key, title, text) {
 }
 // лента событий в левом нижнем углу: прирост, эволюции, формы
 let feedArr = [], gainFeedT = 0;
-function feed(s, c) { feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
+// лента: не чаще строки в секунду, одинаковые строки не повторяются 6 с (иначе сотни строк в минуту)
+const feedSeen = new Map(); let feedLast = -9;
+function feed(s, c) { const k = String(s).replace(/[0-9.,]+[a-zA-Zа-я]*/g, '#'); if (time - (feedSeen.get(k) ?? -99) < 6 || time - feedLast < 1) return; feedSeen.set(k, time); feedLast = time; if (feedSeen.size > 200) feedSeen.clear();
+  feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
 const ftWordT = {};
 function ftext(x, y, s, c, size = 1, life = .9) {
   if (SIM) return;
