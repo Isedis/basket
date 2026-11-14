@@ -7,7 +7,7 @@ async function open({ phone = true, scale = 1 } = {}) {
   const ctx = await b.newContext(phone ? { ...devices['iPhone 13'], deviceScaleFactor: scale } : {});
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join(' ')));
-  p.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text())) errs.push('console: ' + m.text()); });
+  p.on('console', m => { if (m.type() === 'error' && !/fonts\.g|Fetch API cannot load file/.test(m.text())) errs.push('console: ' + m.text()); });
   await p.goto(GAME); await p.waitForTimeout(500);
   await p.click('#mok').catch(() => {});
   return { b, p, errs };

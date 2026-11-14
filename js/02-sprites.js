@@ -552,7 +552,7 @@ function mobSprite(m, flash) {
 }
 const ARMOR = ['#8a8f99', '#b07a3c', '#c9ced6', '#f2c94c', '#4fd6e8', '#a26bff', '#ff4f6d', '#5cff8a', '#ff9a3c', '#ffffff'];
 const RANKS = ['Новобранец', 'Драчун', 'Боец', 'Воин', 'Ветеран', 'Рыцарь', 'Чемпион', 'Герой', 'Легенда', 'Полубог', 'Бог войны', 'Титан', 'Пожиратель миров', 'Абсолют'];
-function heroRank() { return Math.max(0, Math.floor(lg(D.hit) * 1.5)); }
+function heroRank() { const r = Math.floor(lg(D.hit) * 1.5); return Number.isFinite(r) ? Math.max(0, Math.min(999, r)) : 999; }   // урон бывает огромным, вплоть до бесконечности
 function rankName(r) { const L = RANKS.length; return r < L ? RANKS[r] : RANKS[L - 1] + ' ' + roman(r - L + 2); }
 function heroSprite(r, flash, ex, hi) {
   const P = hi ? heroHi() : heroPat(), k = cls(), cp = CLS_SPR[k].pal || {}, cc = CL().c;

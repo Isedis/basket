@@ -263,6 +263,7 @@ function runAuto() {
       S.meta.souls -= tCost(pick, TL(pick.id)); S.meta.nodes[pick.id] = TL(pick.id) + 1; n++; calcTal();
     }
     if (n) { feed('Таланты: куплено уровней ' + n, '#ff44ff'); D.dirty = true; save(); }
+    totAuto();   // дерево вкачано — лишние души в тотем
   }
 
 }
@@ -270,6 +271,7 @@ function runAuto() {
 /* ---------- перерождение ---------- */
 function renderSouls() {
   renderAuto(); renderAsc();
+  { const T = S.meta.totem; $('totb').textContent = 'ТОТЕМ ДУШ' + (T && T.n ? ' · пропиток ' + fmt(T.n) : ''); }
   const M = S.meta, g = S.runSouls || 0;
   $('dsouls').textContent = fmt(M.souls); $('dreb').textContent = M.rebirths; $('dbest').textContent = Math.max(M.best, S.zone);
   $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';

@@ -6,7 +6,7 @@ const MIN = arg('min', 60), RUNS = arg('runs', 3), TAL = arg('talents', 0), VERB
 const T = JSON.parse(fs.readFileSync(path.join(__dirname, 'balance-targets.json'), 'utf8'));
 
 // внутри страницы: хуки на смерть/перерождение, сбор истории
-const SETUP = `(${QUIET})(true); SIM = true; if (${TAL}) (${TALENTS})(${TAL});
+const SETUP = `(${QUIET})(true); SIM = true; requestAnimationFrame = () => 0; if (${TAL}) (${TALENTS})(${TAL});
   window.__B = { gt: 0, lifeT0: 0, zoneT: {}, lives: [], why: '', hist: [], lv0: cm(S.cls).lv, cls: S.cls, asc: [] };
   const B = __B, ohd = heroDeath;
   heroDeath = function () { if (deathT <= 0) B.why = bossAlive ? (mobs.some(m => m.boss && m.fury) ? 'ярость' : 'вожак') : 'толпа'; return ohd(); };

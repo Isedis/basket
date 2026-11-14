@@ -278,7 +278,7 @@ const on = k => !!TAL[k + '!'];
 const ksL = (bi, j) => (KSL[bi] && KSL[bi][j]) || 0;
 const condDmg = m => (combo >= 100 ? 1 + ta('c_combo') : 1) * (S.hpf >= .999 ? 1 + ta('c_full') : 1) * (m && m.boss && bossT > BOSS_TIME + ta('boss_t') - 10 ? 1 + ta('c_boss') : 1);
 // темп до первой стены: души до первого вознесения ×PACE1 (цель — ~3 ч до зоны 50; подбирается tools/balance.js)
-const PACE1 = .35;
+const PACE1 = .12;
 const soulMul = () => .55 * (S.meta.asc ? 1 : PACE1) * soulMul0() * (1 + .3 * (threatM() - 1));
 const soulMul0 = () => Math.sqrt((1 + ta('soul')) * (1 + ta('x_reaper'))) * (1 + .05 * ntL(7, 2)) * (1 + .5 * ascL('souls')) * (1 + .15 * perkL('souls')) * (trHas('bag') ? 1.15 : 1) * skySoulM() * relSoulM() * (1 + .5 * (S.meta.asc || 0));   // корень: души не разгоняются снежным комом
 const bossSouls = z => 3 * (1 + z / 5) * Math.pow(1.05, z) * (isLegend(z) ? 3 : 1) * (z >= 30 ? 1 + ksL(7, 0) : 1) * (skyOn('sk_soulboss') ? 2 : 1);
