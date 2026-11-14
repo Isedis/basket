@@ -27,8 +27,10 @@ const clsReach = () => CL().reach || D.range;
 const cq = j => (D.cq && D.cq[j]) || 0;
 let allies = [], totems = [], runes = [];
 function rollClass() {
-  const pool = CLS_KEYS.filter(k => k !== S.cls);
-  const k = skyOn('nv_loyal') && CLASSES[S.cls] ? S.cls : pool[Math.floor(rnd() * pool.length)];
+  // после смерти выпадает самый непрокачанный класс (меньше всего мастерства), при равенстве — случайный из них; текущий не повторяется
+  const pool = CLS_KEYS.filter(k => k !== S.cls), lv = k => { const c = (S.meta.cl || {})[k]; return c ? c.lv + c.xp / cxpNeed(c.lv) : 0; };
+  const minLv = Math.min(...pool.map(lv)), low = pool.filter(k => lv(k) - minLv < 1);
+  const k = skyOn('nv_loyal') && CLASSES[S.cls] ? S.cls : low[Math.floor(rnd() * low.length)];
   S.cls = k; S.cstyle = rnd() < .5 ? 0 : 1; S.cst = [0, 0]; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[k] = (S.meta.seen[k] || 0) + 1;
   allies = []; totems = []; runes = []; hero.souls = 0;
   return k;
