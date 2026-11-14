@@ -93,6 +93,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;
 .syn .sd{font-size:7px;color:var(--dim);margin-top:3px;white-space:normal;line-height:1.6}
 .syn.lk{opacity:.55}
 .grp{border-bottom:1px solid #201b30}
+#slist{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;padding:4px 6px 10px}
+#slist .grp{border:2px solid #241e36;border-radius:4px;background:#120e1e;position:relative;min-width:0;transition:box-shadow .3s}
+#slist .grp.open{grid-column:1/-1}
+#slist .grp.f1{border-color:color-mix(in srgb,var(--ec) 35%,#241e36)}
+#slist .grp.f2{border-color:color-mix(in srgb,var(--ec) 70%,#241e36);background:linear-gradient(160deg,color-mix(in srgb,var(--ec) 10%,#120e1e),#120e1e 60%)}
+#slist .grp.f3{border-color:var(--ec);background:linear-gradient(160deg,color-mix(in srgb,var(--ec) 18%,#120e1e),#120e1e 65%);box-shadow:0 0 6px -1px var(--ec)}
+#slist .grp.f4{border-color:#ffd84a;background:linear-gradient(160deg,color-mix(in srgb,var(--ec) 24%,#120e1e),#120e1e 70%);box-shadow:0 0 8px -1px #ffd84a;animation:rgold 2.4s steps(6) infinite}
+@keyframes rgold{50%{border-color:var(--ec);box-shadow:0 0 10px -1px var(--ec)}}
+#slist .gh{display:block;padding:6px 6px 5px;background:none;font-size:8px}
+#slist .rtop{display:flex;align-items:center;gap:6px}
+#slist .ricw{flex:none;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#07050d;border:1px solid color-mix(in srgb,var(--ec) 45%,#000)}
+#slist .ric{width:16px;height:16px;image-rendering:pixelated}
+#slist .gn{flex:1;min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#slist .gn b{display:block;font-weight:normal;color:var(--ec);overflow:hidden;text-overflow:ellipsis}
+#slist .gn em{display:block;font-size:7px;color:#a59fc0;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+#slist .rt{flex:none;min-width:18px;text-align:center;font-size:8px;color:#000;background:var(--ec);padding:2px 3px;border-radius:2px}
+#slist .grp.f0 .rt,#slist .grp.lock .rt{background:#2a2440;color:#6a6290}
+#slist .grp.f4 .rt{background:#ffd84a}
+#slist .rmid{display:flex;align-items:baseline;gap:6px;margin-top:5px}
+#slist .gv{font-size:11px;color:#fff;min-width:0;text-align:left}
+#slist .gc{font-size:7px;color:var(--dim)}
+#slist .ga{margin-left:auto;color:var(--dim);font-size:8px}
+#slist .rbar{height:4px;background:#07050d;margin-top:4px;border:1px solid #000;overflow:hidden}
+#slist .rbar{height:5px;background:#05030a}
+#slist .rbar i{display:block;height:100%;width:0;background:var(--ec);box-shadow:inset 0 1px 0 rgba(255,255,255,.45);transition:width .4s}
+#slist .rfx{font-size:7px;color:#cfc8ef;margin-top:4px;line-height:1.5;min-height:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#slist .grp.open .rfx{white-space:normal}
+#slist .grp.fl{box-shadow:0 0 0 1px #5cff8a,0 0 10px -2px #5cff8a}
+#slist .grp.fl .gv{color:#5cff8a}
+#slist .grp.lock{opacity:.5;background:#0c0a14;border-style:dashed}
+#slist .grp.lock .gv{font-size:7px;color:var(--dim)}
+#slist .gb{border-top:1px solid #241e36}
 .gh{display:grid;grid-template-columns:8px 8px 1fr auto auto;gap:6px;align-items:center;padding:6px 4px;font-size:8px;cursor:pointer;background:#1b1727}
 .gh i{width:8px;height:8px;display:block;border:1px solid #000}
 .gh .ga{color:var(--dim)}
@@ -518,7 +550,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114082342';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114083004';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -3280,15 +3312,29 @@ function groupOf(e) {
   if (groups[e]) return groups[e];
   const g = { e, el: document.createElement('div') };
   g.el.className = 'grp';
-  g.el.innerHTML = `<div class="gh"><span class="ga"></span><i style="background:${EFF[e].c}"></i><span class="gn"><b></b> <em></em></span><span class="gc"></span><span class="gv"></span></div><div class="gb"></div>`;
-  g.head = g.el.firstChild; g.body = g.el.lastChild; g.arrow = g.head.firstChild;
+  g.el.style.setProperty('--ec', EFF[e].c);
+  g.el.innerHTML = `<div class="gh"><div class="rtop"><span class="ricw"><img class="ric" src="${effIconURL(e)}"></span><span class="gn"><b></b><em></em></span><span class="rt"></span></div>` +
+    `<div class="rmid"><span class="gv"></span><span class="gc"></span><span class="ga"></span></div><div class="rbar"><i></i></div><div class="rfx"></div></div><div class="gb"></div>`;
+  g.head = g.el.firstChild; g.body = g.el.lastChild; g.arrow = g.head.querySelector('.ga');
   g.nm = g.head.querySelector('b'); g.fm = g.head.querySelector('em'); g.cnt = g.head.querySelector('.gc'); g.val = g.head.querySelector('.gv');
+  g.tier = g.head.querySelector('.rt'); g.bar = g.head.querySelector('.rbar i'); g.fx = g.head.querySelector('.rfx');
   g.head.onclick = () => { S.open[e] = !S.open[e]; applyGroup(g); showInfo({ e }); };
   let after = null; for (let i = e + 1; i < NE; i++) if (groups[i]) { after = groups[i].el; break; }
   slist.insertBefore(g.el, after);
   groups[e] = g; applyGroup(g); return g;
 }
-function applyGroup(g) { const o = !!S.open[g.e]; g.body.hidden = !o; g.arrow.textContent = o ? '▾' : '▸'; }
+function applyGroup(g) { const o = !!S.open[g.e]; g.body.hidden = !o; g.el.classList.toggle('open', o); g.arrow.textContent = o ? '▴' : '▾'; }
+// пиксельные иконки эффектов для карточек-рун
+const EICON = { dmg: 'sword', hp: 'heart', aspd: 'wing', crit: 'eye', regen: 'grow', armor: 'shield', critd: 'dmg', vamp: 'drop', luck: 'clover', wis: 'book', move: 'wing', cleave: 'sword', dodge: 'swap', range: 'spike',
+  fire: 'flame', poison: 'drop', shock: 'bolt', thorns: 'spike', power: 'fist', fury: 'flame', bleed: 'drop', frost: 'cond', exec: 'skull', bounce: 'swap', grav: 'gear', spirit: 'surv', greed: 'crown', barrier: 'shield',
+  det: 'flame', leech: 'drop', rage: 'fist', scrit: 'star', hunt: 'eye', energy: 'bolt', fear: 'skull', curio: 'book', trail: 'bolt', orbs: 'star', echo: 'clock', mark: 'eye', horde: 'hand', blink: 'wing', dust: 'clover',
+  quake: 'fist', beam: 'bolt', clone: 'surv', hole: 'gear', mirror: 'shield', crows: 'wing', ritual: 'skull' };
+const effIcC = {};
+function effIconURL(e) { if (effIcC[e]) return effIcC[e]; const P = ICONS[EICON[EFF[e].k] || 'star'] || ICONS.star, c = document.createElement('canvas'); c.width = c.height = 7; const x = c.getContext('2d');
+  x.fillStyle = '#000'; P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') for (const [dx, dy] of [[0, 1], [1, 0], [1, 1]]) x.fillRect(i + 1 + dx, j + 1 + dy, 1, 1); }));
+  x.fillStyle = EFF[e].c; P.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') x.fillRect(i + 1, j + 1, 1, 1); })); return effIcC[e] = c.toDataURL(); }
+// прогресс до следующей формы: форма = 1 + floor(log10(r/3)/1.5)
+function formProg(e) { const r = (D.R && D.R[EFF[e].k] || 0) * (1 + ta('form')); if (r < 3) return Math.max(0, r / 3); const v = Math.log10(r / 3) / 1.5; return v - Math.floor(v); }
 
 /* ---------- подробности по тапу ---------- */
 let infoRef = null;
@@ -5066,7 +5112,7 @@ function updateUI() {
   $('nSouls').classList.toggle('has', !!S.meta.guard && tab !== 'D');
   { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; }
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
-  $('snext').textContent = 'новый стат через ' + fmt(nk - S.kills) + ' уб.';
+  $('snext').textContent = stats.length >= NE * 30 || nk - S.kills <= 0 && EFF.every((x, i) => groups[i]) ? 'все эффекты открыты' : 'новый стат через ' + fmt(Math.max(0, nk - S.kills)) + ' уб.';
   ubarI.style.width = clamp((S.kills - pk) / (nk - pk) * 100, 0, 100) + '%';
   const now = performance.now();
   const gfl = [], gcnt = [];
@@ -5088,11 +5134,16 @@ function updateUI() {
     { const th = thrL(EFF[e].k), fh = formName(e, F(e)) + (th ? ` <span style="color:#ffe08a">${pxImg('star', '#ffe08a', 6)}${th}</span>` : ''); if (g.fm.innerHTML !== fh) g.fm.innerHTML = fh; }
     const locked = !gcnt[e]; g.el.classList.toggle('lock', locked);
     if (locked) { g.fm.textContent = EFF[e].d; g.cnt.innerHTML = pxImg('lock', '#8a83a6', 8); g.val.textContent = 'через ' + fmt(Math.max(0, unlockKills(e) - S.kills)) + ' уб.'; }
-    else { g.cnt.textContent = gcnt[e]; g.val.textContent = fmt(D.T[e]); }
-    if (!!gfl[e] !== !!g.fl) { g.fl = !!gfl[e]; g.el.classList.toggle('fl', g.fl); }
+    else { g.cnt.textContent = '×' + gcnt[e]; g.val.textContent = fmt(D.T[e]); }
+    { const f = locked ? 0 : F(e), fc = 'f' + Math.min(4, f); if (g.fcls !== fc) { if (g.fcls) g.el.classList.remove(g.fcls); g.el.classList.add(fc); g.fcls = fc; }
+      const tt = locked ? '' : !f ? '—' : f <= 4 ? roman(f) : String(f); if (g.tier.textContent !== tt) g.tier.textContent = tt;
+      const w = locked ? 0 : Math.round(formProg(e) * 100); if (g.bw !== w) { g.bw = w; g.bar.style.width = w + '%'; }
+      if (!locked && (!g.fxT || now - g.fxT > 600)) { g.fxT = now; const tx = effVal(e); if (g.fx.textContent !== tx) g.fx.textContent = tx; } else if (locked && g.fx.textContent) g.fx.textContent = ''; }
+    { const fa = (g.flUntil || 0) > now; if (fa !== !!g.fl) { g.fl = fa; g.el.classList.toggle('fl', fa); } }   // вспышка карточки — только при новой форме
   }
   if (formNew.length) {
     for (const [e, f] of formNew.slice(-3)) feed('Форма ' + EFF[e].n + ': ' + formName(e, f), EFF[e].c);
+    for (const [e] of formNew) if (groups[e]) groups[e].flUntil = performance.now() + 1500;
     sfx.evo(); formNew = [];
     tip('form', 'Формы эффектов', 'Сильный стат меняет форму и получает новую механику. Тапни группу в панели — увидишь подробности.');
   }
