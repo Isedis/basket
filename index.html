@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114103633';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114104119';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -896,7 +896,7 @@ function zkKill(m) {
   if (h && h.k === 'crypt' && !m.boss && !m.obj && !m.undead && !m.goblin && rnd() < .2) { const x = m.x, y = m.y;
     later(1.4, () => { if (S.zone > 50) return; spawnMob(false); const o = mobs[mobs.length - 1]; o.x = x; o.y = y; o.undead = 1; o.role = null; o.hp *= .4; o.max *= .4; burst(x, y - 3, '#b06aff', 8, 25); }); }
   if (m.boss) return;
-  const t = zTask(); if (!t) { S.zk++; return; }
+  const t = zTask(); if (!t) { S.zk += m.hw ?? 1; return; }
   const z = ztState();
   if (m.obj === 'totem') { z.tot++; feed('Тотем разрушен ' + Math.min(3, z.tot) + '/3', '#c06bff'); }
   else if (m.prey) { z.prey++; feed('Добыча ' + Math.min(4, z.prey) + '/4', '#ff5588'); }
@@ -4202,14 +4202,14 @@ function spawnMob(boss) {
   const t = b.m[k], M = MOBS[t];
   const side = Math.floor(rnd() * 4);
   let x, y;
-  { const a = rnd() * 6.2832, rr = Math.hypot(W, H) * .55 + 4 + rnd() * 12; x = clamp(hero.x + Math.cos(a) * rr, 2, AW - 2); y = clamp(hero.y + Math.sin(a) * rr, 7, AH - 1); }
+  { const a = !boss && HK > 0 && rnd() < .75 ? packA + (rnd() - .5) * .9 : rnd() * 6.2832, rr = Math.hypot(W, H) * .55 + 4 + rnd() * 12; x = clamp(hero.x + Math.cos(a) * rr, 2, AW - 2); y = clamp(hero.y + Math.sin(a) * rr, 7, AH - 1); }
   const rare = !boss && (S.forceRare > 0 ? (S.forceRare--, true) : rnd() < D.rare * (S.zmod === 'night' ? 2.5 : S.zmod === 'gold' ? 3 : 1));
   const af = rollAff(boss, ev && ev.type === 'elite' && !boss ? 2 + Math.floor(rnd() * 2) : 0), na = popc(af);
   const hp = zoneHP(S.zone) * (.85 + rnd() * .3) * M.hp * (rare ? 3 : 1) * (boss ? bossMult(S.zone) : 1) * (1 + .6 * na) * (af & 32 ? 3 : 1) * (on('x_greed') ? 1.3 : 1) * (boss ? 1 - (S.siege || 0) : 1) * skyHpM() * Math.sqrt(threatM());
   mobs.push({ t, x, y, h: b.h[k % b.h.length] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (S.zone > 50 && skyOn('sk_wslow') ? .75 : 1) * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
-  { const nm = mobs[mobs.length - 1];
+  { const nm = mobs[mobs.length - 1]; if (!boss && HK > 0) { nm.hw = spawnMob.hw ?? 1; nm.hp *= HHP; nm.max *= HHP; }
     if (!boss && S.zmod === 'giant') { nm.hp *= 2; nm.max *= 2; nm.sz *= 1.3; }
     if (!boss && S.zmod === 'swarm') { nm.hp *= .5; nm.max *= .5; }
     if (S.zmod === 'fast') nm.sp *= 1.5;
@@ -4254,6 +4254,11 @@ function splat(m) {
   for (let i = 0; i < n; i++) { g.globalAlpha = .4 + rnd() * .4; g.fillRect(Math.round(m.x + (rnd() - .5) * 9 * m.sz), Math.round(m.y - 1 + (rnd() - .5) * 5 * m.sz), 1, 1); }
   g.globalAlpha = 1;
 }
+// Орда: если герой сильно перерос зону, врагов на поле становится больше (до +70, за 50-й зоной до +110); награда и прогресс за каждого — меньше
+let HK = 0, HHP = 1, hkT = 0, packA = 0, packT = 0;
+// HHP — прочность врагов орды: съедает большую часть перевеса, чтобы толпа успевала набегать
+function hordeK() { if (S.zone < 20) { HHP = 1; return 0; } const dps = D.hit * D.aps * (1 + D.crit * ((D.critM || 2) - 1)), ov = Math.max(1, dps / (zoneHP(S.zone) * 4)), k = clamp(Math.log10(ov) / 2, 0, 1); HHP = ov > 3 ? Math.pow(ov / 3, k) : 1; return k; }
+function hordeAdd() { return Math.round(HK * (S.zone > 50 ? 110 : 70)); }
 function crowd() { return Math.min(45, Math.round(crowd0() * .75 * skyCrowdM())); }   // спокойнее: меньше врагов на поле   // не больше 70 врагов на поле
 function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
@@ -4332,8 +4337,8 @@ function hitMob(m, dmg, crit, show, col) {
 let killWindow = 0;
 function killMob(m) {
   S.kills++; killWindow++;
-  zkKill(m); trRoll(m); if (!m.obj) relGain((1 + S.zone / 5) * (m.boss ? 25 : m.rare ? 3 : 1));
-  combo++; comboT = comboTime(); comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008);
+  zkKill(m); trRoll(m); if (!m.obj) relGain((1 + S.zone / 5) * (m.boss ? 25 : m.rare ? 3 : 1) * (m.hw ?? 1));
+  combo++; comboT = comboTime(); comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008 * (m.hw ?? 1));
   if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
   if (COMBO_MS.includes(combo) || (combo % 10000 === 0)) { feed('Комбо ' + combo + '! награды ×' + comboM().toFixed(2), '#ffdd44'); sfx.combo(); comboPop = .4; if (combo === 10) tip('combo', 'Комбо', 'Убивай без пауз — растёт множитель наград (вверху справа). Тапы по врагам продлевают комбо.'); }
   splat(m); if (!m.obj) deathFx(m); if (m.boss) { slowT = Math.max(slowT, .5); hitStop = Math.max(hitStop, .1); }
@@ -4341,7 +4346,7 @@ function killMob(m) {
   burst(m.x, m.y - 3 * m.sz, c, m.boss ? 60 : m.rare ? 25 : 12, m.boss ? 60 : 40);
   if (m.boss || m.rare) shake = Math.max(shake, m.boss ? 8 : 3);
   const cnt = 2 + (D.greed || 0) + Math.floor(rnd() * 3) + (m.rare ? 3 : 0) + (m.boss ? 8 : 0);
-  const base = zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1)
+  const base = (m.hw ?? 1) * zs() * D.gainMult * exMult() * (m.rare ? 8 * (1 + sy(5)) : 1) * (m.boss ? 25 : 1) * (1 + 1.5 * m.na) * (m.mini ? .5 : 1) * comboM() * (1 + ta('gain')) * (m.na ? 1 + ta('elite') : 1) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1)
     * (1 + ta('x_greed')) * (on('x_scholar') || on('x_reaper') ? .8 : 1) * (on('x_gamble') && !m.rare ? .8 : 1)
     * (m.rare ? (1 + ta('c_rare')) * (on('x_gamble') ? 1 + ta('x_gamble') : 1) : 1) * (isLegend(S.zone) ? 1 + ta('c_legend') : 1)
     * (mobs.length >= 15 ? 1 + ta('c_crowd') : 1) * Math.pow(1.25, TAL.constel || 0) * evGain() * (zm() ? zm().g : 1);
@@ -4367,7 +4372,7 @@ function killMob(m) {
   if (ksL(0, 1)) { S.ksK = (S.ksK || 0) + 1; if (S.ksK >= ksEvery(ksL(0, 1))) { S.ksK = 0; ftext(hero.x, hero.y - 26, 'БОГ РЕЗНИ!', '#ff5544', 1.3, 1); if (ultCd <= 0) { ult = 1; fireUlt(); } } }
   if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
-  addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20), m);
+  addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20) * (m.hw ?? 1), m);
   if (m.boss) { S.siege = 0; if (isLegend(S.zone)) giveChest('r', 'легенда'); else if (rnd() < .4) giveChest('c', 'вожак'); }
   if (ev && ev.type === 'treasure' && !m.boss && rnd() < .04) giveChest('c', 'сокровищница');
   if (D.dust > .01 && rnd() < D.dust) { G().dust += Math.max(1, Math.round((1 + S.zone / 10) * (1 + skyV('dust')))); fxLabel('Пыль', m.x, m.y - 12, '#c9b07a'); }
@@ -4377,7 +4382,7 @@ function killMob(m) {
   if (legOn('blood')) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .02);
   if (legOn('gold') && rnd() < .004) giveChest('c', 'златой');
   if (legOn('nova') && S.kills % 5 === 0) { ring(m.x, m.y - 3, 18, '#ffffff'); hitAround(m.x, m.y, 18, D.hit * 3, '#ffffff', m); }
-  clsKill(m, base); ntKill(m, base); pathKill(m); attrGain((1 + S.zone * .1) * (m.boss ? 10 : m.rare ? 3 : 1)); lifeXP((1 + S.zone * .1) * (m.boss ? 12 : m.rare ? 3 : 1)); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')));
+  clsKill(m, base); ntKill(m, base); pathKill(m); attrGain((1 + S.zone * .1) * (m.boss ? 10 : m.rare ? 3 : 1) * (m.hw ?? 1)); lifeXP((1 + S.zone * .1) * (m.boss ? 12 : m.rare ? 3 : 1) * (m.hw ?? 1)); clsGain(base * .5); clsXP((1 + S.zone / 5) * (m.boss ? 20 : m.rare ? 3 : 1) * (1 + .25 * ascL('xp')) * (m.hw ?? 1));
   if (m.goblin) { giveChest('r', 'гоблин'); giveBurst(base * 100); toast('ГОБЛИН ПОЙМАН!', 'сундук: награды как за 100 убийств'); burst(m.x, m.y - 3, '#ffd84a', 40, 70); sfx.rare(); flashT = .1; if (ev && ev.type === 'gob') ev.t = 0; }
   if (m.af & 4) explode(m);
   if (m.af & 16) spawnMini(m);
@@ -5148,9 +5153,12 @@ function update(dt) {
   const z = zs();
   // спавн
   spawnT -= dt;
-  const want = Math.floor((bossAlive ? Math.ceil(crowd() / 2) : crowd()) * (ev && ev.type === 'inv' ? 2.5 : 1));
+  if (time > hkT) { hkT = time + 1; const was = HK; HK = hordeK(); if (was < .05 && HK >= .05 && !S.hordeTip) { S.hordeTip = 1; feed('ОРДА: герой слишком силён — врагов становится больше', '#ff9a3c'); } }
+  const cb = bossAlive ? Math.ceil(crowd() / 2) : crowd(), want = Math.min(Math.max(cb, 160), Math.floor((cb + (bossAlive ? Math.round(hordeAdd() / 2) : hordeAdd())) * (ev && ev.type === 'inv' ? 2.5 : 1)));   // не больше 160 на поле
+  spawnMob.hw = Math.min(1, Math.sqrt(cb / Math.max(1, want - (ev && ev.type === 'inv' ? want * .6 : 0))));
+  if (HK > 0 && time > packT) { packT = time + 1.2 + rnd() * .8; packA = rnd() * 6.2832; }
   zoneTick(dt);
-  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15)); for (let i = 0; i < Math.min(n, 4); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
+  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(HK * 10)); for (let i = 0; i < Math.min(n, 4 + Math.round(HK * 10)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
   // без таймеров: вожак приходит, как заполнилась полоска; если герой еле убивает врагов — приходит сам («чует слабость»)
@@ -5739,7 +5747,7 @@ function updateUI() {
   else if (S.zk >= need) { zbarI.style.width = '100%'; zbarI.style.background = '#ff9a3c'; zbarB.textContent = 'ВОЖАК ИДЁТ!'; }
   else { const zt = zTask(), z = S.zt || {};
     zbarI.style.width = (S.zk / need * 100) + '%'; zbarI.style.background = zt ? ZTASKS[zt].c : '#7a5cff';
-    zbarB.textContent = zt === 'waves' ? 'ВОЛНА ' + Math.min(3, Math.max(1, z.wave || 0)) + '/3' : zt === 'hunt' ? 'ДОБЫЧА ' + Math.min(4, z.prey || 0) + '/4 · ' + S.zk + '/' + need : zt === 'totem' ? 'ТОТЕМЫ ' + Math.min(3, z.tot || 0) + '/3 · ' + S.zk + '/' + need : S.zk + ' / ' + need; }
+    const zkS = Math.floor(S.zk); zbarB.textContent = zt === 'waves' ? 'ВОЛНА ' + Math.min(3, Math.max(1, z.wave || 0)) + '/3' : zt === 'hunt' ? 'ДОБЫЧА ' + Math.min(4, z.prey || 0) + '/4 · ' + zkS + '/' + need : zt === 'totem' ? 'ТОТЕМЫ ' + Math.min(3, z.tot || 0) + '/3 · ' + zkS + '/' + need : zkS + ' / ' + need; }
   hpI.style.width = (S.hpf * 100) + '%';
   shI.style.width = Math.min(100, hero.shield / D.maxHP * 100) + '%';
   hpB.textContent = 'Ур.' + (S.lvl || 1) + ' · HP ' + fmt(hero.hp) + ' / ' + fmt(D.maxHP) + (hero.shield > 0 ? ' +' + fmt(hero.shield) : '');
