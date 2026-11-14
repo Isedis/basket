@@ -181,7 +181,7 @@ function killMob(m) {
   }
   D.dirty = true;
   if (m.rare) { sfx.rare(); if (texts.length < 10 && time > (S.rareTxt || 0)) { S.rareTxt = time + 2.5; ftext(m.x, m.y - 14, 'РЕДКИЙ!', '#ffd84a', 1.1, 1); } tip('rare', 'Золотой враг', 'Редкие золотые враги дают ×8 наград.'); } else sfx.kill();
-  if (F(EI.luck) >= 3 && rnd() < .003 * (F(EI.luck) - 2)) {
+  if (F(EI.luck) >= 3 && time > (S.jackT || 0) && rnd() < .003 * (F(EI.luck) - 2) * (m.hw ?? 1)) { S.jackT = time + 120;   // не чаще раза в 2 минуты (с ордой убийств сотни в секунду)
     for (const o of mobs) if (!o.dead && !o.boss) o.rare = true;
     toast('ДЖЕКПОТ!', 'все враги стали золотыми'); sfx.rare(); flashT = .1;
   }
