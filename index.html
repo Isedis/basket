@@ -517,7 +517,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114000202';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114000633';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -4356,7 +4356,7 @@ const TREAS = [
 ];
 const trHas = k => !!(S.meta && S.meta.tr && S.meta.tr[k]);
 const trCount = () => TREAS.filter(t => trHas(t.k)).length;
-function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 40 : m.rare ? 1 / 600 : 1 / 4000) * (1 + (D.rare || 0) * 2); if (rnd() < ch) trDrop(m.x, m.y); }
+function trRoll(m) { if (m.obj) return; const ch = (m.boss ? 1 / 250 : m.rare ? 1 / 4000 : 1 / 25000) * (1 + (D.rare || 0) * 2); if (rnd() < ch) trDrop(m.x, m.y); }
 function trDrop(x, y) {
   const M = S.meta; if (!M.tr) M.tr = {}; const t = TREAS[Math.floor(rnd() * TREAS.length)];
   if (M.tr[t.k]) { addSouls(bossSouls(S.zone) * 2); feed('Дубль сокровища «' + t.n + '» → души', t.c); return; }
@@ -4467,7 +4467,7 @@ function update(dt) {
 
   // герой: цель
   let tgt = null, td = 1e9;
-  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0) + (m.prey || m.obj ? -35 : .5 * Math.hypot(m.x - AW / 2, m.y - AH / 2)) - (m === hero.lastT ? 12 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
+  for (const m of mobs) { if (m.dead) continue; const d = Math.hypot(m.x - hero.x, m.y - hero.y) - (m.sz - 1) * 4, sc = d - (m.role === 'shaman' ? 25 : m.role === 'archer' ? 12 : m.goblin ? 30 : 0) + (m.boss ? -60 : m.prey || m.obj ? -35 : .5 * Math.hypot(m.x - AW / 2, m.y - AH / 2)) - (m === hero.lastT ? 12 : 0); if (sc < td - (td === 1e9 ? 0 : 0)) { td = sc; tgt = m; } }
   if (tgt) td = Math.hypot(tgt.x - hero.x, tgt.y - hero.y) - (tgt.sz - 1) * 4; hero.lastT = tgt;
   if (deathT > 0) { deathT -= dt; hero.hp = 0; hero.cd = 1; hero.dashT = 0; if (deathT <= 0) { rebirth(); return; } }
   hero.cast = (hero.cast || 0) - dt; hero.spin = (hero.spin || 0) - dt; hero.sweep = (hero.sweep || 0) - dt; hero.fists = (hero.fists || 0) - dt; hero.cd -= dt; hero.swing -= dt; hero.hurt -= dt; hero.iframe -= dt; hero.dashCd -= dt; hero.counter -= dt; hero.chainT -= dt;
@@ -5648,8 +5648,9 @@ $('tlist').onclick = e => {
 // разовая раздача душ по советам (как авто-таланты)
 function bestBuy(quiet) {
   let n = 0;
-  while (n < 300) { calcRec(); let pick = TN.find(nd => tRec.has(nd.id) && nd.alt == null && canBuy(nd));
-    if (!pick) { let c = null; for (const nd of TN) if (nd.alt == null && canBuy(nd) && (!c || tCost(nd, TL(nd.id)) < tCost(c, TL(c.id)))) c = nd; pick = c; }
+  const okN = nd => nd.alt == null || quiet;   // авто-таланты выбирают развилку сами, ручная кнопка — нет
+  while (n < (quiet ? 3000 : 300)) { calcRec(); let pick = TN.find(nd => tRec.has(nd.id) && okN(nd) && canBuy(nd));
+    if (!pick) { let c = null; for (const nd of TN) if (okN(nd) && canBuy(nd) && (!c || tCost(nd, TL(nd.id)) < tCost(c, TL(c.id)))) c = nd; pick = c; }
     if (!pick) break; S.meta.souls -= tCost(pick, TL(pick.id)); S.meta.nodes[pick.id] = TL(pick.id) + 1; n++; calcTal(); }
   if (quiet) { if (n) feed('Авто-таланты: куплено уровней ' + n, '#ff44ff'); return; }
   if (n) { toast('КУПЛЕНО УРОВНЕЙ: ' + n, 'развилки «или-или» выбирай сам'); tone(523, .1, 'triangle', .04); tone(784, .15, 'triangle', .04, 0, .08); } else toast('Нечего купить', 'не хватает душ');
@@ -5965,7 +5966,7 @@ function offline(sec) {
     const g = k * zs() * D.gainMult * 3.5 * (1 + D.rare * 7) * 1.3 * (1 + ta('gain')) * (S.zone < S.meta.best * .5 ? 1 + ta('legacy') : 1) * (1 + ta('x_greed')) * Math.pow(1.25, TAL.constel || 0);
     const picks = Math.min(stats.length, 12);
     for (let p = 0; p < picks; p++) { const s = pickStat(); s.v += g / picks * (.6 + rnd() * .8); evos += tryEvolve(s, true); }
-    clsGain(g * .15); attrGain(k * (1 + S.zone * .1) * .5); if (rnd() < k / 4000) trDrop(hero.x, hero.y); relGain(k * (1 + S.zone / 5) * .6); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
+    clsGain(g * .15); attrGain(k * (1 + S.zone * .1) * .5); if (rnd() < k / 25000) trDrop(hero.x, hero.y); relGain(k * (1 + S.zone / 5) * .6); S.kills += k; S.zk = Math.min(zoneNeed(), S.zk + k); left -= k;
     checkUnlocks(true);
   }
   recalc(); buildGround();
