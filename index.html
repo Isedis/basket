@@ -582,7 +582,7 @@ html,body{font-size:10px}
 
 <script>
 'use strict';
-const BUILD = '20261114113450';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
+const BUILD = '20261114114718';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении
 /* =========================================================
    БЕСКОНЕЧНАЯ ДРАКА — пиксельная бесконечная прокачка
    ========================================================= */
@@ -1705,6 +1705,14 @@ function drawHeroHi(d, k, sx, sy) {
     fctx.fillStyle = '#ffffff'; for (let a = a1; a < a2 - 10; a += 7) { const th = a * Math.PI / 180, rr = len * hk; fctx.globalAlpha = .55 * (a - a1) / (a2 - a1 + 1);
       fctx.fillRect(Math.round(px0 + Math.sin(th) * rr), Math.round(py0 - Math.cos(th) * rr), Math.ceil(hk), Math.ceil(hk)); fctx.fillRect(Math.round(px0 + Math.sin(th) * (rr - hk)), Math.round(py0 - Math.cos(th) * (rr - hk)), Math.ceil(hk), Math.ceil(hk)); } }
   fctx.restore(); fctx.globalAlpha = 1;
+  // полоска HP над героем: зелёная → жёлтая → красная, белый «хвост» показывает только что потерянное
+  const hf = clamp(hero.hp / (D.maxHP || 1), 0, 1), now = time, dtl = Math.min(.1, now - (hero.hpLT ?? now)); hero.hpLT = now;
+  hero.hpLag = hero.hpLag == null || hero.hpLag < hf ? hf : Math.max(hf, hero.hpLag - dtl * (.15 + (hero.hpLag - hf) * 1.5));
+  if (hf < .995 || hero.hpLag > hf + .003) { const fi = Math.max(0, Math.min(3, shownForm(cls()) - 1)), bw = Math.round(14 * hk), bh = Math.max(3, Math.round(hk * 1.1)), bx = cx - (bw >> 1), by = Y + Math.round((10 + TOP16[fi] - 3.5) * hk);
+    fctx.fillStyle = '#000'; fctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2); fctx.fillStyle = '#3a0a12'; fctx.fillRect(bx, by, bw, bh);
+    fctx.fillStyle = '#ffffff'; fctx.fillRect(bx, by, Math.round(bw * hero.hpLag), bh);
+    fctx.fillStyle = hf > .5 ? '#5cff8a' : hf > .25 ? '#ffd84a' : (Math.sin(time * 14) > 0 ? '#ff3355' : '#ff8899'); fctx.fillRect(bx, by, Math.round(bw * hf), bh);
+    if (hero.shield > 0) { fctx.fillStyle = '#9fe8ff'; fctx.fillRect(bx, by - Math.max(1, bh >> 1) - 1, Math.round(bw * Math.min(1, hero.shield / (D.maxHP || 1))), Math.max(1, bh >> 1)); } }
 }
 
 /* ---------- состояние ---------- */
@@ -4205,7 +4213,7 @@ function spawnMob(boss) {
   const t = b.m[k], M = MOBS[t];
   const side = Math.floor(rnd() * 4);
   let x, y;
-  if (!boss && HK > 0 && rnd() < .85) {   // орда: стая выходит сразу за краем видимого экрана
+  if (!boss && hordeC() > 0 && rnd() < .85) {   // орда: стая выходит сразу за краем видимого экрана
     const a = packA + (rnd() - .5) * 1.1, c = Math.cos(a), sn = Math.sin(a), m = 6 + rnd() * 10;
     if (Math.abs(c) * H > Math.abs(sn) * W) { x = c > 0 ? camX + W + m : camX - m; y = camY + H / 2 + sn / Math.abs(c) * H / 2 + (rnd() - .5) * 20; }
     else { y = sn > 0 ? camY + H + m : camY - m + 4; x = camX + W / 2 + c / Math.abs(sn) * W / 2 + (rnd() - .5) * 20; }
@@ -4217,7 +4225,7 @@ function spawnMob(boss) {
   mobs.push({ t, x, y, h: b.h[k % b.h.length] + (rnd() - .5) * 20, hp, max: hp, rare, boss, sz: boss ? 2 : af & 32 ? 1.5 : 1, af, na,
     sp: 14 * M.s * (S.zone > 50 && skyOn('sk_wslow') ? .75 : 1) * (boss ? .7 : 1) * (af & 2 ? 1.8 : 1) * (.85 + rnd() * .3), dm: M.dm * (boss ? 2 * (isLegend(S.zone) ? 1.5 : 1) : 1) * (rare ? 1.5 : 1),
     cd: 1, fl: 0, kx: 0, ky: 0, psn: 0, psnT: 0, dead: false });
-  { const nm = mobs[mobs.length - 1]; if (!boss && HK > 0) { nm.hw = spawnMob.hw ?? 1; nm.hp *= HHP; nm.max *= HHP; nm.sp *= 1 + .4 * HK; }
+  { const nm = mobs[mobs.length - 1]; if (!boss && hordeC() > 0) { nm.hw = spawnMob.hw ?? 1; if (HK > 0) { nm.hp *= HHP; nm.max *= HHP; } nm.sp *= 1 + .4 * hordeC(); }
     if (!boss && S.zmod === 'giant') { nm.hp *= 2; nm.max *= 2; nm.sz *= 1.3; }
     if (!boss && S.zmod === 'swarm') { nm.hp *= .5; nm.max *= .5; }
     if (S.zmod === 'fast') nm.sp *= 1.5;
@@ -4252,7 +4260,7 @@ function explode(m) {
   for (const o of mobs) if (!o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < r) hitMob(o, D.hit * 1.5, false, false, '#ff6622');
   if (Math.hypot(hero.x - m.x, hero.y - m.y) < r && rnd() >= D.dodge) {
     const dmg = zoneDmg(S.zone) * m.dm * 1.5 * (1 - D.armor);
-    hurtHero(dmg); ftext(hero.x, hero.y - 10, '-' + fmt(dmg), '#ff6622', .9, .7);
+    const dd = hurtHero(dmg, false, .15); ftext(hero.x, hero.y - 10, '-' + fmt(dd), '#ff6622', .9, .7);
   }
 }
 function splat(m) {
@@ -4266,7 +4274,8 @@ function splat(m) {
 let HK = 0, HHP = 1, hkT = 0, packA = 0, packT = 0;
 // HHP — прочность врагов орды: съедает большую часть перевеса, чтобы толпа успевала набегать
 function hordeK() { if (S.zone < 12) { HHP = 1; return 0; } const dps = D.hit * D.aps * (1 + D.crit * ((D.critM || 2) - 1)), ov = Math.max(1, dps / (zoneHP(S.zone) * 4)), k = clamp(Math.log10(ov) / 1.5, 0, 1); HHP = ov > 1.6 ? Math.pow(ov / 1.6, k) : 1; return k; }
-function hordeAdd() { return Math.round(HK * (S.zone > 50 ? 190 : 140)); }
+function hordeC() { return S.zone < 12 ? 0 : Math.max(HK, clamp((S.zone - 12) / 38, 0, 1) * .7); }   // численность: у стены толпа остаётся и давит
+function hordeAdd() { return Math.round(hordeC() * (S.zone > 50 ? 190 : 140)); }
 function crowd() { return Math.min(45, Math.round(crowd0() * .75 * skyCrowdM())); }   // спокойнее: меньше врагов на поле   // не больше 70 врагов на поле
 function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor(ta('crowd')) + Math.floor(ta('x_swarm')) + (S.zmod === 'swarm' ? Math.min(30, 4 + Math.floor(S.zone / 2)) : 0) + (D.horde || 0); }
 
@@ -4284,17 +4293,22 @@ function heroDeath() {
 // бой с вожаком без таймера: если видно, что вожака не одолеть (за 40с не убьёшь), он казнит героя — без долгого ожидания
 function bossJudge(bm, dt) {
   bm.jt = (bm.jt || 0) + dt;
+  // ярость: вместо мгновенной казни вожак свирепеет — урон +18% в секунду, герой гибнет от нарастающего натиска
+  if (bm.fury) { bm.fury *= Math.pow(1.18, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury; if (rnd() < dt * Math.min(20, 3 * bm.fury)) burst(bm.x + (rnd() - .5) * 12, bm.y - 6 - rnd() * 8, rnd() < .5 ? '#ff2222' : '#ff9a3c', 2, 30); }
   if (bm.exec) { bm.exec -= dt; if (bm.exec <= 0) { bm.exec = 0; bm.jt = 0; bm.jhp = bm.hp; if (!bm.dead) { ring(hero.x, hero.y - 3, 22, '#ff2222'); shake = 14; sfx.boom(); hero.iframe = 0; const was = deathT; hurtHero(D.maxHP * 1e3 + hero.shield, true); if (deathT === was && hero.hp > 0) feed('Герой устоял перед казнью!', '#5cff8a'); } } return; }
   if (bm.jhp === undefined) bm.jhp = bm.hp;
   if (bm.jt >= 6) {
     const lost = (bm.jhp - bm.hp) / bm.max, rate = lost / bm.jt, left = bm.hp / bm.max;
-    if (rate <= 0 || left / rate > (skyOn('sk_judge') ? 60 : 40)) { bm.exec = 1.6; tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 20, t: 1.6, max: 1.6, dmg: 0, act: 'exec', nolbl: true });
-      toast('КАЗНЬ ВОЖАКА', 'урона не хватает — вожак добивает героя', 1800); [196, 147, 98].forEach((f, i) => tone(f, .3, 'sawtooth', .06, 0, i * .25)); }
+    if (rate <= 0 || left / rate > (skyOn('sk_judge') ? 60 : 40)) { if (!bm.fury) { bm.fury = 1; toast('ЯРОСТЬ ВОЖАКА', 'урона не хватает — вожак свирепеет с каждой секундой', 1800); [196, 147, 98].forEach((f, i) => tone(f, .3, 'sawtooth', .06, 0, i * .25)); } bm.jt = 0; bm.jhp = bm.hp; }
     else { bm.jt = 0; bm.jhp = bm.hp; }
   }
 }
-function hurtHero(dmg, unblock) {
-  if (!unblock) { dmg = clsBlock(dmg); if (dmg <= 0) return 0; }
+// плавная смерть: один удар не сносит больше C от макс. HP (обычные враги 9%, вожаки и их атаки 25%);
+// если враги сильнее, они бьют чаще (hitRate), а не сильнее — герой гибнет от накопления, а не от одного удара
+function softHit(d, C) { const M = D.maxHP || 1, x = d / M, h = C / 2; return x <= h ? d : M * (h + h * (1 - Math.exp(-(x - h) / h))); }
+function hitRate(d, C) { const e = d / ((D.maxHP || 1) * C); return e <= 1 ? 1 : 1 + .5 * Math.log2(e); }
+function hurtHero(dmg, unblock, cap) {
+  if (!unblock) { dmg = softHit(dmg, cap || .09); dmg = clsBlock(dmg); if (dmg <= 0) return 0; }
   if (!unblock && hero.mirror && dmg > D.maxHP * .01) { mirrorBlock(dmg); return 0; }
   if (!unblock && skyOn('sk_starshield') && hero.hp - dmg < D.maxHP * .3 && time > (hero.ssT || 0)) { hero.ssT = time + 20; hero.iframe = 3; ring(hero.x, hero.y - 4, 16, '#fff6a0'); burst(hero.x, hero.y - 6, '#fff6a0', 16, 40); fxLabel('Звёздный щит', hero.x, hero.y - 18, '#fff6a0'); return 0; }
   if (dmg > D.maxHP * .08) hurtV = Math.min(.6, hurtV + .35);
@@ -4963,7 +4977,7 @@ function rollRole() {
 function shooter(m, dt, mdmg) {
   m.rt = (m.rt || 1.5) - dt;
   if (m.role === 'archer' && m.rt <= 0) {
-    m.rt = 2.2; const dx = hero.x - m.x, dy = hero.y - 4 - (m.y - 4), d = Math.hypot(dx, dy) || 1;
+    m.rt = 2.2 / hitRate(mdmg * m.dm * 1.2 * (1 - D.armor), .09); const dx = hero.x - m.x, dy = hero.y - 4 - (m.y - 4), d = Math.hypot(dx, dy) || 1;
     proj.push({ x: m.x, y: m.y - 4, vx: dx / d * 48, vy: dy / d * 48, t: 3, dmg: mdmg * m.dm * 1.2 });
   }
   if (m.role === 'shaman' && m.rt <= 0) {
@@ -4999,7 +5013,7 @@ function updTele(dt) {
     if (t.act === 'jump' && !b.dead) { b.x = t.x; b.y = t.y; }
     if (t.act === 'dash' && !b.dead) { b.x = t.x2; b.y = t.y2; for (let i = 0; i < 6; i++) ghosts.push({ x: t.x + (t.x2 - t.x) * i / 6, y: t.y + (t.y2 - t.y) * i / 6, l: .25, face: 1 }); }
     ring(t.k === 'c' ? t.x : t.x2, t.k === 'c' ? t.y : t.y2, t.r + 4, '#ff3322'); shake = Math.max(shake, 5); sfx.boom();
-    if (inTele(t) && hero.iframe <= 0) { const d = hurtHero(t.dmg * (1 - D.armor)); ftext(hero.x, hero.y - 12, '-' + fmt(d), '#ff3322', 1.1, .8); flashT = Math.max(flashT, .05); }
+    if (inTele(t) && hero.iframe <= 0) { const d = hurtHero(t.dmg * (1 - D.armor), false, .25); ftext(hero.x, hero.y - 12, '-' + fmt(d), '#ff3322', 1.1, .8); flashT = Math.max(flashT, .05); }
     else if (t.threat && hero.lastDash > time - t.max - .2) { hero.counter = 3; ftext(hero.x, hero.y - 16, 'УВОРОТ! ×3', '#5cff8a', 1.3, 1); hitStop = .08; tone(880, .1, 'square', .05, 1320); }
   }
   tele = tele.filter(t => !t.done && !(t.b && t.b.dead));
@@ -5164,9 +5178,9 @@ function update(dt) {
   if (time > hkT) { hkT = time + 1; const was = HK; HK = hordeK(); if (was < .05 && HK >= .05 && !S.hordeTip) { S.hordeTip = 1; feed('ОРДА: герой слишком силён — врагов становится больше', '#ff9a3c'); } }
   const cb = bossAlive ? Math.ceil(crowd() / 2) : crowd(), want = Math.min(Math.max(cb, 230), Math.floor((cb + (bossAlive ? Math.round(hordeAdd() / 2) : hordeAdd())) * (ev && ev.type === 'inv' ? 2.5 : 1)));   // не больше 230 на поле
   spawnMob.hw = Math.min(1, Math.sqrt(cb / Math.max(1, want - (ev && ev.type === 'inv' ? want * .6 : 0))));
-  if (HK > 0 && time > packT) { packT = time + 1.2 + rnd() * .8; packA = rnd() * 6.2832; }
+  if (hordeC() > 0 && time > packT) { packT = time + 1.2 + rnd() * .8; packA = rnd() * 6.2832; }
   zoneTick(dt);
-  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(HK * 18)); for (let i = 0; i < Math.min(n, 4 + Math.round(HK * 18)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
+  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(hordeC() * 18)); for (let i = 0; i < Math.min(n, 4 + Math.round(hordeC() * 18)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
   // без таймеров: вожак приходит, как заполнилась полоска; если герой еле убивает врагов — приходит сам («чует слабость»)
@@ -5260,7 +5274,7 @@ function update(dt) {
     if (m.boss) { bossAI(m, dt); bossPhase(m); }
     if (m.role === 'bomber' && d <= reach + 1) {
       m.dead = true; burst(m.x, m.y - 3, '#ff3322', 22, 55); ring(m.x, m.y - 3, 16, '#ff3322'); sfx.boom(); shake = Math.max(shake, 5);
-      if (hero.iframe <= 0 && rnd() >= D.dodge) { const bd = hurtHero(mdmg * m.dm * 3 * (1 - D.armor)); ftext(hero.x, hero.y - 12, '-' + fmt(bd), '#ff3322', 1, .7); }
+      if (hero.iframe <= 0 && rnd() >= D.dodge) { const bd = hurtHero(mdmg * m.dm * 3 * (1 - D.armor), false, .15); ftext(hero.x, hero.y - 12, '-' + fmt(bd), '#ff3322', 1, .7); }
       hitAround(m.x, m.y, 16, D.hit * 2, '#ff6622', m); killMob(m); continue;
     }
     // отбрасывание: отскок от краёв и столкновения с другими врагами
@@ -5276,14 +5290,14 @@ function update(dt) {
     m.kx *= Math.pow(.004, dt); m.ky *= Math.pow(.004, dt);
     m.fl -= dt; m.cd -= dt;
     if (!ranged && !m.goblin && !m.loot && d <= reach + 1 && m.cd <= 0) {
-      m.cd = (1 + rnd() * .3) * (m.af & 2 ? .6 : 1);
+      m.cd = (1 + rnd() * .3) * (m.af & 2 ? .6 : 1) / hitRate(mdmg * m.dm * (1 - D.armor), m.boss ? .25 : .09);
       if (rnd() < D.dodge) { if (texts.length < 7) ftext(hero.x, hero.y - 10, 'мимо', '#88ddff', .8, .6); if (sy(8) && rnd() < .5) heroAttack(m); }
       else {
         if (hero.iframe > 0) continue;
-        const dmg = mdmg * m.dm * (1 - D.armor) * (1 - (D.fear || 0)) * (m.tb ? 1.5 : 1);
-        hurtHero(dmg); sfx.hurt();
+        const raw = mdmg * m.dm * (1 - D.armor) * (1 - (D.fear || 0)) * (m.tb ? 1.5 : 1);
+        const dmg = hurtHero(raw, false, m.boss ? .25 : .09); sfx.hurt();
         if (m.af & 256) hero.slowT = 1.5;
-        if (m.af & 2048) { hero.psnT = 3; hero.psnD = dmg * .3; }
+        if (m.af & 2048) { hero.psnT = 3; hero.psnD = Math.min(dmg * .3, D.maxHP * .03); }
         if (m.af & 8) { m.hp = Math.min(m.max, m.hp + m.max * .15); burst(m.x, m.y - 4, '#cc2244', 3, 15); }
         if (rnd() < .35 && texts.length < 7) ftext(hero.x + (rnd() - .5) * 6, hero.y - 9, '-' + fmt(dmg), '#ff6b6b', .8, .6);
         if (D.thorns > .02) hitMob(m, D.hit * D.thorns, false, false, '#cc9966');
