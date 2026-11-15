@@ -611,3 +611,23 @@ img.pxi{width:auto!important;opacity:1!important;flex:none}
 #arinfo .camp small{display:block;font-size:8px;color:#c8b8e0}
 #arinfo .camp .btn{min-width:84px;min-height:38px;font-size:9px;color:#bff4ff;border:2px solid #7ad8ff;background:#1a2a4a}
 #arinfo .camp .btn[disabled]{opacity:.4}
+
+/* ===== компьютер: бой слева, панель раздела справа (body.wide ставит uiWide) ===== */
+body.wide #app{max-width:none}
+body.wide #game{margin-right:var(--sidew);border-right:3px solid var(--goldd,#5a4520)}
+body.wide #nFight{display:none!important}
+body.wide #nav{grid-template-columns:repeat(3,1fr)!important;position:absolute;right:0;bottom:0;width:var(--sidew);border-left:3px solid var(--goldd,#5a4520)}
+body.wide #subnav{left:auto!important;right:0!important;width:var(--sidew)}
+body.wide .sheet,body.wide #tree,body.wide #gear,body.wide #ctree,body.wide #totem,body.wide #army,body.wide #altar,body.wide #sky,body.wide #opening{left:auto!important;right:0!important;width:var(--sidew)!important;box-shadow:-6px 0 18px rgba(0,0,0,.5)}
+body.wide #croll{left:calc((100% - var(--sidew)) / 2)}
+body.wide #hud{padding-left:14px;padding-right:14px}
+/* наведение мышью */
+@media (hover:hover) and (pointer:fine){
+  .btn,.nb,.sn,.tab,.tch,[data-camp],[data-ti],[data-sub]{cursor:pointer}
+  .btn:not([disabled]):hover{filter:brightness(1.25);box-shadow:0 0 0 2px rgba(255,216,74,.55)}
+  .nb:hover{color:#ffe08a;background:#241c3c}
+  #subnav .sn:not(.on):hover{color:#ffe08a;border-color:#8a6a2a;background:#2a2040}
+  .tab:hover,.tch:hover{color:#ffe08a}
+  .srow:hover,.gi:hover,.camp:hover,.pkc:hover{filter:brightness(1.18)}
+  canvas#tcv,canvas#scv,canvas#alcv,canvas#totcv{cursor:pointer}
+}

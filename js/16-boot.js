@@ -30,7 +30,18 @@ function uiHideAll() {
   const c = $('croll'); if (c) c.hidden = true; const pi = $('info'); if (pi) pi.hidden = true;
 }
 function uiTap() { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} sfx.tap(); }
+// компьютер: широкий экран — бой слева всегда виден, справа панель раздела (body.wide)
+const isWide = () => document.body.classList.contains('wide');
+let uiLast = 'hero';
+function uiWide() {
+  const w = innerWidth >= 900 && innerWidth >= innerHeight * 1.15, was = isWide();
+  document.body.classList.toggle('wide', w);
+  document.documentElement.style.setProperty('--sidew', Math.round(Math.max(380, Math.min(560, innerWidth * .34))) + 'px');
+  if (w !== was) { setTimeout(resize, 30); if (w && uiSec === 'fight') setTimeout(() => { if (isWide() && uiSec === 'fight') go(uiLast); }, 300); }
+}
 function go(sec, sub) {
+  if (sec === 'fight' && isWide()) { if (uiSec !== 'fight') return; sec = uiLast; }   // бой и так на экране: панель не закрываем
+  if (sec !== 'fight') uiLast = sec;
   if (sec === 'fight') { uiHideAll(); uiSec = 'fight'; $('subnav').hidden = true; navOn('nFight'); setTimeout(resize, 30); return; }
   if (sec === 'menu') { uiHideAll(); uiSec = 'menu'; $('subnav').hidden = true; navOn('nMenu'); $('settings').classList.add('open'); renderSouls(); return; }
   const list = UI_SEC[sec].filter(([k]) => uiOpen(k)); if (!list.length) return;
@@ -99,7 +110,7 @@ setInterval(uiTick, 700);
   for (const id of ['tbtn', 'totb', 'clsopen']) { const e = $(id); if (e) e.hidden = true; } const tb = $('tabD'); if (tb) tb.hidden = true; }
 // верх экранов: строка зоны/HP остаётся видна, вкладки раздела — под ней
 function uiLayout() { const h = $('hud').getBoundingClientRect().height; document.documentElement.style.setProperty('--hudh', Math.round(h) + 'px'); }
-addEventListener('resize', uiLayout); setTimeout(uiLayout, 50); setInterval(uiLayout, 2000);
+addEventListener('resize', () => { uiWide(); uiLayout(); }); uiWide(); setTimeout(uiLayout, 50); setInterval(uiLayout, 2000);
 
 /* ---------- обновление игры ---------- */
 // берём свежую страницу в обход кэша и сравниваем номер сборки
