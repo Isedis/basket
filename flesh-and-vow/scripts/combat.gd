@@ -4,10 +4,10 @@ const Motion = preload("res://scripts/locomotion.gd")
 const CONTACT_RATIO = 0.06/0.22
 const ACTIVE_END = 0.65
 const BASE_REACH = 57.0
-const BODY_SHOULDER = Vector2(12,-38)
+const BODY_SHOULDER = Vector2(12,-36)
 const ARM_REACH = 21.0
-const UPPER_ARM = 13.0
-const FOREARM = 13.0
+const UPPER_ARM = 10.0
+const FOREARM = 12.0
 const BLADE_MIN = 7.0
 const BLADE_MAX = 34.8
 const BLADE_HALF_WIDTH = 9.0
@@ -16,7 +16,7 @@ static func curve(value: float) -> float:
 	return smoothstep(0,1,clampf(value,0,1))
 
 static func weapon_angle(direction: Vector2, action: int, progress: float, facing: float) -> float:
-	var rest = 0.35 if facing>0 else PI-0.35
+	var rest = 0.1 if facing>0 else PI-0.1
 	var aim = direction.angle()
 	var back = aim-facing*1.7
 	if action==2: return lerp_angle(rest,back,curve(progress))
@@ -45,7 +45,7 @@ static func weapon_pose(p: Vector2, motion: Dictionary, direction: Vector2, acti
 	if motion.has("weapon_override"): angle = float(motion.weapon_override)
 	var shoulder = body+Vector2(BODY_SHOULDER.x*facing,BODY_SHOULDER.y)
 	# The wrist carries the handle; it does not have to point along the blade.
-	var rest_hand = Vector2(4*facing,18)
+	var rest_hand = Vector2(4*facing,21)
 	var back_hand = Vector2.from_angle(direction.angle()-facing*1.7)*18
 	var contact_hand = direction.normalized()*ARM_REACH
 	var follow_hand = Vector2.from_angle(direction.angle()+facing*0.8)*20

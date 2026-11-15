@@ -15,6 +15,21 @@ func _initialize():
 		var motion = Motion.initialize(p,1,view)
 		var idle = Combat.weapon_pose(p,motion,dirs[view],0,0)
 		check(idle.hand.y>idle.shoulder.y+16,"Relaxed hand rests below shoulder")
+		var upper_axis: Vector2 = (idle.elbow-idle.shoulder).normalized()
+		var lower_axis: Vector2 = (idle.hand-idle.elbow).normalized()
+		check(lower_axis.dot(Vector2.DOWN)>0.97,"Relaxed forearm hangs down instead of folding back across the torso")
+		check(upper_axis.dot(lower_axis)>cos(deg_to_rad(40)),"Relaxed elbow bend stays below forty degrees")
+		check(idle.elbow.y>idle.shoulder.y+8,"Relaxed elbow sits below the shoulder")
+		var relaxed_walk = true
+		for sample in range(32):
+			var walking = motion.duplicate(true)
+			walking.phase = sample*TAU/32
+			walking.walk_weight = 1.0
+			var pose = Combat.weapon_pose(p,walking,dirs[view],0,0)
+			var upper: Vector2 = (pose.elbow-pose.shoulder).normalized()
+			var lower: Vector2 = (pose.hand-pose.elbow).normalized()
+			relaxed_walk = relaxed_walk and lower.dot(Vector2.DOWN)>0.97 and upper.dot(lower)>cos(deg_to_rad(40))
+		check(relaxed_walk,"Walking sway never folds the relaxed forearm back toward the body")
 		for action in [2,3]:
 			var bones_hold = true
 			var continuous = true
@@ -22,7 +37,7 @@ func _initialize():
 			var previous = Combat.weapon_pose(p,motion,dirs[view],action,0)
 			for sample in range(101):
 				var pose = Combat.weapon_pose(p,motion,dirs[view],action,sample/100.0)
-				bones_hold = bones_hold and absf(pose.shoulder.distance_to(pose.elbow)-13)<0.001 and absf(pose.elbow.distance_to(pose.hand)-13)<0.001
+				bones_hold = bones_hold and absf(pose.shoulder.distance_to(pose.elbow)-Combat.UPPER_ARM)<0.001 and absf(pose.elbow.distance_to(pose.hand)-Combat.FOREARM)<0.001
 				continuous = continuous and pose.elbow.distance_to(previous.elbow)<5 and pose.hand.distance_to(previous.hand)<5
 				clears_shoulder = clears_shoulder and pose.hand.distance_to(pose.shoulder)>17
 				previous = pose

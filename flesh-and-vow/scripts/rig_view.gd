@@ -115,7 +115,8 @@ static func armed_layers(g, textures: Array, weapon: Dictionary, hand_sign: floa
 	weapon_part(g,textures[6],weapon,grip,hand_sign,tint,context)
 	var forearm_axis = (weapon.hand-weapon.elbow).normalized()
 	var fingertips = weapon.hand+forearm_axis*3
-	jointed_limb(g,textures[3],weapon.shoulder,weapon.elbow,fingertips,texture_flip,tint,context)
+	var arm_width = 0.85 if textures[6]==parts[0][6] else 0.9
+	jointed_limb(g,textures[3],weapon.shoulder,weapon.elbow,fingertips,texture_flip,tint,context,arm_width)
 
 static func weapon_part(g, tex: Texture2D, pose: Dictionary, grip: Vector2, edge_sign: float, tint: Color, context: Dictionary):
 	var size = tex.get_size()*2
@@ -131,13 +132,14 @@ static func weapon_part(g, tex: Texture2D, pose: Dictionary, grip: Vector2, edge
 			points.append(pose.hand+rel.rotated(pose.angle))
 		quad(g,tex,points,uv,tint,context)
 
-static func jointed_limb(g, tex: Texture2D, shoulder: Vector2, elbow: Vector2, fingertips: Vector2, flip: float, tint: Color, context: Dictionary):
+static func jointed_limb(g, tex: Texture2D, shoulder: Vector2, elbow: Vector2, fingertips: Vector2, flip: float, tint: Color, context: Dictionary, width_scale: float):
 	var joints = [shoulder,elbow,fingertips]
 	var upper_normal = (elbow-shoulder).normalized().orthogonal()
 	var lower_normal = (fingertips-elbow).normalized().orthogonal()
 	var middle_normal = (upper_normal+lower_normal).normalized()
-	var width = float(tex.get_width())
-	var normals = [upper_normal*width,middle_normal*width/maxf(0.7,middle_normal.dot(upper_normal)),lower_normal*width]
+	var width = float(tex.get_width())*width_scale
+	# A joint narrows at the elbow; extending a miter here made a sharp triangular spur.
+	var normals = [upper_normal*width,middle_normal*width*0.86,lower_normal*width*0.9]
 	for i in range(2):
 		var a = joints[i]
 		var b = joints[i+1]
@@ -208,7 +210,7 @@ static func draw(g, type: String, p: Vector2, motion: Dictionary, direction: Vec
 	limb(g,textures[5 if look==0 else 4],hips[0],left_foot,2*facing,texture_flip,tint,context)
 	limb(g,textures[4 if look==0 else 5],hips[1],right_foot,2*facing,texture_flip,tint,context)
 	var sway = sin(phase)*0.15*walk_weight
-	var left_shoulder = body+Vector2(-12*facing,-38)
+	var left_shoulder = body+Vector2(-12*facing,Combat.BODY_SHOULDER.y)
 	var left_hand = left_shoulder+Vector2(-facing*(3+sin(phase)*2*walk_weight),21)
 	limb(g,textures[2],left_shoulder,left_hand,3*facing,texture_flip,tint,context)
 	if look==2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context)
