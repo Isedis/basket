@@ -496,7 +496,7 @@ html,body{font-size:10px}
 #subnav .sn{position:relative;flex:1;min-width:0;font:inherit;font-size:9px;color:#a59fc0;background:#1c1630;border:2px solid #2e2650;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #subnav .sn.on{color:#000;background:#ffd84a;border-color:#ffd84a;box-shadow:0 0 8px -2px #ffd84a}
 #subnav .sn .dot{position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;background:#ff4f6d;border:1px solid #000}
-#tree,#gear,#ctree,#totem,#altar,#sky{top:calc(var(--hudh,52px) + 46px)!important;bottom:var(--navh)!important;padding-top:0!important}
+#tree,#gear,#ctree,#totem,#army,#altar,#sky{top:calc(var(--hudh,52px) + 46px)!important;bottom:var(--navh)!important;padding-top:0!important}
 #panel.sheet{top:calc(var(--hudh,52px) + 46px - 2px);height:auto!important}
 #settings.sheet{top:var(--hudh,52px);height:auto!important;overflow:auto}
 #tclose,#gclose,#totclose,#alclose,#sclose,#ctclose,#pbig,#ptog{display:none!important}
@@ -530,7 +530,7 @@ html,body{font-size:10px}
 #cthead{background:linear-gradient(#3e2817,#2a1a10);border-bottom:3px solid var(--gold);box-shadow:0 2px 0 var(--goldd)}
 #thead b,#ghead b,#shead b{color:#fff;font-weight:normal}
 /* --- экраны: каменный фон --- */
-#tree,#gear,#ctree,#totem,#altar,#sky,.sheet{background-color:var(--st1)!important;
+#tree,#gear,#ctree,#totem,#army,#altar,#sky,.sheet{background-color:var(--st1)!important;
   background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 2px,transparent 2px 6px)!important}
 #gbody,#tinfo,#sinfo,#alinfo,#totinfo{font-size:10px}
 .gsec,#settings .msec{font-size:11px!important;color:var(--gold2)!important;text-shadow:2px 2px 0 #000;border-bottom:2px solid var(--goldd)!important}
@@ -549,7 +549,7 @@ html,body{font-size:10px}
 #subnav{background:linear-gradient(#2a1a10,#1e130b)!important;border-bottom:3px solid var(--gold)!important;box-shadow:0 2px 0 var(--goldd)!important;height:50px!important;padding:6px 6px!important;gap:5px!important}
 #subnav .sn{font-size:10px;color:#d8c8a0;background:linear-gradient(#4a3020,#2e1d10);border:2px solid #120a04;border-radius:0;box-shadow:inset 2px 2px 0 #6a4a30,inset -2px -2px 0 #1a0f06;text-shadow:1px 1px 0 #000}
 #subnav .sn.on{color:var(--ink);background:linear-gradient(#ffe8a0,#e0b85a);border-color:#3a2408;box-shadow:inset 2px 2px 0 #fff4c8,inset -2px -2px 0 #a07a2a,0 0 10px -2px var(--gold2);text-shadow:none}
-#tree,#gear,#ctree,#totem,#altar,#sky{top:calc(var(--hudh,52px) + 50px)!important}
+#tree,#gear,#ctree,#totem,#army,#altar,#sky{top:calc(var(--hudh,52px) + 50px)!important}
 #panel.sheet{top:calc(var(--hudh,52px) + 48px)!important}
 
 /* --- верхняя строка: плашка зоны, угроза, души; толстые полосы в рамке --- */
@@ -591,3 +591,23 @@ img.pxi{width:auto!important;opacity:1!important;flex:none}
 #tinfo,#sinfo,#alinfo,#totinfo{max-height:40%;overflow-y:auto}
 #tview,#sview,#alview,#totview{min-height:150px!important}
 @media (max-width:380px){#subnav .sn{font-size:8.5px;padding:0 2px}#subnav{gap:3px!important;padding:6px 4px!important}#nav .nb{font-size:9px}}
+/* армия духов — как тотем */
+#army{position:fixed;inset:0;z-index:8;background:#030209;display:flex;flex-direction:column;bottom:var(--navh)}
+#army[hidden]{display:none}
+#arhead{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:10px;color:#bff4ff;background:linear-gradient(#3e2817,#2a1a10);border-bottom:3px solid var(--gold)}
+#arhead span:first-child{flex:1}
+#arhead b{color:#9fe8ff;font-weight:normal}
+#arsum{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;background:#0a0718}
+#arsum div{text-align:center;background:linear-gradient(#251d36,#1a1426);border:2px solid var(--st0);padding:4px 2px}
+#arsum small{display:block;font-size:8px;color:#a58fc0}
+#arsum b{display:block;font-weight:normal;font-size:11px;color:#fff;margin-top:2px;white-space:nowrap}
+#arview{position:relative;flex:1;min-height:150px;overflow:hidden}
+#arview canvas{position:absolute;inset:0}
+#arinfo{flex:none;padding:8px 10px 10px;background:#160a24;border-top:3px solid var(--gold);font-size:10px;line-height:1.7;max-height:44%;overflow-y:auto}
+#arinfo .camp{display:flex;align-items:center;gap:8px;margin:4px 0;padding:4px 6px;border-left:4px solid var(--cc);background:#1e1430}
+#arinfo .camp>div{flex:1;min-width:0}
+#arinfo .camp b{display:block;font-weight:normal;color:var(--cc)}
+#arinfo .camp .lv{color:#fff}
+#arinfo .camp small{display:block;font-size:8px;color:#c8b8e0}
+#arinfo .camp .btn{min-width:84px;min-height:38px;font-size:9px;color:#bff4ff;border:2px solid #7ad8ff;background:#1a2a4a}
+#arinfo .camp .btn[disabled]{opacity:.4}

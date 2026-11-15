@@ -279,6 +279,7 @@ function rebirth(fromAsc) {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
   M.lastLife = { z: S.zone, s: g, k: S.kills, c: S.cls, rec: S.zone > M.best };
   M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone);
+  if (!fromAsc && armyOn() && CLASSES[S.cls]) addSpirit(S.cls, true);   // павший герой уходит в армию духов
   const keepF = Math.min(.5, .03 * ksL(7, 1) + .05 * ascL('legacy')), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
   S = Object.assign(freshS(), keep);

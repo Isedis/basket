@@ -612,7 +612,7 @@ function zoneLog(z) { while (zl.length < z) { const i = zl.length; zl.push(zl[i 
 let ZQ = .006, ZC = .0004, ZWK = 25;
 const zx1 = z => ZQ * z * z + ZC * z * z * z;
 // этап 1: куб до 50-й и стена после неё; этап 2 (после Вознесения): за 50-й рост мягче, стена после 100-й
-const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0 + (W0 === 100 ? 1 : 0)) ** 2; };   // 2-й этап: стена ровно на 100-й
+const zoneX = z => { const W0 = S.meta && S.meta.asc ? 100 : 50; const base = z <= 50 ? zx1(z) : zx1(50) + .45 * (z - 50) + .004 * (z - 50) ** 2; return base + ZWK * Math.max(0, z - W0 + (W0 === 100 ? 1 : 0)) ** 2 * (W0 === 100 ? wallMul() : 1); };   // 2-й этап: стена ровно на 100-й
 const zoneHP = z => ZB * Math.pow(10, zoneLog(z) + zoneX(z));
 // угроза жизни: чем дольше живёт герой, тем злее враги и щедрее награды
 const threatM = () => Math.pow(2, (S.lt || 0) / (S.meta.asc ? 70 : 45));   // удвоение каждые 45с жизни (70с после Вознесения — подъём длиннее)

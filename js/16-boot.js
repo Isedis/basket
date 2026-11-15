@@ -4,9 +4,9 @@
 // Все экраны — на весь экран между строкой зоны/HP и нижним меню; кнопок «Закрыть» нет. Вкладки открываются постепенно.
 const UI_SEC = {
   hero: [['stats', 'Статы'], ['altar', 'Алтарь'], ['gear', 'Вещи'], ['cls', 'Класс']],
-  up: [['tal', 'Таланты'], ['branch', 'Ветка'], ['totem', 'Тотем'], ['sky', 'Небосвод']],
+  up: [['tal', 'Таланты'], ['branch', 'Ветка'], ['totem', 'Тотем'], ['sky', 'Небосвод'], ['army', 'Армия']],
 };
-const UI_NAME = { stats: 'Статы', altar: 'Алтарь силы', gear: 'Вещи', cls: 'Класс', tal: 'Таланты', branch: 'Ветка класса', totem: 'Тотем душ', sky: 'Небосвод' };
+const UI_NAME = { stats: 'Статы', altar: 'Алтарь силы', gear: 'Вещи', cls: 'Класс', tal: 'Таланты', branch: 'Ветка класса', totem: 'Тотем душ', sky: 'Небосвод', army: 'Армия духов' };
 function uiOpen(sub) {
   const M = S.meta, cl = M.cl || {};
   switch (sub) {
@@ -17,6 +17,7 @@ function uiOpen(sub) {
     case 'branch': return Object.values(cl).some(c => c.lv >= 1);
     case 'totem': return !!(M.totem && M.totem.n) || !TN.some(nd => nd.alt == null && tOpen(nd) && !nodeBlocked(nd) && TL(nd.id) < nMax(nd)) && (M.rebirths || 0) >= 1;
     case 'sky': return (M.asc || 0) > 0 || !!M.sparks;
+    case 'army': return armyOn();
   }
   return false;
 }
@@ -25,7 +26,7 @@ const uiSub = { hero: 'stats', up: 'tal' };
 // закрыть всё, что может лежать поверх
 function uiHideAll() {
   $('panel').classList.remove('open'); $('settings').classList.remove('open');
-  for (const id of ['tree', 'gear', 'ctree', 'totem', 'altar', 'sky', 'opening']) { const e = $(id); if (e) e.hidden = true; }
+  for (const id of ['tree', 'gear', 'ctree', 'totem', 'army', 'altar', 'sky', 'opening']) { const e = $(id); if (e) e.hidden = true; }
   const c = $('croll'); if (c) c.hidden = true; const pi = $('info'); if (pi) pi.hidden = true;
 }
 function uiTap() { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} sfx.tap(); }
@@ -45,13 +46,14 @@ function go(sec, sub) {
     case 'branch': ctTab = 'tree'; openCT(cls()); break;
     case 'totem': openTotem(); break;
     case 'sky': openSky(); break;
+    case 'army': openArmy(); break;
   }
   navOn(sec === 'hero' ? 'nHero' : 'nUp'); $('subnav').hidden = false;
   // карты получают размер только после раскладки экрана — пересчитываем размер и масштаб чуть позже
   setTimeout(() => { try {
     if (sub === 'tal') { const small = !uiFit.tal; sizeTree(); if (small) { fitTree(); uiFit.tal = 1; } drawTree(); }
     if (sub === 'sky') { sizeSky(); if (!uiFit.sky) { skyFit(); uiFit.sky = 1; } reqSky(); }
-    if (sub === 'altar') sizeAltar(); if (sub === 'totem') sizeTotem();
+    if (sub === 'altar') sizeAltar(); if (sub === 'totem') sizeTotem(); if (sub === 'army') sizeArmy();
   } catch (e) {} }, 80);
 }
 const uiFit = {};
@@ -85,7 +87,7 @@ function uiTick() {
   $('nUp').hidden = !UI_SEC.up.some(([k]) => uiOpen(k));
   const nw = M.uiNew;
   $('nHero').classList.toggle('has', ['stats', 'altar', 'gear', 'cls'].some(k => nw[k]) || $('nCls').classList.contains('has') || !$('gbadge').hidden);
-  $('nUp').classList.toggle('has', ['tal', 'branch', 'totem', 'sky'].some(k => nw[k]) || $('treeb').classList.contains('has'));
+  $('nUp').classList.toggle('has', ['tal', 'branch', 'totem', 'sky', 'army'].some(k => nw[k]) || $('treeb').classList.contains('has'));
   $('nMenu').classList.toggle('has', $('nSouls').classList.contains('has'));
   if (uiSec !== 'fight' && uiSec !== 'menu') renderSubnav();
   // карточка класса не висит вечно: прячется через 6 с
@@ -246,7 +248,7 @@ if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
 ntMigrate();
 if (!S.meta.pathMig) { S.meta.pathMig = 1; let had = 0; for (const k in (S.meta.cl || {})) { if (S.meta.cl[k].ct && Object.keys(S.meta.cl[k].ct).length) had = 1; S.meta.cl[k].ct = {}; } if (had) setTimeout(() => toast('ПУТЬ КЛАССА', 'ветки классов переделаны · очки мастерства возвращены', 4000), 2500); }
-skyMigrate(); calcSky(); skyInit(); altarInit(); totemInit();
+skyMigrate(); calcSky(); skyInit(); altarInit(); totemInit(); armyInit();
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }
