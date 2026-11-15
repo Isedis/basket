@@ -9,9 +9,10 @@ config/icon="res://assets/icon.svg"
 [display]
 window/size/viewport_width=960
 window/size/viewport_height=540
-window/size/window_width_override=1440
-window/size/window_height_override=810
-window/stretch/mode="canvas_items"
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="viewport"
+window/stretch/scale_mode="integer"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"

@@ -5,7 +5,7 @@ repo='Isedis/basket'
 version=re.search(r'const VERSION = "([0-9.]+)"',Path('flesh-and-vow/scripts/updater.gd').read_text()).group(1)
 tag='flesh-v'+version
 exe=Path('dist/FleshAndVow-Windows/FleshAndVow.exe')
-manifest={'version':version,'url':f'https://github.com/{repo}/releases/download/{tag}/FleshAndVow.exe','sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'size':exe.stat().st_size,'notes':'Обновление Плоть и Обет '+version}
+manifest={'version':version,'url':f'https://github.com/{repo}/releases/download/{tag}/FleshAndVow.exe','sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'size':exe.stat().st_size,'notes':Path('flesh-and-vow/RELEASE_NOTES.txt').read_text(encoding='utf-8').strip() if Path('flesh-and-vow/RELEASE_NOTES.txt').exists() else 'Обновление Плоть и Обет '+version}
 Path('dist/update.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
 def gh(*args): return subprocess.run(['gh',*args],check=True)
 def ensure_release(release,title,prerelease=False):

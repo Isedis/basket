@@ -11,6 +11,12 @@ const ENEMY_NAMES = ["guard", "shadow", "skeleton", "assassin", "mage"]
 
 var font = preload("res://assets/regular.ttf")
 var bold = preload("res://assets/bold.ttf")
+var pixel_font = preload("res://assets/pixel.ttf")
+var castle_art: Texture2D
+var corpses: Array = []
+var hit_stop = 0.0
+var death_elapsed = 0.0
+var swing_windup = 0.12
 var actors = preload("res://assets/actors.png")
 var icons = preload("res://assets/items.png")
 var updater
@@ -77,6 +83,10 @@ func _ready():
 	updater = preload("res://scripts/updater.gd").new()
 	add_child(updater)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pixel_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+	var castle_image = preload("res://assets/castle_room.png").get_image()
+	castle_image.resize(352,182,Image.INTERPOLATE_NEAREST)
+	castle_art = ImageTexture.create_from_image(castle_image)
 	bind_controls()
 	rng.randomize()
 	load_profile()
@@ -169,6 +179,7 @@ func menu_buttons() -> Array:
 			arr.append({"rect":Rect2(72,296,320,42),"text":"ПРОДОЛЖИТЬ  ·  ENTER", "action":"continue"})
 		arr.append({"rect":Rect2(72,346,320,42),"text":"НОВЫЙ ЗАБЕГ  ·  N", "action":"new_confirm" if FileAccess.file_exists(save_path) else "new"})
 		arr.append({"rect":Rect2(72,396,320,36),"text":"КАК ИГРАТЬ  ·  F1", "action":"help"})
+		arr.append({"rect":Rect2(420,440,300,32),"text":"ИСПЫТАТЬ НОВЫЙ БОЙ", "action":"art_probe"})
 		arr.append({"rect":Rect2(72,440,320,32),"text":"ПРОВЕРИТЬ ОБНОВЛЕНИЯ", "action":"updates"})
 		if "boss1" in profile.unlocks:
 			arr.append({"rect":Rect2(72,480,320,26),"text":"ГЕРОЙ: "+("УЗНИК" if character==0 else "ОТСТУПНИК")+"  ·  C", "action":"character"})
@@ -179,12 +190,23 @@ func menu_buttons() -> Array:
 		return [{"rect":Rect2(330,250,300,40),"text":"ПРОДОЛЖИТЬ  ·  ESC", "action":"resume"},
 			{"rect":Rect2(330,302,300,40),"text":"СОХРАНИТЬ И В МЕНЮ", "action":"title"},
 			{"rect":Rect2(330,354,300,36),"text":"КАК ИГРАТЬ", "action":"help"}]
+	if mode == "dead" and death_elapsed<0.85: return []
 	if mode in ["dead","victory"]:
 		return [{"rect":Rect2(330,386,300,42),"text":"К ОБЕТУ  ·  ENTER", "action":"end"}]
 	return []
 
 func menu_action(action: String):
 	match action:
+		"art_probe":
+			new_run()
+			player = Vector2(316,330)
+			invincible = 0
+			facing = Vector2.RIGHT
+			spawn_enemy("guard",Vector2(450,325),false)
+			spawn_enemy("guard",Vector2(590,300),false)
+			room.clear = false
+			notify("Зал проверки: WASD — шаг, стрелки — тесак.",5)
+			save_run()
 		"updates": updater.open()
 		"new": new_run()
 		"new_confirm": mode = "confirm_new"
@@ -216,6 +238,7 @@ func new_run(fixed_seed: int = -1):
 	active = "vessel" if character == 0 else "storm"
 	charge = 3
 	elapsed = 0
+	hit_stop = 0
 	kills = 0
 	rooms_cleared = 0
 	attack_cd = 0
@@ -244,6 +267,8 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	coords = where
 	room = dungeon.rooms[Dungeon.key(coords)]
 	room.visited = true
+	if not room.has("corpses"): room.corpses = []
+	corpses = room.corpses.duplicate(true)
 	player = spawn
 	enemies = room.enemies.duplicate(true)
 	drops = room.drops.duplicate(true)
@@ -255,6 +280,11 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	swing = 0
 	transition_cd = 0.45
 	setup_geometry()
+	if blocked(player,9):
+		for candidate in [CENTRE,Vector2(384,320),Vector2(384,210),Vector2(130,300),Vector2(620,300)]:
+			if not blocked(candidate,9):
+				player = candidate
+				break
 	if not room.spawned:
 		room.spawned = true
 		populate_room()
@@ -269,6 +299,7 @@ func store_room():
 	room.enemies = enemies.duplicate(true)
 	room.drops = drops.duplicate(true)
 	room.blood = blood.duplicate(true)
+	room.corpses = corpses.duplicate(true)
 
 func setup_geometry():
 	blocks.clear()
@@ -346,16 +377,19 @@ func spawn_enemy(type: String, p: Vector2, boss: bool):
 
 func _process(delta):
 	anim += delta
+	if mode == "dead": death_elapsed += delta
 	menu_hover = -1
 	var buttons = menu_buttons()
 	for i in range(buttons.size()):
 		if buttons[i].rect.has_point(get_global_mouse_position()): menu_hover = i
 	if mode == "playing" and not help_open:
-		update_game(minf(delta,0.04))
+		if hit_stop>0: hit_stop = maxf(0,hit_stop-delta)
+		else: update_game(minf(delta,0.04))
 	queue_redraw()
 
 func update_game(dt: float):
 	elapsed += dt
+	for c in corpses: c.age = minf(1.0,c.age+dt)
 	save_time += dt
 	for prop in ["attack_cd","invincible","dash_cd","active_cd","transition_cd","message_time","popup_time","hurt_flash"]:
 		set(prop,maxf(0.0,float(get(prop))-dt))
@@ -408,7 +442,7 @@ func update_game(dt: float):
 		save_time = 0
 
 func blocked(p: Vector2, radius: float) -> bool:
-	if p.x<50+radius or p.x>718-radius or p.y<111+radius or p.y>425-radius:
+	if p.x<50+radius or p.x>718-radius or p.y<176+radius or p.y>425-radius:
 		return true
 	for block in blocks:
 		if block.grow(radius).has_point(p): return true
@@ -428,8 +462,9 @@ func move_body(p: Vector2, by: Vector2, radius: float) -> Vector2:
 func begin_attack(direction: Vector2):
 	swing_dir = direction
 	facing = direction
-	windup = 0.07 + count_item("heavy")*0.035
-	attack_cd = maxf(0.13,(0.36+count_item("heavy")*0.12)/(1.0+count_item("haste")*0.27))
+	swing_windup = 0.12 + count_item("heavy")*0.045
+	windup = swing_windup
+	attack_cd = maxf(0.13,(0.40+count_item("heavy")*0.12)/(1.0+count_item("haste")*0.27))
 	combo = (combo+1)%3
 
 func attack_range() -> float:
@@ -445,7 +480,7 @@ func attack_damage() -> float:
 	return result
 
 func perform_attack():
-	swing = 0.18
+	swing = 0.22
 	var reach = attack_range()
 	for enemy in enemies.duplicate():
 		var rel = Vector2(enemy.x,enemy.y)-player
@@ -475,6 +510,12 @@ func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bo
 	if enemy.hp<=0: return
 	enemy.hp -= amount
 	enemy.flash = 0.13
+	hit_stop = maxf(hit_stop,0.035 if not enemy.boss else 0.055)
+	var spray = (Vector2(enemy.x,enemy.y)-origin).normalized()
+	for n in range(7):
+		emit_particle(Vector2(enemy.x,enemy.y)-Vector2(0,25),Color("a82a32"),spray.rotated(rng.randf_range(-0.6,0.6))*rng.randf_range(70,180),0.4,2+rng.randi_range(0,2))
+	for n in range(3):
+		blood.append({"x":enemy.x+spray.x*rng.randf_range(10,35),"y":enemy.y+spray.y*rng.randf_range(10,35),"size":rng.randf_range(3,7),"bone":false})
 	var p = Vector2(enemy.x,enemy.y)
 	var push = (p-origin).normalized()*(4 if enemy.boss else 12)
 	p = move_body(p,push,15 if enemy.boss else 10)
@@ -491,11 +532,15 @@ func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bo
 func kill_enemy(enemy: Dictionary):
 	if not enemies.has(enemy): return
 	var p = Vector2(enemy.x,enemy.y)
+	var spray_dir = (p-player).normalized()
+	corpses.append({"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0})
+	if corpses.size()>24: corpses.pop_front()
+	hit_stop = 0.07
 	enemies.erase(enemy)
 	kills += 1
 	shake = 2 if not enemy.boss else 7
 	for i in range(5 if not enemy.boss else 15):
-		blood.append({"x":p.x+rng.randf_range(-19,19),"y":p.y+rng.randf_range(-10,12),"size":rng.randf_range(2,8),"bone":i%4==0})
+		blood.append({"x":p.x+rng.randf_range(-19,19),"y":p.y+rng.randf_range(-10,12),"size":rng.randf_range(5,15),"bone":i%4==0})
 	if blood.size()>160: blood = blood.slice(blood.size()-160)
 	burst(p,Color("bd5260"),20 if not enemy.boss else 50)
 	if rng.randf()<0.65 or enemy.boss:
@@ -689,6 +734,7 @@ func heal(amount: float):
 
 func die():
 	mode = "dead"
+	death_elapsed = 0
 	profile.deaths += 1
 	profile.best = maxi(int(profile.best),floor_index+1)
 	end_quote = Catalog.FLOORS[floor_index].thought
@@ -833,7 +879,7 @@ func use_active():
 	save_run()
 
 func door_position(index: int) -> Vector2:
-	return [Vector2(384,110),Vector2(715,268),Vector2(384,426),Vector2(52,268)][index]
+	return [Vector2(384,180),Vector2(715,268),Vector2(384,426),Vector2(52,268)][index]
 
 func check_doors():
 	if not room.clear or transition_cd>0: return
@@ -851,7 +897,7 @@ func check_doors():
 					return
 				keys -= 1
 				dest.opened = true
-			var spawns = [Vector2(384,393),Vector2(80,268),Vector2(384,143),Vector2(688,268)]
+			var spawns = [Vector2(384,393),Vector2(80,268),Vector2(384,210),Vector2(688,268)]
 			enter_room(next,spawns[i])
 			return
 

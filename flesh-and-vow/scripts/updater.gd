@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const VERSION = "0.2.0"
+const VERSION = "0.3.0"
 const FEED = "https://github.com/Isedis/basket/releases/download/flesh-latest/update.json"
 const ASSET_PREFIX = "https://github.com/Isedis/basket/releases/download/"
 const LIMIT = 250 * 1024 * 1024

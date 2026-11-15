@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Art = preload("res://scripts/art_view.gd")
 const Catalog = preload("res://scripts/catalog.gd")
 const Dungeon = preload("res://scripts/dungeon.gd")
 const INK = Color("0d0e15")
@@ -37,10 +38,7 @@ static func item_icon(g, id: String, p: Vector2, scale_value: float = 1):
 	g.draw_texture_rect_region(g.icons,Rect2(p,Vector2(24,24)*scale_value),Rect2(index*24,0,24,24))
 
 static func actor(g, type: String, p: Vector2, frame: int = 0, scale_value: float = 1, flash: bool = false, tint: Color = Color.WHITE):
-	var names = ["player","guard","shadow","skeleton","assassin","mage","boss0","boss1","boss2","boss3"]
-	var row = names.find(type)
-	if row<0: row = 0
-	g.draw_texture_rect_region(g.actors,Rect2(p-Vector2(16,34)*scale_value,Vector2(32,40)*scale_value),Rect2(frame*32,row*40,32,40),Color(2.5,2,1.7,1) if flash else tint)
+	Art.actor(g,type,p,frame,scale_value,flash,tint)
 
 static func render(g):
 	rect(g,Rect2(0,0,960,540),INK)
@@ -54,7 +52,7 @@ static func render(g):
 			panel(g,Rect2(300,152,360,270))
 			centre(g,Vector2(480,204),"ТЕЛО МОЖЕТ ПОДОЖДАТЬ",17,GOLD,true)
 			centre(g,Vector2(480,228),"Забег сохранён",12,MUTED)
-		if g.mode in ["dead","victory"]:
+		if g.mode=="victory" or (g.mode=="dead" and g.death_elapsed>=0.85):
 			ending(g)
 	if g.help_open: help_screen(g)
 	if g.journal_open: journal(g)
@@ -69,53 +67,20 @@ static func veil(g):
 	rect(g,Rect2(0,0,960,540),Color(0.025,0.025,0.04,0.9))
 
 static func title_screen(g):
-	# Cathedral silhouette, drawn at integer coordinates like a pixel illustration.
-	for i in range(12):
-		rect(g,Rect2(430+i*18,0,530-i*18,540),Color(0.055+i*0.002,0.052+i*0.001,0.078+i*0.003))
-	var cp = Vector2(708,245)
-	for radius in [174,151,128,106]:
-		g.draw_arc(cp,radius,PI,TAU,48,Color("38303d"),7)
-		g.draw_line(cp+Vector2(-radius,0),Vector2(cp.x-radius,490),Color("302b38"),7)
-		g.draw_line(cp+Vector2(radius,0),Vector2(cp.x+radius,490),Color("302b38"),7)
-	for i in range(8):
-		var x = 462+i*68
-		rect(g,Rect2(x,365,38,175),Color("14141e"))
-		rect(g,Rect2(x+8,365,2,150),Color("2a2532"))
-		rect(g,Rect2(x-5,356,48,10),Color("302836"))
-	g.draw_circle(Vector2(708,194),64,Color("392836"))
-	g.draw_arc(Vector2(708,194),67,0,TAU,64,Color("8c6f56"),2)
-	for i in range(12):
-		var a = i*TAU/12
-		g.draw_line(Vector2(708,194)+Vector2.from_angle(a)*73,Vector2(708,194)+Vector2.from_angle(a)*83,GOLD,1)
-	# Monumental mask and red shroud.
-	var shroud = PackedVector2Array([Vector2(661,258),Vector2(752,258),Vector2(793,425),Vector2(755,462),Vector2(623,462),Vector2(640,361)])
-	g.draw_colored_polygon(shroud,Color("3b2639"))
-	g.draw_colored_polygon(PackedVector2Array([Vector2(677,265),Vector2(725,265),Vector2(747,433),Vector2(694,449)]),Color("653548"))
-	g.draw_colored_polygon(PackedVector2Array([Vector2(687,276),Vector2(704,287),Vector2(687,448),Vector2(663,444)]),Color("9c4654"))
-	rect(g,Rect2(663,122,87,125),Color("211e2b"))
-	rect(g,Rect2(654,140,106,82),Color("211e2b"))
-	rect(g,Rect2(667,126,77,113),Color("c4b397"))
-	rect(g,Rect2(659,144,92,67),Color("b5a58c"))
-	rect(g,Rect2(674,130,61,12),Color("ded0af"))
-	rect(g,Rect2(672,165,22,15),Color("3e3039"))
-	rect(g,Rect2(718,165,22,15),Color("3e3039"))
-	rect(g,Rect2(682,168,6,4),Color("dd6a6c"))
-	rect(g,Rect2(722,168,6,4),Color("dd6a6c"))
-	rect(g,Rect2(700,136,5,104),Color("76434b"))
-	rect(g,Rect2(690,217,36,5),Color("775058"))
-	rect(g,Rect2(651,241,111,27),Color("963d51"))
-	for i in range(18):
-		var x = 464+fmod(i*73.0+g.anim*(2+i%3),470)
-		var y = fmod(i*47.0-g.anim*9,540)
-		rect(g,Rect2(x,y,2,2),Color(0.7,0.42,0.31,0.3+0.2*sin(g.anim+i)))
-	text(g,Vector2(72,78),"ROGUELIKE · БЛИЖНИЙ БОЙ · GODOT 4",11,GOLD)
-	text(g,Vector2(67,161),"ПЛОТЬ",62,WHITE,true)
-	text(g,Vector2(72,219),"И ОБЕТ",48,RED,true)
+	if g.castle_art: g.draw_texture_rect(g.castle_art,Rect2(-48,-6,1056,546),false,Color("8e9c84"))
+	g.draw_rect(Rect2(0,0,480,540),Color(0.015,0.022,0.018,0.88))
+	g.draw_rect(Rect2(480,0,480,540),Color(0.015,0.022,0.018,0.2))
+	g.draw_set_transform(Vector2.ZERO,0,Vector2(3,3))
+	Art.pose(g,"player",Vector2(239,140),Vector2.RIGHT,0,int(g.anim*4)%8)
+	g.draw_set_transform(Vector2.ZERO)
+	Art.pixel_text(g,Vector2(72,80),"ОСКВЕРНЁННЫЙ ЗАМОК",GOLD)
+	g.draw_string(g.pixel_font,Vector2(67,161),"ПЛОТЬ",HORIZONTAL_ALIGNMENT_LEFT,-1,40,WHITE)
+	g.draw_string(g.pixel_font,Vector2(72,218),"И ОБЕТ",HORIZONTAL_ALIGNMENT_LEFT,-1,32,RED)
 	g.draw_line(Vector2(73,244),Vector2(391,244),BORDER,1)
 	text(g,Vector2(73,269),"Тебе дали тело. Волю придётся забрать.",13,MUTED)
-	text(g,Vector2(72,530),"ПРОТОТИП 0.2.0  /  4 ЭТАЖА  /  20 РЕЛИКВИЙ",10,MUTED)
+	text(g,Vector2(72,526),"АРТ-ПРОБА 0.3 · ПЕРВЫЙ ЭТАП ПЕРЕРАБОТКИ",10,MUTED)
 	text(g,Vector2(706,510),"F11 · ПОЛНЫЙ ЭКРАН",10,MUTED)
-	if g.message_time>0: centre(g,Vector2(480,531),g.message,11,RED)
+	if g.message_time>0: centre(g,Vector2(480,539),g.message,10,RED)
 
 static func buttons(g):
 	var arr = g.menu_buttons()
@@ -129,38 +94,21 @@ static func buttons(g):
 static func world(g):
 	var off = Vector2(round(sin(g.anim*77)*g.shake),round(cos(g.anim*91)*g.shake*0.65))
 	g.draw_set_transform(off)
-	if g.room_texture:
-		g.draw_texture(g.room_texture,Vector2(40,100))
-	# Pixel masonry and recessed wall edges.
-	rect(g,Rect2(32,84,704,22),Color("282532"),Color("4c414a"))
-	rect(g,Rect2(32,430,704,18),Color("211e2a"),Color("40353f"))
-	rect(g,Rect2(32,106,14,324),Color("282532"),Color("4c414a"))
-	rect(g,Rect2(722,106,14,324),Color("282532"),Color("4c414a"))
-	for x in range(34,733,32):
-		g.draw_line(Vector2(x,85),Vector2(x,104),Color("12131b"),2)
-		g.draw_line(Vector2(x+12,432),Vector2(x+12,447),Color("11121a"),2)
-	for y in range(110,428,30):
-		g.draw_line(Vector2(33,y),Vector2(45,y),Color("11121a"),2)
-		g.draw_line(Vector2(724,y),Vector2(735,y),Color("11121a"),2)
-	# Four sconces tie animation to the architecture.
-	for x in [102,666]:
-		for y in [112,420]:
-			var c = Color("dd995f") if g.floor_index!=1 else Color("85b7b2")
-			g.draw_circle(Vector2(x,y),17,Color(c,0.035))
-			rect(g,Rect2(x-3,y-2,6,9),Color("39313a"))
-			rect(g,Rect2(x-2,y-6-int(sin(g.anim*8+x)*2),4,7),c)
-			rect(g,Rect2(x-1,y-4,2,4),Color("f4d9a0"))
+	if g.castle_art:
+		var tints = [Color.WHITE,Color("aac8c2"),Color("b6bf98"),Color("d6c4a3")]
+		g.draw_texture_rect(g.castle_art,Rect2(32,84,704,364),false,tints[g.floor_index])
+	Art.light(g)
 	doors(g)
 	for hazard in g.hazards: draw_hazard(g,hazard)
 	for b in g.blood:
-		var color = Color("4b2432") if not b.bone else Color("877664")
-		rect(g,Rect2(b.x-b.size/2,b.y-b.size/3,b.size,b.size*0.55),color)
-	for b in g.blocks:
-		rect(g,b.grow(3),Color("10121a"))
-		rect(g,b,Color("393440"),Color("514752"))
-		rect(g,Rect2(b.position,b.size*Vector2(1,0.25)),Color("504652"))
-		g.draw_line(b.position+Vector2(3,3),b.position+Vector2(b.size.x-5,3),Color("6b5b64"),1)
-		g.draw_line(b.position+Vector2(12,10),b.end-Vector2(8,5),Color("25222d"),2)
+		var color = Color("63232b") if not b.bone else Color("96846a")
+		var position = Vector2(b.x,b.y).snapped(Vector2(2,2))
+		var width = maxi(2,int(b.size/2)*2)
+		rect(g,Rect2(position-Vector2(width/2,2),Vector2(width,4)),color)
+		if not b.bone:
+			rect(g,Rect2(position-Vector2(width/3,4),Vector2(maxi(2,width-4),8)),Color("4d2026"))
+	for b in g.blocks: Art.stone(g,b)
+	Art.corpses(g)
 	room_prop(g)
 	for z in g.zones:
 		var c = Color("c290df") if z.kind=="echo" else Color("db865e")
@@ -174,7 +122,7 @@ static func world(g):
 	for e in entities:
 		var p = Vector2(e.x,e.y)
 		var is_player = e.type=="player"
-		var size = 1.8 if e.boss else 1.0
+		var size = 2.0 if e.boss else 1.0
 		g.draw_circle(p+Vector2(0,3),11*size,Color(0,0,0,0.25))
 		if not is_player:
 			if e.state=="windup":
@@ -182,12 +130,12 @@ static func world(g):
 				g.draw_circle(p,23*size,Color(0.9,0.3,0.3,0.07))
 				g.draw_arc(p,23*size,0,TAU,32,Color("d78c66"),1)
 				g.draw_line(p,p+dir*(110 if e.boss else 65),Color(0.8,0.4,0.35,0.7),3)
-				text(g,p+Vector2(-3,-44*size),"!",16,Color("f6c78e"),true)
+				text(g,p+Vector2(-3,-72*size),"!",16,Color("f6c78e"),true)
 			var tint = Color("b5d8e2") if e.slow>0 else Color.WHITE
 			actor(g,e.type,p,int(g.anim*6)%3 if e.state=="chase" else 0,size,e.flash>0,tint)
 			if e.hp<e.max and not e.boss:
-				rect(g,Rect2(p.x-15,p.y-40,30,3),Color("27202c"))
-				rect(g,Rect2(p.x-15,p.y-40,30*maxf(0,e.hp/e.max),3),RED)
+				rect(g,Rect2(p.x-15,p.y-71,30,3),Color("27202c"))
+				rect(g,Rect2(p.x-15,p.y-71,30*maxf(0,e.hp/e.max),3),RED)
 			if e.burn>0:
 				for i in range(3):
 					rect(g,Rect2(p.x-9+i*8,p.y-14-sin(g.anim*14+i)*5,3,6),Color("e79759"))
@@ -195,7 +143,7 @@ static func world(g):
 		else:
 			if g.windup>0:
 				g.draw_arc(p,g.attack_range(),g.swing_dir.angle()-0.8,g.swing_dir.angle()+0.8,20,Color(0.9,0.8,0.65,0.27),1)
-			var blink = g.invincible>0 and int(g.anim*17)%2==0
+			var blink = g.mode!="dead" and g.invincible>0 and int(g.anim*17)%2==0
 			actor(g,"player",p,int(g.anim*9)%3 if g.moving else 0,1,false,Color(1,1,1,0.4) if blink else Color.WHITE)
 			if g.swing>0: slash(g,p)
 	for b in g.bullets:
@@ -217,7 +165,7 @@ static func world(g):
 
 static func slash(g, p: Vector2):
 	var dir = g.swing_dir.angle()
-	var progress = 1.0-g.swing/0.18
+	var progress = 1.0-g.swing/0.22
 	var reach = g.attack_range()
 	var points = PackedVector2Array()
 	for i in range(13):
@@ -229,14 +177,17 @@ static func slash(g, p: Vector2):
 	var c = Color("eee1bd")
 	if g.has_item("ember"): c = Color("eeb276")
 	if g.has_item("frost"): c = Color("99ceda")
-	g.draw_colored_polygon(points,Color(c,(1.0-progress)*0.75))
-	g.draw_arc(p,reach,dir-1.0+progress,dir+1.0,24,Color(c,1.0-progress),2)
+	g.draw_colored_polygon(points,Color(c,(1.0-progress)*0.23))
+	g.draw_arc(p,reach,dir-1.0+progress,dir+1.0,24,Color(c,(1.0-progress)*0.55),2)
 
 static func doors(g):
 	for i in range(4):
 		var next = g.coords+Vector2i(g.DIRECTIONS[i])
 		var key = Dungeon.key(next)
-		if not g.dungeon.rooms.has(key): continue
+		if not g.dungeon.rooms.has(key):
+			var absent = g.door_position(i)
+			Art.stone(g,Rect2(absent-Vector2(23,10),Vector2(46,20)) if i%2==0 else Rect2(absent-Vector2(9,25),Vector2(18,50)))
+			continue
 		var dest = g.dungeon.rooms[key]
 		var p = g.door_position(i)
 		if not dest.revealed:
@@ -246,12 +197,12 @@ static func doors(g):
 			if g.has_item("sight"): text(g,p+Vector2(-4,-16),"?",14,GOLD,true)
 			continue
 		var box = Rect2(p-Vector2(25,9),Vector2(50,18)) if i%2==0 else Rect2(p-Vector2(9,25),Vector2(18,50))
-		rect(g,box.grow(4),Color("50414b"),Color("826a5d"))
+		rect(g,box.grow(2),Color("333126"),Color("645b42"))
 		rect(g,box,Color("11131c"))
 		if not g.room.clear:
 			for v in range(-15,20,10):
-				if i%2==0: g.draw_line(p+Vector2(v,-9),p+Vector2(v,9),Color("9b6870"),2)
-				else: g.draw_line(p+Vector2(-9,v),p+Vector2(9,v),Color("9b6870"),2)
+				if i%2==0: g.draw_line(p+Vector2(v,-9),p+Vector2(v,9),Color("7d7660"),2)
+				else: g.draw_line(p+Vector2(-9,v),p+Vector2(9,v),Color("7d7660"),2)
 		elif not dest.opened:
 			rect(g,Rect2(p-Vector2(5,4),Vector2(10,9)),GOLD)
 			g.draw_arc(p-Vector2(0,5),4,PI,TAU,8,GOLD,2)
@@ -266,9 +217,9 @@ static func draw_hazard(g, h):
 			rect(g,b,Color("070a10"))
 			g.draw_line(b.position,b.position+Vector2(b.size.x,0),Color("66505c"),2)
 		"water":
-			rect(g,b,Color("243f4c"),Color("3f6671"))
+			g.draw_colored_polygon(PackedVector2Array([b.position+Vector2(8,0),b.position+Vector2(b.size.x-8,0),b.position+Vector2(b.size.x,8),b.end-Vector2(0,8),b.end-Vector2(8,0),b.position+Vector2(8,b.size.y),b.position+Vector2(0,b.size.y-8),b.position+Vector2(0,8)]),Color("22372f"))
 			for i in range(3):
-				g.draw_line(b.position+Vector2(6,7+i*9),b.position+Vector2(b.size.x-7+sin(g.anim*2+i)*3,7+i*9),Color("507b83"),1)
+				g.draw_line(b.position+Vector2(6,7+i*9),b.position+Vector2(b.size.x-7+sin(g.anim*2+i)*3,7+i*9),Color("4b6250"),1)
 		"spikes":
 			rect(g,b,Color("29242e"),Color("675058"))
 			var raised = fmod(g.anim+h.phase,2.5)<1.2
@@ -346,86 +297,63 @@ static func draw_drop(g, d):
 	if d.price>0: centre(g,p+Vector2(0,24),"%d ¤"%d.price,11,GOLD)
 
 static func hud(g):
-	# Header: vitality, pain, resources. Everything stays readable at 960x540.
-	text(g,Vector2(32,24),"ПЛОТЬ",10,MUTED,true)
-	text(g,Vector2(95,24),"%s / %s"%[number(g.hp),number(g.max_hp)],11,WHITE)
-	var segments = int(ceil(g.max_hp))
-	for i in range(segments):
-		var x = 32+i*14
-		rect(g,Rect2(x,32,10,16),Color("2d2431"),Color("5b3948"))
-		var fill = clampf(g.hp-i,0,1)
-		if fill>0:
-			rect(g,Rect2(x+2,34+12*(1-fill),6,12*fill),RED)
-			if fill>=1: rect(g,Rect2(x+2,34,2,3),Color("e98591"))
-	text(g,Vector2(32,68),"БОЛЬ",10,MUTED)
-	rect(g,Rect2(77,59,119,7),Color("29212e"))
-	rect(g,Rect2(77,59,119*g.pain/100,7),Color("905168"))
-	text(g,Vector2(209,67),"+%d%%"%int(g.pain*0.35),10,Color("b87b8e"))
-	text(g,Vector2(277,25),"МОНЕТЫ",10,MUTED)
-	text(g,Vector2(277,52),"%02d"%g.coins,23,GOLD,true)
-	text(g,Vector2(374,25),"КЛЮЧИ",10,MUTED)
-	text(g,Vector2(374,52),"%02d"%g.keys,23,WHITE,true)
-	text(g,Vector2(468,25),"ВЕРА",10,MUTED)
-	var faith_color = RED if g.faith<0 else GOLD
-	text(g,Vector2(468,49),("+" if g.faith>0 else "")+str(g.faith),20,faith_color,true)
-	text(g,Vector2(468,67),"САТАНА ← · → ХРИСТОС",8,MUTED)
-	text(g,Vector2(650,26),time_string(g.elapsed),17,WHITE,true)
-	text(g,Vector2(629,48),"ESC · ПАУЗА",10,MUTED)
-	text(g,Vector2(629,66),"TAB · РЕЛИКВИИ",10,MUTED)
-	# Right-hand codex column.
-	panel(g,Rect2(754,16,184,66))
-	text(g,Vector2(766,38),"ПЛОТЬ И ОБЕТ",14,GOLD,true)
-	text(g,Vector2(766,59),"ЗАБЕГ / %s"%str(g.seed_value).right(8),9,MUTED)
-	panel(g,Rect2(754,94,184,188))
-	text(g,Vector2(766,114),"КАРТА ОБЕТА",10,GOLD,true)
+	Art.rune_border(g,Rect2(32,16,704,56))
+	Art.pixel_text(g,Vector2(46,34),"ПЛОТЬ",Color("a98d68"))
+	for i in range(int(ceil(g.max_hp))):
+		var p = Vector2(46+i*13,43)
+		rect(g,Rect2(p,Vector2(10,14)),Color("301e20"),Color("614136"))
+		var amount = clampf(g.hp-i,0,1)
+		if amount>0:
+			rect(g,Rect2(p+Vector2(2,2+10*(1-amount)),Vector2(6,10*amount)),Color("a63b3e"))
+			rect(g,Rect2(p+Vector2(2,2),Vector2(2,2)),Color("e18a6b"))
+	Art.pixel_text(g,Vector2(230,34),"БОЛЬ")
+	rect(g,Rect2(230,46,94,6),Color("2c2325"))
+	rect(g,Rect2(230,46,94*g.pain/100,6),Color("9f5c51"))
+	Art.pixel_text(g,Vector2(351,34),"МОНЕТЫ")
+	text(g,Vector2(351,57),"%02d"%g.coins,18,GOLD,true)
+	Art.pixel_text(g,Vector2(440,34),"КЛЮЧИ")
+	text(g,Vector2(440,57),"%02d"%g.keys,18,WHITE,true)
+	Art.pixel_text(g,Vector2(526,34),"ВЕРА")
+	text(g,Vector2(526,57),("+" if g.faith>0 else "")+str(g.faith),18,GOLD if g.faith>=0 else RED,true)
+	text(g,Vector2(650,49),time_string(g.elapsed),17,WHITE,true)
+	# An austere margin leaves the room as the dominant element.
+	Art.pixel_text(g,Vector2(762,39),"ОБЕТ %d"%(g.floor_index+1),GOLD)
+	g.draw_line(Vector2(758,60),Vector2(928,60),Color("544832"),1)
 	minimap(g)
-	text(g,Vector2(766,264),"◆ дар   † босс   $ торг",9,MUTED)
-	panel(g,Rect2(754,294,184,102))
-	text(g,Vector2(766,315),"АКТИВНЫЙ ДАР",10,GOLD,true)
-	item_icon(g,g.active,Vector2(766,328),1.3)
-	text(g,Vector2(810,343),"Чаша плоти" if g.active=="vessel" else "Колокол грозы",11,WHITE,true)
-	text(g,Vector2(810,360),"ПРОБЕЛ",9,MUTED)
-	for i in range(3): rect(g,Rect2(766+i*50,376,43,5),GOLD if i<g.charge else BORDER)
-	panel(g,Rect2(754,408,184,116))
-	text(g,Vector2(766,430),"ТЕЛО ПОМНИТ",10,GOLD,true)
-	text(g,Vector2(766,450),"Убийств: %d"%g.kills,11,WHITE)
-	text(g,Vector2(766,468),"Комнат: %d"%g.rooms_cleared,11,WHITE)
-	text(g,Vector2(766,486),"Реликвий: %d"%g.inventory.size(),11,WHITE)
-	text(g,Vector2(766,509),"SHIFT · шаг пустоты" if g.has_item("blink") else "Рывок ещё не обретён",9,Color("92abc9") if g.has_item("blink") else MUTED)
-	# Bottom status and inventory.
-	text(g,Vector2(33,470),Catalog.FLOORS[g.floor_index].name,12,GOLD,true)
-	text(g,Vector2(33,489),ROOM_NAMES[g.room.type],10,MUTED)
-	var count = mini(10,g.inventory.size())
+	text(g,Vector2(765,280),"◆ дар  † босс  $ торг",9,MUTED)
+	g.draw_line(Vector2(758,299),Vector2(928,299),Color("544832"),1)
+	item_icon(g,g.active,Vector2(764,320),2)
+	Art.pixel_text(g,Vector2(762,388),"ПРОБЕЛ",GOLD)
+	for i in range(3): rect(g,Rect2(762+i*46,400,36,4),GOLD if i<g.charge else BORDER)
+	text(g,Vector2(762,433),"Убито: %d"%g.kills,11,MUTED)
+	text(g,Vector2(762,453),"Дары: %d"%g.inventory.size(),11,MUTED)
+	text(g,Vector2(762,473),"Shift · рывок" if g.has_item("blink") else "Рывок не обретён",10,MUTED)
+	Art.rune_border(g,Rect2(32,460,704,42))
+	Art.pixel_text(g,Vector2(46,478),Catalog.FLOORS[g.floor_index].short.to_upper(),GOLD)
+	text(g,Vector2(46,494),ROOM_NAMES[g.room.type],9,MUTED)
+	var count = mini(11,g.inventory.size())
 	for i in range(count):
-		var p = Vector2(327+i*39,461)
-		rect(g,Rect2(p,Vector2(32,32)),PANEL,BORDER)
-		item_icon(g,g.inventory[g.inventory.size()-count+i],p+Vector2(4,4))
-	if g.inventory.size()>10: text(g,Vector2(708,482),"+",12,GOLD)
-	g.draw_line(Vector2(32,501),Vector2(735,501),BORDER,1)
-	text(g,Vector2(33,522),"WASD  движение     ↑ ↓ ← →  удар     E  взаимодействие",10,MUTED)
-	text(g,Vector2(624,522),"F1 · помощь",10,MUTED)
-	# Context hints stay inside the arena to keep controls easy to discover.
+		item_icon(g,g.inventory[g.inventory.size()-count+i],Vector2(315+i*35,467))
+	text(g,Vector2(32,523),"WASD · шаг     СТРЕЛКИ · удар     E · взять     TAB · дары",10,MUTED)
+	text(g,Vector2(762,523),"ESC · F1 · F11",10,MUTED)
 	var hint = g.interaction_text()
 	if hint!="":
 		var width = g.font.get_string_size(hint,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
-		rect(g,Rect2(384-width/2-10,402,width+20,23),Color(0.045,0.045,0.07,0.94),BORDER)
-		centre(g,Vector2(384,418),hint,11,GOLD)
+		rect(g,Rect2(384-width/2-10,422,width+20,22),Color(0.02,0.025,0.025,0.9))
+		centre(g,Vector2(384,437),hint,11,GOLD)
 	if g.message_time>0:
-		rect(g,Rect2(56,119,656,28),Color(0.05,0.045,0.07,0.94),BORDER)
-		centre(g,Vector2(384,138),g.message,11,WHITE)
+		centre(g,Vector2(384,109),g.message,11,WHITE)
 	if g.popup_time>0 and g.item_popup!="":
 		var entry = Catalog.item(g.item_popup)
-		panel(g,Rect2(175,156,418,66))
-		item_icon(g,g.item_popup,Vector2(190,174),1.25)
-		text(g,Vector2(234,180),entry.name,15,GOLD,true)
-		text(g,Vector2(234,203),entry.hint,10,WHITE)
+		Art.rune_border(g,Rect2(170,114,428,62))
+		item_icon(g,g.item_popup,Vector2(188,132),1.25)
+		text(g,Vector2(233,139),entry.name,14,GOLD,true)
+		text(g,Vector2(233,160),entry.hint,10,WHITE)
 	for e in g.enemies:
 		if e.boss:
-			var pos = Vector2(174,371)
-			rect(g,Rect2(pos-Vector2(5,5),Vector2(430,25)),Color(0.04,0.04,0.06,0.9),BORDER)
-			rect(g,Rect2(pos,Vector2(420,5)),Color("30202d"))
-			rect(g,Rect2(pos,Vector2(420*maxf(0,e.hp/e.max),5)),RED)
-			centre(g,Vector2(384,389),Catalog.FLOORS[g.floor_index].boss,10,WHITE)
+			rect(g,Rect2(173,390,422,5),Color("302027"))
+			rect(g,Rect2(173,390,422*maxf(0,e.hp/e.max),5),RED)
+			centre(g,Vector2(384,411),Catalog.FLOORS[g.floor_index].boss,10,WHITE)
 			break
 
 static func minimap(g):

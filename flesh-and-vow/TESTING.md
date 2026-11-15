@@ -35,3 +35,11 @@ Windows x86_64 EXE экспортирован официальным шабло�
 Проверены PE-заголовок, встроенный PCK и целостность архива.
 Запуск на настоящей Windows 11 здесь не проверялся.
 Сложность, длительность и удовольствие от боя требуют живого плейтеста.
+
+
+0.3.0 additional checks: tests/art.gd verifies corpse/blood persistence,
+impact stop, migration of old saves from a now-blocked north wall,
+and advancement of the player death animation (8 checks).
+The combat preview movie is a capture of the running Godot scene with input
+injected for the demonstration; it is not an animation composited in a video editor.
+New atlas north/south poses and other zone environments are not final.

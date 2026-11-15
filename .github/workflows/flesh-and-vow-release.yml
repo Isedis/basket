@@ -36,6 +36,7 @@ jobs:
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --editor --import --quit
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/smoke.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/updater.gd
+          Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/art.gd
       - name: Build Windows
         run: |
           mkdir -p dist/FleshAndVow-Windows
