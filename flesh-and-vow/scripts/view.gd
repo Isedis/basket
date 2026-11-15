@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Combat = preload("res://scripts/combat.gd")
 const Art = preload("res://scripts/art_view.gd")
 const Catalog = preload("res://scripts/catalog.gd")
 const Dungeon = preload("res://scripts/dungeon.gd")
@@ -37,15 +38,17 @@ static func item_icon(g, id: String, p: Vector2, scale_value: float = 1):
 			break
 	g.draw_texture_rect_region(g.icons,Rect2(p,Vector2(24,24)*scale_value),Rect2(index*24,0,24,24))
 
-static func actor(g, type: String, p: Vector2, frame: int = 0, scale_value: float = 1, flash: bool = false, tint: Color = Color.WHITE):
-	Art.actor(g,type,p,frame,scale_value,flash,tint)
+static func actor(g, type: String, p: Vector2, frame: int = 0, scale_value: float = 1, flash: bool = false, tint: Color = Color.WHITE, entity: Dictionary = {}):
+	Art.actor(g,type,p,frame,scale_value,flash,tint,entity)
 
 static func render(g):
 	rect(g,Rect2(0,0,960,540),INK)
 	if g.mode in ["title","confirm_new"]:
 		title_screen(g)
 	else:
-		world(g)
+		if g.world_viewport!=null:
+			g.draw_texture_rect(g.world_viewport.get_texture(),Rect2(0,0,960,540),false)
+		else: world(g)
 		hud(g)
 		if g.mode == "paused" and not g.help_open and not g.journal_open:
 			veil(g)
@@ -92,7 +95,7 @@ static func buttons(g):
 		centre(g,b.rect.position+Vector2(b.rect.size.x/2,b.rect.size.y/2+5),b.text,12,GOLD if hovered else WHITE,true)
 
 static func world(g):
-	var off = Vector2(round(sin(g.anim*77)*g.shake),round(cos(g.anim*91)*g.shake*0.65))
+	var off = (g.shake_axis*sin(g.anim*60)*g.shake+g.shake_axis.orthogonal()*cos(g.anim*73)*g.shake*0.15).round()
 	g.draw_set_transform(off)
 	if g.castle_art:
 		var tints = [Color.WHITE,Color("aac8c2"),Color("b6bf98"),Color("d6c4a3")]
@@ -130,9 +133,9 @@ static func world(g):
 				g.draw_circle(p,23*size,Color(0.9,0.3,0.3,0.07))
 				g.draw_arc(p,23*size,0,TAU,32,Color("d78c66"),1)
 				g.draw_line(p,p+dir*(110 if e.boss else 65),Color(0.8,0.4,0.35,0.7),3)
-				text(g,p+Vector2(-3,-72*size),"!",16,Color("f6c78e"),true)
+				text(g,Vector2(p.x-3,maxf(100,p.y-(136 if e.boss else 96))),"!",16,Color("f6c78e"),true)
 			var tint = Color("b5d8e2") if e.slow>0 else Color.WHITE
-			actor(g,e.type,p,int(g.anim*6)%3 if e.state=="chase" else 0,size,e.flash>0,tint)
+			actor(g,e.type,p,int(g.anim*6)%3 if e.state=="chase" else 0,size,e.flash>0,tint,e)
 			if e.hp<e.max and not e.boss:
 				rect(g,Rect2(p.x-15,p.y-71,30,3),Color("27202c"))
 				rect(g,Rect2(p.x-15,p.y-71,30*maxf(0,e.hp/e.max),3),RED)
@@ -144,8 +147,9 @@ static func world(g):
 			if g.windup>0:
 				g.draw_arc(p,g.attack_range(),g.swing_dir.angle()-0.8,g.swing_dir.angle()+0.8,20,Color(0.9,0.8,0.65,0.27),1)
 			var blink = g.mode!="dead" and g.invincible>0 and int(g.anim*17)%2==0
-			actor(g,"player",p,int(g.anim*9)%3 if g.moving else 0,1,false,Color(1,1,1,0.4) if blink else Color.WHITE)
-			if g.swing>0: slash(g,p)
+			actor(g,"player",p,int(g.anim*9)%3 if g.moving else 0,1,false,Color(1.3,1.15,0.95,1) if blink else Color.WHITE)
+	if g.swing>0 and g.mode!="dead": slash(g,g.player)
+	if g.debug_combat: debug_shapes(g)
 	for b in g.bullets:
 		var c = Color("d95d71") if b.type=="ally" else (Color("a8b774") if b.type=="rot" else Color("e9b777"))
 		var pos = Vector2(b.x,b.y)
@@ -164,21 +168,27 @@ static func world(g):
 		rect(g,Rect2(32,84,704,364),Color(0.7,0.1,0.2,g.hurt_flash*0.35))
 
 static func slash(g, p: Vector2):
-	var dir = g.swing_dir.angle()
-	var progress = 1.0-g.swing/0.22
-	var reach = g.attack_range()
-	var points = PackedVector2Array()
-	for i in range(13):
-		var a = dir-1.1+float(i)/12*2.2
-		points.append(p+Vector2.from_angle(a)*reach)
-	for i in range(12,-1,-1):
-		var a = dir-1.1+float(i)/12*2.2
-		points.append(p+Vector2.from_angle(a)*reach*(0.64+progress*0.2))
-	var c = Color("eee1bd")
-	if g.has_item("ember"): c = Color("eeb276")
-	if g.has_item("frost"): c = Color("99ceda")
-	g.draw_colored_polygon(points,Color(c,(1.0-progress)*0.23))
-	g.draw_arc(p,reach,dir-1.0+progress,dir+1.0,24,Color(c,(1.0-progress)*0.55),2)
+	var progress = 1-g.swing/g.swing_duration
+	if progress<Combat.CONTACT_RATIO or progress>Combat.ACTIVE_END: return
+	var pose = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,progress,g.attack_range(),g.elapsed)
+	var previous = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,maxf(Combat.CONTACT_RATIO,progress-0.1),g.attack_range(),g.elapsed)
+	var tip = pose.hand+Vector2.from_angle(pose.angle)*Combat.BLADE_MAX*pose.scale
+	var tail = previous.hand+Vector2.from_angle(previous.angle)*Combat.BLADE_MAX*previous.scale
+	g.draw_line(tail.snapped(Vector2(2,2)),tip.snapped(Vector2(2,2)),Color(0.9,0.79,0.62,0.42),3)
+
+static func debug_shapes(g):
+	for enemy in g.enemies:
+		var capsule = Combat.hurt_capsule(Vector2(enemy.x,enemy.y),enemy.type,enemy.boss)
+		g.draw_line(capsule.a,capsule.b,Color(0.1,0.8,0.4,0.25),capsule.radius*2)
+		g.draw_arc(capsule.a,capsule.radius,0,TAU,20,Color("74b89b"),1)
+		g.draw_arc(capsule.b,capsule.radius,0,TAU,20,Color("74b89b"),1)
+	if g.swing>0:
+		var u = 1-g.swing/g.swing_duration
+		var polygon = Combat.blade_polygon(Combat.weapon_pose(g.player,g.player_motion,g.swing_dir,3,u,g.attack_range(),g.elapsed))
+		var color = Color("c59863") if Combat.CONTACT_RATIO<=u and u<=Combat.ACTIVE_END else Color("777777")
+		g.draw_polyline(PackedVector2Array([polygon[0],polygon[1],polygon[2],polygon[3],polygon[0]]),color,1)
+	for contact in g.melee_contacts:
+		g.draw_circle(contact.point,3,Color("f4d395"))
 
 static func doors(g):
 	for i in range(4):
@@ -245,7 +255,7 @@ static func room_prop(g):
 			g.draw_line(p-Vector2(0,20),p+Vector2(0,20),Color("453641"),1)
 		if type=="shop":
 			actor(g,"mage",Vector2(384,184),0,1.2,false,Color("bcb09b"))
-			text(g,Vector2(289,144),"«Я продаю лишь то, что пережило хозяев».",10,MUTED)
+			text(g,Vector2(289,144),"«Я продаю лишь то, что пережило хозяев».",14,MUTED)
 		return
 	if type=="boss":
 		if g.room.clear:
@@ -282,7 +292,7 @@ static func draw_drop(g, d):
 	if d.type=="item":
 		g.draw_circle(p+Vector2(0,5),16,Color("24212d"))
 		rect(g,Rect2(p-Vector2(13,0),Vector2(26,11)),Color("3e3540"),Color("69555a"))
-		item_icon(g,d.id,p-Vector2(12,25+bob))
+		item_icon(g,d.id,p-Vector2(24,47+bob),2)
 		if g.player.distance_to(p)<47:
 			g.draw_arc(p,19,0,TAU,28,GOLD,1)
 	elif d.type=="coin":
@@ -294,7 +304,7 @@ static func draw_drop(g, d):
 		g.draw_line(p+Vector2(0,4-bob),p+Vector2(4,4-bob),GOLD,2)
 	elif d.type=="heal":
 		g.draw_colored_polygon(PackedVector2Array([p+Vector2(0,-13-bob),p+Vector2(6,-5-bob),p+Vector2(5,1-bob),p+Vector2(-4,2-bob),p+Vector2(-6,-5-bob)]),RED)
-	if d.price>0: centre(g,p+Vector2(0,24),"%d ¤"%d.price,11,GOLD)
+	if d.price>0: centre(g,p+Vector2(0,24),"%d ¤"%d.price,16,GOLD)
 
 static func hud(g):
 	Art.rune_border(g,Rect2(32,16,704,56))

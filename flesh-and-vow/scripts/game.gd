@@ -1,5 +1,7 @@
 extends Node2D
 
+const Combat = preload("res://scripts/combat.gd")
+const Motion = preload("res://scripts/locomotion.gd")
 const Catalog = preload("res://scripts/catalog.gd")
 const Dungeon = preload("res://scripts/dungeon.gd")
 const View = preload("res://scripts/view.gd")
@@ -57,6 +59,20 @@ var active_cd = 0.0
 var elapsed = 0.0
 var anim = 0.0
 var moving = false
+var player_motion: Dictionary = {}
+var attack_contact_pending = false
+var swing_duration = 0.22
+var attack_serial = 0
+var attack_facing = 1.0
+var attack_look = 1
+var attack_buffer = Vector2.ZERO
+var attack_buffer_time = 0.0
+var player_knockback = Vector2.ZERO
+var player_stagger = 0.0
+var player_recoil_direction = Vector2.ZERO
+var shake_axis = Vector2.RIGHT
+var debug_combat = false
+var melee_contacts: Array = []
 var shake = 0.0
 var hurt_flash = 0.0
 var transition_cd = 0.0
@@ -82,6 +98,7 @@ var journal_open = false
 var last_error = ""
 var end_quote = ""
 var room_texture: Texture2D
+var world_viewport: SubViewport
 
 func _ready():
 	updater = preload("res://scripts/updater.gd").new()
@@ -91,6 +108,19 @@ func _ready():
 	var castle_image = preload("res://assets/castle_room.png").get_image()
 	castle_image.resize(352,182,Image.INTERPOLATE_NEAREST)
 	castle_art = ImageTexture.create_from_image(castle_image)
+	world_viewport = SubViewport.new()
+	world_viewport.name = "PixelWorld"
+	world_viewport.size = Vector2i(480,270)
+	world_viewport.disable_3d = true
+	world_viewport.transparent_bg = true
+	world_viewport.gui_disable_input = true
+	world_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(world_viewport)
+	var painter = preload("res://scripts/pixel_world.gd").new()
+	painter.state = self
+	painter.scale = Vector2(0.5,0.5)
+	painter.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	world_viewport.add_child(painter)
 	bind_controls()
 	rng.randomize()
 	load_profile()
@@ -156,6 +186,8 @@ func _unhandled_input(event):
 		elif mode in ["dead","victory"] and event.keycode == KEY_ENTER:
 			mode = "title"
 		elif mode == "playing":
+			for binding in [["hit_up",Vector2.UP],["hit_down",Vector2.DOWN],["hit_left",Vector2.LEFT],["hit_right",Vector2.RIGHT]]:
+				if event.is_action_pressed(binding[0]): queue_attack(binding[1])
 			if event.is_action_pressed("interact"):
 				interact()
 			if event.is_action_pressed("active"):
@@ -210,9 +242,8 @@ func menu_action(action: String):
 			profile_path += ".art-probe"
 			art_probe_active = true
 			new_run()
-			player = Vector2(316,330)
+			place_player(Vector2(316,330),Vector2.RIGHT)
 			invincible = 0
-			facing = Vector2.RIGHT
 			spawn_enemy("guard",Vector2(450,325),false)
 			spawn_enemy("guard",Vector2(590,300),false)
 			room.clear = false
@@ -258,7 +289,18 @@ func new_run(fixed_seed: int = -1):
 	active = "vessel" if character == 0 else "storm"
 	charge = 3
 	elapsed = 0
+	attack_serial = 0
+	swing_duration = 0.22
+	attack_facing = 1.0
+	attack_look = 0
+	facing = Vector2.DOWN
+	melee_contacts.clear()
 	hit_stop = 0
+	player_motion = {}
+	attack_contact_pending = false
+	attack_buffer_time = 0
+	player_knockback = Vector2.ZERO
+	player_stagger = 0
 	kills = 0
 	rooms_cleared = 0
 	attack_cd = 0
@@ -281,6 +323,15 @@ func new_floor():
 	coords = Vector2i.ZERO
 	enter_room(coords,Vector2(384,320),false)
 
+func place_player(position: Vector2, look_direction: Vector2 = Vector2.ZERO):
+	player = position
+	if look_direction!=Vector2.ZERO: facing = look_direction
+	var look = Motion.direction_index(facing,Motion.look_index(player_motion,facing))
+	var side = signf(facing.x) if absf(facing.x)>0.1 else float(player_motion.get("facing",1.0))
+	player_motion = Motion.initialize(player,side,look)
+	player_knockback = Vector2.ZERO
+	player_stagger = 0
+
 func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	if store and not room.is_empty():
 		store_room()
@@ -290,7 +341,17 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	if not room.has("corpses"): room.corpses = []
 	corpses = room.corpses.duplicate(true)
 	player = spawn
+	player_motion = {}
+	attack_contact_pending = false
 	enemies = room.enemies.duplicate(true)
+	for e in enemies:
+		var direction = Vector2(e.dx,e.dy)
+		if not e.has("motion"):
+			e.motion = Motion.initialize(Vector2(e.x,e.y),1.0 if direction.x>=0 else -1.0,Motion.direction_index(direction))
+		elif not e.motion.has("look"):
+			if e.state=="chase" and Vector2(e.motion.get("vx",0),e.motion.get("vy",0)).length_squared()>0.001:
+				direction = Vector2(e.motion.vx,e.motion.vy)
+			Motion.set_look(e.motion,direction)
 	drops = room.drops.duplicate(true)
 	blood = room.blood.duplicate(true)
 	bullets.clear()
@@ -305,6 +366,7 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 			if not blocked(candidate,9):
 				player = candidate
 				break
+	place_player(player,facing)
 	if not room.spawned:
 		room.spawned = true
 		populate_room()
@@ -404,43 +466,79 @@ func _process(delta):
 	for i in range(buttons.size()):
 		if buttons[i].rect.has_point(get_global_mouse_position()): menu_hover = i
 	if mode == "playing" and not help_open:
-		if hit_stop>0: hit_stop = maxf(0,hit_stop-delta)
-		else: update_game(minf(delta,0.04))
+		advance_frame(delta)
 	queue_redraw()
+
+func advance_frame(delta: float):
+	var remaining = maxf(0,delta)
+	if hit_stop>0:
+		var frozen = minf(hit_stop,remaining)
+		hit_stop -= frozen
+		remaining -= frozen
+	if remaining>0: update_game(minf(remaining,0.04))
 
 func update_game(dt: float):
 	elapsed += dt
-	for c in corpses: c.age = minf(1.0,c.age+dt)
+	for c in corpses:
+		c.age = minf(1.0,c.age+dt)
+		var velocity = Vector2(c.get("vx",0),c.get("vy",0))
+		if velocity.length_squared()>0.1:
+			var decay = exp(-12*dt)
+			var old = Vector2(c.x,c.y)
+			var next = move_body(old,velocity*(1-decay)/12,9)
+			Motion.shift(c.get("motion",{}),next-old)
+			c.x = next.x
+			c.y = next.y
+			c.vx = velocity.x*decay
+			c.vy = velocity.y*decay
+	for contact in melee_contacts.duplicate():
+		contact.life -= dt
+		if contact.life<=0: melee_contacts.erase(contact)
 	save_time += dt
 	for prop in ["attack_cd","invincible","dash_cd","active_cd","transition_cd","message_time","popup_time","hurt_flash"]:
 		set(prop,maxf(0.0,float(get(prop))-dt))
 	shake = move_toward(shake,0,dt*20)
 	pain = maxf(0,pain-dt*0.18)
+	attack_buffer_time = maxf(0,attack_buffer_time-dt)
+	player_stagger = maxf(0,player_stagger-dt)
+	if player_knockback.length_squared()>0.1:
+		var decay = exp(-12*dt)
+		var before = player
+		player = move_body(player,player_knockback*(1-decay)/12,9)
+		Motion.shift(player_motion,player-before)
+		player_knockback *= decay
 	moving = false
+	var previous_player = player
 	var movement = Input.get_vector("left","right","up","down")
 	var speed = 154.0*(1.0+count_item("haste")*0.15)
 	for hazard in hazards:
 		if hazard.type == "water" and hazard.rect.has_point(player): speed *= 0.64
 	if windup>0: speed *= 0.65
+	if player_stagger>0: speed *= 0.4
 	if dash_time>0:
 		dash_time -= dt
 		movement = dash_dir
 		speed = 560
 		emit_particle(player,Color("8ca9cd"),Vector2.ZERO,0.23,9)
 	if movement.length()>0:
-		moving = true
 		if absf(movement.x)>absf(movement.y): facing = Vector2(signf(movement.x),0)
 		else: facing = Vector2(0,signf(movement.y))
-		player = move_body(player,movement*speed*dt,9)
+		player = move_player(movement*speed*dt)
+	player_motion = Motion.update(player_motion,previous_player,player,dt)
+	moving = player_motion.moving
+	if windup>0 or swing>0:
+		player_motion.facing = attack_facing
+		player_motion.look = attack_look
+	elif movement.length_squared()>0:
+		Motion.set_look(player_motion,movement)
 	var aim = Vector2.ZERO
 	for pair in [["hit_up",Vector2.UP],["hit_down",Vector2.DOWN],["hit_left",Vector2.LEFT],["hit_right",Vector2.RIGHT]]:
 		if Input.is_action_pressed(pair[0]): aim = pair[1]
-	if aim != Vector2.ZERO and attack_cd <= 0 and windup <= 0:
-		begin_attack(aim)
-	if windup>0:
-		windup -= dt
-		if windup <= 0: perform_attack()
-	swing = maxf(0,swing-dt)
+	if aim != Vector2.ZERO: queue_attack(aim)
+	if attack_buffer_time>0 and attack_cd<=0 and windup<=0 and swing<=0 and player_stagger<=0:
+		begin_attack(attack_buffer)
+		attack_buffer_time = 0
+	advance_player_attack(dt,previous_player)
 	update_enemies(dt)
 	if mode != "playing": return
 	update_bullets(dt)
@@ -480,13 +578,74 @@ func move_body(p: Vector2, by: Vector2, radius: float) -> Vector2:
 		if not blocked(p+Vector2(0,step.y),radius): p.y+=step.y
 	return p
 
+func move_player(by: Vector2) -> Vector2:
+	var p = player
+	var steps = maxi(1,int(ceil(by.length()/4.0)))
+	for i in range(steps):
+		var step = by/steps
+		for axis in [Vector2(step.x,0),Vector2(0,step.y)]:
+			var next = move_body(p,axis,9)
+			var accepted = true
+			for enemy in enemies:
+				var e = Vector2(enemy.x,enemy.y)
+				var minimum = 42.0 if enemy.boss else 30.0
+				if next.distance_to(e)<minimum and next.distance_to(e)<p.distance_to(e):
+					accepted = false
+					break
+			if accepted: p = next
+	return p
+
+func queue_attack(direction: Vector2):
+	attack_buffer = direction
+	attack_buffer_time = 0.12
+
 func begin_attack(direction: Vector2):
 	swing_dir = direction
 	facing = direction
-	swing_windup = 0.12 + count_item("heavy")*0.045
+	attack_facing = signf(direction.x) if absf(direction.x)>0.1 else float(player_motion.get("facing",1.0))
+	attack_look = Motion.direction_index(direction,Motion.look_index(player_motion))
+	if not player_motion.is_empty():
+		player_motion.facing = attack_facing
+		player_motion.look = attack_look
+	var attack_speed = 1.0+count_item("haste")*0.27
+	swing_windup = (0.12+count_item("heavy")*0.045)/attack_speed
+	swing_duration = 0.22/attack_speed
 	windup = swing_windup
-	attack_cd = maxf(0.13,(0.40+count_item("heavy")*0.12)/(1.0+count_item("haste")*0.27))
+	attack_cd = (0.40+count_item("heavy")*0.12)/attack_speed
+	attack_serial += 1
 	combo = (combo+1)%3
+
+func advance_player_attack(dt: float, previous_position: Vector2 = Vector2.INF):
+	var remaining = dt
+	if windup>0:
+		var used = minf(windup,remaining)
+		windup -= used
+		remaining -= used
+		if windup<=0.000001:
+			windup = 0
+			swing = swing_duration
+			attack_contact_pending = true
+	if swing>0 and remaining>0:
+		var start = 1-swing/swing_duration
+		swing = maxf(0,swing-remaining)
+		var end = 1-swing/swing_duration
+		if attack_contact_pending and end>=Combat.CONTACT_RATIO-0.00001:
+			perform_attack(false)
+		if end>=Combat.CONTACT_RATIO and start<=Combat.ACTIVE_END:
+			resolve_player_sweep(maxf(start,Combat.CONTACT_RATIO),minf(end,Combat.ACTIVE_END),player if previous_position==Vector2.INF else previous_position)
+
+func resolve_player_sweep(start: float, end: float, previous_position: Vector2):
+	if end<start: return
+	for enemy in enemies.duplicate():
+		if int(enemy.get("last_player_swing",-1))==attack_serial: continue
+		var e = Vector2(enemy.x,enemy.y)
+		if Combat.occluded(player,e,blocks): continue
+		var hit = Combat.swept_hit(previous_position,player,player_motion,swing_dir,start,end,Combat.hurt_capsule(e,enemy.type,enemy.boss),attack_range(),elapsed)
+		if hit.hit:
+			enemy.last_player_swing = attack_serial
+			var strength = 1.0+count_item("heavy")*0.7+(0.4 if combo==0 else 0.0)
+			damage_enemy(enemy,attack_damage(),player,true,strength,swing_dir,hit.point)
+			melee_contacts.append({"point":hit.point,"life":0.16})
 
 func attack_range() -> float:
 	return 57.0+count_item("cleaver")*22+count_item("heavy")*12
@@ -500,13 +659,12 @@ func attack_damage() -> float:
 	if combo==0: result *= 1.25
 	return result
 
-func perform_attack():
-	swing = 0.22
-	var reach = attack_range()
-	for enemy in enemies.duplicate():
-		var rel = Vector2(enemy.x,enemy.y)-player
-		if rel.length()<reach+(20 if enemy.boss else 10) and (rel.normalized().dot(swing_dir)>0.15 or rel.length()<22):
-			damage_enemy(enemy,attack_damage(),player,true)
+func perform_attack(reset_swing: bool = true):
+	if reset_swing:
+		attack_serial += 1
+		swing = swing_duration*(1-Combat.CONTACT_RATIO)
+		resolve_player_sweep(Combat.CONTACT_RATIO,Combat.CONTACT_RATIO,player)
+	attack_contact_pending = false
 	if has_item("bloodwave"):
 		fire_bullet(player+swing_dir*16,swing_dir*235,3.5,"ally",1.6)
 	if has_item("echo"):
@@ -527,39 +685,75 @@ func perform_attack():
 						save_run()
 					else: notify("Из трещины доносится дыхание…",2)
 
-func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bool):
+func enemy_weapon_angle(enemy: Dictionary) -> float:
+	var action = 0
+	var progress = 0.0
+	if enemy.state=="windup":
+		action = 2
+		progress = enemy.state_time/0.52
+	elif enemy.state=="strike":
+		action = 3
+		progress = enemy.state_time/0.25
+	var motion = enemy.get("motion",{})
+	var direction = Vector2(enemy.dx,enemy.dy)
+	var current = Combat.weapon_pose(Vector2(enemy.x,enemy.y),motion,direction,action,progress).angle
+	if enemy.state=="stagger":
+		var u = 1-float(enemy.get("stagger",0))/maxf(0.001,float(enemy.get("stagger_total",0.2)))
+		current = lerp_angle(float(enemy.get("stagger_angle",current)),Combat.weapon_angle(direction,0,0,Motion.hand_sign(Motion.look_index(motion,direction))),Combat.curve(u))
+	return current
+
+func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bool, impact: float = -1, impact_direction: Vector2 = Vector2.ZERO, hit_point: Vector2 = Vector2.INF):
 	if enemy.hp<=0: return
-	enemy.hp -= amount
-	enemy.flash = 0.13
-	hit_stop = maxf(hit_stop,0.035 if not enemy.boss else 0.055)
-	var spray = (Vector2(enemy.x,enemy.y)-origin).normalized()
-	for n in range(7):
-		emit_particle(Vector2(enemy.x,enemy.y)-Vector2(0,25),Color("a82a32"),spray.rotated(rng.randf_range(-0.6,0.6))*rng.randf_range(70,180),0.4,2+rng.randi_range(0,2))
-	for n in range(3):
-		blood.append({"x":enemy.x+spray.x*rng.randf_range(10,35),"y":enemy.y+spray.y*rng.randf_range(10,35),"size":rng.randf_range(3,7),"bone":false})
+	if impact<0: impact = 1.0 if effects else 0.0
 	var p = Vector2(enemy.x,enemy.y)
-	var push = (p-origin).normalized()*(4 if enemy.boss else 12)
-	p = move_body(p,push,15 if enemy.boss else 10)
-	enemy.x = p.x
-	enemy.y = p.y
+	var spray = impact_direction if impact_direction!=Vector2.ZERO else (p-origin).normalized()
+	var point = hit_point if hit_point!=Vector2.INF else p-Vector2(0,34)
+	enemy.hp -= amount
+	enemy.flash = 0.10 if impact>0 else 0.04
+	enemy.last_impact = impact
+	if impact>0:
+		hit_stop = maxf(hit_stop,minf(0.075,0.028+impact*0.012))
+		shake = maxf(shake,minf(4,impact*1.5))
+		shake_axis = spray
+		var resistance = 0.2 if enemy.boss else 1.0
+		enemy.knock_x = float(enemy.get("knock_x",0))+spray.x*190*impact*resistance
+		enemy.knock_y = float(enemy.get("knock_y",0))+spray.y*190*impact*resistance
+		var threshold = 1.25 if enemy.type=="guard" else 0.9
+		if not enemy.boss and (impact>=threshold or enemy.state not in ["windup","strike"]):
+			var previous_angle = enemy_weapon_angle(enemy)
+			enemy.state = "stagger"
+			enemy.state_time = 0.0
+			enemy.stagger_total = minf(0.30,0.10+impact*0.055)
+			enemy.stagger = enemy.stagger_total
+			enemy.stagger_angle = previous_angle
+			enemy.stagger_dir_x = -spray.x
+			enemy.stagger_dir_y = -spray.y
+	if enemy.type=="guard" and enemy.state=="windup" and impact>0 and impact<1.25:
+		for n in range(5):
+			emit_particle(point,Color("d9bd80"),spray.rotated(rng.randf_range(-1.0,1.0))*rng.randf_range(80,150),0.16,2)
+	for n in range(int(6+impact*4) if impact>0 else 2):
+		emit_particle(point,Color("a82a32"),spray.rotated(rng.randf_range(-0.6,0.6))*rng.randf_range(70,180),0.4,2+rng.randi_range(0,2))
+	for n in range(3 if impact>0 else 1):
+		blood.append({"x":enemy.x+spray.x*rng.randf_range(10,35),"y":enemy.y+spray.y*rng.randf_range(10,35),"size":rng.randf_range(3,7),"bone":false})
 	if effects:
 		if has_item("ember"): enemy.burn = 3.0
 		if has_item("rot"): enemy.poison = 4.0
 		if has_item("frost"): enemy.slow = 2.2
-	burst(p,Color("ae3f51"),4)
-	if enemy.hp<=0:
-		kill_enemy(enemy)
+	burst(point,Color("ae3f51"),4)
+	if enemy.hp<=0: kill_enemy(enemy)
 
 func kill_enemy(enemy: Dictionary):
 	if not enemies.has(enemy): return
 	var p = Vector2(enemy.x,enemy.y)
 	var spray_dir = (p-player).normalized()
-	corpses.append({"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0})
+	var corpse_motion = enemy.get("motion",{}).duplicate(true)
+	corpse_motion.weapon_override = enemy_weapon_angle(enemy)
+	corpses.append({"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0,"vx":float(enemy.get("knock_x",0)),"vy":float(enemy.get("knock_y",0)),"motion":corpse_motion})
 	if corpses.size()>24: corpses.pop_front()
-	hit_stop = 0.07
+	if enemy.get("last_impact",0)>0: hit_stop = maxf(hit_stop,0.07)
 	enemies.erase(enemy)
 	kills += 1
-	shake = 2 if not enemy.boss else 7
+	if enemy.get("last_impact",0)>0: shake = maxf(shake,3.5 if not enemy.boss else 7)
 	for i in range(5 if not enemy.boss else 15):
 		blood.append({"x":p.x+rng.randf_range(-19,19),"y":p.y+rng.randf_range(-10,12),"size":rng.randf_range(5,15),"bone":i%4==0})
 	if blood.size()>160: blood = blood.slice(blood.size()-160)
@@ -581,6 +775,17 @@ func update_enemies(dt: float):
 	for enemy in enemies.duplicate():
 		if not enemies.has(enemy): continue
 		var p = Vector2(enemy.x,enemy.y)
+		var knock = Vector2(enemy.get("knock_x",0),enemy.get("knock_y",0))
+		if knock.length_squared()>0.1:
+			var decay = exp(-12*dt)
+			var next = move_body(p,knock*(1-decay)/12,15 if enemy.boss else 10)
+			Motion.shift(enemy.get("motion",{}),next-p)
+			p = next
+			enemy.x = p.x
+			enemy.y = p.y
+			enemy.knock_x = knock.x*decay
+			enemy.knock_y = knock.y*decay
+		var previous_enemy = p
 		var to = player-p
 		var dist = to.length()
 		enemy.flash = maxf(0,float(enemy.flash)-dt)
@@ -594,6 +799,16 @@ func update_enemies(dt: float):
 				if not enemies.has(enemy): continue
 		enemy.timer -= dt
 		enemy.state_time += dt
+		if enemy.state=="stagger":
+			enemy.stagger = maxf(0,float(enemy.get("stagger",0))-dt)
+			enemy.motion = Motion.update(enemy.get("motion",{}),p,p,dt)
+			if enemy.stagger<=0:
+				enemy.state = "recover"
+				enemy.state_time = 0.0
+			continue
+		if enemy.get("training_dummy",false):
+			enemy.motion = Motion.update(enemy.get("motion",{}),p,p,dt)
+			continue
 		var slow = 0.48 if enemy.slow>0 else 1.0
 		if enemy.boss:
 			update_boss(enemy,dt,slow)
@@ -603,6 +818,7 @@ func update_enemies(dt: float):
 			if enemy.state_time>0.52:
 				enemy.state = "strike"
 				enemy.state_time = 0.0
+				enemy.strike_hit = false
 				if enemy.type in ["skeleton","mage"]:
 					var dir = Vector2(enemy.dx,enemy.dy)
 					for angle in ([-0.24,0.0,0.24] if enemy.type=="mage" else [0.0]):
@@ -612,7 +828,16 @@ func update_enemies(dt: float):
 		elif enemy.state == "strike":
 			if enemy.type in ["guard","assassin"]:
 				p = move_body(p,Vector2(enemy.dx,enemy.dy)*dt*(310 if enemy.type=="assassin" else 185),10)
-				if p.distance_to(player)<25: hurt(2.0,p)
+				if p.distance_to(player)<30 and p.distance_to(player)<previous_enemy.distance_to(player): p = previous_enemy
+				if enemy.type=="guard" and not enemy.get("strike_hit",false):
+					var end = minf(Combat.ACTIVE_END,enemy.state_time/0.25)
+					var start = maxf(Combat.CONTACT_RATIO,(enemy.state_time-dt)/0.25)
+					if end>=start and not Combat.occluded(p,player,blocks):
+						var hit = Combat.swept_hit(previous_enemy,p,enemy.get("motion",{}),Vector2(enemy.dx,enemy.dy),start,end,Combat.hurt_capsule(player,"player"),Combat.BASE_REACH,elapsed)
+						if hit.hit:
+							enemy.strike_hit = true
+							hurt(2.0,p)
+				elif enemy.type=="assassin" and 0.06<=enemy.state_time and enemy.state_time<=0.18 and p.distance_to(player)<33: hurt(2.0,p)
 			if enemy.state_time>0.25:
 				enemy.state = "recover"
 				enemy.state_time = 0.0
@@ -636,7 +861,11 @@ func update_enemies(dt: float):
 				enemy.state_time = 0.0
 				enemy.dx = to.normalized().x
 				enemy.dy = to.normalized().y
-			if dist<18 and enemy.type=="shadow": hurt(1.0,p)
+			if dist<33 and enemy.type=="shadow": hurt(1.0,p)
+		if p.distance_to(player)<30 and p.distance_to(player)<previous_enemy.distance_to(player): p = previous_enemy
+		enemy.motion = Motion.update(enemy.get("motion",{}),previous_enemy,p,dt)
+		if enemy.state in ["windup","strike"]:
+			Motion.set_look(enemy.motion,Vector2(enemy.dx,enemy.dy))
 		enemy.x = p.x
 		enemy.y = p.y
 
@@ -743,7 +972,10 @@ func hurt(amount: float, origin: Vector2):
 	invincible = 0.85
 	hurt_flash = 0.2
 	shake = 5
-	player = move_body(player,(player-origin).normalized()*15,9)
+	player_recoil_direction = (player-origin).normalized()
+	player_knockback += player_recoil_direction*170
+	player_stagger = maxf(player_stagger,0.08)
+	shake_axis = (player-origin).normalized()
 	burst(player,Color("bd445a"),12)
 	if has_item("thorns"):
 		for enemy in enemies.duplicate():
@@ -754,6 +986,9 @@ func heal(amount: float):
 	hp = minf(max_hp,hp+amount*(1.0+maxi(0,faith)*0.035))
 
 func die():
+	var action = 2 if windup>0 else (3 if swing>0 else 0)
+	var u = 1-windup/swing_windup if windup>0 else (1-swing/swing_duration if swing>0 else 0.0)
+	player_motion.weapon_override = Combat.weapon_pose(player,player_motion,swing_dir,action,u,attack_range(),elapsed).angle
 	mode = "dead"
 	death_elapsed = 0
 	profile.deaths += 1
@@ -981,6 +1216,8 @@ func save_run():
 		"dungeon":dungeon,"coords":[coords.x,coords.y],"player":[player.x,player.y],"facing":[facing.x,facing.y],
 		"hp":hp,"max_hp":max_hp,"pain":pain,"coins":coins,"keys":keys,"faith":faith,"inventory":inventory,
 		"active":active,"charge":charge,"elapsed":elapsed,"kills":kills,"rooms":rooms_cleared,"character":character,
+		"attack_serial":attack_serial,"attack_facing":attack_facing,"attack_look":attack_look,"swing_duration":swing_duration,"player_knockback":[player_knockback.x,player_knockback.y],"player_stagger":player_stagger,
+		"player_motion":player_motion,"attack_contact_pending":attack_contact_pending,"saved_swing":swing,"saved_windup":windup,"saved_windup_total":swing_windup,"swing_dir":[swing_dir.x,swing_dir.y],
 		"bullets":bullets,"zones":zones,"invincible":invincible,"dash_cd":dash_cd,"attack_cd":attack_cd}
 	# Replace only after a complete write, preserving the previous checkpoint on failure.
 	var f = FileAccess.open(save_path+".tmp",FileAccess.WRITE)
@@ -1016,8 +1253,24 @@ func load_run() -> bool:
 	invincible = float(data.get("invincible",0.0))
 	dash_cd = float(data.get("dash_cd",0.0))
 	attack_cd = float(data.get("attack_cd",0.0))
-	windup = 0
-	swing = 0
+	attack_serial = int(data.get("attack_serial",0))
+	attack_facing = float(data.get("attack_facing",1.0))
+	swing_duration = float(data.get("swing_duration",0.22))
+	var knockback = data.get("player_knockback",[0,0])
+	player_knockback = Vector2(knockback[0],knockback[1])
+	player_stagger = float(data.get("player_stagger",0))
+	attack_buffer_time = 0
+	player_motion = data.get("player_motion",{}) if player.distance_to(position)<1 else {}
+	windup = float(data.get("saved_windup",0))
+	swing = float(data.get("saved_swing",0))
+	swing_windup = float(data.get("saved_windup_total",0.12))
+	attack_contact_pending = bool(data.get("attack_contact_pending",false))
+	var saved_direction = data.get("swing_dir",[0,1])
+	swing_dir = Vector2(saved_direction[0],saved_direction[1])
+	attack_look = int(data.get("attack_look",Motion.direction_index(swing_dir)))
+	if player_motion.is_empty(): player_motion = Motion.initialize(player,attack_facing,Motion.direction_index(facing))
+	elif not player_motion.has("look"): Motion.set_look(player_motion,facing)
+	if windup>0 or swing>0: player_motion.look = attack_look
 	dash_time = 0
 	help_open = false
 	journal_open = false

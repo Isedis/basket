@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Rig = preload("res://scripts/rig_view.gd")
 const ATLAS = preload("res://assets/actors_v3.png")
 static var hero_sheet: Texture2D
 static var guard_sheet: Texture2D
@@ -11,39 +12,7 @@ static func direction_index(v: Vector2) -> int:
 
 static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, frame: int, tint: Color = Color.WHITE):
 	if type in ["player","guard"]:
-		if hero_sheet == null:
-			var img = preload("res://assets/prisoner_sheet.png").get_image()
-			img.resize(384,192,Image.INTERPOLATE_NEAREST)
-			hero_sheet = ImageTexture.create_from_image(img)
-		if guard_sheet == null:
-			var img = preload("res://assets/guard_sheet.png").get_image()
-			img.resize(384,192,Image.INTERPOLATE_NEAREST)
-			guard_sheet = ImageTexture.create_from_image(img)
-		var row = 2
-		var col = clampi(frame/2,0,3)
-		match action:
-			1:
-				row = 0
-				col = clampi(frame,0,7)
-			2:
-				row = 1
-				col = clampi(int(frame*4/8.0),0,3)
-			3:
-				row = 1
-				col = 4+clampi(int(frame*4/8.0),0,3)
-			4:
-				row = 2
-				col = 4+clampi(frame/2,0,3)
-			5:
-				row = 3
-				col = clampi(frame,0,7)
-		var source = Rect2(col*48,row*48,48,48)
-		var origin = (p-Vector2(48,89)).snapped(Vector2(2,2))
-		var dest = Rect2(origin,Vector2(96,96))
-		if direction.x<0:
-			dest.position.x += 96
-			dest.size.x = -96
-		g.draw_texture_rect_region(hero_sheet if type=="player" else guard_sheet,dest,source,tint)
+		Rig.draw(g,type,p,{},direction,action,frame/7.0,tint)
 		return
 	var actor_index = maxi(0,TYPES.find(type))
 	var scale = 3 if type.begins_with("boss") else 2
@@ -51,7 +20,10 @@ static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, f
 	var dest = Rect2((p-Vector2(32,55)*scale).snapped(Vector2(2,2)),Vector2(64,64)*scale)
 	g.draw_texture_rect_region(ATLAS,dest,source,tint)
 
-static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, flash: bool, tint: Color):
+static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, flash: bool, tint: Color, entity: Dictionary = {}):
+	if type in ["player","guard"]:
+		Rig.actor(g,type,p,flash,tint,entity)
+		return
 	var direction = g.facing
 	var action = 0
 	var frame = int(g.elapsed*5)%8
@@ -76,8 +48,8 @@ static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, f
 			direction = g.player-p
 			match e.state:
 				"chase":
-					action = 1
-					frame = int(g.elapsed*10+e.x/20)%8
+					action = 1 if e.get("motion",{}).get("moving",false) else 0
+					frame = int(e.get("motion",{}).get("phase",0.0)/TAU*8)%8
 				"windup":
 					action = 2
 					direction = Vector2(e.dx,e.dy)
@@ -103,7 +75,9 @@ static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, f
 static func corpses(g):
 	for c in g.corpses:
 		var frame = mini(7,int(c.age/0.085))
-		pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
+		if c.type in ["player","guard"]:
+			Rig.draw(g,c.type,Vector2(c.x,c.y),c.get("motion",{}),Vector2(c.dx,c.dy),5,minf(1,c.age/0.68),Color("b7aaa0") if c.age>0.7 else Color.WHITE)
+		else: pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 
 static func stone(g, b: Rect2):
 	g.draw_rect(b.grow(4),Color(0.01,0.015,0.012,0.7))
