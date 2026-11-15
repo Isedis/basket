@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d0b14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Бесконечная Драка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/game.css?v=20261115061147">
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="r hr1"><span class="zt"><b id="znum">Зона 1</b> <span id="zname">Луг</span> <span id="zmodl"></span></span><span id="ex">ИЗНЕМОЖЕНИЕ</span><span id="thr"></span><span id="kills">0</span></div>
+    <div class="bar" id="zbar"><i></i><b></b></div>
+    <div class="bar" id="hpbar"><i></i><i style="background:#9fe8ff;opacity:.75"></i><b></b></div>
+    <span id="rank" hidden></span>
+  </div>
+  <div id="game"><canvas id="cv"></canvas><canvas id="fx"></canvas><button class="btn" id="spdb" hidden>×2</button><button class="btn" id="perkb" hidden>★ ПЕРК</button><div id="perkbox" hidden></div><div id="toast"></div></div>
+  <div id="panel" class="sheet">
+    <div id="phead">
+      <div class="r"><span><button class="tab on" id="tabS">СТАТЫ <b id="scount">3</b></button> &nbsp; <button class="tab" id="tabY">СИНЕРГИИ <b id="ycount">0</b></button> &nbsp; <button class="tab" id="tabD">ДУШИ <b id="dcount">0</b></button></span><span><button class="btn" id="pbig">⤢</button><button class="btn" id="ptog" hidden>▼</button></span></div>
+      <div class="bar" id="ubar" style="margin-top:4px"><i style="background:#2f8a4f"></i><b id="snext"></b></div>
+    </div>
+    <div id="clsc"></div>
+    <div id="sum"></div>
+    <div id="altarbox"></div>
+    <div id="dsrc"><div class="dbar"></div><div class="dleg"></div></div>
+    <div id="info" hidden></div>
+    <div id="slist"></div>
+    <button class="btn" id="smore" hidden></button>
+    <div id="ylist" hidden></div>
+    <div id="dlist" hidden>
+      <div class="r"><span>Души: <b id="dsouls" style="color:#ff44ff;font-weight:normal">0</b></span><span>Перерождений: <b id="dreb" style="font-weight:normal">0</b></span></div>
+      <div>Рекорд зоны: <span id="dbest">1</span></div>
+      <div id="dfore"></div>
+      <button class="btn big" id="tbtn">ДЕРЕВО ТАЛАНТОВ</button>
+      <button class="btn big" id="totb" style="background:#3a1a4a;border-color:#ff44ff">ТОТЕМ ДУШ</button>
+      <button class="btn big" id="endb" style="background:#5a1a22">ЗАВЕРШИТЬ ЖИЗНЬ</button>
+      <button class="btn big" id="clsopen" style="margin-top:10px">КЛАСС И КОЛЛЕКЦИЯ</button>
+      <div id="ascbox"></div>
+      <div id="clsbox" hidden></div>
+      <div class="dim">Души копятся весь забег: понемногу за врагов, много за вожаков. Погибнуть можно и от толпы, и от вожака — следи за здоровьем. Если долго не проходишь зону, вожак приходит сам. Когда герой падает, он перерождается в новом случайном классе: зона и статы сбрасываются, а души забега зачисляются навсегда — трать их в дереве талантов.</div>
+    </div>
+  </div>
+  <div id="settings" class="sheet">
+    <div class="shead">МЕНЮ</div>
+    <div class="setb">
+      <div class="msec">ЖИЗНЬ</div>
+      <div id="lifebox"></div>
+      <div class="msec">АВТОМАТИКА <span>меньше тыкать</span></div>
+      <button class="btn big2" id="aall" style="background:#1f5a34">АВТОИГРА: ВЫКЛ</button>
+      <div class="mgrid">
+      <button class="btn big2" id="apb">Перки: ВРУЧНУЮ</button>
+      <button class="btn big2" id="aub">Ульта: ВРУЧНУЮ</button>
+      <button class="btn big2" id="atb">Таланты после смерти: ВРУЧНУЮ</button>
+      <button class="btn big2" id="acb">Путь класса: ВРУЧНУЮ</button>
+      </div>
+      <div id="autobox"></div>
+      <div class="msec">НАСТРОЙКИ</div>
+      <div class="mgrid">
+      <button class="btn big2" id="mute">Звук: ВКЛ</button>
+      <button class="btn big2" id="shkb">Тряска: СЛАБАЯ</button>
+      <button class="btn big2" id="fxb">Эффекты: ВСЕ</button>
+      <button class="btn big2" id="helpb">Что на экране?</button>
+      </div>
+      <button class="btn big2" id="updb">⟳ Проверить обновление</button>
+      <div class="dim" id="buildl"></div>
+      <button class="btn big2" id="resetb" style="background:#5a1a22;margin-top:18px">✕ Сбросить игру</button>
+    </div>
+  </div>
+  <nav id="nav">
+    <button class="nb on" id="nFight"><i>⚔</i><span>Бой</span></button>
+    <button class="nb" id="nHero"><i>☗</i><span>Герой</span><b class="dot"></b></button>
+    <button class="nb" id="nUp"><i>★</i><span>Прокачка</span><b class="dot"></b></button>
+    <button class="nb" id="nMenu"><i>⚙</i><span>Меню</span><b class="dot"></b></button>
+  </nav>
+  <!-- старые кнопки меню: на них ещё завязаны счётчики и пометки, наружу не показываются -->
+  <div id="oldnav" hidden>
+    <button class="nb" id="nStats"></button><button class="nb" id="treeb"><b class="dot"></b></button><button class="nb" id="nCls"><b class="dot"></b></button>
+    <button class="nb" id="gearb"><b class="badge" id="gbadge" hidden></b></button><button class="nb" id="nSouls"><b class="dot"></b></button><button class="nb" id="nSet"></button>
+  </div>
+</div>
+<div id="subnav" hidden></div>
+<div id="gear" hidden>
+  <div id="ghead"><span>СНАРЯЖЕНИЕ</span><span>Пыль: <b id="gdust">0</b></span><button class="btn" id="gclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="gbody">
+    <div class="gsec">СУНДУКИ <span id="gpity"></span></div><div id="gch"></div><div id="gtr"></div>
+    <div class="gsec">НАДЕТО</div><div id="geq"></div>
+    <div id="gsets"></div>
+    <div class="gsec">ИНВЕНТАРЬ <span id="gcnt"></span> <button class="btn" id="gsalv">РАЗОБРАТЬ ВСЁ</button></div><div id="ginv"></div>
+  </div>
+</div>
+<div id="opening" hidden><canvas id="ocv"></canvas><div id="ocard"></div><div id="obtns"><button class="btn" id="otake">ЗАБРАТЬ</button><button class="btn" id="oall">ОТКРЫТЬ ВСЕ</button></div></div>
+<div id="ctree" hidden><div id="cthead"></div><div id="ctbody"></div></div>
+<div id="tree" hidden>
+  <div id="thead"><span>ДЕРЕВО ТАЛАНТОВ</span><span>Души: <b id="tsouls">0</b></span><button class="btn" id="tclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="tbar"></div>
+  <div id="thint"></div>
+  <div id="tview"><canvas id="tcv"></canvas><div id="tzoom"><button class="btn" id="tzi">+</button><button class="btn" id="tzo">−</button><button class="btn" id="tfit" style="font-size:8px">ВСЁ</button></div></div>
+  <div id="tlist" hidden></div>
+  <div id="tinfo"></div>
+</div>
+<div id="totem" hidden>
+  <div id="tothead"><span>ТОТЕМ ДУШ</span><button class="btn" id="totclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="totsum"></div>
+  <div id="totview"><canvas id="totcv"></canvas></div>
+  <div id="totinfo"></div>
+</div>
+<div id="army" hidden>
+  <div id="arhead"><span>АРМИЯ ДУХОВ</span><span>Эссенция: <b id="aress">0</b></span></div>
+  <div id="arsum"></div>
+  <div id="arview"><canvas id="arcv"></canvas></div>
+  <div id="arinfo"></div>
+</div>
+<div id="altar" hidden>
+  <div id="alhead"><span>АЛТАРЬ СИЛЫ</span><button class="btn" id="allist">СПИСОК</button><button class="btn" id="alclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="alsum"></div>
+  <div id="alview"><canvas id="alcv"></canvas></div>
+  <div id="alinfo"></div>
+</div>
+<div id="sky" hidden>
+  <div id="shead"><span>НЕБОСВОД</span><span>Искры: <b id="ssparks">0</b></span><button class="btn" id="sclose">✕ ЗАКРЫТЬ</button></div>
+  <div id="sbar"></div>
+  <div id="sview"><canvas id="scv"></canvas><div id="szoom"><button class="btn" id="szi">+</button><button class="btn" id="szo">−</button><button class="btn" id="sfit" style="font-size:8px">ВСЁ</button></div></div>
+  <div id="slist2" hidden></div>
+  <div id="sinfo"></div>
+</div>
+<div id="modal" hidden><div id="mbox"><h2 id="mt"></h2><p id="mp"></p><button class="btn" id="mok">В БОЙ!</button></div></div>
+
+<script>
+const BUILD = '20261115061147';   // версия сборки — по ней кнопка ⟳ узнаёт об обновлении; меняется tools/bump.sh
+</script>
+<script src="js/01-core.js?v=20261115061147"></script>
+<script src="js/02-sprites.js?v=20261115061147"></script>
+<script src="js/02-hero32.js?v=20261115061147"></script>
+<script src="js/03-worlds.js?v=20261115061147"></script>
+<script src="js/04-state-talents.js?v=20261115061147"></script>
+<script src="js/05-classes.js?v=20261115061147"></script>
+<script src="js/06-life.js?v=20261115061147"></script>
+<script src="js/07-ascension.js?v=20261115061147"></script>
+<script src="js/08-stats.js?v=20261115061147"></script>
+<script src="js/09-render-fx.js?v=20261115061147"></script>
+<script src="js/09-arena.js?v=20261115061147"></script>
+<script src="js/10-combat.js?v=20261115061147"></script>
+<script src="js/11-loop.js?v=20261115061147"></script>
+<script src="js/11-hero-anim.js?v=20261115061147"></script>
+<script src="js/12-ui.js?v=20261115061147"></script>
+<script src="js/13-gear.js?v=20261115061147"></script>
+<script src="js/14-talent-tree.js?v=20261115061147"></script>
+<script src="js/15-totem.js?v=20261115061147"></script>
+<script src="js/15-army.js?v=20261115061147"></script>
+<script src="js/16-boot.js?v=20261115061147"></script>
+</body>
+</html>
