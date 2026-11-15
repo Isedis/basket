@@ -15,19 +15,22 @@ const SETUP = `(${QUIET})(true); SIM = true; requestAnimationFrame = () => 0; if
     B.lives.push({ len: B.gt - B.lifeT0, why: B.why || (fa ? 'вознесение' : 'сброс'), d90: B.gt - l90, best: S.meta.best, cls: B.cls, gain: cm(B.cls).lv - B.lv0 });
     B.why = ''; B.hist = []; const r = orb(fa); B.lifeT0 = B.gt; B.cls = S.cls; B.lv0 = cm(S.cls).lv; return r; };`;
 // одна игровая минута
-const STEP = `(() => { const B = __B; for (let i = 0; i < 30 * 60; i++) { update(1 / 30); if (US) ultFrame(1 / 30); B.gt += 1 / 30;
+const STEP = `(() => { const B = __B; let nan = null; if (!B.nanDone) { S.vals = stats.map(s => s.v); S.lv = stats.map(s => s.lvl); B.snap = JSON.stringify(S); }
+  for (let i = 0; i < 30 * 60; i++) { update(1 / 30); if (US) ultFrame(1 / 30); B.gt += 1 / 30;
+    if (!B.nanDone && !(Number.isFinite(D.hit) && Number.isFinite(hero.hp) && Number.isFinite(hero.x) && Number.isFinite(D.maxHP))) { B.nanDone = 1;
+      nan = { i, z: S.zone, lt: S.lt, asc: S.meta.asc, D: Object.keys(D).filter(k => typeof D[k] === 'number' && !Number.isFinite(D[k])), hero: Object.keys(hero).filter(k => typeof hero[k] === 'number' && !Number.isFinite(hero[k])), st: stats.filter(s => !Number.isFinite(s.v)).map(s => s.e), snap: B.snap }; }
     if (i % 6 === 0 && deathT <= 0) { B.hist.push([B.gt, Math.max(0, hero.hp) / D.maxHP]); if (B.hist.length > 400) B.hist.shift(); }
     for (const z of [25, 50]) if (S.meta.best >= z && B.zoneT[z] === undefined) B.zoneT[z] = B.gt; }
   // вознесение как в автоигре: Страж побеждён, прогресс встал на 15 мин
   S.meta.cycB = Math.max(S.meta.cycB || 0, S.zone); if (S.meta.cycB !== B.lb) { B.lb = S.meta.cycB; B.lbT = B.gt; }
   if (canAsc() && sparksFor() > 0 && deathT <= 0 && B.gt - (B.lbT || 0) > 900 && (B.ascT || 0) + 600 < B.gt) { B.ascT = B.gt; ascend(); S.meta.cycB = 0; B.lbT = B.gt; B.asc.push(B.gt); skyBest(); $('sky').hidden = true; }
   let dg = null; if (B.gt - B.lifeT0 > 1200 && B.dgL !== B.lifeT0) { B.dgL = B.lifeT0; dg = JSON.stringify({ z: S.zone, mobs: mobs.length, alive: mobs.filter(m => !m.dead).length, boss: bossAlive, bossM: mobs.filter(m => m.boss).length, hp: hero.hp / D.maxHP, pool: hero.pool, hit: D.hit, zhp: zoneHP(S.zone), kills: S.kills, wave: S.wave, need: typeof zoneNeed === 'function' ? zoneNeed(S.zone) : 0, prog: S.prog, deathT, EV: !!EV, US: !!US, lt: S.lt, thr: threatM(), fast: S.fastTo, hx: hero.x, hy: hero.y, iframe: hero.iframe }); }
-  return { gt: B.gt, best: S.meta.best, lives: B.lives.length, asc: S.meta.asc || 0, cz: cycZ(), dg }; })()`;
+  return { gt: B.gt, best: S.meta.best, lives: B.lives.length, asc: S.meta.asc || 0, cz: cycZ(), dg, nan }; })()`;
 
 async function run(id) {
   const { b, p, errs } = await open({ phone: false });
   await p.evaluate(SETUP);
-  for (let m = 0; m < MIN; m++) { const r = await p.evaluate(STEP); if (r.dg) process.stderr.write(`  ЗАЛИП игра ${id}: ${r.dg}\n`); if (m % 15 === 14) process.stderr.write(`  игра ${id}: ${m + 1} мин, лучшая зона ${r.best}, вознесений ${r.asc}, цикл до ${r.cz}, жизней ${r.lives}\n`); }
+  for (let m = 0; m < MIN; m++) { const r = await p.evaluate(STEP); if (r.dg) process.stderr.write(`  ЗАЛИП игра ${id}: ${r.dg}\n`); if (r.nan) { fs.writeFileSync(path.join(require('os').tmpdir(), 'nan_snap_' + id + '.json'), r.nan.snap); delete r.nan.snap; process.stderr.write(`  NaN игра ${id} (мин ${m}): ${JSON.stringify(r.nan)}\n`); } if (m % 15 === 14) process.stderr.write(`  игра ${id}: ${m + 1} мин, лучшая зона ${r.best}, вознесений ${r.asc}, цикл до ${r.cz}, жизней ${r.lives}\n`); }
   const B = await p.evaluate(() => { const B = __B; return { zoneT: B.zoneT, lives: B.lives, asc: B.asc, gt: B.gt, lifeT0: B.lifeT0 }; });
   await b.close(); return { ...B, errs };
 }
