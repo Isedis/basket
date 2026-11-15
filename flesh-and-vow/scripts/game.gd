@@ -273,7 +273,7 @@ func start_practice_round(use_heavy: bool = false):
 	place_player(Vector2(316,330),Vector2.RIGHT)
 	invincible = 0
 	spawn_enemy("guard",Vector2(450,325),false)
-	spawn_enemy("guard",Vector2(590,300),false)
+	spawn_enemy("assassin",Vector2(590,300),false)
 	room.clear = false
 	notify("WASD — шаг, стрелки — удар. Q — оружие, R — заново.",5)
 	save_run()

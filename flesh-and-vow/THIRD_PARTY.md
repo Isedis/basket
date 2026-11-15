@@ -15,3 +15,8 @@ created for this project using image generation. Original source PNGs are
 preserved; runtime samples the sheets on a consistent pixel grid. Other
 articulated sprite sheets are drawn by tools/draw_actors.py.
 Press Start 2P font: SIL Open Font License; see assets/PIXEL_FONT_LICENSE.txt.
+
+Version 0.4.3 character art: the prisoner, warden and assassin component masters
+were created for this project using image generation, then prepared as a native
+256x288 atlas with per-character palettes. The game uses castle_characters.png
+and fixed component regions; it does not rescale illustration masters at runtime.

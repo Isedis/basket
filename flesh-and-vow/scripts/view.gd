@@ -141,8 +141,9 @@ static func world(g):
 			var tint = Color("b5d8e2") if e.slow>0 else Color.WHITE
 			actor(g,e.type,p,int(g.anim*6)%3 if e.state=="chase" else 0,size,e.flash>0,tint,e)
 			if e.hp<e.max and not e.boss:
-				rect(g,Rect2(p.x-15,p.y-71,30,3),Color("27202c"))
-				rect(g,Rect2(p.x-15,p.y-71,30*maxf(0,e.hp/e.max),3),RED)
+				var bar_height = 64 if e.type=="assassin" else 71
+				rect(g,Rect2(p.x-15,p.y-bar_height,30,3),Color("27202c"))
+				rect(g,Rect2(p.x-15,p.y-bar_height,30*maxf(0,e.hp/e.max),3),RED)
 			if e.burn>0:
 				for i in range(3):
 					rect(g,Rect2(p.x-9+i*8,p.y-14-sin(g.anim*14+i)*5,3,6),Color("e79759"))

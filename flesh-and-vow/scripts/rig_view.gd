@@ -1,110 +1,32 @@
 extends RefCounted
-## One set of immutable body parts per actor. Animation changes joints, never artwork.
+## Native-pixel character parts; animation changes joints, never the artwork.
 const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
-const SOURCE = preload("res://assets/rig_parts.png")
-const VERTICAL_SOURCE = preload("res://assets/rig_vertical_parts.png")
-const SIZES = [Vector2i(14,14),Vector2i(16,13),Vector2i(7,12),Vector2i(7,12),Vector2i(7,11),Vector2i(7,11),Vector2i(20,10),Vector2i(7,15)]
-const PALETTE = [Color("151a15"),Color("252c22"),Color("3a3a2a"),Color("514934"),Color("6b5a40"),Color("86704e"),Color("a48a61"),Color("c5ad83"),Color("d9c39a"),Color("262d2e"),Color("414b46"),Color("626a5d"),Color("89917c"),Color("b5b8a1"),Color("321d20"),Color("54272c"),Color("733538"),Color("93464a"),Color("b35e59"),Color("ce8171"),Color("392c23"),Color("60442e"),Color("8e633e"),Color("c39b58")]
+const Style = preload("res://scripts/character_style.gd")
+const ATLAS = preload("res://assets/castle_characters.png")
 static var parts: Array = []
 static var vertical_parts: Array = []
 
-static func pixel_part(region: Image, size: Vector2i) -> Image:
-	# Coverage resampling preserves thin arms; final pixels are opaque and palette-locked.
-	region.resize(size.x,size.y,Image.INTERPOLATE_LANCZOS)
-	for y in range(size.y):
-		for x in range(size.x):
-			var c = region.get_pixel(x,y)
-			if c.a<0.35:
-				region.set_pixel(x,y,Color.TRANSPARENT)
-				continue
-			var best = PALETTE[0]
-			var distance = INF
-			for candidate in PALETTE:
-				var d = pow(c.r-candidate.r,2)*0.3+pow(c.g-candidate.g,2)*0.59+pow(c.b-candidate.b,2)*0.11
-				if d<distance:
-					distance = d
-					best = candidate
-			region.set_pixel(x,y,best)
-	# Remove disconnected one/two-pixel generation specks, keeping holes and torn cloth.
-	var visited: Dictionary = {}
-	for y in range(size.y):
-		for x in range(size.x):
-			var start = Vector2i(x,y)
-			if visited.has(start) or region.get_pixel(x,y).a==0: continue
-			var component: Array[Vector2i] = [start]
-			visited[start] = true
-			var cursor = 0
-			while cursor<component.size():
-				var p = component[cursor]
-				cursor += 1
-				for step in [Vector2i.UP,Vector2i.RIGHT,Vector2i.DOWN,Vector2i.LEFT]:
-					var q = p+step
-					if q.x<0 or q.y<0 or q.x>=size.x or q.y>=size.y or visited.has(q): continue
-					if region.get_pixel(q.x,q.y).a==0: continue
-					visited[q] = true
-					component.append(q)
-			if component.size()<=2:
-				for p in component: region.set_pixel(p.x,p.y,Color.TRANSPARENT)
-	var used = region.get_used_rect()
-	if used.has_area():
-		region = region.get_region(used)
-		region.resize(size.x,size.y,Image.INTERPOLATE_NEAREST)
-	return region
-
-static func extract_parts(texture: Texture2D, rows: int) -> Array:
-	var source = texture.get_image()
-	source.convert(Image.FORMAT_RGBA8)
-	var bytes = source.get_data()
-	for i in range(3,bytes.size(),4): bytes[i] = 255 if bytes[i]>=160 else 0
-	source = Image.create_from_data(source.get_width(),source.get_height(),false,Image.FORMAT_RGBA8,bytes)
-	var result: Array = []
-	for row in range(rows):
-		var actor_parts: Array = []
-		for col in range(8):
-			var x = roundi(col*source.get_width()/8.0)
-			var y = roundi(row*source.get_height()/float(rows))
-			var end = Vector2i(roundi((col+1)*source.get_width()/8.0),roundi((row+1)*source.get_height()/float(rows)))
-			var region = source.get_region(Rect2i(Vector2i(x,y),end-Vector2i(x,y)))
-			# Ignore isolated alpha specks; all views use the same canonical part dimensions.
-			var columns: Array[int] = []
-			var lines: Array[int] = []
-			columns.resize(region.get_width())
-			lines.resize(region.get_height())
-			columns.fill(0)
-			lines.fill(0)
-			var rgba = region.get_data()
-			for py in range(region.get_height()):
-				for px in range(region.get_width()):
-					if rgba[(py*region.get_width()+px)*4+3]>0:
-						columns[px] += 1
-						lines[py] += 1
-			var low = Vector2i(region.get_width(),region.get_height())
-			var high = Vector2i(-1,-1)
-			for px in range(columns.size()):
-				if columns[px]>=maxi(2,int(region.get_height()*0.02)):
-					low.x = mini(low.x,px)
-					high.x = maxi(high.x,px)
-			for py in range(lines.size()):
-				if lines[py]>=maxi(2,int(region.get_width()*0.02)):
-					low.y = mini(low.y,py)
-					high.y = maxi(high.y,py)
-			if high.x>=low.x and high.y>=low.y: region = region.get_region(Rect2i(low,high-low+Vector2i.ONE))
-			region = pixel_part(region,SIZES[col])
-			actor_parts.append(ImageTexture.create_from_image(region))
-		result.append(actor_parts)
-	return result
-
 static func load_parts():
 	if not parts.is_empty(): return
-	parts = extract_parts(SOURCE,2)
-	vertical_parts = extract_parts(VERTICAL_SOURCE,4)
-	# A cleaver remains the same object as the actor turns; only body views change.
-	for i in range(4): vertical_parts[i][6] = parts[i/2][6]
+	var image = ATLAS.get_image()
+	for actor in range(3):
+		var views: Array = []
+		for view in range(3):
+			var components: Array = []
+			for part_index in range(8):
+				components.append(ImageTexture.create_from_image(image.get_region(Style.region(actor,view,part_index))))
+			views.append(components)
+		# All views hold the same weapon object, with one physical grip point.
+		views[1][6] = views[0][6]
+		views[2][6] = views[0][6]
+		parts.append(views[0])
+		vertical_parts.append(views[1])
+		vertical_parts.append(views[2])
 
 static func textures_for(type: String, look: int) -> Array:
 	load_parts()
-	var actor = 0 if type=="player" else 1
+	var actor = Style.index(type)
 	if look==0: return vertical_parts[actor*2]
 	if look==2: return vertical_parts[actor*2+1]
 	return parts[actor]
@@ -200,15 +122,17 @@ static func draw(g, type: String, p: Vector2, motion: Dictionary, direction: Vec
 	var walk_weight = float(motion.get("walk_weight",1.0 if walking else 0.0))
 	var clock = g.elapsed if g.mode!="title" else g.anim
 	var reach = g.attack_range() if type=="player" else Combat.BASE_REACH
-	var weapon = Combat.weapon_pose(p,motion,direction,action,progress,reach,clock)
+	var stance = Vector2(facing*2,6) if type=="assassin" else Vector2.ZERO
+	var weapon = Combat.weapon_pose(p+stance,motion,direction,action,progress,reach,clock)
 	var collapse = smooth_curve(progress) if action==5 else 0.0
 	var context = {"p":p,"fall":collapse*facing*1.35,"drop":collapse*5}
 	var body = weapon.body
 	var left_foot = Motion.foot_position(motion,0,p)
 	var right_foot = Motion.foot_position(motion,1,p)
 	var hips = [weapon.hips+Vector2(-6,-19),weapon.hips+Vector2(6,-19)]
-	limb(g,textures[5 if look==0 else 4],hips[0],left_foot,2*facing,texture_flip,tint,context)
-	limb(g,textures[4 if look==0 else 5],hips[1],right_foot,2*facing,texture_flip,tint,context)
+	var knee = 4.0 if type=="assassin" else 2.0
+	limb(g,textures[5 if look==0 else 4],hips[0],left_foot,knee*facing,texture_flip,tint,context)
+	limb(g,textures[4 if look==0 else 5],hips[1],right_foot,knee*facing,texture_flip,tint,context)
 	var sway = sin(phase)*0.15*walk_weight
 	var chest = Vector2(0,-31)
 	var left_shoulder = body+chest+(Vector2(-12*facing,Combat.BODY_SHOULDER.y)-chest).rotated(weapon.twist)

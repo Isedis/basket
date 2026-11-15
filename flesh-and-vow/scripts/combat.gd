@@ -125,8 +125,9 @@ static func blade_polygon(pose: Dictionary) -> PackedVector2Array:
 	return points
 
 static func hurt_capsule(p: Vector2, type: String = "guard", boss: bool = false) -> Dictionary:
-	var rigged = type in ["player","guard"] and not boss
-	return {"a":p+Vector2(0,-13 if rigged else -16),"b":p+Vector2(0,-108 if boss else (-53 if rigged else -65)),"radius":20.0 if boss else (18.0 if type=="guard" else 13.0)}
+	var rigged = type in ["player","guard","assassin"] and not boss
+	var top = -47 if type=="assassin" else (-53 if rigged else -65)
+	return {"a":p+Vector2(0,-13 if rigged else -16),"b":p+Vector2(0,-108 if boss else top),"radius":20.0 if boss else (18.0 if type=="guard" else 13.0)}
 
 static func polygon_capsule(polygon: PackedVector2Array, capsule: Dictionary) -> Dictionary:
 	if Geometry2D.is_point_in_polygon(capsule.a,polygon): return {"hit":true,"point":capsule.a}

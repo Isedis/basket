@@ -11,7 +11,7 @@ static func direction_index(v: Vector2) -> int:
 	return 0 if v.y>=0 else 2
 
 static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, frame: int, tint: Color = Color.WHITE):
-	if type in ["player","guard"]:
+	if type in ["player","guard","assassin"]:
 		Rig.draw(g,type,p,{},direction,action,frame/7.0,tint)
 		return
 	var actor_index = maxi(0,TYPES.find(type))
@@ -21,7 +21,7 @@ static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, f
 	g.draw_texture_rect_region(ATLAS,dest,source,tint)
 
 static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, flash: bool, tint: Color, entity: Dictionary = {}):
-	if type in ["player","guard"]:
+	if type in ["player","guard","assassin"]:
 		Rig.actor(g,type,p,flash,tint,entity)
 		return
 	var direction = g.facing
@@ -75,7 +75,7 @@ static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, f
 static func corpses(g):
 	for c in g.corpses:
 		var frame = mini(7,int(c.age/0.085))
-		if c.type in ["player","guard"]:
+		if c.type in ["player","guard","assassin"]:
 			Rig.draw(g,c.type,Vector2(c.x,c.y),c.get("motion",{}),Vector2(c.dx,c.dy),5,minf(1,c.age/0.68),Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 		else: pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 
