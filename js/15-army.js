@@ -59,7 +59,7 @@ function openArmy() {
 }
 function sizeArmy() { const v = $('arview'), r = v.getBoundingClientRect(); arDPR = Math.min(2, devicePixelRatio || 1); arW = r.width; arH = r.height; const c = $('arcv'); c.width = Math.round(arW * arDPR); c.height = Math.round(arH * arDPR); c.style.width = arW + 'px'; c.style.height = arH + 'px'; }
 // призрачный спрайт класса
-const ghostSpr = k => { const P = half16(evoPat(k, 1)); return sprite(P, { 0: '#0a3040', 1: '#bff4ff', 2: '#3a8aa8', 3: '#ffffff', 4: '#7ad8ff', 5: '#d8faff', 6: '#9fe8ff', 7: '#ffffff', 8: '#4aa0c0', 9: '#e8fcff', h: '#8ad0e8', k: '#4a90b0', n: '#a8e8f8' }, 'ghost' + k); };
+const ghostC = {}; const ghostSpr = k => { if (ghostC[k]) return ghostC[k]; const pc = heroPortrait(k, 1), c = document.createElement('canvas'); c.width = pc.width; c.height = pc.height; const x = c.getContext('2d'); x.drawImage(pc, 0, 0); x.globalCompositeOperation = 'source-atop'; x.globalAlpha = .65; x.fillStyle = '#7ad8ff'; x.fillRect(0, 0, c.width, c.height); return ghostC[k] = c; };
 function drawArmy() {
   { const r = $('arview').getBoundingClientRect(); if (Math.abs(r.width - arW) > 1 || Math.abs(r.height - arH) > 1) sizeArmy(); }
   const c = $('arcv'), x = c.getContext('2d'), A = AR(), W = arW, H = arH, t = performance.now() / 1000, dt = Math.min(.05, arT ? t - arT : 1 / 60); arT = t; if (W < 10 || H < 10) return;
@@ -84,7 +84,7 @@ function drawArmy() {
   while (ghosts2.length < want) { const k = armyNew.shift() || kinds[Math.floor(Math.random() * kinds.length)] || cls(); ghosts2.push({ k, x: -20 - Math.random() * 60, y: gy - Math.random() * 10 * P, ph: Math.random() * 6, sp: .6 + Math.random() * .6, st: 0 }); }
   for (const s of ghosts2) { const tgt = wx - 4 * P - (s.ph * 7) % (6 * P);
     if (s.st === 0) { s.x += s.sp * 40 * P * dt; if (s.x >= tgt) { s.st = 1; s.tt = 0; } } else { s.tt += dt; if (s.tt > .35 && s.tt - dt <= .35 && !A.done && arHits.length < 30) arHits.push({ x: wx + Math.random() * 3 * P, y: s.y - 6 * P + Math.random() * 4 * P, t: 0 }); if (s.tt > .9) { s.st = 0; s.x -= 10 * P * Math.random(); } }
-    const spr = ghostSpr(s.k), sc = P * .9, bob = s.st ? -Math.round(Math.max(0, Math.sin(s.tt * 9)) * 2 * P) : Math.round(Math.sin(t * 8 + s.ph) * P * .5);
+    const spr = ghostSpr(s.k), sc = P * .45, bob = s.st ? -Math.round(Math.max(0, Math.sin(s.tt * 9)) * 2 * P) : Math.round(Math.sin(t * 8 + s.ph) * P * .5);
     x.globalAlpha = .55 + .25 * Math.sin(t * 4 + s.ph); x.drawImage(spr, Math.round(s.x + (s.st ? Math.sin(s.tt * 9) * 2 * P : 0)), Math.round(s.y - spr.height * sc + bob), spr.width * sc, spr.height * sc); }
   x.globalAlpha = 1;
   for (const h of arHits) { h.t += dt; x.globalAlpha = 1 - h.t / .4; x.fillStyle = h.t < .1 ? '#ffffff' : '#9fe8ff'; const r = 1 + h.t * 14; x.fillRect(h.x - r, h.y, r * 2, P); x.fillRect(h.x, h.y - r, P, r * 2); }

@@ -569,31 +569,40 @@ function heroSprite(r, flash, ex, hi) {
   const c4 = ex ? shade(cc, -.35) : cc;
   return sprite(P, { h: hc, k: shade(hc, -.35), n: shade(cp[5] || '#f0c090', -.2), 0: '#0c0814', 1: c1, 2: cp[2] || shade(a, -.5), 3: cp[3] || v, 4: c4, 5: cp[5] || '#f0c090', 6: '#ffd84a', 7: '#ffffff', 8: shade(c4, -.4), 9: shade(c1, .4) }, 'h' + fm + c1 + v + (ex ? 'e' : ''));
 }
-const silhouette = c => sprite(heroPat(), { h: c, k: c, n: c, 0: c, 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c, 8: c, 9: c }, 'hs' + heroKey + c);
+// силуэт героя в разрешении мира (смерть, вспышки): уменьшенная копия героя 32×32
+const silW = new WeakMap();
+function silhouette(c) { const k = cls(), cv = hero32(k, shownForm(k), haPose(k, H16[k].w.t)); let m = silW.get(cv); if (!m) silW.set(cv, m = {}); if (m[c]) return m[c];
+  const o = document.createElement('canvas'); o.width = Math.ceil(G32W * HSC32); o.height = Math.ceil(G32H * HSC32); const x = o.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(sil32(cv, c), 0, 0, o.width, o.height);
+  o.ox = Math.round(G32FX * HSC32) - 4; o.oy = Math.round(G32FY * HSC32) - 8; return m[c] = o; }
 
 // герой в двойном разрешении поверх мира + след взмаха
 function drawHeroHi(d, k, sx, sy) {
   // двойники, следы и призраки — силуэты того же чёткого спрайта
-  if (heroGhosts.length) { const P = heroHi(), hk0 = Math.max(1, Math.round(k * HSC)); fctx.save(); fctx.imageSmoothingEnabled = false;
-    for (const g of heroGhosts) { const sl = sprite(P, { h: g.c, k: g.c, n: g.c, 0: g.c, 1: g.c, 2: g.c, 3: g.c, 4: g.c, 5: g.c, 6: g.c, 7: g.c, 8: g.c, 9: g.c }, 'hsH' + heroKey + g.c), cx = Math.round((g.x - camX + sx) * k);
-      fctx.setTransform(1, 0, 0, 1, 0, 0); if (g.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); } fctx.globalAlpha = g.a; fctx.drawImage(sl, cx - Math.round(sl.width * hk0 / 2), Math.round((g.y - camY + sy) * k) - sl.height * hk0, sl.width * hk0, sl.height * hk0); }
+  // герой 32×32 (js/02-hero32.js): поза из анимации, объёмный спрайт, силуэты для свечений и двойников
+  const k32 = cls(), P = haPose(k32, H16[k32].w.t), form = shownForm(k32), cv32 = hero32(k32, form, P), hk = Math.max(1, Math.round(k * HSC32));
+  if (heroGhosts.length) { fctx.save(); fctx.imageSmoothingEnabled = false;
+    for (const g of heroGhosts) { const sl = sil32(cv32, g.c), cx = Math.round((g.x - camX + sx) * k);
+      fctx.setTransform(1, 0, 0, 1, 0, 0); if (g.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); } fctx.globalAlpha = g.a; fctx.drawImage(sl, cx - G32FX * hk, Math.round((g.y - camY + sy) * k) - G32FY * hk, G32W * hk, G32H * hk); }
     fctx.restore(); heroGhosts = []; }
   if (!d) return;
-  const spr = heroSprite(d.rk, d.flash, d.ex, true), PW = spr.width, PH = spr.height, hk = Math.max(1, Math.round(k * HSC)), P = haPose(cls(), H16[cls()].w.t);
   haRunes(P, k, sx, sy);
   // упругость: выпад к цели, прыжок, сжатие/растяжение от ног
-  const cx = Math.round((d.x - camX + sx + P.ox * d.face) * k), DW = Math.round(PW * hk * P.sx), DH = Math.round(PH * hk * P.sy), X = cx - Math.round(DW / 2), Y = Math.round((d.y - camY + sy + P.oy) * k) - DH;
+  const cx = Math.round((d.x - camX + sx + P.ox * d.face) * k), DW = Math.round(G32W * hk * P.sx), DH = Math.round(G32H * hk * P.sy), fy = Math.round((d.y - camY + sy + P.oy) * k), X = cx - Math.round(G32FX * hk * P.sx), Y = fy - Math.round(G32FY * hk * P.sy);
   fctx.save(); fctx.imageSmoothingEnabled = false; if (d.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); }
-  for (const g of heroGlow) { const P = heroHi(), sl = sprite(P, { h: g.c, k: g.c, n: g.c, 0: g.c, 1: g.c, 2: g.c, 3: g.c, 4: g.c, 5: g.c, 6: g.c, 7: g.c, 8: g.c, 9: g.c }, 'hsH' + heroKey + g.c);
-    fctx.globalAlpha = g.a; for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) fctx.drawImage(sl, X + ox * g.o * hk, Y + oy * g.o * hk, DW, DH); }
-  fctx.globalAlpha = 1; fctx.drawImage(spr, X, Y, DW, DH);
-  haExtras(P, cx, X, Y, PW, PH * P.sy, hk, cls());
+  for (const g of heroGlow) { const sl = sil32(cv32, g.c); fctx.globalAlpha = g.a; for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) fctx.drawImage(sl, X + ox * g.o * hk, Y + oy * g.o * hk, DW, DH); }
+  fctx.globalAlpha = 1; fctx.drawImage(cv32, X, Y, DW, DH);
+  if (d.flash) { fctx.globalAlpha = .55; fctx.drawImage(sil32(cv32, '#ff3344'), X, Y, DW, DH); }   // удар по герою — красная вспышка
+  else if (hero.tintT > 0) { fctx.globalAlpha = .45; fctx.drawImage(sil32(cv32, hero.tint), X, Y, DW, DH); }
+  if (d.ex) { fctx.globalAlpha = .22; fctx.drawImage(sil32(cv32, '#000000'), X, Y, DW, DH); }
+  fctx.globalAlpha = 1;
+  { const [hx2, hy2] = hand32(k32, P); haExtras(P, { x: X + hx2 * hk * P.sx, y: Y + hy2 * hk * P.sy, u: hk, len: wlen32(k32, Math.min(4, form)) }, k32); }
+  const PH = 0, by0 = fy - 35 * hk;
   // старый точечный след замаха заменён шлейфом haSmear (js/11-hero-anim.js)
   fctx.restore(); fctx.globalAlpha = 1;
   // полоска HP над героем: зелёная → жёлтая → красная, белый «хвост» показывает только что потерянное
   const hf = clamp(hero.hp / (D.maxHP || 1), 0, 1), now = time, dtl = Math.min(.1, now - (hero.hpLT ?? now)); hero.hpLT = now;
   hero.hpLag = hero.hpLag == null || hero.hpLag < hf ? hf : Math.max(hf, hero.hpLag - dtl * (.15 + (hero.hpLag - hf) * 1.5));
-  if (hf < .995 || hero.hpLag > hf + .003 || hero.pool > 0) { const fi = Math.max(0, Math.min(3, shownForm(cls()) - 1)), bw = Math.round(14 * hk), bh = Math.max(3, Math.round(hk * 1.1)), bx = cx - (bw >> 1), by = Y + Math.round((10 + TOP16[fi] - 3.5) * hk);
+  if (hf < .995 || hero.hpLag > hf + .003 || hero.pool > 0) { const bw = Math.round(16 * hk), bh = Math.max(3, Math.round(hk * 1.1)), bx = cx - (bw >> 1), by = by0;
     fctx.fillStyle = '#000'; fctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2); fctx.fillStyle = '#3a0a12'; fctx.fillRect(bx, by, bw, bh);
     fctx.fillStyle = '#ffffff'; fctx.fillRect(bx, by, Math.round(bw * hero.hpLag), bh);
     fctx.fillStyle = hf > .5 ? '#5cff8a' : hf > .25 ? '#ffd84a' : (Math.sin(time * 14) > 0 ? '#ff3355' : '#ff8899'); fctx.fillRect(bx, by, Math.round(bw * hf), bh);

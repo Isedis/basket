@@ -496,9 +496,8 @@ function drawCutIn(k) {
   fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh);
   fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
   fctx.globalAlpha = a * .25; for (let i = 0; i < 14; i++) { const lx = ((i * 97 + t * 900) % (w * 2)) - w; fctx.fillRect(lx, -bh / 2, 2 * DPR, bh); } fctx.globalAlpha = a;   // полосы скорости
-  const CP = pat16(k, formOf(k), 'atk', 105, true), sc0 = Math.floor(bh * .92 / CP.length), sc = sc0 * CP[0].length / 9, spr = sprite(CP, heroCols(k, 2, '#ffffff'), 'cut' + k + CP.length);
-  const csl = sprite(CP, { 0: c, 1: c, 2: c, 3: c, 4: c, 5: c, 6: c, 7: c, 8: c, 9: c }, 'cuts' + k + CP.length + c);
-  fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR, pw = CP[0].length * sc0, ph = CP.length * sc0;
+  const spr = hero32(k, formOf(k), { ang: 105, atk: true, lean: 1, crouch: 1, legs: 'lunge' }), sc0 = Math.max(1, Math.floor(bh * 1.05 / spr.height)), csl = sil32(spr, c), CP = { length: spr.height, 0: { length: spr.width } }, sc = sc0;
+  fctx.imageSmoothingEnabled = false; const px = -w * .32 + Math.sin(t * 20) * 2 * DPR, pw = spr.width * sc0, ph = spr.height * sc0;
   fctx.globalAlpha = a * .5; fctx.drawImage(csl, px - sc0 * 2, -ph / 2 - sc0, pw, ph); fctx.globalAlpha = a;
   fctx.drawImage(spr, px, -ph / 2, pw, ph);
   const fs = Math.round(bh * .2), name = (US.aw ? '★ ' : '') + ULTS[k][0].toUpperCase();

@@ -312,9 +312,8 @@ let ctTab = 'tree', ctHeroK = null;
 const sprURL = {};
 function clsSprURL(k, known) {
   const key = k + known + formOf(k); if (sprURL[key]) return sprURL[key];
-  const C = CLASSES[k], P = CLS_SPR[k], EP = evoPat(k, formOf(k)), cv2 = document.createElement('canvas'); cv2.width = EP[0].length; cv2.height = EP.length; const x = cv2.getContext('2d');
-  const cols = known ? heroCols(k, 2, '#ffe08a') : { 0: '#16122a', 1: '#3a3450', 2: '#2a2440', 3: '#3a3450', 4: '#3a3450', 5: '#3a3450', 6: '#3a3450', 7: '#3a3450', 8: '#2a2440', 9: '#3a3450' };
-  EP.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.' && cols[ch]) { x.fillStyle = cols[ch]; x.fillRect(i, j, 1, 1); } }));
+  const pc = heroPortrait(k, formOf(k)), cv2 = document.createElement('canvas'); cv2.width = pc.width; cv2.height = pc.height; const x = cv2.getContext('2d');
+  x.drawImage(known ? pc : sil32(pc, '#3a3450'), 0, 0);   // неизвестный класс — тёмный силуэт
   return sprURL[key] = cv2.toDataURL();
 }
 function renderCT() {
@@ -700,8 +699,8 @@ function drawEvoBanner(k) {
   const c = CLASSES[EV.k].c, cy = h * .25, bh = h * .2, slide = (1 - Math.min(1, t / .2)) * w;
   fctx.save(); fctx.globalAlpha = a; fctx.translate(w / 2 + slide, cy);
   fctx.fillStyle = 'rgba(8,4,18,.92)'; fctx.fillRect(-w, -bh / 2, w * 2, bh); fctx.fillStyle = c; fctx.fillRect(-w, -bh / 2, w * 2, 4 * DPR); fctx.fillRect(-w, bh / 2 - 4 * DPR, w * 2, 4 * DPR);
-  const P = evoPat(EV.k, EV.form), n = P.length, sc = Math.floor(bh * .85 / n), cols = heroCols(EV.k, 6, '#ffe08a'), spr = sprite(P, cols, 'evb' + EV.k + EV.form);
-  fctx.imageSmoothingEnabled = false; fctx.drawImage(spr, -w * .36, -sc * n / 2, sc * P[0].length, sc * n);
+  const spr = heroPortrait(EV.k, EV.form), n = spr.height, sc = Math.max(1, Math.floor(bh * .85 / n)), P = [{ length: spr.width }];
+  fctx.imageSmoothingEnabled = false; fctx.drawImage(spr, -w * .36, -sc * n / 2, sc * spr.width, sc * n);
   const fs = Math.round(bh * .19); fctx.textAlign = 'left'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(3, fs / 3); fctx.strokeStyle = '#000';
   const tx = -w * .36 + sc * P[0].length + 10 * DPR;
   fctx.font = `${Math.round(fs * .55)}px "Press Start 2P", monospace`; fctx.fillStyle = '#a59fc0'; fctx.strokeText(EV.label, tx, -fs * .9); fctx.fillText(EV.label, tx, -fs * .9);
@@ -850,13 +849,13 @@ function drawPath() {
   { const gl = c.createLinearGradient(0, yP - 120, 0, PTH); gl.addColorStop(0, C.c + '00'); gl.addColorStop(.25, C.c + '22'); gl.addColorStop(1, C.c + '44'); c.globalAlpha = .7 + .15 * Math.sin(T * 1.6); c.fillStyle = gl; c.fillRect(0, yP - 120, W, PTH - yP + 120); c.globalAlpha = 1; }
   if (prog > 0 && prog < 1) { c.fillStyle = '#ffffff'; for (let x = 0; x < W; x += 5) { c.globalAlpha = .35 + .35 * Math.sin(x * .3 + T * 6); c.fillRect(x, Math.round(yP + Math.sin(x * .05 + T * 3) * 2), 3, 1); } c.globalAlpha = 1; }
   // портрет героя в рамке: текущий облик
-  { const f = formOf(k), pat = evoPat(k, f), cx = W / 2, cy = 120, fw = 176, sc = Math.floor(130 / Math.max(pat.length, pat[0].length)), bob = Math.round(Math.sin(T * 2) * 3);
+  { const f = formOf(k), pat = heroPortrait(k, f), cx = W / 2, cy = 120, fw = 176, sc = Math.floor(130 / Math.max(pat.height, pat.width)), bob = Math.round(Math.sin(T * 2) * 3);
     const gr = c.createRadialGradient(cx, cy, 10, cx, cy, 120); gr.addColorStop(0, C.c + '66'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(cx - 130, cy - 130, 260, 260);
     c.fillStyle = '#07040f'; c.fillRect(cx - fw / 2, cy - fw / 2, fw, fw);
     const bg = c.createRadialGradient(cx, cy + 20, 4, cx, cy, fw * .7); bg.addColorStop(0, shade(C.c, -.35)); bg.addColorStop(1, '#07040f'); c.fillStyle = bg; c.fillRect(cx - fw / 2 + 6, cy - fw / 2 + 6, fw - 12, fw - 12);
     for (let i = 0; i < 12; i++) { const a = T * .5 + i / 12 * 6.283, rr = 58 + Math.sin(T * 2 + i) * 4; c.globalAlpha = .5; c.fillStyle = i % 3 ? C.c : '#ffffff'; c.fillRect(Math.round(cx + Math.cos(a) * rr), Math.round(cy + 6 + Math.sin(a) * rr * .4), 2, 2); } c.globalAlpha = 1;
     c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(cx, cy + 62, 46, 8, 0, 0, 6.283); c.fill();
-    const spr = sprite(pat, heroCols(k, 6, '#ffe08a'), 'pp' + k + f + true); c.drawImage(spr, Math.round(cx - pat[0].length * sc / 2), Math.round(cy + 62 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc);
+    const spr = pat; c.drawImage(spr, Math.round(cx - pat.width * sc / 2), Math.round(cy + 62 - pat.height * sc + bob), pat.width * sc, pat.height * sc);
     c.strokeStyle = '#ffd84a'; c.lineWidth = 4; c.strokeRect(cx - fw / 2, cy - fw / 2, fw, fw); c.strokeStyle = '#5a3a10'; c.lineWidth = 2; c.strokeRect(cx - fw / 2 + 5, cy - fw / 2 + 5, fw - 10, fw - 10);
     for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.fillStyle = '#ffd84a'; c.fillRect(cx + dx * fw / 2 - 7, cy + dy * fw / 2 - 7, 14, 14); c.fillStyle = C.c; c.fillRect(cx + dx * fw / 2 - 3, cy + dy * fw / 2 - 3, 6, 6); }
     c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; const nm = evoName(k, f).toUpperCase(), tw = c.measureText(nm).width + 24; c.fillStyle = '#0a0614'; c.fillRect(cx - tw / 2, cy + fw / 2 + 4, tw, 20); c.strokeStyle = C.c; c.lineWidth = 2; c.strokeRect(cx - tw / 2, cy + fw / 2 + 4, tw, 20);
@@ -869,12 +868,12 @@ function drawPath() {
       const f = (T * .6 + a.x * .013 + a.y * .007) % 1; c.fillStyle = '#fff'; c.fillRect(a.x + (b.x - a.x) * f - 1.5, a.y + (b.y - a.y) * f - 1.5, 3, 3); }
     else { c.strokeStyle = op ? shade(C.c, -.4) : '#2a2440'; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.setLineDash([]); } }
   // полосы ступеней
-  const plat = (y, f, got, cur, awk) => { const pat = evoPat(k, f), sc = 2, x = W / 2, bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0;
+  const plat = (y, f, got, cur, awk) => { const pat = heroPortrait(k, f), sc = 1, x = W / 2, bob = cur ? Math.round(Math.sin(T * 2) * 2) : 0;
     if (got) { const gr = c.createRadialGradient(x, y - 24, 4, x, y - 24, 70); gr.addColorStop(0, (awk ? '#ffffff' : C.c) + '55'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(x - 70, y - 94, 140, 140); }
     c.fillStyle = got ? shade(C.c, -.45) : '#16122a'; c.beginPath(); c.ellipse(x, y, 34, 7, 0, 0, 6.283); c.fill(); c.strokeStyle = got ? C.c : '#3a3260'; c.lineWidth = 2; c.stroke();
-    const spr = sprite(pat, got ? heroCols(k, 6, '#ffe08a') : { 1: '#2a2440', 2: '#1e1830', 3: '#3a3260', 4: '#2a2440', 5: '#2a2440', 6: '#2a2440', 7: '#3a3260' }, 'pp' + k + f + got);
-    if (awk && got) { c.globalAlpha = .5 + .3 * Math.sin(T * 4); const sl = sprite(pat, { 1: C.c, 2: C.c, 3: C.c, 4: C.c, 5: C.c, 6: C.c, 7: C.c }, 'pa' + k + f); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(x - pat[0].length * sc / 2) + dx, Math.round(y + 2 - pat.length * sc + bob) + dy, pat[0].length * sc, pat.length * sc); c.globalAlpha = 1; }
-    c.drawImage(spr, Math.round(x - pat[0].length * sc / 2), Math.round(y + 2 - pat.length * sc + bob), pat[0].length * sc, pat.length * sc); };
+    const spr = (got ? pat : sil32(pat, '#2a2440'));
+    if (awk && got) { c.globalAlpha = .5 + .3 * Math.sin(T * 4); const sl = sil32(pat, C.c); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(x - pat.width * sc / 2) + dx, Math.round(y + 2 - pat.height * sc + bob) + dy, pat.width * sc, pat.height * sc); c.globalAlpha = 1; }
+    c.drawImage(spr, Math.round(x - pat.width * sc / 2), Math.round(y + 2 - pat.height * sc + bob), pat.width * sc, pat.height * sc); };
   { const fN = formOf(k); plat(L.bottom, 1, true, fN === 1); plat(L.bands[0], 2, tierDone(k, 1), fN === 2); plat(L.bands[1], 3, tierDone(k, 2), fN === 3); plat(L.bands[2], 3, tierDone(k, 3), false, true); if (S.meta.asc) plat(L.top, 4, tierDone(k, 4), fN === 4); }
   const band = (y, f, txt, got, cur) => { c.globalAlpha = got ? .9 : .5; c.fillStyle = got ? C.c : '#3a3260'; for (let x = 4; x < W - 4; x += 8) c.fillRect(x, Math.round(y), 4, 1); c.globalAlpha = 1;
     c.font = '7px "Press Start 2P", monospace'; c.textAlign = 'center'; const tw = c.measureText(txt).width + 20, bx = W / 2;

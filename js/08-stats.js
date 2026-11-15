@@ -98,10 +98,10 @@ function drawAltar() {
     c.fillStyle = shade(C.c, -.55); c.beginPath(); c.ellipse(cx, py + 4, pw / 2, 10, 0, 0, 6.283); c.fill(); c.fillStyle = shade(C.c, -.25); c.beginPath(); c.ellipse(cx, py, pw / 2, 9, 0, 0, 6.283); c.fill();
     for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283 + T * .8; c.fillStyle = i % 2 ? C.c : '#ffffff'; c.fillRect(Math.round(cx + Math.cos(a) * pw * .42), Math.round(py + Math.sin(a) * 6), 2, 1); }
     const gr = c.createRadialGradient(cx, py - 40, 4, cx, py - 40, 90); gr.addColorStop(0, C.c + '33'); gr.addColorStop(1, C.c + '00'); c.fillStyle = gr; c.fillRect(cx - 90, py - 130, 180, 180);
-    const f = formOf(k), pat = evoPat(k, f), sc = Math.max(3, Math.floor(Math.min(84, R * .5) / Math.max(pat.length, pat[0].length))), bob = Math.round(Math.sin(T * 1.6) * 3);
-    const spr = sprite(pat, heroCols(k, 6, '#ffe08a'), 'pp' + k + f + true), sl = sprite(pat, { 1: C.c, 2: C.c, 3: C.c, 4: C.c, 5: C.c, 6: C.c, 7: C.c }, 'pa' + k + f);
-    c.globalAlpha = .22 + .1 * Math.sin(T * 3); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(cx - pat[0].length * sc / 2) + dx, Math.round(py - pat.length * sc + bob) + dy, pat[0].length * sc, pat.length * sc); c.globalAlpha = 1;
-    c.drawImage(spr, Math.round(cx - pat[0].length * sc / 2), Math.round(py - pat.length * sc + bob), pat[0].length * sc, pat.length * sc); }
+    const f = formOf(k), pat = heroPortrait(k, f), sc = Math.max(3, Math.floor(Math.min(84, R * .5) / Math.max(pat.height, pat.width))), bob = Math.round(Math.sin(T * 1.6) * 3);
+    const spr = pat, sl = sil32(pat, C.c);
+    c.globalAlpha = .22 + .1 * Math.sin(T * 3); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2]]) c.drawImage(sl, Math.round(cx - pat.width * sc / 2) + dx, Math.round(py - pat.height * sc + bob) + dy, pat.width * sc, pat.height * sc); c.globalAlpha = 1;
+    c.drawImage(spr, Math.round(cx - pat.width * sc / 2), Math.round(py - pat.height * sc + bob), pat.width * sc, pat.height * sc); }
   ords.filter(e => alPos[e].depth >= 0).forEach(drawStone);
   // искры, поднимающиеся от пьедестала
   for (let i = 0; i < 24; i++) { const ph = (T * .35 + i * .137) % 1, x = cx + Math.sin(i * 7.1 + T) * 40, y = cy + 20 - ph * R * .9; c.globalAlpha = 1 - ph; c.fillStyle = i % 3 ? C.c : '#ffffff'; c.fillRect(Math.round(x), Math.round(y), 2, 2); } c.globalAlpha = 1;

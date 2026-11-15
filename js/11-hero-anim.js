@@ -96,28 +96,30 @@ function haPose(k, w) {
       break; }
     case 'shoot': {   // лук: натяжение (тетива назад, корпус назад) → выстрел с отдачей
       P.atk = p < .55; P.lean = Math.round(kf([[0, 0], [.5, -1], [.6, 0], [1, 0]], p)); P.crouch = p > .2 && p < .55 ? 1 : 0;
-      P.ox = kf([[0, 0], [.55, 0], [.62, -2], [1, 0]], p); P.flash = p > .55 && p < .68 ? 1 - (p - .55) / .13 : 0; P.legs = p > .1 && p < .7 ? 'lunge' : P.legs;
+      P.ox = kf([[0, 0], [.55, 0], [.62, -2], [1, 0]], p); P.flash = p > .55 && p < .68 ? 1 - (p - .55) / .13 : 0; P.legs = p > .1 && p < .7 ? 'lunge' : P.legs; P.armA = 90; P.armB = p < .55 ? 92 : 150;
       break; }
     case 'throw': {   // бросок: рука назад → резкий выброс вперёд
       P.ang = w === 'bow' || w === 'flask' || w === 'fist' ? null : kf([[0, r], [.35, -60], [.5, 120], [.75, 100], [1, r]], p);
       P.lean = Math.round(kf([[0, 0], [.35, -1], [.5, 2], [.8, 0], [1, 0]], p)); P.crouch = p > .2 && p < .45 ? 1 : 0;
-      P.ox = kf([[0, 0], [.35, -1], [.5, 2.5], [1, 0]], p); P.legs = p > .3 && p < .8 ? 'lunge' : P.legs; P.fist = w === 'flask' && p > .38 && p < .6 ? 1 : 0;
+      P.ox = kf([[0, 0], [.35, -1], [.5, 2.5], [1, 0]], p); P.legs = p > .3 && p < .8 ? 'lunge' : P.legs; P.armA = kf([[0, 160], [.35, -50], [.5, 100], [.8, 130], [1, 160]], p);
       if (P.ang != null && p > .35 && p < .62) P.smear = { a0: -60, a1: P.ang, k: .8, al: (.62 - p) / .27 };
       break; }
     case 'jab': {   // кулаки: правый, левый, апперкот с подскоком
       const up = ci === 2; P.fist = kf([[0, 0], [.25, 0], [.42, 1], [.65, 1], [1, 0]], p) * (ci === 1 ? -1 : 1);
       P.lean = Math.round(kf([[0, 0], [.25, -1], [.42, 2], [.75, 1], [1, 0]], p)); P.ox = kf([[0, 0], [.42, up ? 2 : 3.5], [.75, 2], [1, 0]], p);
       P.legs = p > .3 && p < .8 ? 'lunge' : P.legs; if (up) P.oy = -kf([[0, 0], [.4, 0], [.55, 4], [.8, 0], [1, 0]], p); P.up = up;
+      const f = Math.abs(P.fist); if (ci === 1) { P.armB = Math.round(185 - 95 * f); P.armA = 120; } else P.armA = Math.round(up ? 150 - 130 * f : 160 - 72 * f);
       break; }
   }
   if (P.ang != null) P.ang = Math.round(P.ang / 15) * 15;
+  if (P.armA != null) P.armA = Math.round(P.armA / 15) * 15; if (P.armB != null) P.armB = Math.round(P.armB / 15) * 15;
   return haPoseC = P;
 }
 
 /* шлейф оружия на чётком слое: сплошная дуга из пикселей героя, яркая у острия, гаснет к хвосту */
 function haWeaponLen(k) { const w = H16[k].w, tier = Math.min(4, shownForm(k)); return (w.h || 0) + (w.b || 0) + 1 + Math.min(3, tier - 1) + (w.t === 'staff' || w.t === 'scythe' ? 0 : w.t === 'hammer' || w.t === 'axe' || w.t === 'mace' ? 2 : 0); }
-function haSmear(px0, py0, hk, sm, k) {
-  const len = haWeaponLen(k), cc = CL().c, tier = shownForm(k), edge = sm.gold ? '#ffe08a' : tier >= 4 ? cc : '#d8ecff';
+function haSmear(px0, py0, hk, sm, k, len) {
+  len = len || haWeaponLen(k); const cc = CL().c, tier = shownForm(k), edge = sm.gold ? '#ffe08a' : tier >= 4 ? cc : '#d8ecff';
   fctx.save();
   if (sm.line) {   // укол: прямой след вперёд
     const th = sm.a0 * Math.PI / 180, dx = Math.sin(th), dy = -Math.cos(th);
@@ -160,16 +162,13 @@ function haRunTick(dt) {
 }
 
 /* дополнительные элементы позы на чётком слое: кулак, свечение навершия, руны под ногами, вспышка лука */
-function haExtras(P, cx, X, Y, PW, PH, hk, k) {
-  const px0 = cx + (5.5 + P.lean) * hk, py0 = Y + (PH - 3.5 + (P.crouch ? 1 : 0)) * hk, cc = CL().c;
-  if (P.smear) haSmear(px0, py0, hk, P.smear, k);
-  if (P.fist) {   // вытянутый кулак (монах) / рука с колбой (алхимик)
-    const ext = Math.abs(P.fist) * 4, fy = py0 + (P.fist < 0 ? -2 : 0) * hk - (P.up ? 3 * Math.abs(P.fist) * hk : 0), fx0 = px0 + ext * hk;
-    fctx.fillStyle = '#0c0814'; fctx.fillRect(Math.round(fx0 - hk), Math.round(fy - 2 * hk), 4 * hk, 4 * hk);
-    fctx.fillStyle = k === 'alch' ? '#b6ff3c' : '#f0c090'; fctx.fillRect(Math.round(fx0), Math.round(fy - hk), 2 * hk, 2 * hk);
-    if (Math.abs(P.fist) > .8 && k === 'monk') { fctx.globalAlpha = .6; fctx.fillStyle = '#ffffff'; for (let i = 1; i <= 3; i++) fctx.fillRect(Math.round(fx0 - i * 2 * hk), Math.round(fy - hk / 2), hk, hk); fctx.globalAlpha = 1; } }
+function haExtras(P, rig, k) {
+  const px0 = rig.x, py0 = rig.y, hk = rig.u, cc = CL().c;
+  if (P.smear) haSmear(px0, py0, hk, P.smear, k, rig.len);
+  if (P.fist && Math.abs(P.fist) > .7 && P.fist > 0) {   // линии скорости за кулаком
+    fctx.globalAlpha = .55; fctx.fillStyle = '#ffffff'; for (let i = 2; i <= 6; i += 2) fctx.fillRect(Math.round(px0 - i * hk), Math.round(py0 - hk / 2 + (i % 4 ? hk : -hk)), Math.round(hk * 1.5), hk); fctx.globalAlpha = 1; }
   if (P.glowTip > 0 || P.flash > 0) {   // навершие посоха
-    const len = haWeaponLen(k) + 1, th = (P.ang ?? 60) * Math.PI / 180, tx = px0 + Math.sin(th) * len * hk, ty = py0 - Math.cos(th) * len * hk, L = Math.round(1 + 2 * P.glowTip + 4 * P.flash);
+    const len = rig.len + 2, th = (P.ang ?? 60) * Math.PI / 180, tx = px0 + Math.sin(th) * len * hk, ty = py0 - Math.cos(th) * len * hk, L = Math.round(1 + 2 * P.glowTip + 4 * P.flash);
     fctx.save(); fctx.globalCompositeOperation = 'lighter';   // искра-крест на навершии: растёт при касте, вспыхивает при выстреле
     for (let i = -L; i <= L; i++) { const a = (1 - Math.abs(i) / (L + 1)) * (.5 + .5 * P.flash); fctx.globalAlpha = a; fctx.fillStyle = Math.abs(i) < 2 ? '#ffffff' : cc;
       fctx.fillRect(Math.round(tx + i * hk - hk / 2), Math.round(ty - hk / 2), hk, hk); if (i) fctx.fillRect(Math.round(tx - hk / 2), Math.round(ty + i * hk - hk / 2), hk, hk); }
