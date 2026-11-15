@@ -172,6 +172,12 @@ func _unhandled_input(event):
 			journal_open = not journal_open
 			mode = "paused" if journal_open else "playing"
 			return
+		if art_probe_active and event.keycode==KEY_R and mode in ["playing","dead","victory"]:
+			start_practice_round(has_item("heavy"))
+			return
+		if art_probe_active and event.keycode==KEY_Q and mode=="playing":
+			toggle_practice_weapon()
+			return
 		if mode == "title":
 			if event.keycode == KEY_ENTER:
 				if FileAccess.file_exists(save_path):
@@ -235,20 +241,14 @@ func menu_buttons() -> Array:
 func menu_action(action: String):
 	match action:
 		"art_probe":
-			original_save_path = save_path
-			original_profile_path = profile_path
-			original_profile = profile.duplicate(true)
-			save_path += ".art-probe"
-			profile_path += ".art-probe"
-			art_probe_active = true
-			new_run()
-			place_player(Vector2(316,330),Vector2.RIGHT)
-			invincible = 0
-			spawn_enemy("guard",Vector2(450,325),false)
-			spawn_enemy("guard",Vector2(590,300),false)
-			room.clear = false
-			notify("Зал проверки: WASD — шаг, стрелки — тесак.",5)
-			save_run()
+			if not art_probe_active:
+				original_save_path = save_path
+				original_profile_path = profile_path
+				original_profile = profile.duplicate(true)
+				save_path += ".art-probe"
+				profile_path += ".art-probe"
+				art_probe_active = true
+			start_practice_round()
 		"updates": updater.open()
 		"new": new_run()
 		"new_confirm": mode = "confirm_new"
@@ -265,6 +265,29 @@ func menu_action(action: String):
 			mode = "playing"
 		"character": character = 1 - character
 		"end": mode = "title"
+
+func start_practice_round(use_heavy: bool = false):
+	if not art_probe_active: return
+	new_run()
+	if use_heavy: inventory.append("heavy")
+	place_player(Vector2(316,330),Vector2.RIGHT)
+	invincible = 0
+	spawn_enemy("guard",Vector2(450,325),false)
+	spawn_enemy("guard",Vector2(590,300),false)
+	room.clear = false
+	notify("WASD — шаг, стрелки — удар. Q — оружие, R — заново.",5)
+	save_run()
+
+func toggle_practice_weapon() -> bool:
+	if not art_probe_active or mode!="playing": return false
+	if windup>0 or swing>0:
+		notify("Сначала закончи удар.",1)
+		return false
+	if has_item("heavy"): inventory = inventory.filter(func(id): return id!="heavy")
+	else: inventory.append("heavy")
+	notify("Тяжёлый тесак" if has_item("heavy") else "Тесак",2)
+	save_run()
+	return true
 
 func leave_art_probe():
 	if not art_probe_active: return
@@ -479,6 +502,7 @@ func advance_frame(delta: float):
 
 func update_game(dt: float):
 	elapsed += dt
+	if player_motion.has("impact_age"): player_motion.impact_age = minf(1,float(player_motion.impact_age)+dt)
 	for c in corpses:
 		c.age = minf(1.0,c.age+dt)
 		var velocity = Vector2(c.get("vx",0),c.get("vy",0))
@@ -513,9 +537,14 @@ func update_game(dt: float):
 	var speed = 154.0*(1.0+count_item("haste")*0.15)
 	for hazard in hazards:
 		if hazard.type == "water" and hazard.rect.has_point(player): speed *= 0.64
-	if windup>0: speed *= 0.65
+	var mass = float(player_motion.get("attack_weight",1.0))
+	if windup>0: speed *= maxf(0.4,0.68-(mass-1)*0.3)
+	elif swing>0:
+		var u = 1-swing/swing_duration
+		speed *= lerpf(maxf(0.24,0.4-(mass-1)*0.16),1,Combat.curve((u-Combat.ACTIVE_END)/(1-Combat.ACTIVE_END)))
 	if player_stagger>0: speed *= 0.4
-	if dash_time>0:
+	var was_dashing = dash_time>0
+	if was_dashing:
 		dash_time -= dt
 		movement = dash_dir
 		speed = 560
@@ -524,6 +553,12 @@ func update_game(dt: float):
 		if absf(movement.x)>absf(movement.y): facing = Vector2(signf(movement.x),0)
 		else: facing = Vector2(0,signf(movement.y))
 		player = move_player(movement*speed*dt)
+	if not was_dashing and (windup>0 or swing>0):
+		var available = maxf(0,dt-windup) if windup>0 else dt
+		var from = 1-swing/swing_duration if swing>0 else 0.0
+		var to = minf(1,from+available/swing_duration)
+		var step = (Combat.step_progress(to)-Combat.step_progress(from))*(5+(mass-1)*4)
+		if step>0: player = move_player(swing_dir*step)
 	player_motion = Motion.update(player_motion,previous_player,player,dt)
 	moving = player_motion.moving
 	if windup>0 or swing>0:
@@ -608,12 +643,16 @@ func begin_attack(direction: Vector2):
 		player_motion.facing = attack_facing
 		player_motion.look = attack_look
 	var attack_speed = 1.0+count_item("haste")*0.27
-	swing_windup = (0.12+count_item("heavy")*0.045)/attack_speed
-	swing_duration = 0.22/attack_speed
-	windup = swing_windup
-	attack_cd = (0.40+count_item("heavy")*0.12)/attack_speed
-	attack_serial += 1
 	combo = (combo+1)%3
+	var heavy = mini(3,count_item("heavy"))
+	var finisher = combo==0
+	player_motion.attack_weight = 1.0+heavy*0.28+(0.22 if finisher else 0.0)
+	player_motion.impact_age = 1.0
+	swing_windup = (0.14+heavy*0.07+(0.03 if finisher else 0.0))/attack_speed
+	swing_duration = (0.28+heavy*0.08+(0.04 if finisher else 0.0))/attack_speed
+	windup = swing_windup
+	attack_cd = swing_windup+swing_duration+0.04/attack_speed
+	attack_serial += 1
 
 func advance_player_attack(dt: float, previous_position: Vector2 = Vector2.INF):
 	var remaining = dt
@@ -644,8 +683,10 @@ func resolve_player_sweep(start: float, end: float, previous_position: Vector2):
 		if hit.hit:
 			enemy.last_player_swing = attack_serial
 			var strength = 1.0+count_item("heavy")*0.7+(0.4 if combo==0 else 0.0)
+			player_motion.impact_age = 0.0
+			player_motion.impact_power = minf(2.2,strength)
 			damage_enemy(enemy,attack_damage(),player,true,strength,swing_dir,hit.point)
-			melee_contacts.append({"point":hit.point,"life":0.16})
+			melee_contacts.append({"point":hit.point,"life":0.14,"axis":swing_dir,"power":minf(2.2,strength),"armored":enemy.type=="guard"})
 
 func attack_range() -> float:
 	return 57.0+count_item("cleaver")*22+count_item("heavy")*12
@@ -712,7 +753,7 @@ func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bo
 	enemy.flash = 0.10 if impact>0 else 0.04
 	enemy.last_impact = impact
 	if impact>0:
-		hit_stop = maxf(hit_stop,minf(0.075,0.028+impact*0.012))
+		hit_stop = maxf(hit_stop,minf(0.085,0.034+impact*0.016))
 		shake = maxf(shake,minf(4,impact*1.5))
 		shake_axis = spray
 		var resistance = 0.2 if enemy.boss else 1.0
@@ -1216,7 +1257,7 @@ func save_run():
 		"dungeon":dungeon,"coords":[coords.x,coords.y],"player":[player.x,player.y],"facing":[facing.x,facing.y],
 		"hp":hp,"max_hp":max_hp,"pain":pain,"coins":coins,"keys":keys,"faith":faith,"inventory":inventory,
 		"active":active,"charge":charge,"elapsed":elapsed,"kills":kills,"rooms":rooms_cleared,"character":character,
-		"attack_serial":attack_serial,"attack_facing":attack_facing,"attack_look":attack_look,"swing_duration":swing_duration,"player_knockback":[player_knockback.x,player_knockback.y],"player_stagger":player_stagger,
+		"attack_serial":attack_serial,"attack_facing":attack_facing,"attack_look":attack_look,"combo":combo,"swing_duration":swing_duration,"player_knockback":[player_knockback.x,player_knockback.y],"player_stagger":player_stagger,
 		"player_motion":player_motion,"attack_contact_pending":attack_contact_pending,"saved_swing":swing,"saved_windup":windup,"saved_windup_total":swing_windup,"swing_dir":[swing_dir.x,swing_dir.y],
 		"bullets":bullets,"zones":zones,"invincible":invincible,"dash_cd":dash_cd,"attack_cd":attack_cd}
 	# Replace only after a complete write, preserving the previous checkpoint on failure.
@@ -1263,6 +1304,7 @@ func load_run() -> bool:
 	player_motion = data.get("player_motion",{}) if player.distance_to(position)<1 else {}
 	windup = float(data.get("saved_windup",0))
 	swing = float(data.get("saved_swing",0))
+	combo = int(data.get("combo",1 if windup>0 or swing>0 else 0))
 	swing_windup = float(data.get("saved_windup_total",0.12))
 	attack_contact_pending = bool(data.get("attack_contact_pending",false))
 	var saved_direction = data.get("swing_dir",[0,1])

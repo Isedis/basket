@@ -206,18 +206,20 @@ static func draw(g, type: String, p: Vector2, motion: Dictionary, direction: Vec
 	var body = weapon.body
 	var left_foot = Motion.foot_position(motion,0,p)
 	var right_foot = Motion.foot_position(motion,1,p)
-	var hips = [body+Vector2(-6,-19),body+Vector2(6,-19)]
+	var hips = [weapon.hips+Vector2(-6,-19),weapon.hips+Vector2(6,-19)]
 	limb(g,textures[5 if look==0 else 4],hips[0],left_foot,2*facing,texture_flip,tint,context)
 	limb(g,textures[4 if look==0 else 5],hips[1],right_foot,2*facing,texture_flip,tint,context)
 	var sway = sin(phase)*0.15*walk_weight
-	var left_shoulder = body+Vector2(-12*facing,Combat.BODY_SHOULDER.y)
-	var left_hand = left_shoulder+Vector2(-facing*(3+sin(phase)*2*walk_weight),21)
+	var chest = Vector2(0,-31)
+	var left_shoulder = body+chest+(Vector2(-12*facing,Combat.BODY_SHOULDER.y)-chest).rotated(weapon.twist)
+	var counterbalance = Vector2(-facing*(3+sin(phase)*2*walk_weight),21)-direction*weapon.drive*2+Vector2(0,-weapon.coil*2)
+	var left_hand = left_shoulder+counterbalance.limit_length(21.5)
 	limb(g,textures[2],left_shoulder,left_hand,3*facing,texture_flip,tint,context)
 	if look==2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context)
 	if look!=2: part(g,textures[7],body+Vector2(-7*facing,-35),sway,texture_flip,tint,context,Vector2(0.5,0))
-	part(g,textures[1],body+Vector2(0,-31),0,texture_flip,tint,context)
+	part(g,textures[1],body+Vector2(0,-31),weapon.twist,texture_flip,tint,context)
 	if look==2: part(g,textures[7],body+Vector2(0,-38),sway,1,tint,context,Vector2(0.5,0))
-	part(g,textures[0],body+Vector2(facing if look in [1,3] else 0,-53),0,texture_flip,tint,context)
+	part(g,textures[0],weapon.head+Vector2(facing if look in [1,3] else 0,0),-weapon.twist*0.2,texture_flip,tint,context)
 	if look!=2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context)
 
 static func actor(g, type: String, p: Vector2, flash: bool, tint: Color, entity: Dictionary = {}):

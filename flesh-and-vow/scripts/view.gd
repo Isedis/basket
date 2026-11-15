@@ -59,6 +59,10 @@ static func render(g):
 			ending(g)
 	if g.help_open: help_screen(g)
 	if g.journal_open: journal(g)
+	if g.art_probe_active and g.mode=="playing":
+		rect(g,Rect2(40,90,688,18),Color(0.03,0.035,0.03,0.92))
+		var weapon = "ТЯЖЁЛЫЙ ТЕСАК" if g.has_item("heavy") else "ТЕСАК"
+		text(g,Vector2(48,103),"ИСПЫТАНИЕ БОЯ · "+weapon+" · Q — ОРУЖИЕ · R — ЗАНОВО",11,GOLD)
 	if g.mode == "confirm_new":
 		veil(g)
 		panel(g,Rect2(220,185,520,190))
@@ -149,6 +153,7 @@ static func world(g):
 			var blink = g.mode!="dead" and g.invincible>0 and int(g.anim*17)%2==0
 			actor(g,"player",p,int(g.anim*9)%3 if g.moving else 0,1,false,Color(1.3,1.15,0.95,1) if blink else Color.WHITE)
 	if g.swing>0 and g.mode!="dead": slash(g,g.player)
+	for contact in g.melee_contacts: impact(g,contact)
 	if g.debug_combat: debug_shapes(g)
 	for b in g.bullets:
 		var c = Color("d95d71") if b.type=="ally" else (Color("a8b774") if b.type=="rot" else Color("e9b777"))
@@ -169,12 +174,31 @@ static func world(g):
 
 static func slash(g, p: Vector2):
 	var progress = 1-g.swing/g.swing_duration
-	if progress<Combat.CONTACT_RATIO or progress>Combat.ACTIVE_END: return
+	if progress<0.1 or progress>Combat.ACTIVE_END: return
 	var pose = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,progress,g.attack_range(),g.elapsed)
-	var previous = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,maxf(Combat.CONTACT_RATIO,progress-0.1),g.attack_range(),g.elapsed)
-	var tip = pose.hand+Vector2.from_angle(pose.angle)*(Combat.BLADE_MIN+(Combat.BLADE_MAX-Combat.BLADE_MIN)*pose.scale)
+	var start = maxf(0.04,progress-0.12)
+	var previous = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,start,g.attack_range(),g.elapsed)
+	var alpha = minf(0.5,absf(angle_difference(previous.angle,pose.angle))*0.7)
+	var width = 4 if float(g.player_motion.get("attack_weight",1.0))>1.4 else 2
 	var tail = previous.hand+Vector2.from_angle(previous.angle)*(Combat.BLADE_MIN+(Combat.BLADE_MAX-Combat.BLADE_MIN)*previous.scale)
-	g.draw_line(tail.snapped(Vector2(2,2)),tip.snapped(Vector2(2,2)),Color(0.9,0.79,0.62,0.42),3)
+	for i in range(1,5):
+		var sample = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,lerpf(start,progress,i/4.0),g.attack_range(),g.elapsed)
+		var tip = sample.hand+Vector2.from_angle(sample.angle)*(Combat.BLADE_MIN+(Combat.BLADE_MAX-Combat.BLADE_MIN)*sample.scale)
+		g.draw_line(tail.snapped(Vector2(2,2)),tip.snapped(Vector2(2,2)),Color(0.9,0.79,0.62,alpha*i/4.0),width)
+		tail = tip
+
+static func impact(g, contact: Dictionary):
+	var age = clampf(1-float(contact.life)/0.14,0,1)
+	var power = float(contact.get("power",1.0))
+	var axis: Vector2 = contact.get("axis",Vector2.RIGHT)
+	var point: Vector2 = contact.point
+	var color = Color("f2cf8f") if contact.get("armored",false) else Color("f4d7b7")
+	color.a = 1-age
+	var length = (5+power*2)*(0.7+0.3*Combat.coast(age))
+	for angle in [-0.8,0.0,0.8]:
+		var ray = axis.rotated(angle)
+		g.draw_line((point+ray*2).snapped(Vector2(2,2)),(point+ray*length).snapped(Vector2(2,2)),color,2)
+	if age<0.35: g.draw_rect(Rect2(point.snapped(Vector2(2,2))-Vector2(2,2),Vector2(4,4)),color)
 
 static func debug_shapes(g):
 	for enemy in g.enemies:
