@@ -123,6 +123,7 @@ function hurtHero(dmg, unblock, cap, quiet) {
 function ring(x, y, r, c) { if (SIM) return; groundMark(x, y + 2, r, c); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
+  if (!m || m === hero || !Number.isFinite(dmg) && !(dmg > 0)) return;   // защита: героя как врага не бить, NaN-урон не пускать (иначе NaN расползается в статы)
   if (m.dead) return;
   if (m.mark > 0 && D.mark) dmg *= 1 + D.mark;
   if (!col && D.mark > .01) m.mark = 3;

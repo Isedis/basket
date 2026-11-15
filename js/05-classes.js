@@ -564,7 +564,7 @@ function drawOrb(type, x, y, a, c) {
   }
 }
 function skyStrike(type, o, dmg, c, name) {
-  const tx = o.x, ty = o.y, hit = () => { if (!o.dead) hitMob(o, dmg, true, true, c); ring(tx, ty - 2, 16, c); groundMark(tx, ty + 2, 14, type === 'meteor' || type === 'quake' ? '#ff9a3c' : type === 'dark' ? '#7affb0' : '#ffffff'); fxLabel(name, tx, ty - 18, c); shake = Math.max(shake, 4); hitStop = Math.max(hitStop, .03); sfx.boom(); };
+  const tx = o.x, ty = o.y, hit = () => { if (!o.dead && o !== hero) hitMob(o, dmg, true, true, c); /* «землетрясение» берсерка бьёт вокруг героя, не по нему */ ring(tx, ty - 2, 16, c); groundMark(tx, ty + 2, 14, type === 'meteor' || type === 'quake' ? '#ff9a3c' : type === 'dark' ? '#7affb0' : '#ffffff'); fxLabel(name, tx, ty - 18, c); shake = Math.max(shake, 4); hitStop = Math.max(hitStop, .03); sfx.boom(); };
   switch (type) {
     case 'meteor': dropFx(tx + 40, ty - 90, o, .32, '#ff7a30', 6, hit); break;
     case 'sword': fx1(.3, p => art('sword', { G: '#ffd84a', W: '#ffffff', S: '#c9ced6', H: '#6a4a2a' }, tx, ty - 80 + 70 * p * p, 1.6, 0, 1, '#ffffff'), hit); break;
