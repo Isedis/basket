@@ -247,6 +247,7 @@ let waves = [];
 function heroAttack(t) {
   const d = Math.hypot(t.x - hero.x, t.y - hero.y) - (t.sz - 1) * 4;
   hero.face = t.x >= hero.x ? 1 : -1;
+  haStart(t, d);   // визуальный ролик атаки
   if (clsAttack(t, d)) return;
   if (d <= MELEE) return heroStrike(t, false);
   hero.swing = .13; hero.swType = 0; hero.swDur = .13; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x);
@@ -280,6 +281,7 @@ function heroStrike(t, fromWave) {
   if (crit && sy(2)) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * .03 * sy(2));
   if (!fromWave) { hero.swing = hero.swDur; hero.swingA = Math.atan2(t.y - hero.y, t.x - hero.x); hero.face = t.x >= hero.x ? 1 : -1; }
   if (ci === 2) hero.kbBoost = 3.5;
+  haHit(t, crit);
   hitMob(t, dmg * (1 + ta('x_focus')) * flyMul(fromWave), crit, true);
   if (D.bounce > 0) bounceFrom(t, dmg * .6, D.bounce);
   if (D.echo > .01) echoes.push({ x: t.x, y: t.y, t: .45, dmg: dmg * D.echo });

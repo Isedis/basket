@@ -2,7 +2,7 @@
 /* ---------- основной цикл ---------- */
 let spawnT = 0, pressT = 0, kpsT = 0, uiT = 0, saveT = 0;
 function update(dt) {
-  juiceTick(dt); smokeTick(dt);
+  juiceTick(dt); smokeTick(dt); slashTick(dt); haRunTick(dt);
   if (US && performance.now() - usReal > 250) ultFrame(dt, true);   // окно в фоне или симуляция: ульта идёт по игровому времени
   time += dt; tapCd -= dt;
   const z = zs();
@@ -279,7 +279,7 @@ function render() {
   }
   { const hx = hero.x, hy = hero.y - 4; for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3) * (Math.abs(p.x - hx) < 6 && Math.abs(p.y - hy) < 7 ? .3 : 1); pix(p.x, p.y, p.c); } }
   ctx.globalAlpha = 1;
-  drawSmoke(); drawJuice();
+  drawSmoke(); drawJuice(); drawSlashes();
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
   for (const r of rings) { if (r.max < 10 && mobs.length > 60) continue; const k = r.l * 4, fr = r.r / r.max; if (fr < .45) glow(r.x, r.y, r.c, Math.min(18, r.max * .6), .5 * (1 - fr / .45));
     ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .75, k); const n = Math.max(16, Math.floor(r.r * 6)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, i % 2 ? r.c : '#ffffff'); }
@@ -450,7 +450,7 @@ function drawHero(rk) {
   ctx.globalAlpha = .9; for (let i = 0; i < 20; i++) { const a = i / 20 * 6.28; pix(hero.x + Math.cos(a) * 7, hero.y + Math.sin(a) * 2.4, i % 2 ? CL().c : '#ffffff'); } ctx.globalAlpha = 1;
   heroFrame = pickHeroFrame();
   const moving = heroFrame === 'walk';
-  const hop = hero.swType === 2 && hero.swing > hero.swDur * .4 ? -3 : 0;
+  const hop = 0;   // прыжок добивающего — в анимации героя (haPose)
   if (hero.iframe > 0 && Math.sin(time * 40) > 0) ctx.globalAlpha = .5;
   const spr = heroSprite(rk, hero.hurt > 0, S.hpf < .35);
   const flip = (img, X, Y, f) => { ctx.save(); if (f < 0) { ctx.translate((X + 4) * 2, 0); ctx.scale(-1, 1); } ctx.drawImage(img, X - (img.ox || 0), Y - (img.oy || 0)); ctx.restore(); };   // крупные облики центрируются по ногам

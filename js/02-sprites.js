@@ -282,8 +282,11 @@ const H16 = {
 // ноги: 2 строки, три кадра — стойка и два шага
 function legRows(k, f) {
   const [a, b] = H16[k].legs;
-  if (a === 'robe') return ({ idle: ["..8cccccccccc8..", "....22....22...."], walk: ["..8cccccccccc8..", "...22......22..."], walk2: ["...8cccccccccc8.", ".....22..22....."] }[f] || ["..8cccccccccc8..", "....22....22...."]).map(s => s.replace(/c/g, b));
-  return ({ idle: [".....pp..pp.....", "....sss..sss...."], walk: ["....pp....pp....", "...sss....sss..."], walk2: [".....pp..pp.....", ".....ss..sss...."] }[f] || [".....pp..pp.....", "....sss..sss...."]).map(s => s.replace(/p/g, a).replace(/s/g, b));
+  // кадры ног: стойка, бег (4 фазы: шаг — проход — шаг — проход), выпад (передняя нога вперёд), прыжок (ноги поджаты)
+  if (a === 'robe') return ({ idle: ["..8cccccccccc8..", "....22....22...."], walk: ["..8cccccccccc8..", "...22......22..."], walk2: ["...8cccccccccc8.", ".....22..22....."], walk3: [".8cccccccccc8...", "....22..22......"],
+    lunge: [".8ccccccccccc8..", "..22.......222.."], jump: ["...8cccccccc8...", ".....22..22....."] }[f] || ["..8cccccccccc8..", "....22....22...."]).map(s => s.replace(/c/g, b));
+  return ({ idle: [".....pp..pp.....", "....sss..sss...."], walk: ["....pp....pp....", "...sss....sss..."], walk2: [".....pp..pp.....", ".....ss..sss...."], walk3: [".....pp..pp.....", "....sss..ss....."],
+    lunge: ["....pp.....pp...", "...ss......sss.."], jump: [".....pp..pp.....", "......ssss......"] }[f] || [".....pp..pp.....", "....sss..sss...."]).map(s => s.replace(/p/g, a).replace(/s/g, b));
 }
 const HAIR = { war: '#7a4a2a', bers: '#e8742a', pal: '#e8c060', sham: '#2a1a14', arch: '#8a5a2a', gamb: '#3a2418', alch: '#c04a20', chrono: '#f0f0f0' };
 const WREST = { sword: 40, axe: 30, hammer: 25, mace: 35, staff: 8, dagger: 75, rapier: 65, runeblade: 40, scythe: 12, bow: 0, flask: 0, fist: 0 };
@@ -351,19 +354,22 @@ const HF = {"war": {"2": {"top": ["........48......"], "r": {"0": ".......448...
 // облик: 1 — 16, 2 — 20, 3 — 24, 4 — 28 пикселей; mode: 'still' (с оружием в покое), иначе кадр боя
 const PAD16 = [0, 2, 4, 6], TOP16 = [0, 4, 8, 12];
 const h16Cache = new Map();
-function pat16(k, form, frame = 'idle', ang = null, atk = false, M = 0) {
-  const key = k + form + frame + ang + atk + M; let o = h16Cache.get(key); if (o) return o;
+// lean — наклон корпуса (голова сдвигается на lean, торс на половину; + вперёд), crouch — присед на 1 пиксель, legs — кадр ног
+function pat16(k, form, frame = 'idle', ang = null, atk = false, M = 0, lean = 0, crouch = 0, legs = null) {
+  const key = k + form + frame + ang + atk + M + '|' + lean + crouch + legs; let o = h16Cache.get(key); if (o) return o;
   const fi = Math.max(0, Math.min(3, form - 1)), L = PAD16[fi] + M, T = TOP16[fi] + M, Wd = 16 + 2 * L, Hh = 16 + T;
   const g = Array.from({ length: Hh }, () => Array(Wd).fill('.'));
   const hf = HF[k] && HF[k][Math.min(4, form)]; let body = H16[k].b.slice(); if (hf) for (const i in hf.r) body[i] = hf.r[i];
   if (frame === 'breath') body = ['................', ...body.slice(0, 9), ...body.slice(10)];
   if (frame === 'atk') body = body.map((r, i) => i < 10 ? '.' + r.slice(0, 15) : r);
   if (frame === 'hurt') body = body.map((r, i) => i < 10 ? r.slice(1) + '.' : r);
-  const rows = [...body, ...legRows(k, frame === 'walk' || frame === 'walk2' ? frame : 'idle')];
+  if (lean) body = body.map((r, i) => shiftRow(r, i < 10 ? lean : Math.trunc(lean / 2)));
+  if (crouch && frame !== 'breath') body = ['................', ...body.slice(0, 9), ...body.slice(10)];
+  const rows = [...body, ...legRows(k, legs || (frame === 'walk' || frame === 'walk2' ? frame : 'idle'))];
   rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.') g[T + j][L + i] = ch; }));
-  if (hf) { const tp = hf.top, sh0 = frame === 'atk' ? 1 : frame === 'hurt' ? -1 : 0, by0 = frame === 'breath' ? 1 : 0; tp.forEach((r, j) => [...r].forEach((ch, i) => { const y = T - tp.length + j + by0, x = L + i + sh0; if (ch !== '.' && y >= 0 && g[y] && x >= 0 && x < Wd) g[y][x] = ch; })); }
+  if (hf) { const tp = hf.top, sh0 = (frame === 'atk' ? 1 : frame === 'hurt' ? -1 : 0) + lean, by0 = frame === 'breath' || crouch ? 1 : 0; tp.forEach((r, j) => [...r].forEach((ch, i) => { const y = T - tp.length + j + by0, x = L + i + sh0; if (ch !== '.' && y >= 0 && g[y] && x >= 0 && x < Wd) g[y][x] = ch; })); }
   if (hf && hf.d) for (const d of hf.d) deco16(g, d, L, T, form >= 3);
-  const sh = frame === 'atk' ? 1 : frame === 'hurt' ? -1 : 0, by = frame === 'breath' ? 1 : 0;
+  const sh = (frame === 'atk' ? 1 : frame === 'hurt' ? -1 : 0) + lean, by = frame === 'breath' || crouch ? 1 : 0;
   plotWeapon(g, k, L + 13 + sh, T + 12 + by, ang == null ? WREST[H16[k].w.t] : ang, atk, Math.min(4, form));
   // контур
   const out = g.map(r => r.slice());
@@ -380,7 +386,7 @@ function crop16(P) {
   cropCache.set(P, o); return o;
 }
 // уменьшенная копия (для эффектов на холсте мира: силуэты, обводки, следы)
-const HSC = .75, halfCache = new Map();   // пиксель героя = 3/4 пикселя мира
+const HSC = .94, halfCache = new Map();   // пиксель героя ≈ пиксель мира (герой крупнее ×1.25 прежнего)
 function half16(P) {
   let o = halfCache.get(P); if (o) return o;
   const f = HSC, H = Math.round(P.length * f), W = Math.round(P[0].length * f) & ~1; o = [];
@@ -391,15 +397,12 @@ function half16(P) {
 // текущий кадр боя в высоком разрешении: тело + оружие под углом замаха
 let heroKey = '';
 function heroHi() {
-  const k = cls(), f = shownForm(k), w = H16[k].w.t; let ang = null, atk = false;
-  if (hero.spin > 0) { ang = (Math.floor(time * 24) * 45) % 360; atk = true; }
-  else if (hero.sweep > 0) { ang = -120 + (1 - hero.sweep / .5) * 280; atk = true; }
-  else if (hero.cast > 0 || hero.fists > 0) { ang = w === 'staff' ? 75 : 60; atk = true; }
-  else if (hero.swing > 0) { const p = 1 - hero.swing / (hero.swDur || .13), r = WREST[w]; ang = p < .3 ? r + (-110 - r) * p / .3 : -110 + 235 * Math.min(1, (p - .3) / .45); atk = true; }
-  else if (heroFrame === 'breath') ang = WREST[w] + 5;
-  if (ang != null) ang = Math.round(ang / 15) * 15;
-  heroKey = k + f + heroFrame + ang + atk;
-  return pat16(k, f, heroFrame, ang, atk, 10);
+  const k = cls(), f = shownForm(k), w = H16[k].w.t, P = haPose(k, w);   // поза — из анимации героя (js/11-hero-anim.js)
+  let ang = P.ang, atk = P.atk;
+  if (hero.sweep > 0 && !haOn()) { ang = Math.round((-120 + (1 - hero.sweep / .5) * 280) / 15) * 15; atk = true; }
+  const fr = heroFrame === 'hurt' && !haOn() ? 'hurt' : 'idle';
+  heroKey = k + f + fr + ang + atk + '|' + P.lean + P.crouch + P.legs;
+  return pat16(k, f, fr, ang, atk, 10, P.lean, P.crouch, P.legs);
 }
 const heroPat = () => half16(heroHi());
 const hTop = () => Math.round(TOP16[Math.max(0, Math.min(3, shownForm(cls()) - 1))] * HSC);
@@ -576,17 +579,16 @@ function drawHeroHi(d, k, sx, sy) {
       fctx.setTransform(1, 0, 0, 1, 0, 0); if (g.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); } fctx.globalAlpha = g.a; fctx.drawImage(sl, cx - Math.round(sl.width * hk0 / 2), Math.round((g.y - camY + sy) * k) - sl.height * hk0, sl.width * hk0, sl.height * hk0); }
     fctx.restore(); heroGhosts = []; }
   if (!d) return;
-  const spr = heroSprite(d.rk, d.flash, d.ex, true), PW = spr.width, PH = spr.height, hk = Math.max(1, Math.round(k * HSC));
-  const cx = Math.round((d.x - camX + sx) * k), X = cx - Math.round(PW * hk / 2), Y = Math.round((d.y - camY + sy) * k) - PH * hk;
+  const spr = heroSprite(d.rk, d.flash, d.ex, true), PW = spr.width, PH = spr.height, hk = Math.max(1, Math.round(k * HSC)), P = haPose(cls(), H16[cls()].w.t);
+  haRunes(P, k, sx, sy);
+  // упругость: выпад к цели, прыжок, сжатие/растяжение от ног
+  const cx = Math.round((d.x - camX + sx + P.ox * d.face) * k), DW = Math.round(PW * hk * P.sx), DH = Math.round(PH * hk * P.sy), X = cx - Math.round(DW / 2), Y = Math.round((d.y - camY + sy + P.oy) * k) - DH;
   fctx.save(); fctx.imageSmoothingEnabled = false; if (d.face < 0) { fctx.translate(cx * 2, 0); fctx.scale(-1, 1); }
   for (const g of heroGlow) { const P = heroHi(), sl = sprite(P, { h: g.c, k: g.c, n: g.c, 0: g.c, 1: g.c, 2: g.c, 3: g.c, 4: g.c, 5: g.c, 6: g.c, 7: g.c, 8: g.c, 9: g.c }, 'hsH' + heroKey + g.c);
-    fctx.globalAlpha = g.a; for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) fctx.drawImage(sl, X + ox * g.o * hk, Y + oy * g.o * hk, PW * hk, PH * hk); }
-  fctx.globalAlpha = 1; fctx.drawImage(spr, X, Y, PW * hk, PH * hk);
-  const w = H16[cls()].w, p = hero.swing > 0 ? 1 - hero.swing / (hero.swDur || .13) : -1;
-  if (p > .3 && w.b !== undefined && w.t !== 'bow' && w.t !== 'flask' && w.t !== 'fist') {
-    const len = (w.h || 0) + (w.b || 0) + 1, px0 = cx + 5.5 * hk, py0 = Y + (PH - 3.5) * hk, a1 = -110, a2 = -110 + 235 * Math.min(1, (p - .3) / .45);
-    fctx.fillStyle = '#ffffff'; for (let a = a1; a < a2 - 10; a += 7) { const th = a * Math.PI / 180, rr = len * hk; fctx.globalAlpha = .55 * (a - a1) / (a2 - a1 + 1);
-      fctx.fillRect(Math.round(px0 + Math.sin(th) * rr), Math.round(py0 - Math.cos(th) * rr), Math.ceil(hk), Math.ceil(hk)); fctx.fillRect(Math.round(px0 + Math.sin(th) * (rr - hk)), Math.round(py0 - Math.cos(th) * (rr - hk)), Math.ceil(hk), Math.ceil(hk)); } }
+    fctx.globalAlpha = g.a; for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) fctx.drawImage(sl, X + ox * g.o * hk, Y + oy * g.o * hk, DW, DH); }
+  fctx.globalAlpha = 1; fctx.drawImage(spr, X, Y, DW, DH);
+  haExtras(P, cx, X, Y, PW, PH * P.sy, hk, cls());
+  // старый точечный след замаха заменён шлейфом haSmear (js/11-hero-anim.js)
   fctx.restore(); fctx.globalAlpha = 1;
   // полоска HP над героем: зелёная → жёлтая → красная, белый «хвост» показывает только что потерянное
   const hf = clamp(hero.hp / (D.maxHP || 1), 0, 1), now = time, dtl = Math.min(.1, now - (hero.hpLT ?? now)); hero.hpLT = now;
