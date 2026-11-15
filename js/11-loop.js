@@ -2,7 +2,7 @@
 /* ---------- основной цикл ---------- */
 let spawnT = 0, pressT = 0, kpsT = 0, uiT = 0, saveT = 0;
 function update(dt) {
-  juiceTick(dt);
+  juiceTick(dt); smokeTick(dt);
   if (US && performance.now() - usReal > 250) ultFrame(dt, true);   // окно в фоне или симуляция: ульта идёт по игровому времени
   time += dt; tapCd -= dt;
   const z = zs();
@@ -232,10 +232,7 @@ function render() {
   // аура
   if (rk >= 4) {
     const ac = ARMOR[(rk + 4) % ARMOR.length], rad = 6 + Math.min(10, (rk - 4) * .5) + Math.sin(time * 4);
-    ctx.globalAlpha = .55;
-    const n = Math.floor(10 + rad * 2);
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + time * 1.5; pix(hero.x + Math.cos(a) * rad, hero.y - 3 + Math.sin(a) * rad * .6, ac); }
-    ctx.globalAlpha = 1;
+    glow(hero.x, hero.y - 1, ac, rad, .35 + .1 * Math.sin(time * 3));
   }
   drawHazGround();
   // объекты по y
@@ -282,9 +279,11 @@ function render() {
   }
   { const hx = hero.x, hy = hero.y - 4; for (const p of parts) { ctx.globalAlpha = Math.min(p.f ? .55 : 1, p.l * 3) * (Math.abs(p.x - hx) < 6 && Math.abs(p.y - hy) < 7 ? .3 : 1); pix(p.x, p.y, p.c); } }
   ctx.globalAlpha = 1;
-  drawJuice();
+  drawSmoke(); drawJuice();
   for (const b of bolts) { line(b.x1, b.y1, b.x2, b.y2, b.c, true); }
-  for (const r of rings) { ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .7, r.l * 4); const n = Math.max(8, Math.floor(r.r * 2.5)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, r.c); } }
+  for (const r of rings) { if (r.max < 10 && mobs.length > 60) continue; const k = r.l * 4, fr = r.r / r.max; if (fr < .45) glow(r.x, r.y, r.c, Math.min(18, r.max * .6), .5 * (1 - fr / .45));
+    ctx.globalAlpha = Math.min(r.c === '#ff3322' ? 1 : .75, k); const n = Math.max(16, Math.floor(r.r * 6)); for (let i = 0; i < n; i++) { const a = i / n * 6.28; pix(r.x + Math.cos(a) * r.r, r.y + Math.sin(a) * r.r * .6, i % 2 ? r.c : '#ffffff'); }
+    if (r.r > 6) { ctx.globalAlpha = Math.min(.35, k * .4); const n2 = Math.floor(n * .7); for (let i = 0; i < n2; i++) { const a = i / n2 * 6.28; pix(r.x + Math.cos(a) * (r.r - 2), r.y + Math.sin(a) * (r.r - 2) * .6, r.c); } } }
   ctx.globalAlpha = 1;
   drawUfx(); drawUltCharge(); drawEvolveWorld(); drawWorldFx();
   // волны клинка: светлый серп поперёк полёта + след
@@ -302,7 +301,7 @@ function render() {
   for (const o of orbs) { pix(o.x, o.y, o.c); ctx.globalAlpha = .45; pix(o.x - o.vx * .025, o.y - o.vy * .025, o.c); ctx.globalAlpha = 1; }
   drawNfx();
   drawHazTop();
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); drawArenaFx(); ctx.restore();
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, sx, sy); drawArenaFx(); drawFg(); ctx.restore();
   drawHeroTop(rk);
   // полоса вожака (экранные координаты)
   const boss = mobs.find(m => m.boss);
@@ -372,13 +371,13 @@ function render() {
   }
   // лента событий
   if (feedArr.length) {
-    const fs3 = Math.round(base * .7 / DPR) * DPR;
+    const fs3 = Math.round(base * .6 / DPR) * DPR;   // лента событий — тихая, мелкая
     fctx.font = `${fs3}px "Press Start 2P", monospace`; fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs3 / 3); fctx.strokeStyle = '#000';
     const y0 = (H - 17) * k, maxW = fx.width - 6 * k - (combo >= 3 ? 34 * k : 0);   // над надписью ульты и не заезжая на комбо
     feedArr.forEach((f, i) => {
       const yy = y0 - (feedArr.length - 1 - i) * fs3 * 1.5; let s = f.s;
       if (fctx.measureText(s).width > maxW) { while (s.length > 4 && fctx.measureText(s + '…').width > maxW) s = s.slice(0, -1); s += '…'; }
-      fctx.globalAlpha = .8 * clamp(1 - (f.t - 2) / 1, 0, 1);
+      fctx.globalAlpha = .6 * clamp(1 - (f.t - 2) / 1, 0, 1);
       fctx.strokeText(s, 3 * k, yy); fctx.fillStyle = f.c; fctx.fillText(s, 3 * k, yy);
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
@@ -409,7 +408,7 @@ function render() {
   }
   if (combo >= 3) {
     const col = combo < 25 ? '#ffffff' : combo < 100 ? '#ffdd44' : combo < 500 ? '#ff7a00' : combo < 2500 ? '#ff2a6a' : '#d9a0ff';
-    const fs = Math.round(base * (.9 + comboPop * 2) / DPR) * DPR, fs2 = Math.round(base * .7 / DPR) * DPR;
+    const fs = Math.round(base * (.75 + comboPop * 1.2) / DPR) * DPR, fs2 = Math.round(base * .55 / DPR) * DPR;
     const bw = 30 * k, cx = fx.width - 4 * k - bw, cy = (H - 17) * k - fs2 * 1.3 - 6 * DPR - fs * .9;
     fctx.textAlign = 'left'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
     fctx.font = `${fs}px "Press Start 2P", monospace`; fctx.fillStyle = col;

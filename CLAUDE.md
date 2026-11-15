@@ -36,6 +36,7 @@ DESIGN.md         дизайн и баланс
 | 07-ascension | созвездия, Страж стены, вознесение, искры, Небосвод `SN`, **`recalc()`**, `zoneHP`/`zoneDmg`/`threatM`, `fastStart` |
 | 08-stats | открытие статов, Алтарь силы, подробности по тапу |
 | 09-render-fx | canvas/resize, сочность ударов (`impacts`, `deaths`, `wisps`), арены (`PROPS`, `BPROPS`, `buildGround`), звук, уведомления |
+| 09-arena | вид боя: тайловая земля биомов (`groundPixels`, шум `fbm`/`cells`), передний план с параллаксом (`drawFg`), погода (`drawWeather`), свечения `glow()`, дым `puff()` |
 | 10-combat | `spawnMob`, орда (`hordeK`, `crowd`), `heroDeath`, `bossJudge` (ярость), **`hurtHero` (натиск)**, `hitMob`, `killMob`, атака героя, ульты, вожаки `bossAI`, эффекты, сокровища |
 | 11-loop | **`update(dt)`**, **`render()`**, `drawHero` |
 | 12-ui | `updateUI`, автоматика, `rebirth` |

@@ -20,11 +20,12 @@ function resize() {
 }
 /* ---------- сочность ударов: искры попаданий, осколки при смерти, души к счётчику ---------- */
 let impacts = [], deaths = [], wisps = [];
-function impact(x, y, crit, c) { if (SIM || S.fxLow || impacts.length > 28) return; impacts.push({ x, y, t: 0, crit, c: c || (crit ? '#ffdd33' : '#ffffff'), r: rnd() < .5 }); }
+function impact(x, y, crit, c) { if (SIM || S.fxLow || impacts.length > 28) return; if (crit && rnd() < .5) burst(x, y, c || '#ffdd33', 3, 45); impacts.push({ x, y, t: 0, crit, c: c || (crit ? '#ffdd33' : '#ffffff'), r: rnd() < .5 }); }
 function deathFx(m) {
   if (SIM) return;
   if (S.fxLow) return;
   if (deaths.length < 26) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy) || 1, s = 8 * m.sz;
+    if (m.boss || deaths.length < 10) puff(m.x, m.y - 2, m.boss ? 14 : 5, m.boss ? '#2a2030' : '#3a3440', m.boss ? 6 : 1);
     deaths.push({ spr: mobSprite(m, false), x: m.x, y: m.y, s, t: 0, life: m.boss ? .9 : .45, kx: dx / d, ky: dy / d, v: (m.boss ? 30 : 55) * (.8 + rnd() * .4), spin: (rnd() - .5) * 2, boss: m.boss }); }
   if (wisps.length < 18 && (m.boss || m.rare || rnd() < Math.min(1, 6 / (mobs.length + 1)))) wisps.push({ x: m.x, y: m.y - 4, vx: (rnd() - .5) * 60, vy: -40 - rnd() * 30, t: 0, c: m.rare ? '#ffd84a' : '#d38bff', tr: [] });
 }
@@ -39,7 +40,7 @@ function juiceTick(dt) {
 function drawJuice() {
   // осколки: вспышка → четыре куска разлетаются
   for (const p of deaths) { const k = p.t / p.life, s = p.s, x0 = p.x - s / 2, y0 = p.y - s;
-    if (p.t < .05) { ctx.globalAlpha = 1; ctx.drawImage(silMob(p.spr), Math.round(x0), Math.round(y0), s, s); continue; }
+    if (p.t < .05) { ctx.globalAlpha = 1; ctx.drawImage(silMob(p.spr), Math.round(x0), Math.round(y0), s, s); if (p.boss) glow(p.x, p.y - s / 2, '#ffe08a', 16, .7); continue; }
     ctx.globalAlpha = Math.max(0, 1 - k * k);
     const h = s / 2, sp = p.v * p.t, g = 90 * p.t * p.t;
     for (let i = 0; i < 4; i++) { const qx = i % 2, qy = i >> 1, ox = (qx ? 1 : -1) * sp * .6 + p.kx * sp * .5, oy = (qy ? .4 : -1) * sp * .5 + p.ky * sp * .3 + g;
@@ -49,6 +50,7 @@ function drawJuice() {
   ctx.globalAlpha = 1;
   // искры попаданий: крест → косой крест
   for (const p of impacts) { const x = Math.round(p.x), y = Math.round(p.y), f = p.t / (p.crit ? .16 : .1), L = p.crit ? 4 : 2;
+    if (p.crit || impacts.length < 8) glow(x, y, p.c, p.crit ? 6 : 3, (1 - f) * (p.crit ? .7 : .3));
     ctx.fillStyle = f < .45 ? '#ffffff' : p.c;
     if (f < .45 ? !p.r : p.r) { ctx.fillRect(x - L, y, L * 2 + 1, 1); ctx.fillRect(x, y - L, 1, L * 2 + 1); }
     else for (let i = 1; i <= L; i++) { pix(x - i, y - i, ctx.fillStyle); pix(x + i, y - i, ctx.fillStyle); pix(x - i, y + i, ctx.fillStyle); pix(x + i, y + i, ctx.fillStyle); }
@@ -121,8 +123,8 @@ function propsGround(g, bi, sr) {
 let vigC = null, vigK = '';
 function drawArenaFx() {
   if (S.fxLow) return;
-  const b = biomeOf(S.zone), bi = b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, kind = AMB[bi] || 'spark';
-  for (let i = 0; i < 26; i++) { const ph = i * 7.31, sd = (i * 97.13) % 1;
+  drawWeather();
+  if (0) for (let i = 0; i < 26; i++) { const b = biomeOf(S.zone), kind = 'spark'; const ph = i * 7.31, sd = (i * 97.13) % 1;
     let x, y, c, a = .7;
     if (kind === 'snow' || kind === 'ash') { y = ((i * 41.7 + time * (kind === 'snow' ? 9 : 5)) % (H + 6)) - 3; x = ((i * 53.3 + Math.sin(time * .8 + ph) * 5) % W + W) % W; c = kind === 'snow' ? '#ffffff' : '#8a7a70'; a = .6; }
     else if (kind === 'ember' || kind === 'bubble') { y = H + 3 - ((i * 41.7 + time * (kind === 'ember' ? 14 : 8)) % (H + 6)); x = ((i * 53.3 + Math.sin(time * 1.3 + ph) * 3) % W + W) % W; c = kind === 'ember' ? (i % 3 ? '#ff7a2a' : '#ffd84a') : '#9ae0ff'; a = .7; }
@@ -143,14 +145,11 @@ function buildGround() {
   g.fillStyle = b.g[0]; g.fillRect(0, 0, AW, AH);
   let seed = S.zone * 9973;
   const sr = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let i = 0; i < AW * AH * .12; i++) { g.fillStyle = b.g[1]; g.fillRect(sr() * AW | 0, sr() * AH | 0, 1, 1); }
-  for (let i = 0; i < AW * AH * .015; i++) {
-    const x = sr() * AW | 0, y = sr() * AH | 0; g.fillStyle = b.g[2];
-    g.fillRect(x, y, 1, 1); if (sr() < .5) { g.fillRect(x - 1, y + 1, 1, 1); g.fillRect(x + 1, y + 1, 1, 1); }
-  }
+  const gbi = b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi;
+  if (!SIM) groundPixels(g, gbi, b, S.zone * 31 + 5);   // тайловая земля биома (js/09-arena.js)
   if (b.world != null) worldGround(g, b.world, sr);
   propsGround(g, b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, sr);
-  g.fillStyle = 'rgba(8,6,16,.4)'; g.fillRect(0, 0, AW, AH);   // приглушённый фон, чтобы бой читался
+  g.fillStyle = 'rgba(8,6,16,.24)'; g.fillRect(0, 0, AW, AH);   // чуть приглушить: земля сочная, но темнее врагов
   decal = document.createElement('canvas'); decal.width = AW; decal.height = AH;
   for (let i = 0; i < AW * AH * .002; i++) {
     const x = sr() * AW | 0, y = sr() * AH | 0; g.fillStyle = shade(b.g[1], -.3);
@@ -227,7 +226,7 @@ let feedArr = [], gainFeedT = 0;
 // лента: не чаще строки в секунду, одинаковые строки не повторяются 6 с (иначе сотни строк в минуту)
 const feedSeen = new Map(); let feedLast = -9;
 function feed(s, c) { const k = String(s).replace(/[0-9.,]+[a-zA-Zа-я]*/g, '#'); if (time - (feedSeen.get(k) ?? -99) < 6 || time - feedLast < 1) return; feedSeen.set(k, time); feedLast = time; if (feedSeen.size > 200) feedSeen.clear();
-  feedArr.push({ s, c, t: 0 }); if (feedArr.length > 3) feedArr.shift(); }
+  feedArr.push({ s, c, t: 0 }); if (feedArr.length > 2) feedArr.shift(); }
 const ftWordT = {};
 function ftext(x, y, s, c, size = 1, life = .9) {
   if (SIM) return;

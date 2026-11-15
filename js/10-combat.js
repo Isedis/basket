@@ -120,7 +120,7 @@ function hurtHero(dmg, unblock, cap, quiet) {
   }
   return dmg;
 }
-function ring(x, y, r, c) { if (SIM) return; groundMark(x, y + 2, r, c); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
+function ring(x, y, r, c) { if (SIM) return; groundMark(x, y + 2, r, c); if (r >= 24 && smoke.length < 30) puff(x, y, r * .4, '#2e2836', 3); if (r >= 12 && RING_LABEL[c]) fxLabel(RING_LABEL[c], x, y - r * .6 - 4, c); if (S.fxLow && r < 12) return; if (rings.length > 40) rings.shift(); rings.push({ x, y, r: 1, max: r, c, l: .3 }); }
 function hitAround(x, y, r, dmg, col, skip) { for (const o of mobs) if (!o.dead && o !== skip && Math.hypot(o.x - x, o.y - y) < r) hitMob(o, dmg, false, false, col); }
 function hitMob(m, dmg, crit, show, col) {
   if (!m || m === hero || !Number.isFinite(dmg) && !(dmg > 0)) return;   // защита: героя как врага не бить, NaN-урон не пускать (иначе NaN расползается в статы)
@@ -150,7 +150,7 @@ function hitMob(m, dmg, crit, show, col) {
   const kb = (m.boss ? .4 : m.goblin ? .5 : 2.6) * (hero.kbBoost || 1); m.kx += dx / d * kb * 8; m.ky += dy / d * kb * 8;
   m.sqT = time + (crit ? .14 : .1); m.sqx = dx / d; impact(m.x - dx / d * 2 * m.sz, m.y - 4 * m.sz, crit, col); if (crit && D.aps < 4) hitStop = Math.max(hitStop, .025);
   burst(m.x, m.y - 3 * m.sz, col || (m.rare ? '#ffd84a' : '#fff'), crit ? 5 : 2, 25);
-  if (show && (D.aps < 5 || crit) && texts.length < (D.aps < 5 ? 10 : 5) && time > (hitMob.nt || 0)) { if (D.aps >= 5) hitMob.nt = time + .12; ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#fff'), crit ? 1.3 : 1); }
+  if (show && (D.aps < 5 || crit) && texts.length < (D.aps < 5 ? 10 : 5) && time > (hitMob.nt || 0)) { if (D.aps >= 5) hitMob.nt = time + .12; ftext(m.x, m.y - 8 * m.sz, fmt(dmg) + (crit ? '!' : ''), col || (crit ? '#ffdd33' : '#e8e8f0'), m.boss ? (crit ? 1.15 : .9) : crit ? .95 : .7, crit ? .8 : .55); }
   if (m.hp <= 0) { m.dead = true; killMob(m); }
 }
 
