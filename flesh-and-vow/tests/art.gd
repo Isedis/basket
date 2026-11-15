@@ -30,6 +30,12 @@ func run():
 	game.save_run()
 	game.load_run()
 	check(not game.blocked(game.player,9),"Old save inside redesigned north wall recovers safely")
+	var ordinary_save = game.save_path
+	var ordinary_contents = FileAccess.get_file_as_string(ordinary_save)
+	game.menu_action("art_probe")
+	check(game.save_path!=ordinary_save and FileAccess.get_file_as_string(ordinary_save)==ordinary_contents,"Art probe does not overwrite regular run")
+	game.leave_art_probe()
+	check(game.save_path==ordinary_save and not game.art_probe_active,"Leaving probe restores regular save location")
 	game.hp = 1
 	game.invincible = 0
 	game.hurt(2,game.player)
@@ -38,5 +44,5 @@ func run():
 	check(game.death_elapsed>0,"Player death animation advances independently of combat")
 	game.delete_run()
 	if FileAccess.file_exists(game.profile_path): DirAccess.remove_absolute(game.profile_path)
-	print("ART CHECKS: 8 | FAILURES: %d"%failures)
+	print("ART CHECKS: 10 | FAILURES: %d"%failures)
 	quit(1 if failures else 0)

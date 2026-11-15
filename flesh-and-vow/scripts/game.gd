@@ -16,6 +16,10 @@ var castle_art: Texture2D
 var corpses: Array = []
 var hit_stop = 0.0
 var death_elapsed = 0.0
+var art_probe_active = false
+var original_save_path = ""
+var original_profile_path = ""
+var original_profile: Dictionary = {}
 var swing_windup = 0.12
 var actors = preload("res://assets/actors.png")
 var icons = preload("res://assets/items.png")
@@ -111,6 +115,7 @@ func _notification(what):
 		get_tree().quit()
 
 func _unhandled_input(event):
+	if mode == "title" and art_probe_active: leave_art_probe()
 	if updater != null and updater.is_open(): return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F11:
@@ -198,6 +203,12 @@ func menu_buttons() -> Array:
 func menu_action(action: String):
 	match action:
 		"art_probe":
+			original_save_path = save_path
+			original_profile_path = profile_path
+			original_profile = profile.duplicate(true)
+			save_path += ".art-probe"
+			profile_path += ".art-probe"
+			art_probe_active = true
 			new_run()
 			player = Vector2(316,330)
 			invincible = 0
@@ -223,6 +234,15 @@ func menu_action(action: String):
 			mode = "playing"
 		"character": character = 1 - character
 		"end": mode = "title"
+
+func leave_art_probe():
+	if not art_probe_active: return
+	delete_run()
+	if FileAccess.file_exists(profile_path): DirAccess.remove_absolute(profile_path)
+	save_path = original_save_path
+	profile_path = original_profile_path
+	profile = original_profile.duplicate(true)
+	art_probe_active = false
 
 func new_run(fixed_seed: int = -1):
 	seed_value = fixed_seed if fixed_seed >= 0 else int(Time.get_unix_time_from_system()) ^ randi()
@@ -376,6 +396,7 @@ func spawn_enemy(type: String, p: Vector2, boss: bool):
 		"flash":0.0,"burn":0.0,"poison":0.0,"slow":0.0,"tick":0.0,"phase":0})
 
 func _process(delta):
+	if mode == "title" and art_probe_active: leave_art_probe()
 	anim += delta
 	if mode == "dead": death_elapsed += delta
 	menu_hover = -1
