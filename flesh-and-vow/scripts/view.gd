@@ -172,8 +172,8 @@ static func slash(g, p: Vector2):
 	if progress<Combat.CONTACT_RATIO or progress>Combat.ACTIVE_END: return
 	var pose = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,progress,g.attack_range(),g.elapsed)
 	var previous = Combat.weapon_pose(p,g.player_motion,g.swing_dir,3,maxf(Combat.CONTACT_RATIO,progress-0.1),g.attack_range(),g.elapsed)
-	var tip = pose.hand+Vector2.from_angle(pose.angle)*Combat.BLADE_MAX*pose.scale
-	var tail = previous.hand+Vector2.from_angle(previous.angle)*Combat.BLADE_MAX*previous.scale
+	var tip = pose.hand+Vector2.from_angle(pose.angle)*(Combat.BLADE_MIN+(Combat.BLADE_MAX-Combat.BLADE_MIN)*pose.scale)
+	var tail = previous.hand+Vector2.from_angle(previous.angle)*(Combat.BLADE_MIN+(Combat.BLADE_MAX-Combat.BLADE_MIN)*previous.scale)
 	g.draw_line(tail.snapped(Vector2(2,2)),tip.snapped(Vector2(2,2)),Color(0.9,0.79,0.62,0.42),3)
 
 static func debug_shapes(g):

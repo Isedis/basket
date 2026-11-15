@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="Плоть и Обет"
-run/main_scene="res://main.tscn"
+run/main_scene="res://patch_boot.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://assets/icon.svg"
 

@@ -6,6 +6,8 @@ const ACTIVE_END = 0.65
 const BASE_REACH = 57.0
 const BODY_SHOULDER = Vector2(12,-38)
 const ARM_REACH = 21.0
+const UPPER_ARM = 13.0
+const FOREARM = 13.0
 const BLADE_MIN = 7.0
 const BLADE_MAX = 34.8
 const BLADE_HALF_WIDTH = 9.0
@@ -14,7 +16,7 @@ static func curve(value: float) -> float:
 	return smoothstep(0,1,clampf(value,0,1))
 
 static func weapon_angle(direction: Vector2, action: int, progress: float, facing: float) -> float:
-	var rest = 0.85 if facing>0 else PI-0.85
+	var rest = 0.35 if facing>0 else PI-0.35
 	var aim = direction.angle()
 	var back = aim-facing*1.7
 	if action==2: return lerp_angle(rest,back,curve(progress))
@@ -42,14 +44,40 @@ static func weapon_pose(p: Vector2, motion: Dictionary, direction: Vector2, acti
 	elif progress>ACTIVE_END: angle += sway*0.4*curve((progress-ACTIVE_END)/(1-ACTIVE_END))
 	if motion.has("weapon_override"): angle = float(motion.weapon_override)
 	var shoulder = body+Vector2(BODY_SHOULDER.x*facing,BODY_SHOULDER.y)
-	var hand = shoulder+Vector2.from_angle(angle)*ARM_REACH
-	var length_scale = 1.0+maxf(0,reach-BASE_REACH)/BLADE_MAX
-	return {"body":body,"angle":angle,"shoulder":shoulder,"hand":hand,"scale":length_scale,"hand_sign":facing}
+	# The wrist carries the handle; it does not have to point along the blade.
+	var rest_hand = Vector2(4*facing,18)
+	var back_hand = Vector2.from_angle(direction.angle()-facing*1.7)*18
+	var contact_hand = direction.normalized()*ARM_REACH
+	var follow_hand = Vector2.from_angle(direction.angle()+facing*0.8)*20
+	var offset = rest_hand
+	if action==2: offset = arm_arc(rest_hand,back_hand,curve(progress))
+	elif action==3:
+		if progress<=CONTACT_RATIO: offset = arm_arc(back_hand,contact_hand,curve(progress/CONTACT_RATIO))
+		elif progress<ACTIVE_END: offset = arm_arc(contact_hand,follow_hand,curve((progress-CONTACT_RATIO)/(ACTIVE_END-CONTACT_RATIO)))
+		else: offset = arm_arc(follow_hand,rest_hand,curve((progress-ACTIVE_END)/(1-ACTIVE_END)))
+	# A relaxed arm swings a little while walking, independently of the heavy blade.
+	offset.x += sin(phase)*1.1*weight if action not in [2,3] else 0.0
+	var hand = shoulder+offset
+	var elbow = arm_elbow(shoulder,hand,facing)
+	var length_scale = 1.0+maxf(0,reach-BASE_REACH)/(BLADE_MAX-BLADE_MIN)
+	return {"body":body,"angle":angle,"shoulder":shoulder,"elbow":elbow,"hand":hand,"scale":length_scale,"hand_sign":facing}
+
+static func arm_arc(from: Vector2, to: Vector2, progress: float) -> Vector2:
+	# Raise the hand around the shoulder, never through it (which flips the elbow).
+	return Vector2.from_angle(lerp_angle(from.angle(),to.angle(),progress))*lerpf(from.length(),to.length(),progress)
+
+static func arm_elbow(shoulder: Vector2, hand: Vector2, side: float) -> Vector2:
+	var axis = hand-shoulder
+	var distance = clampf(axis.length(),0.001,UPPER_ARM+FOREARM-0.001)
+	axis = axis.normalized() if axis.length_squared()>0.000001 else Vector2.DOWN
+	var along = (UPPER_ARM*UPPER_ARM-FOREARM*FOREARM+distance*distance)/(2*distance)
+	var height = sqrt(maxf(0,UPPER_ARM*UPPER_ARM-along*along))
+	return shoulder+axis*along+Vector2(axis.y,-axis.x)*height*side
 
 static func blade_polygon(pose: Dictionary) -> PackedVector2Array:
 	var points = PackedVector2Array()
 	for xy in [Vector2(BLADE_MIN,-BLADE_HALF_WIDTH),Vector2(BLADE_MAX,-BLADE_HALF_WIDTH),Vector2(BLADE_MAX,BLADE_HALF_WIDTH),Vector2(BLADE_MIN,BLADE_HALF_WIDTH)]:
-		xy.x *= pose.scale
+		xy.x = BLADE_MIN+(xy.x-BLADE_MIN)*pose.scale
 		points.append(pose.hand+xy.rotated(pose.angle))
 	return points
 

@@ -110,8 +110,39 @@ static func textures_for(type: String, look: int) -> Array:
 	return parts[actor]
 
 static func armed_layers(g, textures: Array, weapon: Dictionary, hand_sign: float, texture_flip: float, tint: Color, context: Dictionary):
-	limb(g,textures[3],weapon.shoulder,weapon.hand,5*hand_sign,texture_flip,tint,context)
-	part(g,textures[6],weapon.hand,weapon.angle,1,tint,context,Vector2(0.13,0.5),weapon.scale)
+	# Draw the handle behind the closed fist. The cleaver's handle sits above its blade.
+	var grip = Vector2(0.13,0.3 if textures[6]==parts[0][6] else 0.5)
+	weapon_part(g,textures[6],weapon,grip,hand_sign,tint,context)
+	var forearm_axis = (weapon.hand-weapon.elbow).normalized()
+	var fingertips = weapon.hand+forearm_axis*3
+	jointed_limb(g,textures[3],weapon.shoulder,weapon.elbow,fingertips,texture_flip,tint,context)
+
+static func weapon_part(g, tex: Texture2D, pose: Dictionary, grip: Vector2, edge_sign: float, tint: Color, context: Dictionary):
+	var size = tex.get_size()*2
+	# Keep the grip and neck fixed when an item lengthens the blade.
+	var neck_u = grip.x+Combat.BLADE_MIN/size.x
+	for span in [Vector2(0,neck_u),Vector2(neck_u,1)]:
+		var points = PackedVector2Array()
+		var uv = PackedVector2Array([Vector2(span.x,0),Vector2(span.y,0),Vector2(span.y,1),Vector2(span.x,1)])
+		for xy in uv:
+			var rel = (xy-grip)*size
+			if rel.x>Combat.BLADE_MIN: rel.x = Combat.BLADE_MIN+(rel.x-Combat.BLADE_MIN)*pose.scale
+			rel.y *= edge_sign
+			points.append(pose.hand+rel.rotated(pose.angle))
+		quad(g,tex,points,uv,tint,context)
+
+static func jointed_limb(g, tex: Texture2D, shoulder: Vector2, elbow: Vector2, fingertips: Vector2, flip: float, tint: Color, context: Dictionary):
+	var joints = [shoulder,elbow,fingertips]
+	var upper_normal = (elbow-shoulder).normalized().orthogonal()
+	var lower_normal = (fingertips-elbow).normalized().orthogonal()
+	var middle_normal = (upper_normal+lower_normal).normalized()
+	var width = float(tex.get_width())
+	var normals = [upper_normal*width,middle_normal*width/maxf(0.7,middle_normal.dot(upper_normal)),lower_normal*width]
+	for i in range(2):
+		var a = joints[i]
+		var b = joints[i+1]
+		var u = 0.0 if flip>0 else 1.0
+		quad(g,tex,PackedVector2Array([a-normals[i],a+normals[i],b+normals[i+1],b-normals[i+1]]),PackedVector2Array([Vector2(u,i*0.5),Vector2(1-u,i*0.5),Vector2(1-u,(i+1)*0.5),Vector2(u,(i+1)*0.5)]),tint,context)
 
 static func smooth_curve(value: float) -> float:
 	return smoothstep(0,1,clampf(value,0,1))
