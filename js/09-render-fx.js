@@ -9,7 +9,7 @@ function resize() {
   W = Math.ceil(cw / SC); H = Math.ceil(ch / SC);
   AW = Math.round(W * 2.2); AH = Math.round(H * 2);
   cv.width = W; cv.height = H; cv.style.width = W * SC + 'px'; cv.style.height = H * SC + 'px';
-  DPR = Math.min(3, window.devicePixelRatio || 1);
+  DPR = Math.min(S.fxLow ? 1.5 : 2, window.devicePixelRatio || 1);   // чёткий слой не выше 2× плотности: на глаз то же, точек в 2.25 раза меньше
   fx.width = Math.round(W * SC * DPR); fx.height = Math.round(H * SC * DPR);
   fx.style.width = W * SC + 'px'; fx.style.height = H * SC + 'px';
   ctx.imageSmoothingEnabled = false;
@@ -165,7 +165,7 @@ function tone(f, d, type = 'square', vol = .04, f2 = 0, delay = 0, tag = '', gap
   if (SIM) return;
   if (S.mute || !AC) return;
   const now = AC.currentTime;
-  if (tag) { if (lastSnd[tag] && now - lastSnd[tag] < gap) return; lastSnd[tag] = now; }
+  if (tag) { if (lastSnd[tag] && now - lastSnd[tag] < gap) return; if (now - (lastSnd._any || 0) < .03) return; lastSnd[tag] = now; lastSnd._any = now; }   // боевые звуки: не чаще ~30 в секунду на всех
   const o = AC.createOscillator(), g = AC.createGain(), t = now + delay;
   o.type = type; o.frequency.setValueAtTime(f, t);
   if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);

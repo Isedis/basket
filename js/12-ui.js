@@ -114,7 +114,7 @@ $('dsrc').hidden = !S.sumFull;
 $('smore').onclick = () => { if (!S.showList) { S.showList = true; S.allStats = false; } else if (!S.allStats) S.allStats = true; else { S.showList = false; S.allStats = false; } updateUI(); };
 $('zbar').onclick = () => { if (!bossAlive && S.zk >= zoneNeed()) { forceBoss = true; bossCd = 0; } };
 function applyFx() { $('fxb').textContent = 'Эффекты: ' + (S.fxLow ? 'МИНИМУМ' : 'ВСЕ'); }
-$('fxb').onclick = () => { S.fxLow = !S.fxLow; applyFx(); if (S.fxLow) { parts = []; orbs = []; } };
+$('fxb').onclick = () => { S.fxLow = !S.fxLow; S.fxAuto = false; applyFx(); if (S.fxLow) { parts = []; orbs = []; } resize(); };
 $('spdb').onclick = () => { S.fast = !S.fast; updateUI(); tone(S.fast ? 880 : 440, .08, 'square', .04, S.fast ? 1320 : 330); };
 $('mute').onclick = () => { S.mute = !S.mute; $('mute').textContent = 'Звук: ' + (S.mute ? 'ВЫКЛ' : 'ВКЛ'); audio(); };
 let tab = 'S', lastSpec;

@@ -10,7 +10,7 @@ $('tzo').onclick = () => { cam.z = Math.max(.35, cam.z / 1.3); drawTree(); };
 $('tfit').onclick = () => fitTree();
 function openTree() { tip('dbl', 'Двойной тап', 'Тапни узел дважды подряд — сразу купишь уровень. Работает в талантах, ветке класса и на Небосводе.'); tree.hidden = false; setTMode(S.meta.tMode || tMode); sizeTree(); calcRec(); renderHint(); renderTInfo(); if (!openTree.fit) { openTree.fit = 1; fitTree(); } drawTree(); }
 function sizeTree() {
-  tDPR = Math.min(3, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
+  tDPR = Math.min(2, window.devicePixelRatio || 1); tW = tview.clientWidth; tH = tview.clientHeight;
   tcv.width = Math.round(tW * tDPR); tcv.height = Math.round(tH * tDPR); tcv.style.width = tW + 'px'; tcv.style.height = tH + 'px';
 }
 // пиксельные иконки 5×5

@@ -276,6 +276,9 @@ function frame(now) {
     const us = ultFrame(real) * evFrame(real);
     if (hitStop > 0) hitStop -= real; else { const d = (slowT > 0 ? real * .3 : real) * us; update(d); if (S.fast && S.zone < S.meta.best) update(d); }
     render();
+    // авто-качество: если кадры стабильно медленные (< ~38 к/с несколько секунд) — упрощаем эффекты сами
+    frame.ema = (frame.ema ?? 16) * .97 + real * 1000 * .03;
+    if (!S.fxLow && !document.hidden && frame.ema > 26) { frame.slow = (frame.slow || 0) + real; if (frame.slow > 4) { S.fxLow = true; S.fxAuto = true; parts = []; orbs = []; applyFx(); resize(); feed('Эффекты упрощены для плавности (Меню → Настройки)', '#9fd8ff'); } } else frame.slow = 0;
   } catch (e) { frameErr(e); }
 }
 function frameErr(e) {
