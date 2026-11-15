@@ -44,7 +44,7 @@ function updateUI() {
   const canBuy = TN.some(nd => tOpen(nd) && TL(nd.id) < nMax(nd) && S.meta.souls >= tCost(nd, TL(nd.id)));
   $('treeb').classList.toggle('has', canBuy && $('tree').hidden);
   $('nCls').classList.toggle('has', (pPts(cls()) > 0 || relPending(cls()) > 0) && $('ctree').hidden);
-  $('nSouls').classList.toggle('has', !!S.meta.guard && tab !== 'D');
+  $('nSouls').classList.toggle('has', canAsc() && tab !== 'D');
   { const cc = G().chests, n = cc.c + cc.r + cc.e, bd = $('gbadge'); bd.hidden = !n; bd.textContent = n; }
   const nk = unlockKills(stats.length), pk = unlockKills(stats.length - 1);
   $('snext').textContent = stats.length >= NE * 30 || nk - S.kills <= 0 && EFF.every((x, i) => groups[i]) ? 'все эффекты открыты' : 'новый стат через ' + fmt(Math.max(0, nk - S.kills)) + ' уб.';
@@ -191,7 +191,7 @@ $('perkbox').onclick = e => { const b = e.target.closest('[data-pk]'); if (!b) r
 let endConfirm = 0;
 $('endb').onclick = () => { if (deathT > 0) return; uiTap && uiTap(); go('fight'); heroDeath(true); };   // с первого нажатия, мимо воскрешений
 $('ascbox').onclick = e => { if (e.target.id === 'skyb') { openSky(); return; } const b = e.target.closest('[data-asc]'); if (b) { ascBuy(b.dataset.asc); return; }
-  if (e.target.id === 'ascb' && S.meta.guard) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
+  if (e.target.id === 'ascb' && canAsc()) { if (performance.now() > ascConfirm) { ascConfirm = performance.now() + 3000; renderAsc.h = ''; renderAsc(); return; } ascConfirm = 0; ascend(); renderAsc.h = ''; renderAsc(); } };
 $('ctbody').onclick = e => { const b = e.target.closest('[data-n]'); if (b && ctBuy(ctK, b.dataset.n)) { renderCT(); burst(hero.x, hero.y - 4, CLASSES[ctK].c, 10, 30); if (ctFull(ctK) && ctK === cls()) renderCls(); } };
 function renderCls() {
   const C = CL(), c0 = S.cst || [0, 0], fp = ctPts(cls());
@@ -278,7 +278,7 @@ function renderSouls() {
 function rebirth(fromAsc) {
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
   M.lastLife = { z: S.zone, s: g, k: S.kills, c: S.cls, rec: S.zone > M.best };
-  M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone);
+  M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone); M.cycZ = Math.max(M.cycZ || 0, S.zone);
   if (!fromAsc && armyOn() && CLASSES[S.cls]) addSpirit(S.cls, true);   // павший герой уходит в армию духов
   const keepF = Math.min(.5, .03 * ksL(7, 1) + .05 * ascL('legacy')), keptVals = keepF ? stats.map(st => Math.min(st.v * keepF, Math.pow(st.v, .5 + keepF))) : [];   // быстрый старт, но не пробивает предел души
   const keep = { cls: S.cls, fast: S.fast, meta: M, mute: S.mute, fxLow: S.fxLow, open: S.open, tips: S.tips, bestCombo: S.bestCombo, panelSmall: S.panelSmall, kps: S.kps };
@@ -290,7 +290,7 @@ function rebirth(fromAsc) {
   for (let i = 0; i < 3; i++) { const st = makeStat(i); stats.push(st); addStatRow(st, false); }
   stats[0].v = 2; stats[1].v = 3; stats[2].v = 1;
   if (keepF) { S.vals = keptVals; for (let i = 0; i < 3; i++) stats[i].v = Math.max(stats[i].v, keptVals[i] || 0); }
-  { const sz = Math.min(Math.floor(10 * ascL('path') + 1e-6) + Math.min(20, 10 * (M.asc || 0)) + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); S.fastTo = sz > 1 ? sz : 0; }
+  { const sz = Math.min(Math.floor(10 * ascL('path') + 1e-6) + Math.min(10, 5 * (M.asc || 0)) + (trHas('compass') ? 3 : 0), Math.max(1, M.best - 5)); S.fastTo = sz > 1 ? sz : 0; }
   if (M.autoTal) bestBuy(true);
   calcTal(); checkUnlocks(true); for (let e = 0; e < NE; e++) groupOf(e); recalc();
   if (S.fastTo) { fastStart(S.fastTo); S.fastTo = 0; for (let e = 0; e < NE; e++) groupOf(e); recalc(); }

@@ -38,7 +38,7 @@ const ascCost = (n, L) => Math.ceil(n.c0 * Math.pow(n.k === 'power' ? 1.25 : 1.6
 const SKY_RING = [0, 120, 270, 430, 600], SKY_NEED = [0, 1, 3, 6, 10];
 const GREEK = 'αβγδεζηθικλμνξοπρστυφχψω';
 // суммарная сила ключа на всём Небосводе (в «старых уровнях» для power/path/souls/cheap/legacy/xp/world)
-const SKY_TOT = { power: 40, path: 3, souls: 10, cheap: 10, legacy: 5, xp: 8, world: 10, hit: 2, hp: 4, aps: .5, ult: 3, boss: 2, gain: 2, rare: 1, critd: 1, sparks: 1, eff: .6, echo: .5, dust: 2, chestc: .3, wdmg: 3 };
+const SKY_TOT = { power: 40, path: 3, souls: 6, cheap: 10, legacy: 5, xp: 5, world: 10, hit: 1, hp: 2, aps: .25, ult: 1.5, boss: 1, gain: 1, rare: .5, critd: .5, sparks: 1, eff: .3, echo: .3, dust: 1, chestc: .2, wdmg: 1.5 };   // побочные статы урезаны вдвое: Небосвод — не каша из бонусов
 const SKY_KEY = {
   power: v => 'урон и HP ×' + fmt(Math.pow(10, .5 * v)), path: v => 'старт жизни с ' + (10 * v).toFixed(1) + '-й зоны', souls: v => 'души ×' + (1 + .5 * v).toFixed(2),
   cheap: v => 'таланты дешевле на ' + (5 * v).toFixed(1) + '%', legacy: v => 'после смерти остаётся ' + (5 * v).toFixed(1) + '% статов', xp: v => 'опыт мастерства ×' + (1 + .25 * v).toFixed(2),
@@ -128,7 +128,7 @@ const skyCostRaw = (n, L) => n.tp === 'root' ? 1 : n.tp === 'nt' ? SKY_COST0[n.r
 // бюджет колец: 1-е ≈ 2–3 вознесения, дальше дороже; всего ≈ 45 000 искр (~20 вознесений)
 const SKY_BUD = [0, 1500, 6500, 13000, 24000];
 const SKY_K = (() => { const t = [0, 0, 0, 0, 0]; for (const n of SN) for (let l = 0; l < n.max; l++) t[n.ring] += skyCostRaw(n, l); return t.map((v, r) => r ? SKY_BUD[r] / v : 1); })();
-const skyCost = (n, L) => Math.max(1, Math.ceil(skyCostRaw(n, L) * SKY_K[n.ring]));
+const skyCost = (n, L) => Math.max(1, Math.ceil(skyCostRaw(n, L) * SKY_K[n.ring] * (n.tp === 'nt' || n.tp === 'ks' ? 2 : 1)));   // яркие звёзды и сверхновые — вдвое дороже
 const SL = id => (S.meta.sky && S.meta.sky[id]) || 0;
 const skyRingOpen = r => (S.meta.asc || 0) >= SKY_NEED[r];
 const skyOpen = n => n.p < 0 || (SL(n.p) > 0 && skyRingOpen(n.ring));
@@ -356,7 +356,13 @@ function skyInit() {
 
 function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
 const wallZ = () => (S.meta.asc ? 100 : 50);
-const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); if (cyc < 100) return 0; return Math.floor(22 * Math.pow(Math.log10(cyc), 1.5) * (1 + .1 * starsTotal()) * (1 + Math.max(0, M.best - 50) / 50) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };   // ~1–3.5К за вознесение: Небосвод ~45К заполняется к ~17-му вознесению
+// каждое следующее вознесение требует дойти дальше: 50 → 60 → 70 → 80 → 90 → 95
+const ascNeed = () => Math.min(95, 50 + 10 * (S.meta.asc || 0));
+const cycZ = () => Math.max(S.meta.cycZ || 0, S.zone || 0);
+const canAsc = () => !!S.meta.guard && cycZ() >= ascNeed();
+// искры — за глубину цикла (как далеко зашёл за 50-ю), души дают лишь немного: 50-я ≈ 250, 70-я ≈ 1.2К, 95-я ≈ 2.9К (до бонусов)
+const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); if (cyc < 100) return 0; const z = Math.max(50, cycZ());
+  return Math.floor(250 * Math.pow(1 + (z - 50) / 10, 1.4) * (1 + .02 * Math.log10(cyc)) * (1 + .1 * starsTotal()) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };
 // Страж стены: огромный, почти неуязвим без звёзд созвездий
 const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
 const guardDef = () => 1 - guardMul();
@@ -369,7 +375,7 @@ function makeGuardian(m) {
 function guardianDown() {
   const M = S.meta; M.guard = 1;
   bossAlive = false;
-  if (M.asc) { feed('Страж стены повержен — Вознесение снова доступно', '#ffd84a'); nextZone(); save(); return; } slowT = 1; flashT = .2; shake = 16;
+  if (M.asc) { feed('Страж стены повержен' + (canAsc() ? ' — Вознесение доступно' : ' — для вознесения дойди до ' + ascNeed() + '-й зоны'), '#ffd84a'); nextZone(); save(); return; } slowT = 1; flashT = .2; shake = 16;
   for (let i = 0; i < 4; i++) ring(hero.x, hero.y - 4, 20 + i * 18, i % 2 ? '#ffffff' : '#ffd84a');
   [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .3, 'triangle', .05, 0, i * .1));
   setTimeout(() => { $('mt').textContent = 'СТЕНА ПАЛА!'; $('mp').innerHTML = 'Страж стены повержен.<br><br>Открыто <span style="color:#ffd84a">ВОЗНЕСЕНИЕ</span> — вкладка ДУШИ.<br><br>Оно сбросит дерево и души, но даст <span style="color:#7ad8ff">Искры</span> для Небосвода, а стена уйдёт на 100-ю зону.'; $('modal').hidden = false; }, 1200);
@@ -379,11 +385,11 @@ function guardianDown() {
 let ascConfirm = 0;
 function ascend() {
   const M = S.meta, g = sparksFor();
-  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0;   // в новом цикле Стража нужно победить снова
+  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0; M.cycZ = 0;   // в новом цикле Стража нужно победить снова
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
   // базовое Эхо 30%: вознесение не начинает дерево с нуля
-  const keepN = {}, ef = Math.min(.8, .3 + skyV('echo')); for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
+  const keepN = {}, ef = Math.min(.4, .1 + skyV('echo'));   // Эхо: 10% дерева, звёзды Эха — до 40% for (const nd of TN) { const l = TL(nd.id); if (nd.auto && l) keepN[nd.id] = l; else if (l && ef > 0) { const k = Math.floor(l * ef); if (k) keepN[nd.id] = k; } }
   M.nodes = keepN; M.souls = 0;
   S.runSouls = 0; S.meta = M;
   rebirth(true); if (skyOn('sk_autotree')) bestBuy(true); ascScene(g);
@@ -395,7 +401,7 @@ function ascScene(g) {
 }
 function renderAsc() {
   const M = S.meta, el = $('ascbox'); if (!el) return;
-  const st = starsTotal(), can = !!M.guard, g = sparksFor(), nextG = Math.floor(Math.sqrt(((M.soulsCyc || 0) + (S.runSouls || 0) + ((M.lastLife && M.lastLife.s) || 0)) / 50) * (1 + .1 * st) * (1 + Math.max(0, M.best - 50) / 10) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1));
+  const st = starsTotal(), can = canAsc(), g = sparksFor(), need = ascNeed(), cz = cycZ();
   const pip = n => Array.from({ length: 4 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
   let h = `<div class="asx"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} СОЗВЕЗДИЯ КЛАССОВ</span><span>${st}/16</span></div><div class="axt">звезда — пробуждённый класс · 2 и 4 звезды дают бонус и ломают защиту Стража</div><div class="cgrid">` +
     CONST.map((c, ci) => { const n = constStars(ci), t = constTier(ci);
@@ -403,8 +409,8 @@ function renderAsc() {
         `<small class="${t >= 1 ? 'got' : ''}">2${pxImg('star', '#ffe08a', 7)} ${c.b[0]}</small><small class="${t >= 2 ? 'got' : ''}">4${pxImg('star', '#ffe08a', 7)} ${c.b[1]}</small></div>`; }).join('') + '</div></div>';
   h += `<div class="asx asc2"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} ВОЗНЕСЕНИЕ</span><span>${ascTitle()}</span></div>` +
     `<div class="axs"><div><small>ИСКРЫ</small><b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b></div><div><small>ВОЗНЕСЕНИЙ</small><b>${M.asc || 0}</b></div><div><small>ЗА ВОЗНЕСЕНИЕ</small><b style="color:#ffe08a">+${fmt(g)}</b></div></div>` +
-    (can ? `<div class="axt">Стена пала. Дерево талантов и души сгорят${skyV('echo') > 0 ? ' (Эхо вернёт ' + pct(Math.min(.5, skyV('echo'))) + ')' : ''}, классы, вещи и Небосвод останутся.${nextG > g ? ' Ещё одна жизнь ≈ +' + fmt(nextG) + ' искр.' : ''}</div>`
-      : `<div class="axt">Чтобы вознестись, победи Стража стены на ${S.meta.asc ? 100 : 50}-й зоне. Звёзды созвездий ломают его защиту.</div>`) +
+    (can ? `<div class="axt">Стена пала. Дерево талантов и души сгорят${skyV('echo') > 0 ? ' (Эхо вернёт ' + pct(Math.min(.4, .1 + skyV('echo'))) + ')' : ' (останется 10%)'}, классы, вещи и Небосвод останутся. Искры растут с глубиной: зайди дальше ' + cz + '-й — получишь больше.</div>`
+      : `<div class="axt">${M.guard ? '' : 'Победи Стража стены на 50-й зоне (звёзды созвездий ломают его защиту). '}Вознесение #${(M.asc || 0) + 1} требует дойти до <b style="color:#ffd84a">${need}-й зоны</b> в этом цикле · сейчас ${cz}-я.</div>`) +
     `<button class="btn big" id="ascb"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ · +' + fmt(g) + ' ИСКР'}</button></div>`;
   if ((M.asc || 0) > 0 || M.sparks) { const cn = SN.filter(skyCan).length, lit = SN.filter(n => SL(n.id)).length;
     h += `<div class="asx"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} НЕБОСВОД</span><span>${lit}/${SN.length} · созвездий ${SKYB.filter(B => B.figDone).length}/12</span></div>` +

@@ -20,13 +20,13 @@ const STEP = `(() => { const B = __B; for (let i = 0; i < 30 * 60; i++) { update
     for (const z of [25, 50]) if (S.meta.best >= z && B.zoneT[z] === undefined) B.zoneT[z] = B.gt; }
   // вознесение как в автоигре: Страж побеждён, прогресс встал на 15 мин
   S.meta.cycB = Math.max(S.meta.cycB || 0, S.zone); if (S.meta.cycB !== B.lb) { B.lb = S.meta.cycB; B.lbT = B.gt; }
-  if (S.meta.guard && sparksFor() > 0 && deathT <= 0 && B.gt - (B.lbT || 0) > 900 && (B.ascT || 0) + 600 < B.gt) { B.ascT = B.gt; ascend(); S.meta.cycB = 0; B.lbT = B.gt; B.asc.push(B.gt); $('sky').hidden = true; }
-  return { gt: B.gt, best: S.meta.best, lives: B.lives.length }; })()`;
+  if (canAsc() && sparksFor() > 0 && deathT <= 0 && B.gt - (B.lbT || 0) > 900 && (B.ascT || 0) + 600 < B.gt) { B.ascT = B.gt; ascend(); S.meta.cycB = 0; B.lbT = B.gt; B.asc.push(B.gt); skyBest(); $('sky').hidden = true; }
+  return { gt: B.gt, best: S.meta.best, lives: B.lives.length, asc: S.meta.asc || 0, cz: cycZ() }; })()`;
 
 async function run(id) {
   const { b, p, errs } = await open({ phone: false });
   await p.evaluate(SETUP);
-  for (let m = 0; m < MIN; m++) { const r = await p.evaluate(STEP); if (m % 15 === 14) process.stderr.write(`  игра ${id}: ${m + 1} мин, лучшая зона ${r.best}, жизней ${r.lives}\n`); }
+  for (let m = 0; m < MIN; m++) { const r = await p.evaluate(STEP); if (m % 15 === 14) process.stderr.write(`  игра ${id}: ${m + 1} мин, лучшая зона ${r.best}, вознесений ${r.asc}, цикл до ${r.cz}, жизней ${r.lives}\n`); }
   const B = await p.evaluate(() => { const B = __B; return { zoneT: B.zoneT, lives: B.lives, asc: B.asc, gt: B.gt, lifeT0: B.lifeT0 }; });
   await b.close(); return { ...B, errs };
 }
@@ -53,5 +53,6 @@ const med = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x 
   for (const k of Object.keys(T)) if (k[0] !== '_') { const t = T[k]; console.log(`${light(k, M[k])} ${t.name}: ${fmtv(M[k])} ${t.unit}  (цель ${t.green[0]}–${t.green[1]})`); }
   if (M.errors) console.log('Ошибки:', [...new Set(R.flatMap(r => r.errs))].slice(0, 5).join(' | '));
   if (VERB) R.forEach((r, i) => console.log(`игра ${i + 1}: ` + r.lives.map(l => `${(l.len / 60).toFixed(1)}м z${l.best} ${l.why}${l.why !== 'сброс' ? ' ' + l.d90.toFixed(0) + 'с' : ''}`).join(' | ') + (r.gt - r.lifeT0 > 60 ? ` | идёт ${((r.gt - r.lifeT0) / 60).toFixed(1)}м` : '')));
+  R.forEach((r, i) => r.asc.length && console.log(`игра ${i + 1}: вознесения на ` + r.asc.map(t => (t / 60).toFixed(0)).join(', ') + ' мин'));
   console.log(`(реальное время ${((Date.now() - t0) / 60000).toFixed(1)} мин)`);
 })();
