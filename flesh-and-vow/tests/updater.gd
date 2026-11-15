@@ -18,7 +18,8 @@ func run():
 	f.store_buffer(PackedByteArray([77,90]))
 	f.store_buffer("fixture".repeat(500).to_utf8_buffer())
 	f.close()
-	var good = {"version":"0.2.1","url":Updater.ASSET_PREFIX+"flesh-v0.2.1/FleshAndVow.exe","sha256":FileAccess.get_sha256(path),"size":FileAccess.open(path,FileAccess.READ).get_length()}
+	var future_version = str(Updater.version_parts(Updater.VERSION)[0]+1)+".0.0"
+	var good = {"version":future_version,"url":Updater.ASSET_PREFIX+"flesh-v0.2.1/FleshAndVow.exe","sha256":FileAccess.get_sha256(path),"size":FileAccess.open(path,FileAccess.READ).get_length()}
 	check(Updater.valid_manifest(good),"Valid manifest")
 	check(Updater.verify_payload(path,good),"Verified payload")
 	for patch in [{"url":"http://github.com/Isedis/basket/releases/download/a/FleshAndVow.exe"},{"url":"https://evil.test/payload.exe"},{"sha256":"bad"},{"sha256":"z".repeat(64)},{"size":Updater.LIMIT+1},{"size":2.5},{"size":-1},{"version":"v0.3"}]:
