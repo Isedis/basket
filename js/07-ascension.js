@@ -356,13 +356,15 @@ function skyInit() {
 
 function ascBuy(k) { const n = ASC.find(x => x.k === k), L = ascL(k), c = ascCost(n, L); if (L >= n.max || (S.meta.sparks || 0) < c) return; S.meta.sparks -= c; if (!S.meta.asn) S.meta.asn = {}; S.meta.asn[k] = L + 1; calcTal(); D.dirty = true; recalc(); save(); tone(880, .08, 'triangle', .04); tone(1320, .12, 'triangle', .04, 0, .06); renderSouls(); }
 const wallZ = () => (S.meta.asc ? 100 : 50);
-// каждое следующее вознесение требует дойти дальше: 50 → 60 → 70 → 80 → 90 → 95
-const ascNeed = () => Math.min(95, 50 + 10 * (S.meta.asc || 0));
+// каждое следующее вознесение требует дойти дальше: 50 → 60 → 70 → 80 → 90 → 100 (стена)
+const ascNeed = () => Math.min(100, 50 + 10 * (S.meta.asc || 0));
+// повтор уже пройденной глубины даёт лишь 30% искр: награда — за новый рекорд глубины цикла
+const ascRep = () => cycZ() > (S.meta.ascTop || 0) ? 1 : .3;
 const cycZ = () => Math.max(S.meta.cycZ || 0, S.zone || 0);
 const canAsc = () => !!S.meta.guard && cycZ() >= ascNeed();
 // искры — за глубину цикла (как далеко зашёл за 50-ю), души дают лишь немного: 50-я ≈ 250, 70-я ≈ 1.2К, 95-я ≈ 2.9К (до бонусов)
 const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSouls || 0); if (cyc < 100) return 0; const z = Math.max(50, cycZ());
-  return Math.floor(250 * Math.pow(1 + (z - 50) / 10, 1.4) * (1 + .02 * Math.log10(cyc)) * (1 + .1 * starsTotal()) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1)); };
+  return Math.floor(250 * Math.pow(1 + (z - 50) / 10, 1.4) * (1 + .02 * Math.log10(cyc)) * (1 + .1 * starsTotal()) * (1 + skyV('sparks')) * (skyOn('nv_ascetic') ? 2 : 1) * ascRep()); };
 // Страж стены: огромный, почти неуязвим без звёзд созвездий
 const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
 const guardDef = () => 1 - guardMul();
@@ -385,7 +387,7 @@ function guardianDown() {
 let ascConfirm = 0;
 function ascend() {
   const M = S.meta, g = sparksFor();
-  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.soulsCyc = 0; M.guard = 0; M.cycZ = 0;   // в новом цикле Стража нужно победить снова
+  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.ascTop = Math.max(M.ascTop || 0, cycZ()); M.soulsCyc = 0; M.guard = 0; M.cycZ = 0;   // в новом цикле Стража нужно победить снова
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
   // базовое Эхо 30%: вознесение не начинает дерево с нуля
@@ -409,7 +411,7 @@ function renderAsc() {
         `<small class="${t >= 1 ? 'got' : ''}">2${pxImg('star', '#ffe08a', 7)} ${c.b[0]}</small><small class="${t >= 2 ? 'got' : ''}">4${pxImg('star', '#ffe08a', 7)} ${c.b[1]}</small></div>`; }).join('') + '</div></div>';
   h += `<div class="asx asc2"><div class="axh"><span>${pxImg('star', '#ffe08a', 7)} ВОЗНЕСЕНИЕ</span><span>${ascTitle()}</span></div>` +
     `<div class="axs"><div><small>ИСКРЫ</small><b style="color:#7ad8ff">${fmt(M.sparks || 0)}</b></div><div><small>ВОЗНЕСЕНИЙ</small><b>${M.asc || 0}</b></div><div><small>ЗА ВОЗНЕСЕНИЕ</small><b style="color:#ffe08a">+${fmt(g)}</b></div></div>` +
-    (can ? `<div class="axt">Стена пала. Дерево талантов и души сгорят${skyV('echo') > 0 ? ' (Эхо вернёт ' + pct(Math.min(.4, .1 + skyV('echo'))) + ')' : ' (останется 10%)'}, классы, вещи и Небосвод останутся. Искры растут с глубиной: зайди дальше ' + cz + '-й — получишь больше.</div>`
+    (can ? `<div class="axt">Стена пала. Дерево талантов и души сгорят${skyV('echo') > 0 ? ' (Эхо вернёт ' + pct(Math.min(.4, .1 + skyV('echo'))) + ')' : ' (останется 10%)'}, классы, вещи и Небосвод останутся. ' + (ascRep() < 1 ? '<span style="color:#ff9a3c">Глубина ' + cz + ' уже пройдена (рекорд ' + M.ascTop + ') — только 30% искр.</span>' : 'Новый рекорд глубины — полные искры.') + ' Зайди дальше — искр больше.</div>`
       : `<div class="axt">${M.guard ? '' : 'Победи Стража стены на 50-й зоне (звёзды созвездий ломают его защиту). '}Вознесение #${(M.asc || 0) + 1} требует дойти до <b style="color:#ffd84a">${need}-й зоны</b> в этом цикле · сейчас ${cz}-я.</div>`) +
     `<button class="btn big" id="ascb"${can ? '' : ' disabled'}>${performance.now() < ascConfirm ? 'ТОЧНО? ДЕРЕВО СГОРИТ — ТАПНИ ЕЩЁ' : 'ВОЗНЕСТИСЬ · +' + fmt(g) + ' ИСКР'}</button></div>`;
   if ((M.asc || 0) > 0 || M.sparks) { const cn = SN.filter(skyCan).length, lit = SN.filter(n => SL(n.id)).length;
