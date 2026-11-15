@@ -20,3 +20,9 @@ Version 0.4.3 character art: the prisoner, warden and assassin component masters
 were created for this project using image generation, then prepared as a native
 256x288 atlas with per-character palettes. The game uses castle_characters.png
 and fixed component regions; it does not rescale illustration masters at runtime.
+
+Version 0.4.4 castle tiles: an original modular castle master was created for
+this project using image generation, then prepared as a native 256x128 atlas
+with fixed component dimensions and limited material palettes. Large masters
+are not shipped or rescaled by the game. Original source art uses no third-party
+game assets.

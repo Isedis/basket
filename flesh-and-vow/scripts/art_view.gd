@@ -80,25 +80,7 @@ static func corpses(g):
 		else: pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 
 static func stone(g, b: Rect2):
-	g.draw_rect(b.grow(4),Color(0.01,0.015,0.012,0.7))
-	g.draw_rect(b,Color("2e3129"))
-	for y in range(int(b.position.y),int(b.end.y),16):
-		for x in range(int(b.position.x),int(b.end.x),16):
-			var width = minf(16,b.end.x-x)
-			var height = minf(16,b.end.y-y)
-			g.draw_texture_rect_region(g.castle_art,Rect2(x,y,width,height),Rect2(60,12,width/2,height/2),Color("c5bca1"))
-	g.draw_line(b.position,b.position+Vector2(b.size.x,0),Color("766c50"),2)
-	g.draw_line(b.position+Vector2(0,b.size.y),b.end,Color("0c110e"),3)
-
-static func light(g):
-	# Discrete low-alpha pixel rings add torch pools without blurring the atlas.
-	for p in [Vector2(303,154),Vector2(465,154)]:
-		var flicker = sin(g.anim*11+p.x)*0.008
-		for radius in [58,44,28,14]:
-			g.draw_circle(p,radius,Color(1.0,0.47,0.12,0.012+flicker*0.4))
-		var height = 10+int(sin(g.anim*14+p.x)*3)
-		g.draw_rect(Rect2(p.x-3,p.y-height,6,height),Color("cf6e28"))
-		g.draw_rect(Rect2(p.x-1,p.y-height+3,2,height-2),Color("f8d68c"))
+	preload("res://scripts/castle_view.gd").stone(g,b)
 
 static func rune_border(g, b: Rect2):
 	g.draw_rect(b,Color("080e0d"))

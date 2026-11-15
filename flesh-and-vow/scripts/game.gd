@@ -430,19 +430,7 @@ func setup_geometry():
 		hazards.append({"rect":Rect2(548,184,40,32),"type":"fire","phase":2.0})
 
 func make_floor_texture():
-	var local = RandomNumberGenerator.new()
-	local.seed = int(room.seed)
-	var img = Image.create(688,336,false,Image.FORMAT_RGB8)
-	var tint = Color(Catalog.FLOORS[floor_index].color)
-	for y in range(336):
-		for x in range(688):
-			var seam = x%32==0 or (y+(16 if (x/32)%2==0 else 0))%32==0
-			var noise_value = local.randf_range(-0.015,0.015)
-			var c = tint * (0.23 if seam else 0.32 + noise_value)
-			if local.randf()<0.006:
-				c = tint*0.46
-			img.set_pixel(x,y,Color(c.r,c.g,c.b,1))
-	room_texture = ImageTexture.create_from_image(img)
+	room_texture = preload("res://scripts/castle_view.gd").bake_floor(int(room.seed),floor_index)
 
 func populate_room():
 	match room.type:

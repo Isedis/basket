@@ -2,6 +2,7 @@ extends RefCounted
 
 const Combat = preload("res://scripts/combat.gd")
 const Art = preload("res://scripts/art_view.gd")
+const Castle = preload("res://scripts/castle_view.gd")
 const Catalog = preload("res://scripts/catalog.gd")
 const Dungeon = preload("res://scripts/dungeon.gd")
 const INK = Color("0d0e15")
@@ -85,7 +86,7 @@ static func title_screen(g):
 	g.draw_string(g.pixel_font,Vector2(72,218),"И ОБЕТ",HORIZONTAL_ALIGNMENT_LEFT,-1,32,RED)
 	g.draw_line(Vector2(73,244),Vector2(391,244),BORDER,1)
 	text(g,Vector2(73,269),"Тебе дали тело. Волю придётся забрать.",13,MUTED)
-	text(g,Vector2(72,526),"АРТ-ПРОБА 0.3 · ПЕРВЫЙ ЭТАП ПЕРЕРАБОТКИ",10,MUTED)
+	text(g,Vector2(72,526),"ПИКСЕЛЬНЫЙ ЗАМОК · В РАЗРАБОТКЕ",10,MUTED)
 	text(g,Vector2(706,510),"F11 · ПОЛНЫЙ ЭКРАН",10,MUTED)
 	if g.message_time>0: centre(g,Vector2(480,539),g.message,10,RED)
 
@@ -101,10 +102,8 @@ static func buttons(g):
 static func world(g):
 	var off = (g.shake_axis*sin(g.anim*60)*g.shake+g.shake_axis.orthogonal()*cos(g.anim*73)*g.shake*0.15).round()
 	g.draw_set_transform(off)
-	if g.castle_art:
-		var tints = [Color.WHITE,Color("aac8c2"),Color("b6bf98"),Color("d6c4a3")]
-		g.draw_texture_rect(g.castle_art,Rect2(32,84,704,364),false,tints[g.floor_index])
-	Art.light(g)
+	Castle.background(g)
+	Castle.lights(g)
 	doors(g)
 	for hazard in g.hazards: draw_hazard(g,hazard)
 	for b in g.blood:
@@ -217,32 +216,16 @@ static func debug_shapes(g):
 
 static func doors(g):
 	for i in range(4):
-		var next = g.coords+Vector2i(g.DIRECTIONS[i])
-		var key = Dungeon.key(next)
-		if not g.dungeon.rooms.has(key):
-			var absent = g.door_position(i)
-			Art.stone(g,Rect2(absent-Vector2(23,10),Vector2(46,20)) if i%2==0 else Rect2(absent-Vector2(9,25),Vector2(18,50)))
-			continue
-		var dest = g.dungeon.rooms[key]
-		var p = g.door_position(i)
-		if not dest.revealed:
-			var c = Color("aa8c71") if g.has_item("sight") else Color("62515c")
-			g.draw_line(p-Vector2(6,8),p+Vector2(3,2),c,1)
-			g.draw_line(p+Vector2(3,2),p-Vector2(1,9),c,1)
-			if g.has_item("sight"): text(g,p+Vector2(-4,-16),"?",14,GOLD,true)
-			continue
-		var box = Rect2(p-Vector2(25,9),Vector2(50,18)) if i%2==0 else Rect2(p-Vector2(9,25),Vector2(18,50))
-		rect(g,box.grow(2),Color("333126"),Color("645b42"))
-		rect(g,box,Color("11131c"))
-		if not g.room.clear:
-			for v in range(-15,20,10):
-				if i%2==0: g.draw_line(p+Vector2(v,-9),p+Vector2(v,9),Color("7d7660"),2)
-				else: g.draw_line(p+Vector2(-9,v),p+Vector2(9,v),Color("7d7660"),2)
-		elif not dest.opened:
-			rect(g,Rect2(p-Vector2(5,4),Vector2(10,9)),GOLD)
-			g.draw_arc(p-Vector2(0,5),4,PI,TAU,8,GOLD,2)
-		else:
-			centre(g,p+Vector2(0,4),MARKS[dest.type],11,GOLD)
+		var key = Dungeon.key(g.coords+Vector2i(g.DIRECTIONS[i]))
+		var destination: Dictionary = g.dungeon.rooms.get(key,{})
+		var state = Castle.door_state(g.room.clear,destination)
+		Castle.doorway(g,i,state)
+		if not destination.is_empty() and not destination.revealed:
+			Castle.secret_crack(g,i,g.has_item("sight"))
+		elif state=="open":
+			var p = g.door_position(i)
+			var offset = [Vector2(0,17),Vector2(-18,4),Vector2(0,-12),Vector2(18,4)][i]
+			centre(g,p+offset,MARKS[destination.type],10,GOLD)
 
 static func draw_hazard(g, h):
 	var b = h.rect
