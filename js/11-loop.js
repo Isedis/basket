@@ -372,7 +372,7 @@ function render() {
   if (boss) {
     fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`;
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
-    if (!boss.raid) { const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : boss.titan ? 'ТИТАН: ' + boss.name : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + (boss.name || MOBS[boss.t].n)) + ' ' + fmt(Math.max(0, boss.hp)) + (boss.exec ? ' · КАЗНЬ!' : '');
+    if (!boss.raid) { const s = (boss.guard ? 'СТРАЖ СТЕНЫ · ранен ' + pct(clamp(1 - boss.hp / boss.max, 0, 1)) : boss.titan ? 'ТИТАН: ' + boss.name : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + (boss.name || MOBS[boss.t].n)) + ' ' + fmt(Math.max(0, boss.hp)) + (boss.exec ? ' · КАЗНЬ!' : '');
     fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k); }
   }
   // лента событий

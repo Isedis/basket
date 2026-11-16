@@ -368,10 +368,22 @@ const sparksFor = () => { const M = S.meta, cyc = (M.soulsCyc || 0) + (S.runSoul
 // Страж стены: огромный, почти неуязвим без звёзд созвездий
 const guardMul = () => Math.min(1, Math.pow(10, -3 + .375 * starsTotal()));   // доля урона, что проходит сквозь защиту: 8 звёзд — вся
 const guardDef = () => 1 - guardMul();
+// осада рекорда: вожак на рекордной зоне сохраняет раны между жизнями (свои для каждой зоны); бой дольше 20 с отбивает хотя бы 4%
+// раны помнят вожаки зон в пределах 2 от рекорда — каждая зона отдельно (жизни у стены скачут между 47-й и 48-й)
+const recSiege = z => { const r = S.meta.rsg; return r && typeof r === 'object' && !('z' in r) ? r[z] || 0 : 0; };
+function recSiegeSave() { const b = mobs.find(m => m.boss && !m.dead && !m.guard && !m.raid); if (!b || S.zone < (S.meta.best || 0) - 2) return; const M = S.meta, was = recSiege(S.zone);
+  let f = clamp(1 - b.hp / (b.max0 || b.max), 0, .9); if (time - (b.t0 || time) >= 20) f = Math.max(f, Math.min(.9, was + .04)); f = Math.max(was, f);
+  if (f > was + .001) { if (!M.rsg || 'z' in M.rsg) M.rsg = {}; M.rsg[S.zone] = f; for (const k in M.rsg) if (+k < (M.best || 0) - 3) delete M.rsg[k];
+    if (!SIM) feed('Осада: вожак ' + S.zone + '-й зоны ранен на ' + pct(f) + ' — раны останутся', '#ffd84a'); } }
+// осада Стража: раны сохраняются, когда бой с ним прерван (смерть героя, конец жизни). Каждый бой дольше 20 с отбивает хотя бы 2%.
+function guardSiegeSave() { const g = mobs.find(m => m.guard && !m.dead); if (!g) return; const M = S.meta, was = M.gsiege || 0;
+  let f = clamp(1 - g.hp / g.max, 0, .98); if (time - (g.t0 || time) >= 20) f = Math.max(f, Math.min(.98, was + .02)); M.gsiege = Math.max(was, f);
+  if (M.gsiege > was + .001 && !SIM) feed('Осада стены: Страж ранен на ' + pct(M.gsiege) + ' — раны останутся до следующей жизни', '#ffd84a'); }
 function makeGuardian(m) {
   Object.assign(m, { guard: true, t: 7, sz: 3.2, h: 45, name: 'Страж стены', sp: m.sp * .6 });
   m.hp *= 1e10; m.max = m.hp;   // рассчитан на героя с полным деревом: без звёзд непробиваем, с 8★ — около 10–30 секунд
-  toast('СТРАЖ СТЕНЫ!', 'защита ' + (guardDef() * 100).toFixed(1) + '% · звёзды созвездий ломают её (8★ — полностью)', 3500);
+  const gs = S.meta.gsiege || 0; m.hp = m.max * (1 - gs); m.t0 = time;   // осада: раны Стража копятся между жизнями
+  toast('СТРАЖ СТЕНЫ!', (gs > 0 ? 'уже ранен на ' + pct(gs) + ' · ' : '') + 'защита ' + (guardDef() * 100).toFixed(1) + '% · звёзды созвездий ломают её', 3500);
   shake = 12; [98, 73, 55].forEach((f, i) => tone(f, .5, 'sawtooth', .06, 0, i * .25));
 }
 function guardianDown() {
@@ -387,7 +399,7 @@ function guardianDown() {
 let ascConfirm = 0;
 function ascend() {
   const M = S.meta, g = sparksFor();
-  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.ascTop = Math.max(M.ascTop || 0, cycZ()); M.soulsCyc = 0; M.guard = 0; M.cycZ = 0;   // в новом цикле Стража нужно победить снова
+  M.sparks = (M.sparks || 0) + g; M.sparksTot = (M.sparksTot || 0) + g; M.asc = (M.asc || 0) + 1; M.ascTop = Math.max(M.ascTop || 0, cycZ()); M.soulsCyc = 0; M.cycZ = 0;   // Страж 50 побеждён навсегда: после вознесения не нужно бить его снова   // в новом цикле Стража нужно победить снова
   M.best = Math.max(M.best, S.zone);
   // дерево талантов и души сгорают, автоматика остаётся
   // базовое Эхо 30%: вознесение не начинает дерево с нуля

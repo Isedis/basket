@@ -32,6 +32,7 @@ function spawnMob(boss) {
   if (boss) {
     const mm = mobs[mobs.length - 1]; mm.ws = { ox: 0, oy: -6, t: 0 }; moveWS(mm);
     if (S.zone === 50 && !S.meta.guard) makeGuardian(mm);
+    else { const rs = recSiege(S.zone); mm.t0 = time; if (rs > 0) { mm.max0 = mm.max; mm.hp *= 1 - rs; feed('Осада рекорда: вожак уже ранен на ' + pct(rs), '#ffd84a'); } }
     worldMob(mm);
     if (S.siege > 0) feed('Осада: вожак уже ранен на ' + pct(S.siege), '#aabbcc');
     bossAlive = true; bossT = BOSS_TIME + ta('boss_t'); S.tries = (S.tries || 0) + 1;
@@ -99,7 +100,8 @@ function bossJudge(bm, dt) {
   if (bm.jhp === undefined) bm.jhp = bm.hp;
   if (bm.jt >= 6) {
     const lost = (bm.jhp - bm.hp) / bm.max, rate = lost / bm.jt, left = bm.hp / bm.max;
-    if (rate <= 0 || left / rate > (skyOn('sk_judge') ? 60 : 40)) { if (!bm.fury) { bm.fury = 1; toast('ЯРОСТЬ ВОЖАКА', 'урона не хватает — вожак свирепеет с каждой секундой', 1800); [196, 147, 98].forEach((f, i) => tone(f, .3, 'sawtooth', .06, 0, i * .25)); } bm.jt = 0; bm.jhp = bm.hp; }
+    const rec = S.zone >= (S.meta.best || 0) - 1;   // ярость — только у рекорда: ниже рекорда герой вожака и так пробивает
+    if (rec && (rate <= 0 || left / rate > (skyOn('sk_judge') ? 80 : 60))) { if (!bm.fury) { bm.fury = 1; toast('ЯРОСТЬ ВОЖАКА', 'урона не хватает — вожак свирепеет с каждой секундой', 1800); [196, 147, 98].forEach((f, i) => tone(f, .3, 'sawtooth', .06, 0, i * .25)); } bm.jt = 0; bm.jhp = bm.hp; }
     else { bm.jt = 0; bm.jhp = bm.hp; }
   }
 }
@@ -196,7 +198,7 @@ function killMob(m) {
   if (ksL(4, 0) && rnd() < .005 * ksL(4, 0)) { giveBurst(30 * base); feed('Сундук! Награды как за 30 убийств', '#ffd84a'); burst(m.x, m.y - 3, '#ffd84a', 24, 50); sfx.rare(); }
   if (ksL(4, 1) && m.rare && rnd() < .2 * ksL(4, 1)) { S.forceRare = (S.forceRare || 0) + 5; feed('Любимец богов: ещё 5 золотых!', '#44ffaa'); }
   addSouls(m.boss ? bossSouls(S.zone) : (m.rare ? .05 : .01) * (1 + S.zone / 20) * (m.hw ?? 1), m);
-  if (m.boss) { S.siege = 0; if (isLegend(S.zone)) giveChest('r', 'легенда'); else if (rnd() < .4) giveChest('c', 'вожак'); }
+  if (m.boss) { S.siege = 0; if (S.meta.rsg && S.meta.rsg[S.zone]) delete S.meta.rsg[S.zone]; if (isLegend(S.zone)) giveChest('r', 'легенда'); else if (rnd() < .4) giveChest('c', 'вожак'); }
   if (ev && ev.type === 'treasure' && !m.boss && rnd() < .04) giveChest('c', 'сокровищница');
   if (D.dust > .01 && rnd() < D.dust) { G().dust += Math.max(1, Math.round((1 + S.zone / 10) * (1 + skyV('dust')))); fxLabel('Пыль', m.x, m.y - 12, '#c9b07a'); }
   if (D.leech > .002) hero.hp = Math.min(D.maxHP, hero.hp + D.maxHP * D.leech);
@@ -213,7 +215,7 @@ function killMob(m) {
     o.psn = Math.max(o.psn, Math.min(m.psn * (1 + .5 * sy(1)), D.hit * Math.max(D.poison, .1) * 3)); o.psnT = 3;   // без роста по цепочке burst(o.x, o.y - 3, '#88ee22', 2, 15);
   }
   checkUnlocks(false);
-  if (m.guard) { S.siege = 0; S.tries = 0; guardianDown(); return; }
+  if (m.guard) { S.siege = 0; S.tries = 0; S.meta.gsiege = 0; guardianDown(); return; }
   if (m.titan) titanDown(m);
   if (m.boss) worldLoot(m);
   if (m.boss) { bossAlive = false; slowT = .7; flashT = .15; if ((S.tries || 1) > 1) toast('ПРОРЫВ!', 'вожак пал с ' + S.tries + '-й попытки'); S.tries = 0; nextZone(); }

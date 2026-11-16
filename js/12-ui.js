@@ -276,6 +276,7 @@ function renderSouls() {
   $('dfore').innerHTML = 'Души этого забега: <span style="color:#ff44ff">+' + fmt(g) + '</span><br><span class="k" style="color:var(--dim)">души забега зачислятся, когда герой падёт · вожак этой зоны даст ~' + fmt(Math.floor(bossSouls(S.zone) * soulMul())) + '</span>';
 }
 function rebirth(fromAsc) {
+  guardSiegeSave(); recSiegeSave();
   const g = S.runSouls || 0, M = S.meta; deathT = 0;
   M.lastLife = { z: S.zone, s: g, k: S.kills, c: S.cls, rec: S.zone > M.best };
   M.souls += g; M.total += g; M.soulsCyc = (M.soulsCyc || 0) + g; M.rebirths++; M.best = Math.max(M.best, S.zone); M.cycZ = Math.max(M.cycZ || 0, S.zone);
