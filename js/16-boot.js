@@ -3,10 +3,10 @@
 // БОЙ · ГЕРОЙ (статы, алтарь, вещи, класс) · ПРОКАЧКА (таланты, ветка, тотем, небосвод) · МЕНЮ (жизнь, автоматика, настройки).
 // Все экраны — на весь экран между строкой зоны/HP и нижним меню; кнопок «Закрыть» нет. Вкладки открываются постепенно.
 const UI_SEC = {
-  hero: [['stats', 'Статы'], ['altar', 'Алтарь'], ['gear', 'Вещи'], ['cls', 'Класс']],
+  hero: [['stats', 'Статы'], ['altar', 'Алтарь'], ['gear', 'Вещи'], ['cls', 'Класс'], ['raid', 'Рейд']],
   up: [['tal', 'Таланты'], ['branch', 'Ветка'], ['totem', 'Тотем'], ['sky', 'Небосвод'], ['army', 'Армия']],
 };
-const UI_NAME = { stats: 'Статы', altar: 'Алтарь силы', gear: 'Вещи', cls: 'Класс', tal: 'Таланты', branch: 'Ветка класса', totem: 'Тотем душ', sky: 'Небосвод', army: 'Армия духов' };
+const UI_NAME = { stats: 'Статы', altar: 'Алтарь силы', gear: 'Вещи', cls: 'Класс', tal: 'Таланты', branch: 'Ветка класса', totem: 'Тотем душ', sky: 'Небосвод', army: 'Армия духов', raid: 'Рейд-босс' };
 function uiOpen(sub) {
   const M = S.meta, cl = M.cl || {};
   switch (sub) {
@@ -18,6 +18,7 @@ function uiOpen(sub) {
     case 'totem': return !!(M.totem && M.totem.n) || !TN.some(nd => nd.alt == null && tOpen(nd) && !nodeBlocked(nd) && TL(nd.id) < nMax(nd)) && (M.rebirths || 0) >= 1;
     case 'sky': return (M.asc || 0) > 0 || !!M.sparks;
     case 'army': return armyOn();
+    case 'raid': return raidOpen();
   }
   return false;
 }
@@ -26,7 +27,7 @@ const uiSub = { hero: 'stats', up: 'tal' };
 // закрыть всё, что может лежать поверх
 function uiHideAll() {
   $('panel').classList.remove('open'); $('settings').classList.remove('open');
-  for (const id of ['tree', 'gear', 'ctree', 'totem', 'army', 'altar', 'sky', 'opening']) { const e = $(id); if (e) e.hidden = true; }
+  for (const id of ['tree', 'gear', 'ctree', 'totem', 'army', 'raid', 'altar', 'sky', 'opening']) { const e = $(id); if (e) e.hidden = true; }
   const c = $('croll'); if (c) c.hidden = true; const pi = $('info'); if (pi) pi.hidden = true;
 }
 function uiTap() { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} sfx.tap(); }
@@ -58,6 +59,7 @@ function go(sec, sub) {
     case 'totem': openTotem(); break;
     case 'sky': openSky(); break;
     case 'army': openArmy(); break;
+    case 'raid': openRaid(); break;
   }
   navOn(sec === 'hero' ? 'nHero' : 'nUp'); $('subnav').hidden = false;
   // карты получают размер только после раскладки экрана — пересчитываем размер и масштаб чуть позже
@@ -97,7 +99,7 @@ function uiTick() {
   for (const [k] of [...UI_SEC.hero, ...UI_SEC.up]) if (!M.uiSeen[k] && uiOpen(k)) { M.uiSeen[k] = 1; M.uiNew[k] = 1; toast('ОТКРЫТ РАЗДЕЛ: ' + UI_NAME[k].toUpperCase(), (UI_SEC.hero.some(s => s[0] === k) ? 'Герой' : 'Прокачка') + ' → ' + UI_NAME[k]); }
   $('nUp').hidden = !UI_SEC.up.some(([k]) => uiOpen(k));
   const nw = M.uiNew;
-  $('nHero').classList.toggle('has', ['stats', 'altar', 'gear', 'cls'].some(k => nw[k]) || $('nCls').classList.contains('has') || !$('gbadge').hidden);
+  $('nHero').classList.toggle('has', ['stats', 'altar', 'gear', 'cls', 'raid'].some(k => nw[k]) || $('nCls').classList.contains('has') || !$('gbadge').hidden);
   $('nUp').classList.toggle('has', ['tal', 'branch', 'totem', 'sky', 'army'].some(k => nw[k]) || $('treeb').classList.contains('has'));
   $('nMenu').classList.toggle('has', $('nSouls').classList.contains('has'));
   if (uiSec !== 'fight' && uiSec !== 'menu') renderSubnav();
@@ -259,7 +261,7 @@ if (!S.meta) S.meta = freshS().meta;
 if (!S.meta.gear) S.meta.gear = freshGear();
 ntMigrate();
 if (!S.meta.pathMig) { S.meta.pathMig = 1; let had = 0; for (const k in (S.meta.cl || {})) { if (S.meta.cl[k].ct && Object.keys(S.meta.cl[k].ct).length) had = 1; S.meta.cl[k].ct = {}; } if (had) setTimeout(() => toast('ПУТЬ КЛАССА', 'ветки классов переделаны · очки мастерства возвращены', 4000), 2500); }
-skyMigrate(); calcSky(); skyInit(); altarInit(); totemInit(); armyInit();
+skyMigrate(); calcSky(); skyInit(); altarInit(); totemInit(); armyInit(); raidInit();
 if (!CLASSES[S.cls]) rollClass(); else { if (S.cstyle == null) S.cstyle = rnd() < .5 ? 0 : 1; if (!S.meta.seen) S.meta.seen = {}; S.meta.seen[S.cls] = S.meta.seen[S.cls] || 1; }
 calcTal();
 for (let i = 0; i < 3; i++) { const s = makeStat(i); if (S.vals[i] !== undefined) s.v = S.vals[i]; if (S.lv && S.lv[i]) setLvl(s, S.lv[i]); stats.push(s); addStatRow(s, false); }

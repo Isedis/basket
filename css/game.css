@@ -496,7 +496,7 @@ html,body{font-size:10px}
 #subnav .sn{position:relative;flex:1;min-width:0;font:inherit;font-size:9px;color:#a59fc0;background:#1c1630;border:2px solid #2e2650;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #subnav .sn.on{color:#000;background:#ffd84a;border-color:#ffd84a;box-shadow:0 0 8px -2px #ffd84a}
 #subnav .sn .dot{position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;background:#ff4f6d;border:1px solid #000}
-#tree,#gear,#ctree,#totem,#army,#altar,#sky{top:calc(var(--hudh,52px) + 46px)!important;bottom:var(--navh)!important;padding-top:0!important}
+#tree,#gear,#ctree,#totem,#army,#raid,#altar,#sky{top:calc(var(--hudh,52px) + 46px)!important;bottom:var(--navh)!important;padding-top:0!important}
 #panel.sheet{top:calc(var(--hudh,52px) + 46px - 2px);height:auto!important}
 #settings.sheet{top:var(--hudh,52px);height:auto!important;overflow:auto}
 #tclose,#gclose,#totclose,#alclose,#sclose,#ctclose,#pbig,#ptog{display:none!important}
@@ -549,7 +549,7 @@ html,body{font-size:10px}
 #subnav{background:linear-gradient(#2a1a10,#1e130b)!important;border-bottom:3px solid var(--gold)!important;box-shadow:0 2px 0 var(--goldd)!important;height:50px!important;padding:6px 6px!important;gap:5px!important}
 #subnav .sn{font-size:10px;color:#d8c8a0;background:linear-gradient(#4a3020,#2e1d10);border:2px solid #120a04;border-radius:0;box-shadow:inset 2px 2px 0 #6a4a30,inset -2px -2px 0 #1a0f06;text-shadow:1px 1px 0 #000}
 #subnav .sn.on{color:var(--ink);background:linear-gradient(#ffe8a0,#e0b85a);border-color:#3a2408;box-shadow:inset 2px 2px 0 #fff4c8,inset -2px -2px 0 #a07a2a,0 0 10px -2px var(--gold2);text-shadow:none}
-#tree,#gear,#ctree,#totem,#army,#altar,#sky{top:calc(var(--hudh,52px) + 50px)!important}
+#tree,#gear,#ctree,#totem,#army,#raid,#altar,#sky{top:calc(var(--hudh,52px) + 50px)!important}
 #panel.sheet{top:calc(var(--hudh,52px) + 48px)!important}
 
 /* --- верхняя строка: плашка зоны, угроза, души; толстые полосы в рамке --- */
@@ -631,3 +631,25 @@ body.wide #hud{padding-left:14px;padding-right:14px}
   .srow:hover,.gi:hover,.camp:hover,.pkc:hover{filter:brightness(1.18)}
   canvas#tcv,canvas#scv,canvas#alcv,canvas#totcv{cursor:pointer}
 }
+/* рейд-босс недели */
+#raid{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;bottom:var(--navh);top:calc(var(--hudh,52px) + 46px);background:var(--st1,#140f22)}
+#raid[hidden]{display:none}
+#rdhead{display:flex;align-items:center;padding:8px 12px;font-size:11px;color:#ffe08a;background:linear-gradient(#3e1820,#2a1016);border-bottom:3px solid #c84a5a}
+#rdbody{flex:1;overflow-y:auto;padding:10px 12px;font-size:10px;line-height:1.7;display:flex;flex-direction:column;gap:8px}
+#rdbody .rdcard{display:flex;gap:12px;align-items:center;background:#1e1428;border:2px solid #5a2a3a;padding:8px}
+#rdbody .rdimg{width:72px;height:72px;image-rendering:pixelated;background:radial-gradient(#5a1a2a,#140f22);border:2px solid #c84a5a}
+#rdbody .rdcard b{display:block;font-weight:normal;color:#ff9a9a;font-size:12px}
+#rdbody .rdcard small{display:block;font-size:8px;color:#c8b8e0}
+#rdbody .rdbar{position:relative;height:22px;background:#0a0710;border:2px solid #5a2a3a}
+#rdbody .rdbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(#ff5a6a,#a81a2a)}
+#rdbody .rdbar span{position:relative;display:block;text-align:center;line-height:18px;font-size:8px;color:#fff;text-shadow:1px 1px 0 #000}
+#rdbody #rdgo{min-height:48px;background:#6a1a2a;border-color:#ff5a6a;color:#fff;font-size:11px}
+#rdbody #rdgo[disabled]{opacity:.5}
+#rdbody .rdtro{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#rdbody .rdtro div{background:#16101e;border:2px solid #2e2440;padding:5px 6px;opacity:.55}
+#rdbody .rdtro div.on{opacity:1;border-color:#c8a040;background:#2a2010}
+#rdbody .rdtro b{display:block;font-weight:normal;color:#ffd84a;font-size:9px}
+#rdbody .rdtro small{display:block;font-size:7px;color:#c8b8e0}
+#raidb{position:absolute;right:4px;top:12px;z-index:3;font-size:9px;padding:6px 8px;background:#6a1a2a;border:2px solid #ff5a6a;color:#fff;box-shadow:0 0 8px #ff3a4a}
+#raidb[hidden]{display:none}
+body.wide #raid{left:auto!important;right:0!important;width:var(--sidew)!important}

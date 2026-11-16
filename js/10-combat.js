@@ -76,6 +76,7 @@ function crowd0() { return Math.min(4 + Math.floor(S.zone / 2), 36) + Math.floor
 
 let deathT = 0;
 function heroDeath(force) {   // force — «Завершить жизнь»: без пера феникса и прочих воскрешений
+  if (S.raid) { if (force) raidEnd(false, 'end'); else { raidEnd(false, 'dead'); return; } }   // в рейде «смерть» лишь заканчивает попытку
   if (!force && deathT <= 0 && (S.phx || 0) < (trHas('phoenix') ? 1 : 0) + (skyOn('sk_phx') ? 1 : 0)) { S.phx = (S.phx || 0) + 1; hero.hp = D.maxHP * .5; hero.iframe = 2.5; ring(hero.x, hero.y - 4, 26, '#ff9a3c'); burst(hero.x, hero.y - 6, '#ff9a3c', 40, 70); toast('ПЕРО ФЕНИКСА!', 'герой восстал · раз за жизнь', 2200); [392, 523, 784].forEach((f, i) => tone(f, .2, 'triangle', .05, 0, i * .1)); return; }
   hero.hp = 0; if (deathT > 0) return;
   deathT = 1.4; slowT = 1.2; flashT = .3; shake = 12; hero.iframe = 3;
@@ -87,6 +88,7 @@ function heroDeath(force) {   // force — «Завершить жизнь»: б
 }
 // бой с вожаком без таймера: если видно, что вожака не одолеть (за 40с не убьёшь), он казнит героя — без долгого ожидания
 function bossJudge(bm, dt) {
+  if (bm.raid) return;   // у рейд-босса своя ярость по таймеру
   bm.jt = (bm.jt || 0) + dt;
   // ярость: вместо мгновенной казни вожак свирепеет — урон растёт: +6%/с, и каждую секунду прирост ещё на 0.6%, герой гибнет от нарастающего натиска
   if (bm.fury) { bm.furyT = (bm.furyT || 0) + dt; bm.fury *= Math.pow(1.06 + .006 * bm.furyT, dt); bm.dm = (bm.dm0 ?? (bm.dm0 = bm.dm)) * bm.fury;
@@ -140,7 +142,7 @@ function hitMob(m, dmg, crit, show, col) {
   if (m.boss || m.na) dmg *= D.hunt || 1;
   if (m.role !== 'shield' && !m.boss && mobs.some(o => o.role === 'shield' && !o.dead && o !== m && Math.hypot(o.x - m.x, o.y - m.y) < 14)) { dmg *= .6; if (rnd() < .3) pix2.push([m.x, m.y - 6]); }
   if (hero.stopT > 0 && m.stopD !== undefined && m.frz > 0) { m.stopD += dmg; m.fl = .07; burst(m.x, m.y - 3, '#88aaff', 1, 10); return; }   // остановка времени: урон копится
-  trackDmg(SRC_BY_COL[col] || 'Удар', Math.min(dmg, Math.max(0, m.hp))); m.hp -= dmg; m.fl = .07;
+  trackDmg(SRC_BY_COL[col] || 'Удар', Math.min(dmg, Math.max(0, m.hp))); if (m.raid && S.raid) S.raid.dealt += Math.min(dmg, Math.max(0, m.hp)); m.hp -= dmg; m.fl = .07;
   if (!col && legOn('frost')) m.slowT = 2;
   if (!col && D.bleed > .01) { m.blT = 4; m.bl = Math.min((m.bl || 0) + D.hit * D.bleed * .25, D.hit * D.bleed); }
   if (!col && D.frost > .01 && rnd() < D.frost) { m.slowT = 1.5; if (!m.boss && rnd() < .15) { m.frz = 1; if (texts.length < 8) fxLabel('Заморозка', m.x, m.y - 12, '#a8e8ff'); } }
@@ -156,6 +158,7 @@ function hitMob(m, dmg, crit, show, col) {
 
 let killWindow = 0;
 function killMob(m) {
+  if (m.raid) { m.dead = true; raidEnd(true); return; }
   S.kills++; killWindow++;
   zkKill(m); trRoll(m); if (!m.obj) relGain((1 + S.zone / 5) * (m.boss ? 25 : m.rare ? 3 : 1) * (m.hw ?? 1));
   combo++; comboT = comboTime(); comboPop = .15; addUlt(m.boss ? .2 : m.rare ? .05 : .008 * (m.hw ?? 1));
@@ -795,7 +798,7 @@ function bossAI(bm, dt) {
   if (bm.atkT > 0 || tele.some(t => t.b === bm)) return;
   const iv = 5 * (bm.phase === 2 ? .5 : bm.phase === 1 ? .7 : 1); bm.atkT = iv * (.8 + rnd() * .4);
   const types = ['jump', 'dash', 'ring', 'summon', 'meteor', 'cross'], fav = S.zone <= 50 ? BOSS_FAV[Math.floor((S.zone - 1) / ZONES_PER_BIOME)] : null, type = fav && rnd() < .45 ? fav : types[Math.floor(rnd() * types.length)];
-  const dmg = zoneDmg(S.zone) * bm.dm * 3;
+  const dmg = bm.raid ? raidDmg(bm) : zoneDmg(S.zone) * bm.dm * 3;
   tip('tele', 'Красная зона!', 'Вожак готовит удар. Тапни по герою — он отпрыгнет. Увернулся — 3 секунды тройного урона.');
   if (type === 'jump') tele.push({ k: 'c', b: bm, x: hero.x, y: hero.y, r: 16, t: 1.1, max: 1.1, dmg, act: 'jump' });
   else if (type === 'ring') tele.push({ k: 'c', b: bm, x: bm.x, y: bm.y, r: 26, t: 1.2, max: 1.2, dmg, act: 'ring' });
@@ -831,6 +834,7 @@ function heroDash() {
   tone(500, .08, 'triangle', .05, 1100);
 }
 function bossPhase(m) {
+  if (m.raid) return;
   const f = m.hp / m.max;
   if (m.phase !== 2 && f < .2 && m.phase === 1) { m.phase = 2; m.atkT = Math.min(m.atkT || 0, 1); toast('ПОСЛЕДНИЙ РЫВОК!', 'вожак атакует без передышки'); shake = 8; flashT = .1; }
   else if (!m.phase && f < .5) {

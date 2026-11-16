@@ -717,7 +717,7 @@ function recalc() {
   D.beam = sat(R.beam || 0, 50); D.clone = sat(R.clone || 0, 50); D.hole = sat(R.hole || 0, 50); D.mirror = sat(R.mirror || 0, 50); D.crows = sat(R.crows || 0, 50); D.ritual = sat(R.ritual || 0, 50);
   calcPath();
   clsMods();   // классы: бонусы, уникальные статы, мастерство ветви
-  ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods(); skyMods(); relMods(); totemMods();
+  ntMods(); pathMods(); constMods(); gearMods(); perkMods(); trMods(); skyMods(); relMods(); totemMods(); raidMods();
   D.aps = Math.min(8, D.aps * .7);   // темп боя: удары реже и читаемее
   D.furyK = 2 * sat(R.fury, 50) * (1 + sy(6));
 }

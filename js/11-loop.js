@@ -13,12 +13,13 @@ function update(dt) {
   spawnMob.hw = Math.min(1, Math.sqrt(cb / Math.max(1, want - (ev && ev.type === 'inv' ? want * .6 : 0))));
   if (hordeC() > 0 && time > packT) { packT = time + 1.2 + rnd() * .8; packA = rnd() * 6.2832; }
   zoneTick(dt);
-  if (spawnT <= 0 && mobs.length < want && !zSpawnHold()) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(hordeC() * 18)); for (let i = 0; i < Math.min(n, 4 + Math.round(hordeC() * 18)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
+  if (S.raid) raidTick(dt);
+  if (spawnT <= 0 && mobs.length < want && !zSpawnHold() && !S.raid) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(hordeC() * 18)); for (let i = 0; i < Math.min(n, 4 + Math.round(hordeC() * 18)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
   // без таймеров: вожак приходит, как заполнилась полоска; если герой еле убивает врагов — приходит сам («чует слабость»)
   if (!bossAlive) { S.wallW = (S.wallW || 0) + dt; S.wk = S.wk || []; if (S.wallW > 20) { const recent = S.kills - (S.wkK ?? S.kills); if (S.wallW - (S.wkT || 0) >= 20) { S.weak = recent < 4; S.wkK = S.kills; S.wkT = S.wallW; } } }
-  if (!bossAlive && bossCd <= 0 && (S.zk >= zoneNeed() || S.weak)) { if (S.zk < zoneNeed()) feed('Вожак чует слабость и приходит сам!', '#ff6b6b'); S.weak = false; S.wallW = 0; S.wkT = 0; S.wkK = undefined; forceBoss = false; spawnMob(true); }
+  if (!bossAlive && !S.raid && bossCd <= 0 && (S.zk >= zoneNeed() || S.weak)) { if (S.zk < zoneNeed()) feed('Вожак чует слабость и приходит сам!', '#ff6b6b'); S.weak = false; S.wallW = 0; S.wkT = 0; S.wkK = undefined; forceBoss = false; spawnMob(true); }
   if (bossAlive) {
     bossT -= dt;
     const bm = mobs.find(m => m.boss && !m.dead);
@@ -249,7 +250,8 @@ function render() {
     { const oc = outl8(ol, o.t), q = Math.max(1, Math.round(os)); ctx.drawImage(oc, xo - q, yo + bob - q, sw + 2 * q, sh2 + 2 * q); }
     const fly = wRule('fly') ? -3 - Math.round(Math.sin(time * 3 + o.x) * 1.5) : 0;
     if (o.ph) ctx.globalAlpha = .25;
-    ctx.drawImage(mobSprite(o, o.fl > 0), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1;
+    ctx.drawImage(mobSprite(o, o.fl > 0 && !o.raid), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1;
+    if (o.raid && o.fl > 0) { ctx.globalAlpha = .3; ctx.drawImage(mobSprite(o, true), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1; }   // рейд-босса бьют без перерыва: лёгкий налёт вместо белой вспышки
     if (o.shd > 0) { ctx.globalAlpha = .55; circ(o.x, o.y - s / 2, s * .6 + 1, '#7ad8ff', 14, .9, time); ctx.globalAlpha = 1; }
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }
     if (o.rare && rnd() < .15) pix(o.x + (rnd() - .5) * 10, o.y - rnd() * 10, '#fff6b0');
@@ -366,8 +368,8 @@ function render() {
   if (boss) {
     fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`;
     fctx.fillStyle = '#fff'; fctx.strokeStyle = '#000'; fctx.lineWidth = base / 4;
-    const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : boss.titan ? 'ТИТАН: ' + boss.name : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + (boss.name || MOBS[boss.t].n)) + ' ' + fmt(Math.max(0, boss.hp)) + (boss.exec ? ' · КАЗНЬ!' : '');
-    fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k);
+    if (!boss.raid) { const s = (boss.guard ? 'СТРАЖ СТЕНЫ' : boss.titan ? 'ТИТАН: ' + boss.name : (isLegend(S.zone) ? 'ЛЕГЕНДА: ' : 'ВОЖАК: ') + (boss.name || MOBS[boss.t].n)) + ' ' + fmt(Math.max(0, boss.hp)) + (boss.exec ? ' · КАЗНЬ!' : '');
+    fctx.strokeText(s, fx.width / 2, 9 * k); fctx.fillText(s, fx.width / 2, 9 * k); }
   }
   // лента событий
   if (feedArr.length) {
@@ -382,7 +384,7 @@ function render() {
     });
     fctx.globalAlpha = 1; fctx.textAlign = 'center';
   }
-  drawUltBanner(k); drawCutIn(US ? US.k : cls()); drawEvoBanner();
+  drawUltBanner(k); drawCutIn(US ? US.k : cls()); drawEvoBanner(); if (S.raid) raidHUD(k);
   if (ult >= .999 && ult < 1 && ultCd > 0) { fctx.font = `${Math.round(base * .8 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000'; fctx.fillStyle = '#a59fc0'; const tt = 'УЛЬТА ЧЕРЕЗ ' + Math.ceil(ultCd) + 'С'; fctx.strokeText(tt, fx.width / 2, (H - 9) * k); fctx.fillText(tt, fx.width / 2, (H - 9) * k); }
   if (ult >= 1) {
     fctx.font = `${Math.round(base * 1 / DPR) * DPR}px "Press Start 2P", monospace`; fctx.lineWidth = base / 3; fctx.strokeStyle = '#000';

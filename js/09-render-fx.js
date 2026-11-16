@@ -138,7 +138,8 @@ function drawArenaFx() {
   ctx.drawImage(vigC, 0, 0);
 }
 function buildGround() {
-  if (SIM && ground) return;   // в симуляции фон арены не нужен
+  if (SIM && ground) return;
+  if (S.raid) { raidArena(); return; }   // арена рейда   // в симуляции фон арены не нужен
   const b = biomeOf(S.zone);
   ground = document.createElement('canvas'); ground.width = AW; ground.height = AH;
   const g = ground.getContext('2d');
