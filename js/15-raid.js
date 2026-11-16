@@ -49,7 +49,7 @@ function raidStart() {
   mobs.push(m); moveWS(m); bossAlive = true; bossT = 999; S.raid.hpStart = m.hp;
   raidArena(); camFX = clamp(hero.x - W / 2, 0, Math.max(0, AW - W)); camFY = clamp(hero.y - H / 2, 0, Math.max(0, AH - H));
   { const bb = $('raidb'); if (bb) bb.hidden = true; }
-  go('fight'); toast('РЕЙД: ' + B.n.toUpperCase(), RAID_TIME + ' секунд · урон копится всю неделю', 3200); sfx.boss(); shake = 10; flashT = .2;
+  renderRaid(); go('fight'); toast('РЕЙД: ' + B.n.toUpperCase(), RAID_TIME + ' секунд · урон копится всю неделю', 3200); sfx.boss(); shake = 10; flashT = .2;
   tip('raid', 'Рейд-босс', 'Бей босса 60 секунд. Урон сохраняется на всю неделю — 3 попытки в день. Красные зоны — уклоняйся тапом по герою.');
 }
 const raidDmg = bm => D.maxHP * (.16 + .05 * (bm.phase || 0)) / Math.max(.1, 1 - D.armor);   // удар из красной зоны ≈ 16–26% HP
@@ -131,7 +131,7 @@ function renderRaid() {
   $('rdbody').innerHTML = `<div class="rdcard"><img src="${port}" class="rdimg"><div><b>${B.n}</b><small>босс недели · сменится через ${dd} д ${hh} ч</small>
     <small>трофей: <span style="color:#ffd84a">${B.tro.n}</span> — ${troTxt(B, 1)}${L ? ' (у тебя ' + roman(L) + ')' : ''}</small></div></div>
     <div class="rdbar"><i style="width:${(f * 100).toFixed(1)}%"></i><span>${A.won ? 'ПОВЕРЖЕН!' : A.hp ? 'урон недели: ' + pct(f) : 'первая попытка определит силу босса'}</span></div>
-    <button class="btn big" id="rdgo"${can ? '' : ' disabled'}>${A.won ? 'БОСС ПОВЕРЖЕН — ЖДИ СЛЕДУЮЩЕГО' : raidLeft() ? 'В БОЙ · попыток ' + raidLeft() + '/' + RAID_TRIES : 'ПОПЫТКИ КОНЧИЛИСЬ — ЗАВТРА'}</button>
+    <button class="btn big" id="rdgo"${can ? '' : ' disabled'}>${S.raid ? 'ИДЁТ БОЙ · ' + Math.ceil(S.raid.t) + ' с' : A.won ? 'БОСС ПОВЕРЖЕН — ЖДИ СЛЕДУЮЩЕГО' : raidLeft() ? 'В БОЙ · попыток ' + raidLeft() + '/' + RAID_TRIES : 'ПОПЫТКИ КОНЧИЛИСЬ — ЗАВТРА'}</button>
     ${A.last ? `<div class="k">Последняя попытка: ${A.last.win ? 'победа!' : fmt(A.last.dealt) + ' урона (' + pct(A.last.f) + ' босса)'}</div>` : ''}
     <div class="gsec">ТРОФЕИ</div><div class="rdtro">${RAIDS.map(b => { const l = A.tro[b.id] || 0; return `<div class="${l ? 'on' : ''}"><b>${l ? b.tro.n + ' ' + roman(l) : '???'}</b><small>${l ? troTxt(b, l) : b.n}</small></div>`; }).join('')}</div>
     <div class="dim">60 секунд против босса на отдельной арене. Урон копится за неделю, 3 попытки в день. Фазы: подмога на 20-й секунде, ярость на 40-й. Победа — трофей навсегда; тот же босс вернётся через 8 недель, и трофей станет сильнее.</div>`;
@@ -141,5 +141,5 @@ function openRaid() { $('raid').hidden = false; renderRaid(); }
 function raidInit() {
   if (S.raid) { mobs = mobs.filter(m => !m.raid); raidEnd(false, 'lost'); }   // игру закрыли посреди попытки: засчитываем набранный урон, без победы
   const b = $('raidb'); if (b) b.onclick = () => { uiTap(); go('hero', 'raid'); };
-  setInterval(() => { const bb = $('raidb'); if (!bb) return; const show = raidCan() && !S.raid && deathT <= 0; bb.hidden = !show; if (show) bb.textContent = '⚔ РЕЙД ' + raidLeft(); }, 1000);
+  setInterval(() => { if (!$('raid').hidden) renderRaid(); const bb = $('raidb'); if (!bb) return; const show = raidCan() && !S.raid && deathT <= 0; bb.hidden = !show; if (show) bb.textContent = '⚔ РЕЙД ' + raidLeft(); }, 1000);
 }

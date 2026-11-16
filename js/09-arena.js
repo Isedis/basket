@@ -90,7 +90,7 @@ function buildFg(bi, b) {
   return c;
 }
 function drawFg() {
-  if (SIM || S.fxLow) return;
+  if (SIM || S.fxLow || S.raid) return;
   const b = biomeOf(S.zone), bi = b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, key = bi + ':' + S.zone;
   if (fgK !== key) { fgK = key; fgC = buildFg(bi, b); }
   const SW = fgC.width, SH = fgC.height / 2, px = -((camX * 1.35) % SW + SW) % SW, py = Math.round((camY / Math.max(1, AH - H) - .5) * 6);   // параллакс: быстрее камеры
@@ -119,7 +119,7 @@ function drawSmoke() { for (const p of smoke) { ctx.globalAlpha = .22 * (1 - p.t
 const WEATHER = ['petals', 'leaves', 'fog', 'sand', 'fog', 'snow', 'embers', 'motes', 'glints', 'spores', 'rain', 'ash', 'clouds'];
 let fogC = null;
 function drawWeather() {
-  if (S.fxLow) return;
+  if (S.fxLow || S.raid) return;   // на арене рейда — без погоды биома
   const b = biomeOf(S.zone), bi = b.world != null ? [6, 5, 4, 7, 12][b.world % 5] : b.bi, kind = WEATHER[bi] || 'motes', N = Math.round(34 * W * H / (130 * 200));
   if (kind === 'fog' || kind === 'clouds') {   // большие полупрозрачные клубы тумана/облаков
     if (!fogC) { fogC = document.createElement('canvas'); fogC.width = 64; fogC.height = 32; const g = fogC.getContext('2d'), gr = g.createRadialGradient(32, 16, 2, 32, 16, 30); gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 32); }

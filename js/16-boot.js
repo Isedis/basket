@@ -77,6 +77,7 @@ function renderSubnav() {
 }
 // старые вызовы («показать шторку», «подсветить кнопку») — через новые разделы
 function navOn(id) {
+  if (id === 'nFight' && isWide()) return;   // компьютер: бой и так виден, панель с вкладками не трогаем
   const m = { nFight: 'nFight', nStats: 'nHero', nCls: 'nHero', gearb: 'nHero', treeb: 'nUp', nSouls: 'nMenu', nSet: 'nMenu', nHero: 'nHero', nUp: 'nUp', nMenu: 'nMenu' }[id] || '';
   for (const b of document.querySelectorAll('#nav .nb')) b.classList.toggle('on', b.id === m);
   if (m === 'nFight' && uiSec !== 'fight') { uiSec = 'fight'; $('subnav').hidden = true; }
