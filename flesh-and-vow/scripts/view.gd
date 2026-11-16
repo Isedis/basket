@@ -350,7 +350,8 @@ static func hud(g):
 	text(g,Vector2(762,453),"Дары: %d"%g.inventory.size(),11,MUTED)
 	text(g,Vector2(762,473),"Shift · рывок" if g.has_item("blink") else "Рывок не обретён",10,MUTED)
 	Art.rune_border(g,Rect2(32,460,704,42))
-	Art.pixel_text(g,Vector2(46,478),Catalog.FLOORS[g.floor_index].short.to_upper(),GOLD)
+	if not g.enemies.any(func(e): return e.type=="boss0"):
+		Art.pixel_text(g,Vector2(46,478),Catalog.FLOORS[g.floor_index].short.to_upper(),GOLD)
 	text(g,Vector2(46,494),ROOM_NAMES[g.room.type],9,MUTED)
 	var count = 0 if g.enemies.any(func(e): return e.type=="boss0") else mini(11,g.inventory.size())
 	for i in range(count):
