@@ -26,7 +26,10 @@ function RA() { const M = S.meta; if (!M.raid) M.raid = { tro: {} }; const A = M
 const raidBoss = () => RAIDS[RA().wk % RAIDS.length];
 const raidOpen = () => (S.meta.best || 0) >= RAID_ZONE || !!(S.meta.raid && Object.keys(S.meta.raid.tro || {}).length);
 const raidLeft = () => Math.max(0, RAID_TRIES - (RA().tries || 0));
-const raidCan = () => raidOpen() && raidLeft() > 0 && !RA().won && !S.raid;
+// рейд — только сильным героем этой жизни: дошёл до 80% рекорда (иначе замер силы можно занизить слабым героем в начале жизни)
+const raidZoneNeed = () => Math.max(RAID_ZONE, Math.floor((S.meta.best || 0) * .8));
+const raidReady = () => (S.zone || 0) >= raidZoneNeed();
+const raidCan = () => raidOpen() && raidLeft() > 0 && !RA().won && !S.raid && raidReady();
 // трофеи: вечные бонусы (в цепочке recalc)
 function raidMods() { const T = (S.meta.raid && S.meta.raid.tro) || {};
   for (const b of RAIDS) { const L = T[b.id] || 0; if (!L) continue; const v = b.tro.v * L;
@@ -70,9 +73,11 @@ function raidEnd(win, why) {
   const R = S.raid; if (!R) return; const A = RA(), B = raidBoss(), bm = mobs.find(m => m.raid);
   const dealt = win ? R.hpStart : R.dealt;
   if (win) { A.hp = A.hp || (A.hpEst || 1); A.dmg = A.hp; A.won = 1; A.tro[B.id] = (A.tro[B.id] || 0) + 1; }
-  else if (!A.hp) { A.hp = Math.max(dealt * 12, (A.dmg || 0) + dealt * 2, 1); A.dmg = dealt; }   // первая попытка недели задаёт запас HP
+  else if (!A.hp) {   // первая попытка недели задаёт запас HP: урон пересчитывается на полные 60 с; меньше 15 с боя — замер не засчитан
+    const el = RAID_TIME - Math.max(0, R.t);
+    if (el >= 15) { A.hp = Math.max(dealt / el * RAID_TIME * 12, 1); A.dmg = Math.min(dealt, A.hp * .5); } else A.nomeas = 1; }
   else A.dmg = Math.min(A.hp - 1, (A.dmg || 0) + dealt);
-  A.last = { dealt, win: win ? 1 : 0, why: why || '', f: dealt / A.hp };
+  A.last = { dealt, win: win ? 1 : 0, why: why || '', f: A.hp ? dealt / A.hp : 0, nomeas: !A.hp ? 1 : 0 };
   S.raid = null; mobs = []; tele = []; proj = []; waves = []; bossAlive = false; hero.pool = 0; hero.hp = Math.max(R.hp0, D.maxHP * .5); hero.iframe = 1.5; S.lt = R.lt; S.zk = R.zk;
   buildGround(); recalc(); save(true);
   if (win) { flashT = .3; shake = 14; slowT = 1.2; if (bm) { for (let i = 0; i < 4; i++) burst(bm.x, bm.y - 10, ['#ffffff', '#ffd84a', '#ff5a6a', '#bb88ff'][i], 40, 90); for (let i = 0; i < 3; i++) ring(bm.x, bm.y - 6, 20 + i * 14, i % 2 ? '#ffd84a' : '#ffffff'); puff(bm.x, bm.y - 4, 18, '#2a2030', 8); }
@@ -118,6 +123,7 @@ function raidCard(win, dealt, why) {
   if (SIM) return; const A = RA(), B = raidBoss(), f = A.hp ? Math.min(1, A.dmg / A.hp) : 0, L = A.tro[B.id] || 0, el = cardEl(); el.hidden = false; el._t = 0; el.style.borderColor = win ? '#ffd84a' : '#ff5a6a';
   const head = win ? '<span style="color:#ffd84a">БОСС НЕДЕЛИ ПОВЕРЖЕН!</span>' : '<span style="color:#ff9a9a">' + (why === 'time' ? 'ВРЕМЯ ВЫШЛО' : why === 'dead' ? 'ГЕРОЙ ОТСТУПИЛ' : 'ПОПЫТКА ОКОНЧЕНА') + '</span>';
   const body = win ? `<div class="ll">Трофей <b>«${B.tro.n}» ${roman(L)}</b><br>${troTxt(B, L)} — навсегда</div>`
+    : !A.hp ? `<div class="ll">${B.n}<br>замер не засчитан: бой длился меньше 15 секунд — сила босса пока неизвестна</div>`
     : `<div class="ll">${B.n}<br>урон за попытку: <b>${fmt(dealt)}</b> · <b>${pct(dealt / (A.hp || 1))}</b> босса</div>`;
   const bar = `<div class="rcbar"><i style="width:${(f * 100).toFixed(1)}%"></i><span>неделя: ${pct(f)}</span></div>`;
   const left = raidLeft(), btn = !win && left ? `<div class="cbtns"><button class="btn" id="rcagain" style="background:#6a1a2a;border-color:#ff5a6a">ЕЩЁ ПОПЫТКА · ${left}</button></div>` : '';
@@ -136,10 +142,10 @@ function renderRaid() {
   $('rdbody').innerHTML = `<div class="rdcard"><img src="${port}" class="rdimg"><div><b>${B.n}</b><small>босс недели · сменится через ${dd} д ${hh} ч</small>
     <small>трофей: <span style="color:#ffd84a">${B.tro.n}</span> — ${troTxt(B, 1)}${L ? ' (у тебя ' + roman(L) + ')' : ''}</small></div></div>
     <div class="rdbar"><i style="width:${(f * 100).toFixed(1)}%"></i><span>${A.won ? 'ПОВЕРЖЕН!' : A.hp ? 'урон недели: ' + pct(f) : 'первая попытка определит силу босса'}</span></div>
-    <button class="btn big" id="rdgo"${can ? '' : ' disabled'}>${S.raid ? 'ИДЁТ БОЙ · ' + Math.ceil(S.raid.t) + ' с' : A.won ? 'БОСС ПОВЕРЖЕН — ЖДИ СЛЕДУЮЩЕГО' : raidLeft() ? 'В БОЙ · попыток ' + raidLeft() + '/' + RAID_TRIES : 'ПОПЫТКИ КОНЧИЛИСЬ — ЗАВТРА'}</button>
-    ${A.last ? `<div class="k">Последняя попытка: ${A.last.win ? 'победа!' : fmt(A.last.dealt) + ' урона (' + pct(A.last.f) + ' босса)'}</div>` : ''}
+    <button class="btn big" id="rdgo"${can ? '' : ' disabled'}>${S.raid ? 'ИДЁТ БОЙ · ' + Math.ceil(S.raid.t) + ' с' : A.won ? 'БОСС ПОВЕРЖЕН — ЖДИ СЛЕДУЮЩЕГО' : !raidReady() && raidLeft() ? 'ДОЙДИ ДО ' + raidZoneNeed() + '-Й ЗОНЫ В ЭТОЙ ЖИЗНИ' : raidLeft() ? 'В БОЙ · попыток ' + raidLeft() + '/' + RAID_TRIES : 'ПОПЫТКИ КОНЧИЛИСЬ — ЗАВТРА'}</button>
+    ${A.last ? `<div class="k">Последняя попытка: ${A.last.win ? 'победа!' : A.last.nomeas ? 'замер не засчитан (меньше 15 с)' : fmt(A.last.dealt) + ' урона (' + pct(A.last.f) + ' босса)'}</div>` : ''}
     <div class="gsec">ТРОФЕИ</div><div class="rdtro">${RAIDS.map(b => { const l = A.tro[b.id] || 0; return `<div class="${l ? 'on' : ''}"><b>${l ? b.tro.n + ' ' + roman(l) : '???'}</b><small>${l ? troTxt(b, l) : b.n}</small></div>`; }).join('')}</div>
-    <div class="dim">60 секунд против босса на отдельной арене. Урон копится за неделю, 3 попытки в день. Фазы: подмога на 20-й секунде, ярость на 40-й. Победа — трофей навсегда; тот же босс вернётся через 8 недель, и трофей станет сильнее.</div>`;
+    <div class="dim">60 секунд против босса на отдельной арене. Урон копится за неделю, 3 попытки в день. Идти в рейд можно сильным героем: когда в этой жизни дошёл до 80% рекорда. Первая попытка недели — замер силы босса (нужно продержаться хотя бы 15 с). Фазы: подмога на 20-й секунде, ярость на 40-й. Победа — трофей навсегда; тот же босс вернётся через 8 недель, и трофей станет сильнее.</div>`;
   $('rdgo').onclick = () => { uiTap(); raidStart(); };
 }
 function openRaid() { $('raid').hidden = false; renderRaid(); }
