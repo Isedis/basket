@@ -57,6 +57,7 @@ function raidTick(dt) {
   const R = S.raid; if (!R) return; R.t -= dt; const e = RAID_TIME - R.t, bm = mobs.find(m => m.raid && !m.dead);
   if (!bm) { raidEnd(false, 'lost'); return; }   // босс пропал (перезагрузка, сброс поля) — это не победа: победа только через killMob
   { const dx = bm.x - hero.x, dy = bm.y - hero.y, d = Math.hypot(dx, dy) || 1; if (d < 18) { bm.x = clamp(hero.x + dx / d * 18, 10, AW - 10); bm.y = clamp(hero.y + dy / d * 18, 20, AH - 4); } }   // гигант не наползает на героя
+  bm.x = clamp(bm.x, AW * .3, AW * .7); bm.y = clamp(bm.y, AH * .42, AH * .72);   // бой — в середине арены, под панелью рейда
   const ph = e > 40 ? 2 : e > 20 ? 1 : 0;
   if (ph !== R.ph) { R.ph = ph; bm.phase = ph; bm.atkT = Math.min(bm.atkT || 0, 1);
     if (ph === 1) { toast('ПОДМОГА!', B_name() + ' зовёт слуг', 2000); } else { toast('ЯРОСТЬ!', 'последние 20 секунд — босс бьёт чаще', 2200); bm.sp *= 1.4; tone(110, .4, 'sawtooth', .05, 60); } shake = 8; flashT = .12; }
@@ -95,6 +96,10 @@ function raidArena() {
 // панель рейда поверх боя: имя, таймер, прогресс недели
 function raidHUD(k) {
   const R = S.raid; if (!R) return; const A = RA(), bm = mobs.find(m => m.raid), base = Math.max(8, Math.round(SC * 2)) * DPR;
+  if (bm) {   // маркер над боссом поверх всех эффектов — босса видно даже во время ульт
+    const ax = (bm.x - camX) * k, ay = (bm.y - camY - 8 * bm.sz - 7 - Math.abs(Math.sin(time * 4)) * 2) * k, s = Math.max(3, Math.round(k * 1.2));
+    fctx.fillStyle = '#000'; fctx.beginPath(); fctx.moveTo(ax - 3.6 * s, ay - 3 * s); fctx.lineTo(ax + 3.6 * s, ay - 3 * s); fctx.lineTo(ax, ay + 1.4 * s); fctx.fill();
+    fctx.fillStyle = '#ff3a4a'; fctx.beginPath(); fctx.moveTo(ax - 2.6 * s, ay - 2.4 * s); fctx.lineTo(ax + 2.6 * s, ay - 2.4 * s); fctx.lineTo(ax, ay + .4 * s); fctx.fill(); }
   const fs = Math.round(base * .95 / DPR) * DPR, y = 11 * k; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
   fctx.font = `${fs}px "Press Start 2P", monospace`; const tl = Math.ceil(R.t), txt = raidBoss().n.toUpperCase() + ' · ' + tl + ' с';
   fctx.fillStyle = tl <= 10 && Math.sin(time * 10) > 0 ? '#ff5a5a' : '#ffe08a'; fctx.strokeText(txt, fx.width / 2, y); fctx.fillText(txt, fx.width / 2, y);

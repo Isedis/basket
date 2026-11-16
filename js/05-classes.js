@@ -93,7 +93,7 @@ const aw = () => awake();
 const tierOf = l => { let t = null; for (const x of TIERS) if (l >= x[0]) t = x; return t; };
 function clsXP(v) {
   if (skyOn('nv_loyal')) v *= 3;
-  v *= relMxp() * 1.6;   // класс качается быстрее
+  v *= relMxp() * 3.2;   // класс качается быстрее
   // общий опыт: все уже встреченные классы получают 15% опыта текущего (тихо, без тостов)
   for (const k of CLS_KEYS) if (k !== cls() && S.meta.seen && S.meta.seen[k]) { const o = cm(k); o.xp += v * .15; while (o.xp >= cxpNeed(o.lv)) { o.xp -= cxpNeed(o.lv); o.lv++; } }
   const c = cm(cls()); c.xp += v;
