@@ -78,6 +78,12 @@ func run():
     for ratio in [0.0,0.2,0.4,0.6,0.8,1.0]:cases.append({"look":look,"phase":phase,"attack":"charge","state":state,"ratio":ratio,"dead":false,"feet":0,"heavy":true})
    for ratio in [0.0,0.2,0.4,0.6,0.8,1.0]:cases.append({"look":look,"phase":phase,"attack":"charge","state":"recover","ratio":ratio,"dead":false,"feet":0,"heavy":true,"wall":true})
   for age in [0.0,0.35,1.0]:cases.append({"look":look,"phase":2,"attack":"charge","state":"strike","ratio":0.4,"dead":true,"age":age,"feet":0,"heavy":true})
+ for look in range(4):
+  for phase in [1,2]:
+   for ratio in [0.0,0.15,0.35,0.55,0.75,0.9,1.0]:cases.append({"look":look,"phase":phase,"attack":"toll","state":"windup","ratio":ratio,"dead":false,"feet":0,"toll":-1.0})
+   var times=[0.0,0.06,0.12,0.24,0.4,0.8,1.2] if phase==1 else [0.0,0.06,0.12,0.24,0.36,0.5,0.58,0.6,0.66,0.74,0.9,1.2,1.4]
+   for t in times:cases.append({"look":look,"phase":phase,"attack":"toll","state":"strike" if t<0.35 else "recover","ratio":0.0,"dead":false,"feet":0,"toll":t})
+  for age in [0.0,0.35,1.0]:cases.append({"look":look,"phase":2,"attack":"toll","state":"recover","ratio":0.0,"dead":true,"age":age,"feet":0,"toll":0.66})
  var count = 0
  for c in cases:
   var p = Vector2(240,320)
@@ -98,6 +104,13 @@ func run():
   if c.get("combo",false):e.bell_combo_step=1
   var duration = fight.FRACTURE if c.state=="fracture" else (fight.windup(e) if c.state=="windup" else (fight.STRIKE[c.attack] if c.state=="strike" else fight.recovery(e)))
   e.state_time = duration*c.ratio
+  if c.has("toll"):
+   e.bell_toll_rig=true
+   e.bell_toll_clock=c.toll
+   e.bell_toll_pulses=0 if c.toll<0 else (2 if c.toll>=0.6 and c.phase==2 else 1)
+   if c.state!="windup":e.state_time=c.toll if c.state=="strike" else maxf(0,c.toll-0.35)
+   var spread=fight.Toll.posture(e).spread
+   for i in range(2):e.motion.feet[i].x=p.x+(-1 if i==0 else 1)*(6+8*spread)
   if c.has("contact"):
    e.bell_hit_kind=c.contact
    e.bell_hit_u=0.35

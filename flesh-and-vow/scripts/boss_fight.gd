@@ -1,5 +1,6 @@
 extends RefCounted
 ## Castle boss: persisted state machine, shared visible/physical attack geometry.
+const Toll = preload("res://scripts/boss_toll.gd")
 const Charge = preload("res://scripts/boss_charge.gd")
 const Contact = preload("res://scripts/boss_contact.gd")
 const Combat = preload("res://scripts/combat.gd")
@@ -70,7 +71,18 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
   var coil = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   var shift = direction*coil*10+Vector2(0,coil*8)
   for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] += shift
- if attack=="toll" and e.state in ["windup","strike","recover"]:
+ if Toll.enabled(e) and e.state in ["windup","strike","recover"]:
+  var weight = Toll.posture(e)
+  var shift = -direction*weight.load*3+Vector2(0,weight.crouch)
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] += shift
+  base.head += Vector2(0,weight.load*1.5)
+  base.hand -= Vector2(0,weight.crouch*0.65)
+  var side = Motion.hand_sign(Motion.look_index(motion,direction))
+  base.elbow = base.shoulder+Combat.arm_elbow(Vector2.ZERO,(base.hand-base.shoulder)/2,side)*2
+  base.twist += side*weight.load*0.02
+  base.toll_rock = weight.rock
+  base.toll_chain = weight.chain
+ elif attack=="toll" and e.state in ["windup","strike","recover"]:
   var u = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   base.head += Vector2(sin(clock*22)*u*1.6,-u*5)
  if e.state=="intro": base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
@@ -103,6 +115,8 @@ static func recovery(e: Dictionary) -> float:
  return RECOVERY[attack]+(0.3 if e.get("bell_combo_step",0)==1 else 0.0)+(0.25 if attack=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
 static func begin_attack(g,e: Dictionary,attack: String,followup: bool = false):
  e.bell_attack = attack
+ if attack=="toll":Toll.prepare(e)
+ else:e.bell_toll_rig = false
  if attack=="charge":Charge.prepare(e)
  else:e.bell_charge_rig = false
  e.bell_combo_step = 1 if followup else 0
@@ -164,17 +178,20 @@ static func stop_sounds(g):
    child.stop()
    child.stream = null
    child.queue_free()
-static func sound(g, kind: String):
+static func sound(g, kind: String, pitch: float = 1.0):
  if DisplayServer.get_name()=="headless": return
  var player = AudioStreamPlayer.new()
  player.set_meta("castle_boss_sfx",true)
  player.stream = load("res://assets/boss_"+kind+".wav")
+ player.pitch_scale = pitch
  player.volume_db = {"bell":-11,"flesh":-8,"stone":-10,"swing":-18,"step":-22,"launch":-14,"brake":-19}.get(kind,-14)
  g.add_child(player)
  player.finished.connect(player.queue_free)
  player.play()
 static func ring(g, e: Dictionary, delay: float = 0.0):
- g.zones.append({"kind":"boss_ring","x":e.x,"y":e.y,"age":-delay,"timer":2.1+delay,"radius":12.0,"damage":2.0,"gap":e.get("bell_gap",0.0),"spent":false})
+ var wave = {"kind":"boss_ring","x":e.x,"y":e.y,"age":-delay,"timer":2.1+delay,"radius":12.0,"damage":2.0,"gap":e.get("bell_gap",0.0),"spent":false}
+ if Toll.enabled(e):wave.merge({"toll_token":e.bell_toll_token,"pulse":1 if delay>0 else 0,"pulse_delay":delay,"pulse_spent":false})
+ g.zones.append(wave)
 static func update(g, e: Dictionary, dt: float, slow: float):
  ensure(e)
  if e.has("bell_hit_age"):e.bell_hit_age = minf(2,float(e.bell_hit_age)+dt)
@@ -211,8 +228,10 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    if e.bell_attack=="toll":
     ring(g,e)
     if e.bell_phase==2: ring(g,e,0.6)
-    g.shake = maxf(g.shake,2.5)
-    sound(g,"bell")
+    if Toll.enabled(e):e.bell_toll_clock = 0.0
+    else:
+     g.shake = maxf(g.shake,2.5)
+     sound(g,"bell")
    elif e.bell_attack=="charge":
     if Charge.enabled(e):
      Charge.launch(e)
@@ -273,5 +292,6 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    begin_attack(g,e,attack)
  e.x = p.x
  e.y = p.y
- if Charge.enabled(e) and e.state in ["windup","strike","recover"]:Charge.gait(g,e,before,p,dt)
+ if Toll.enabled(e) and e.state in ["windup","strike","recover"]:Toll.gait(e,before,p,dt)
+ elif Charge.enabled(e) and e.state in ["windup","strike","recover"]:Charge.gait(g,e,before,p,dt)
  else:e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)

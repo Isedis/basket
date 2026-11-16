@@ -119,3 +119,14 @@ the CPU anatomy suite performs 3412 checks. Real gameplay capture exercises
 normal braking and column impact with the actual world drawing proxy and
 audio; capture logs must be free of script errors. Private footage uses
 controlled encounter setup and is not a balance test.
+
+
+0.6.9: tests/boss_toll.gd verifies harmless planted preparation, posture
+continuity, wave-driven pulse timing, shared hit-stop, separate second
+feedback, pending/consumed pulse persistence, caster movement, locked safe
+wedges, damping, foot settling, death cancellation, legacy waves, token
+isolation, 60/120 Hz game clocks and grip binding (75 checks).
+The complete-body graphics suite now renders 848 silhouettes, including
+both toll impulses and their frozen corpse poses. CPU anatomy performs
+4228 checks. Private real-game capture shows one and two waves, bell audio,
+recoil and safe wedges in controlled encounters; it is not a balance test.

@@ -88,11 +88,15 @@ static func parameters(e: Dictionary, pose: Dictionary, look: int) -> Dictionary
   var upper = elbow-shoulder
   var lower = hand-elbow
   arms.append({"side":side,"shoulder":shoulder,"elbow":elbow,"pivot":pivot,"middle":middle,"upper":upper/(middle-pivot),"lower":lower/(wrist-middle),"upper_normal":Vector2(-upper.y,upper.x).normalized()*side,"lower_normal":Vector2(-lower.y,lower.x).normalized()*side})
- return {"p":p,"core":core,"angle":pose.torso_angle,"head":pose.head-(pose.body+Vector2(0,-130)),"feet":feet,"arms":arms}
+ return {"p":p,"core":core,"angle":pose.torso_angle,"head":pose.head-(pose.body+Vector2(0,-130)),"feet":feet,"arms":arms,"toll_rock":float(pose.get("toll_rock",0)),"toll_chain":float(pose.get("toll_chain",0))}
 static func mapped_point(v: Vector2, info: Dictionary) -> Vector2:
  var torso_weight = smoothstep(0,45,-v.y)
  var q = v.lerp((v-Vector2(0,-77)).rotated(info.angle)+Vector2(0,-77),torso_weight)+info.core*torso_weight
  q += info.head*smoothstep(100,125,-v.y)
+ if absf(info.toll_rock)>0.00001:
+  var pivot=Vector2(0,-112)+info.core+info.head
+  q=q.lerp(pivot+(q-pivot).rotated(info.toll_rock),smoothstep(100,125,-v.y))
+ q.x += info.toll_chain*smoothstep(32,48,-v.y)*(1-smoothstep(72,88,-v.y))*(1-smoothstep(20,30,absf(v.x)))
  q += info.feet[0].lerp(info.feet[1],smoothstep(-6,6,v.x))*(1-smoothstep(8,48,-v.y))
  for item in info.arms:
   var u = v.x*item.side

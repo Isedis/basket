@@ -37,6 +37,8 @@ static func actor(g, e: Dictionary, dead: bool = false):
  var pose = Fight.pose(model,clock)
  var context = {"p":p,"fall":collapse*1.5*sign_hand,"drop":collapse*10,"shift":Vector2.ZERO,"fade":1.0}
  var tint = Color(1.5,1.25,1.05) if not dead and e.get("flash",0)>0 else Color.WHITE
+ if not dead and e.get("flash",0)<=0 and Fight.Toll.enabled(e) and e.state in ["strike","recover"]:
+  tint=Color.WHITE.lerp(Color(1.2,1.1,0.98),Fight.Toll.energy(e)*0.5)
  # No independent head, torso, arm, leg or chain draws: one full connected skin.
  var front = BodySkin.arm_in_front(pose,look)
  weapon_span(g,textures(look)[6],pose,context,tint,0.0,0.55)

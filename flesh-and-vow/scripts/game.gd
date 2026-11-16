@@ -1074,6 +1074,7 @@ func update_zones(dt: float):
 			z.age = float(z.get("age",0))+dt
 			z.timer -= dt
 			z.radius = BossFight.ring_radius(z)
+			BossFight.Toll.sync(self,z)
 			if z.age>=0 and not z.get("spent",false) and BossFight.ring_hits(z,player,previous):
 				hurt(z.damage,Vector2(z.x,z.y))
 				z.spent = true

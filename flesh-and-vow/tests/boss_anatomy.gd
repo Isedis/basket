@@ -93,6 +93,26 @@ func run():
       heavy.motion.feet[i].lift=maxf(0,sin(heavy.motion.phase+i*PI))*4
      inspect(heavy)
   for phase in [1,2]:
+   for ratio in [0.0,0.15,0.35,0.55,0.75,0.9,1.0]:
+    var toll=entity(look)
+    toll.bell_phase=phase
+    toll.bell_attack="toll"
+    toll.bell_toll_rig=true
+    toll.state="windup"
+    toll.state_time=Fight.windup(toll)*ratio
+    inspect(toll)
+   var times=[0.0,0.06,0.12,0.24,0.4,0.8,1.2] if phase==1 else [0.0,0.06,0.12,0.24,0.36,0.5,0.58,0.6,0.66,0.74,0.9,1.2,1.4]
+   for t in times:
+    var toll=entity(look)
+    toll.bell_phase=phase
+    toll.bell_attack="toll"
+    toll.bell_toll_rig=true
+    toll.bell_toll_clock=t
+    toll.bell_toll_pulses=2 if phase==2 and t>=0.6 else 1
+    toll.state="strike" if t<0.35 else "recover"
+    toll.state_time=t if t<0.35 else t-0.35
+    inspect(toll)
+  for phase in [1,2]:
    var e=entity(look)
    e.bell_phase=phase
    e.state="strike"

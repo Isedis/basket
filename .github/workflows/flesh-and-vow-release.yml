@@ -51,6 +51,7 @@ jobs:
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/boss_contact.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/boss_phase.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/boss_charge.gd
+          Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/boss_toll.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/castle.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/doors.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/castle_hall.gd
