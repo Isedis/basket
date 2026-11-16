@@ -5,6 +5,9 @@ const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const INTRO = 1.6
 const FRACTURE = 1.4
+const FRACTURE_PULSE = 0.58
+const FOLLOWUP_WINDUP = 0.72
+const CHARGE_LINK = 0.48
 const STRIKE = {"cleave":0.56,"toll":0.35,"charge":0.72}
 const RECOVERY = {"cleave":0.95,"toll":1.05,"charge":1.2}
 const RING_SPEED = 185.0
@@ -21,6 +24,7 @@ static func ensure(e: Dictionary):
   e.state_time = 0.0
   e.timer = 0.65
 static func windup(e: Dictionary) -> float:
+ if e.get("bell_combo_step",0)==1 and e.get("bell_attack","")=="cleave":return FOLLOWUP_WINDUP
  var value = {"cleave":0.98,"toll":1.15,"charge":1.12}[e.get("bell_attack","cleave")]
  return value*(0.82 if e.get("bell_phase",1)==2 else 1.0)
 static func pose(e: Dictionary, clock: float) -> Dictionary:
@@ -62,7 +66,12 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
   var u = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   base.head += Vector2(sin(clock*22)*u*1.6,-u*5)
  if e.state=="intro": base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
- if e.state=="fracture": base.head += Vector2(sin(e.state_time*28)*2,4*sin(e.state_time*PI/FRACTURE))
+ if e.state=="fracture":
+  var brace = sin(clampf(e.state_time/FRACTURE,0,1)*PI)
+  # The complete skin braces together; never pull the helmet off the neck.
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] += Vector2(0,brace*6)
+  base.head += Vector2(sin(e.state_time*28)*brace*1.5,0)
+  base.angle += Motion.hand_sign(Motion.look_index(motion,direction))*brace*0.06
  if attack=="cleave" and e.get("bell_hit_kind","") in ["flesh","stone"]:
   var age = float(e.get("bell_hit_age",1.0))
   var duration = 0.24 if e.bell_hit_kind=="stone" else 0.16
@@ -80,7 +89,26 @@ static func blade(e: Dictionary, clock: float) -> PackedVector2Array:
  for xy in [Vector2(42,-18),Vector2(74,-18),Vector2(74,18),Vector2(42,18)]: result.append(weapon.hand+xy.rotated(weapon.angle))
  return result
 static func recovery(e: Dictionary) -> float:
- return RECOVERY[e.get("bell_attack","cleave")]+(0.25 if e.get("bell_attack","")=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
+ var attack = e.get("bell_attack","cleave")
+ if attack=="charge" and e.get("bell_followup_pending",false):return CHARGE_LINK
+ return RECOVERY[attack]+(0.3 if e.get("bell_combo_step",0)==1 else 0.0)+(0.25 if attack=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
+static func begin_attack(g,e: Dictionary,attack: String,followup: bool = false):
+ e.bell_attack = attack
+ e.bell_combo_step = 1 if followup else 0
+ e.bell_followup_pending = attack=="charge" and e.get("bell_phase",1)==2
+ e.bell_impact = false
+ e.bell_hit_kind = ""
+ e.bell_hit_age = 2.0
+ e.strike_hit = false
+ e.state = "windup"
+ e.state_time = 0.0
+ var to = g.player-Vector2(e.x,e.y)
+ var direction = to.normalized() if to.length()>0.01 else Vector2.DOWN
+ e.dx = direction.x
+ e.dy = direction.y
+ # Aim and safe wedge commit once, including the separately warned follow-up.
+ e.bell_gap = direction.angle()
+ Motion.set_look(e.get("motion",{}),direction)
 static func contact_at(g,probe: Dictionary,progress: float,boxes: Array,player_visible: bool) -> Dictionary:
  probe.state_time = progress*STRIKE.cleave
  var weapon = pose(probe,g.elapsed)
@@ -146,8 +174,16 @@ static func update(g, e: Dictionary, dt: float, slow: float):
   e.bell_phase = 2
   e.state = "fracture"
   e.state_time = 0.0
-  g.shake = maxf(g.shake,3.5)
-  g.burst(p+Vector2(0,-120),Color("b99c60"),24)
+  e.bell_fracture_hit = false
+  e.bell_combo_step = 0
+  e.bell_followup_pending = false
+  e.bell_hit_kind = ""
+ if e.state=="fracture" and not e.get("bell_fracture_hit",true) and e.state_time>=FRACTURE_PULSE:
+  e.bell_fracture_hit = true
+  g.hit_stop = maxf(g.hit_stop,0.075)
+  g.shake = maxf(g.shake,4.5)
+  g.shake_axis = Vector2(0,1)
+  g.burst(p+Vector2(0,-130),Color("e3a35d"),18)
   sound(g,"break")
  if e.state=="intro" and g.player.distance_to(p)>230: e.state_time = 0.0
  if e.state in ["intro","fracture"]:
@@ -155,6 +191,7 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    e.state = "chase"
    e.state_time = 0.0
    e.timer = 0.5
+   if e.bell_phase==2:e.bell_turn = 1 # Start the new phase with the double toll.
  elif e.state=="windup":
   if e.state_time>=windup(e):
    e.state = "strike"
@@ -198,27 +235,20 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    e.state_time = 0.0
  elif e.state=="recover":
   if e.state_time>=recovery(e):
-   e.state = "chase"
-   e.state_time = 0.0
-   e.timer = 0.5 if e.bell_phase==2 else 0.8
+   if e.bell_attack=="charge" and e.get("bell_followup_pending",false):
+    begin_attack(g,e,"cleave",true)
+   else:
+    e.state = "chase"
+    e.state_time = 0.0
+    e.timer = 0.5 if e.bell_phase==2 else 0.8
  else:
   var to = g.player-p
   if to.length()>90: p = g.steer_move(p,to.normalized()*dt*43*slow,28)
   if e.timer<=0:
    var cycle = ["cleave","toll","charge","cleave"]
-   e.bell_attack = cycle[int(e.bell_turn)%cycle.size()]
+   var attack = cycle[int(e.bell_turn)%cycle.size()]
    e.bell_turn += 1
-   e.bell_impact = false
-   e.bell_hit_kind = ""
-   e.bell_hit_age = 2.0
-   e.state = "windup"
-   e.state_time = 0.0
-   var direction = to.normalized() if to.length()>0.01 else Vector2.DOWN
-   e.dx = direction.x
-   e.dy = direction.y
-   # Gap faces the player at preparation start; it never tracks during release.
-   e.bell_gap = direction.angle()
-   Motion.set_look(e.get("motion",{}),direction)
+   begin_attack(g,e,attack)
  e.x = p.x
  e.y = p.y
  e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)

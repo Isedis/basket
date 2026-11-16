@@ -57,6 +57,21 @@ func run():
       var duration=Fight.windup(e) if state=="windup" else (Fight.STRIKE[attack] if state=="strike" else Fight.RECOVERY[attack])
       e.state_time=duration*ratio
       inspect(e)
+  for time in [0.0,0.2,0.4,0.58,0.8,1.1,1.4]:
+   var fracture=entity(look)
+   fracture.bell_phase=2
+   fracture.state="fracture"
+   fracture.state_time=time
+   inspect(fracture)
+  for state in ["windup","strike","recover"]:
+   for ratio in [0.0,0.25,0.5,0.75,1.0]:
+    var combo=entity(look)
+    combo.bell_phase=2
+    combo.bell_combo_step=1
+    combo.state=state
+    var duration=Fight.windup(combo) if state=="windup" else (Fight.STRIKE.cleave if state=="strike" else Fight.recovery(combo))
+    combo.state_time=duration*ratio
+    inspect(combo)
   for phase in [1,2]:
    var e=entity(look)
    e.bell_phase=phase

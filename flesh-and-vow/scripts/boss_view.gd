@@ -42,6 +42,7 @@ static func actor(g, e: Dictionary, dead: bool = false):
  weapon_span(g,textures(look)[6],pose,context,tint,0.0,0.55)
  if not front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
  BodySkin.draw(g,model,pose,look,context,tint)
+ if not dead:fracture_marks(g,model,pose,look,clock)
  if front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
  if not dead and e.state=="strike" and e.get("bell_attack","")=="cleave" and e.state_time<Fight.STRIKE.cleave*0.55:
   var trail = PackedVector2Array()
@@ -51,6 +52,24 @@ static func actor(g, e: Dictionary, dead: bool = false):
    var old_pose = Fight.pose(probe,clock)
    trail.append((old_pose.hand+Vector2.from_angle(old_pose.angle)*74).snapped(Vector2(2,2)))
   g.draw_polyline(trail,Color(0.79,0.67,0.44,0.5),4)
+static func fracture_glow(e: Dictionary,clock: float) -> float:
+ if e.get("bell_phase",1)!=2:return 0.0
+ var reveal = Fight.Combat.curve((e.state_time-0.36)/(Fight.FRACTURE_PULSE-0.36)) if e.state=="fracture" else 1.0
+ return reveal*(0.76+0.14*sin(clock*4.5))
+static func fracture_paths(e: Dictionary,pose: Dictionary,look: int) -> Array:
+ var result: Array = []
+ var flip = -1.0 if look==3 else 1.0
+ for seam in [[Vector2(0,-146),Vector2(6,-138),Vector2(2,-130),Vector2(10,-120),Vector2(4,-114)],[Vector2(2,-130),Vector2(-4,-122)]]:
+  var points = PackedVector2Array()
+  for point in seam:points.append(BodySkin.point(Vector2(point.x*flip,point.y),e,pose,look).snapped(Vector2(2,2)))
+  result.append(points)
+ return result
+static func fracture_marks(g,e: Dictionary,pose: Dictionary,look: int,clock: float):
+ var glow = fracture_glow(e,clock)
+ if glow<=0:return
+ for points in fracture_paths(e,pose,look):
+  g.draw_polyline(points,Color(0.23,0.07,0.04,glow),4)
+  g.draw_polyline(points,Color(1.0,0.48,0.16,glow),2)
 static func weapon_span(g,texture: Texture2D,pose: Dictionary,context: Dictionary,tint: Color,start: float,end: float):
  var size = texture.get_size()*2
  var uv = PackedVector2Array([Vector2(start,0),Vector2(end,0),Vector2(end,1),Vector2(start,1)])
@@ -68,11 +87,18 @@ static func pixel_arc(g, center: Vector2, radius: float, from: float, to: float,
   g.draw_line(previous,at,color,width)
   previous = at
 static func telegraph(g, e: Dictionary):
+ if e.state=="fracture":
+  var t = float(e.state_time)
+  var after = maxf(0,t-Fight.FRACTURE_PULSE)
+  var radius = lerpf(34,68,clampf(t/Fight.FRACTURE_PULSE,0,1))+after*150
+  var alpha = 0.5*(1-clampf(after/(Fight.FRACTURE-Fight.FRACTURE_PULSE),0,1))
+  pixel_arc(g,Vector2(e.x,e.y),radius,0,TAU,Color(0.85,0.42,0.18,alpha),2)
+  return
  if e.state!="windup": return
  var p = Vector2(e.x,e.y)
  var direction = Vector2(e.dx,e.dy)
  var u = clampf(e.state_time/Fight.windup(e),0,1)
- var color = Color(0.76,0.52,0.31,0.25+u*0.55)
+ var color = Color(0.95,0.49,0.25,0.3+u*0.55) if e.get("bell_combo_step",0)==1 else Color(0.76,0.52,0.31,0.25+u*0.55)
  match e.get("bell_attack","cleave"):
   "charge":
    var end = p
@@ -86,6 +112,7 @@ static func telegraph(g, e: Dictionary):
   "toll":
    var gap = float(e.get("bell_gap",0))
    pixel_arc(g,p,54,gap+Fight.GAP,gap+TAU-Fight.GAP,color)
+   if e.get("bell_phase",1)==2:pixel_arc(g,p,66,gap+Fight.GAP,gap+TAU-Fight.GAP,Color(color,0.2+u*0.3))
    for side in [-1,1]:
     var dir = Vector2.from_angle(gap+side*Fight.GAP)
     g.draw_line((p+dir*40).snapped(Vector2(2,2)),(p+dir*76).snapped(Vector2(2,2)),Color(0.44,0.63,0.54,0.65),2)
@@ -100,7 +127,10 @@ static func telegraph(g, e: Dictionary):
     points.append(tip)
    g.draw_polyline(points,color,2)
 static func ring(g, z: Dictionary):
- if float(z.get("age",0))<0: return
+ if float(z.get("age",0))<0:
+  var gap = float(z.gap)
+  pixel_arc(g,Vector2(z.x,z.y),42,gap+Fight.GAP,gap+TAU-Fight.GAP,Color(0.76,0.57,0.32,0.18),2)
+  return
  var p = Vector2(z.x,z.y)
  var radius = Fight.ring_radius(z)
  var fade = clampf(float(z.timer)/0.3,0,1)

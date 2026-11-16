@@ -94,3 +94,15 @@ silhouettes, plus the existing depth-mask checks. The anatomy suite checks
 the same new poses without changing shared vertices or wrist binding.
 Private capture uses three controlled situations in the actual running game
 (miss, flesh, column); it does not establish balance or subjective feel.
+
+
+0.6.7: tests/boss_phase.gd covers the half-health transition, delayed single
+pulse, hit-stop clock, pending/consumed pulse saves, finite immunity, initial
+double toll, harmless pending-wave warning, phase-one preservation, charge
+braking and one follow-up with a full locked warning, actual blade damage,
+consumed-hit reloads, longer final recovery and legacy missing fields.
+It also checks seam binding and opaque native helmet pixels (57 checks).
+The complete-body GPU suite now renders 496 poses including fracture and
+follow-up; CPU anatomy suite performs 2548 checks. Private video shows the
+continuous actual AI after controlled threshold damage, with scripted
+dodging and player immunity for visual review; it is not a balance test.
