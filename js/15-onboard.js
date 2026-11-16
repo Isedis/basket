@@ -19,7 +19,7 @@ const COACH = [
     at: () => ({ wx: hero.x, wy: hero.y - 10 }), done: t => ult < .9 || !!US || t > 14 },
   { id: 'stats', when: () => stats.length >= 4 && (S.lt || 0) > 30 && fightVis(), text: 'Открылся новый стат — загляни: ГЕРОЙ',
     el: 'nHero', done: t => uiSec === 'hero' || t > 12 },
-  { id: 'souls', when: () => (S.meta.rebirths || 0) >= 1 && !$('nUp').hidden && (S.meta.souls || 0) > 0, text: 'Души павшего героя — это таланты. Открой ПРОКАЧКА',
+  { id: 'souls', when: () => (S.meta.rebirths || 0) >= 1 && !$('nUp').hidden && !S.meta.upSeen, get text() { return (S.meta.souls || 0) > 0 ? 'Души павшего героя — это таланты. Открой ПРОКАЧКА' : 'Таланты усиливают героя навсегда — загляни в ПРОКАЧКА'; },
     el: 'nUp', done: t => uiSec === 'up' || t > 20 },
 ];
 function coachTick() {

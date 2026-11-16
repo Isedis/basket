@@ -42,7 +42,7 @@ function uiWide() {
 }
 function go(sec, sub) {
   if (sec === 'fight' && isWide()) { if (uiSec !== 'fight') return; sec = uiLast; }   // бой и так на экране: панель не закрываем
-  if (sec !== 'fight') uiLast = sec;
+  if (sec !== 'fight') uiLast = sec; if (sec === 'up') S.meta.upSeen = 1;
   if (sec === 'fight') { uiHideAll(); uiSec = 'fight'; $('subnav').hidden = true; navOn('nFight'); setTimeout(resize, 30); return; }
   if (sec === 'menu') { uiHideAll(); uiSec = 'menu'; $('subnav').hidden = true; navOn('nMenu'); $('settings').classList.add('open'); renderSouls(); return; }
   const list = UI_SEC[sec].filter(([k]) => uiOpen(k)); if (!list.length) return;
