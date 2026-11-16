@@ -72,6 +72,26 @@ func run():
     var duration=Fight.windup(combo) if state=="windup" else (Fight.STRIKE.cleave if state=="strike" else Fight.recovery(combo))
     combo.state_time=duration*ratio
     inspect(combo)
+  for wall in [false,true]:
+   for state in ["windup","strike","recover"]:
+    for ratio in [0.0,0.2,0.4,0.6,0.8,1.0]:
+     var heavy=entity(look)
+     heavy.bell_phase=2
+     heavy.bell_attack="charge"
+     heavy.bell_charge_rig=true
+     heavy.bell_charge_wall=wall
+     heavy.bell_charge_stop_lean=16 if wall else -4
+     heavy.bell_charge_stop_crouch=8 if wall else 6
+     heavy.state=state
+     heavy.state_time=ratio*(Fight.windup(heavy) if state=="windup" else (Fight.STRIKE.charge if state=="strike" else Fight.recovery(heavy)))
+     heavy.motion.phase=ratio*TAU
+     heavy.motion.walk_weight=1.0 if state=="strike" else 0.0
+     for i in range(2):
+      var at=sin(heavy.motion.phase+i*PI)*18
+      heavy.motion.feet[i].x=heavy.x+(-6 if i==0 else 6)+heavy.dx*at
+      heavy.motion.feet[i].y=heavy.y+heavy.dy*at
+      heavy.motion.feet[i].lift=maxf(0,sin(heavy.motion.phase+i*PI))*4
+     inspect(heavy)
   for phase in [1,2]:
    var e=entity(look)
    e.bell_phase=phase

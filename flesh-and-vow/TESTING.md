@@ -106,3 +106,16 @@ The complete-body GPU suite now renders 496 poses including fracture and
 follow-up; CPU anatomy suite performs 2548 checks. Private video shows the
 continuous actual AI after controlled threshold damage, with scripted
 dodging and player immunity for visual review; it is not a balance test.
+
+
+0.6.8: tests/boss_charge.gd verifies planted preparation, continuous launch
+and stop poses, acceleration/braking, preserved distance at 60/120 Hz,
+actual braking footfalls, settled stance, first contact against thin cover
+in four directions, damage occlusion, single wall feedback, hit-stop,
+longer wall recovery, warning before the follow-up, save/load of motion
+and consumed steps, legacy constant-speed charges and foot bounds
+(133 checks). The complete-body graphics suite renders 700 silhouettes;
+the CPU anatomy suite performs 3412 checks. Real gameplay capture exercises
+normal braking and column impact with the actual world drawing proxy and
+audio; capture logs must be free of script errors. Private footage uses
+controlled encounter setup and is not a balance test.

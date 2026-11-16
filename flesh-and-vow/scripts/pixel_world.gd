@@ -9,6 +9,8 @@ func _get(property: StringName):
 	if property=="DIRECTIONS": return state.DIRECTIONS
 	return state.get(property)
 
+func blocked(p: Vector2, radius: float) -> bool: return state.blocked(p,radius)
+
 func attack_range() -> float: return state.attack_range()
 func has_item(id: String) -> bool: return state.has_item(id)
 func door_position(index: int) -> Vector2: return state.door_position(index)

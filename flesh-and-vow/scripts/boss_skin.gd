@@ -1,6 +1,7 @@
 extends RefCounted
 ## One continuous full-body texture and one connected deforming mesh.
 const ATLAS = preload("res://assets/boss_body.png")
+const Charge = preload("res://scripts/boss_charge.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const Combat = preload("res://scripts/combat.gd")
 const FRAME = Vector2i(128,96)
@@ -66,6 +67,7 @@ static func parameters(e: Dictionary, pose: Dictionary, look: int) -> Dictionary
  for i in range(2):
   var raw = Motion.foot_position(e.get("motion",{}),i,p)-(p+Vector2(-6 if i==0 else 6,0))
   feet.append(Vector2(clampf(raw.x,-8,8),clampf(raw.y,-5,4)))
+ if pose.get("charge_rig",false):feet = Charge.visual_feet(e)
  var arms: Array = []
  var view = view_index(look)
  for side in [-1.0,1.0]:

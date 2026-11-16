@@ -68,3 +68,8 @@ view. The illustration master remains private and is not distributed.
 Version 0.6.6: boss_flesh.wav, boss_stone.wav and boss_swing.wav are original
 additive/noise synthesis created for this project. No third-party samples
 are used. Private gameplay review media are not distributed.
+
+
+Version 0.6.8: boss_step.wav, boss_launch.wav and boss_brake.wav are original
+additive/noise synthesis for this project, without third-party samples.
+Private review captures are not exported or published with the game.

@@ -1,5 +1,6 @@
 extends RefCounted
 ## Castle boss: persisted state machine, shared visible/physical attack geometry.
+const Charge = preload("res://scripts/boss_charge.gd")
 const Contact = preload("res://scripts/boss_contact.gd")
 const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
@@ -58,7 +59,14 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
  # Shoulder line follows the whole skin; weapon contact uses this same wrist.
  for key in ["shoulder","elbow","hand"]: base[key] += Vector2(0,-14)
  base.head = base.body+Vector2(0,-130)
- if attack=="charge" and e.state in ["windup","strike","recover"]:
+ if Charge.enabled(e) and e.state in ["windup","strike","recover"]:
+  var weight = Charge.posture(e)
+  var shift = direction*weight.lean+Vector2(0,weight.crouch)
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] += shift
+  base.angle = lerp_angle(base.angle,-PI/2+Motion.hand_sign(Motion.look_index(motion,direction))*0.08,weight.tuck)
+  base.twist += Motion.hand_sign(Motion.look_index(motion,direction))*weight.crouch*0.003
+  base.charge_rig = true
+ elif attack=="charge" and e.state in ["windup","strike","recover"]:
   var coil = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   var shift = direction*coil*10+Vector2(0,coil*8)
   for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] += shift
@@ -90,10 +98,13 @@ static func blade(e: Dictionary, clock: float) -> PackedVector2Array:
  return result
 static func recovery(e: Dictionary) -> float:
  var attack = e.get("bell_attack","cleave")
+ if Charge.enabled(e) and e.get("bell_charge_wall",false):return Charge.WALL_RECOVERY
  if attack=="charge" and e.get("bell_followup_pending",false):return CHARGE_LINK
  return RECOVERY[attack]+(0.3 if e.get("bell_combo_step",0)==1 else 0.0)+(0.25 if attack=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
 static func begin_attack(g,e: Dictionary,attack: String,followup: bool = false):
  e.bell_attack = attack
+ if attack=="charge":Charge.prepare(e)
+ else:e.bell_charge_rig = false
  e.bell_combo_step = 1 if followup else 0
  e.bell_followup_pending = attack=="charge" and e.get("bell_phase",1)==2
  e.bell_impact = false
@@ -158,7 +169,7 @@ static func sound(g, kind: String):
  var player = AudioStreamPlayer.new()
  player.set_meta("castle_boss_sfx",true)
  player.stream = load("res://assets/boss_"+kind+".wav")
- player.volume_db = {"bell":-11,"flesh":-8,"stone":-10,"swing":-18}.get(kind,-14)
+ player.volume_db = {"bell":-11,"flesh":-8,"stone":-10,"swing":-18,"step":-22,"launch":-14,"brake":-19}.get(kind,-14)
  g.add_child(player)
  player.finished.connect(player.queue_free)
  player.play()
@@ -202,20 +213,31 @@ static func update(g, e: Dictionary, dt: float, slow: float):
     if e.bell_phase==2: ring(g,e,0.6)
     g.shake = maxf(g.shake,2.5)
     sound(g,"bell")
-   elif e.bell_attack=="charge": sound(g,"impact")
+   elif e.bell_attack=="charge":
+    if Charge.enabled(e):
+     Charge.launch(e)
+     sound(g,"launch")
+    else:sound(g,"impact")
    elif e.bell_attack=="cleave":sound(g,"swing")
  elif e.state=="strike":
   if e.bell_attack=="charge":
    var direction = Vector2(e.dx,e.dy)
-   var next = p+direction*dt*(340 if e.bell_phase==2 else 295)*slow
-   if not g.blocked(next,28): p = next
-   else: e.state_time = STRIKE.charge
+   if Charge.enabled(e):
+    if e.state_time>=STRIKE.charge-Charge.BRAKE and not e.get("bell_charge_braked",false):
+     e.bell_charge_braked = true
+     sound(g,"brake")
+    p = Charge.travel(g,e,p,dt,slow)
+   else:
+    var next = p+direction*dt*(340 if e.bell_phase==2 else 295)*slow
+    if not g.blocked(next,28):p = next
+    else:e.state_time = STRIKE.charge
    var closest = Geometry2D.get_closest_point_to_segment(g.player,before,p)
-   if not e.get("strike_hit",false) and closest.distance_to(g.player)<45:
+   if not e.get("strike_hit",false) and closest.distance_to(g.player)<45 and not Combat.occluded(closest,g.player,g.blocks):
     g.hurt(3,p)
     e.strike_hit = true
-   if p.distance_to(before)<dt*30: e.state_time = STRIKE.charge
-   if int(e.state_time*24)!=int((e.state_time-dt)*24): g.emit_particle(p,Color("70634d"),-direction*25,0.3,3)
+   if not Charge.enabled(e):
+    if p.distance_to(before)<dt*30:e.state_time = STRIKE.charge
+    if int(e.state_time*24)!=int((e.state_time-dt)*24):g.emit_particle(p,Color("70634d"),-direction*25,0.3,3)
   elif e.bell_attack=="cleave":
    var start = maxf(Combat.CONTACT_RATIO,(e.state_time-dt)/STRIKE.cleave)
    var end = minf(Combat.ACTIVE_END,e.state_time/STRIKE.cleave)
@@ -251,4 +273,5 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    begin_attack(g,e,attack)
  e.x = p.x
  e.y = p.y
- e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)
+ if Charge.enabled(e) and e.state in ["windup","strike","recover"]:Charge.gait(g,e,before,p,dt)
+ else:e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)

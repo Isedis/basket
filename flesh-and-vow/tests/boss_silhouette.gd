@@ -72,11 +72,29 @@ func run():
   for time in [0.0,0.2,0.4,0.58,0.8,1.1,1.4]:cases.append({"look":look,"phase":2,"attack":"cleave","state":"fracture","ratio":time/fight.FRACTURE,"dead":false,"feet":0})
   for state in ["windup","strike","recover"]:
    for ratio in [0.0,0.25,0.5,0.75,1.0]:cases.append({"look":look,"phase":2,"attack":"cleave","state":state,"ratio":ratio,"dead":false,"feet":0,"combo":true})
+ for look in range(4):
+  for phase in [1,2]:
+   for state in ["windup","strike","recover"]:
+    for ratio in [0.0,0.2,0.4,0.6,0.8,1.0]:cases.append({"look":look,"phase":phase,"attack":"charge","state":state,"ratio":ratio,"dead":false,"feet":0,"heavy":true})
+   for ratio in [0.0,0.2,0.4,0.6,0.8,1.0]:cases.append({"look":look,"phase":phase,"attack":"charge","state":"recover","ratio":ratio,"dead":false,"feet":0,"heavy":true,"wall":true})
+  for age in [0.0,0.35,1.0]:cases.append({"look":look,"phase":2,"attack":"charge","state":"strike","ratio":0.4,"dead":true,"age":age,"feet":0,"heavy":true})
  var count = 0
  for c in cases:
   var p = Vector2(240,320)
   var dir: Vector2 = [Vector2.DOWN,Vector2.RIGHT,Vector2.UP,Vector2.LEFT][c.look]
   var e = {"x":p.x,"y":p.y,"dx":dir.x,"dy":dir.y,"state":c.state,"state_time":0.0,"bell_phase":c.phase,"bell_attack":c.attack,"motion":motion.initialize(p,1,c.look)}
+  if c.get("heavy",false):
+   e.bell_charge_rig=true
+   e.bell_charge_wall=c.get("wall",false)
+   e.bell_charge_stop_lean=16 if e.bell_charge_wall else -4
+   e.bell_charge_stop_crouch=8 if e.bell_charge_wall else 6
+   e.motion.phase=c.ratio*TAU
+   e.motion.walk_weight=1.0 if c.state=="strike" else 0.0
+   for i in range(2):
+    var at=sin(e.motion.phase+i*PI)*18
+    e.motion.feet[i].x=p.x+(-6 if i==0 else 6)+dir.x*at
+    e.motion.feet[i].y=p.y+dir.y*at
+    e.motion.feet[i].lift=maxf(0,sin(e.motion.phase+i*PI))*4
   if c.get("combo",false):e.bell_combo_step=1
   var duration = fight.FRACTURE if c.state=="fracture" else (fight.windup(e) if c.state=="windup" else (fight.STRIKE[c.attack] if c.state=="strike" else fight.recovery(e)))
   e.state_time = duration*c.ratio

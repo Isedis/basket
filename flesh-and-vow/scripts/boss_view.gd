@@ -104,7 +104,9 @@ static func telegraph(g, e: Dictionary):
    var end = p
    for step in range(1,int(ceil((340 if e.get("bell_phase",1)==2 else 295)*Fight.STRIKE.charge/12))+1):
     var at = p+direction*step*12
-    if Fight.Combat.occluded(end,at,g.blocks.map(func(b): return b.grow(28))) or not g.room_floor_rect.grow(-28).has_point(at): break
+    if Fight.Charge.enabled(e):
+     if g.blocked(at+direction*Fight.Charge.FRONT,28):break
+    elif Fight.Combat.occluded(end,at,g.blocks.map(func(b): return b.grow(28))) or not g.room_floor_rect.grow(-28).has_point(at):break
     for side in [-1,1]:
      var dot = (at+direction.orthogonal()*side*29).snapped(Vector2(2,2))
      g.draw_rect(Rect2(dot,Vector2(4,2)),color)
