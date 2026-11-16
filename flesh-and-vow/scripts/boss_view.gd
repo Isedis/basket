@@ -4,6 +4,7 @@ const BodySkin = preload("res://scripts/boss_skin.gd")
 const Rig = preload("res://scripts/rig_view.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const SEAL = preload("res://assets/castle_boss_seal.png")
+const AXE = preload("res://assets/boss_axe.png")
 const ATLAS = preload("res://assets/castle_boss.png")
 const SIZES = [Vector2i(36,32),Vector2i(35,36),Vector2i(14,28),Vector2i(14,28),Vector2i(14,28),Vector2i(14,28),Vector2i(42,22),Vector2i(13,38)]
 static var parts: Array = []
@@ -14,7 +15,7 @@ static func textures(look: int) -> Array:
    var view: Array = []
    for i in range(8): view.append(ImageTexture.create_from_image(image.get_region(Rect2i(Vector2i(i*64,row*64)+(Vector2i(64,64)-SIZES[i])/2,SIZES[i]))))
    parts.append(view)
-  for row in range(3): parts[row][6] = parts[0][6]
+  for row in range(3): parts[row][6] = AXE
  return parts[1 if look==0 else (2 if look==2 else 0)]
 static func actor(g, e: Dictionary, dead: bool = false):
  var p = Vector2(e.x,e.y)
@@ -41,11 +42,11 @@ static func actor(g, e: Dictionary, dead: bool = false):
   tint=Color.WHITE.lerp(Color(1.2,1.1,0.98),Fight.Toll.energy(e)*0.5)
  # No independent head, torso, arm, leg or chain draws: one full connected skin.
  var front = BodySkin.arm_in_front(pose,look)
- weapon_span(g,textures(look)[6],pose,context,tint,0.0,0.55)
- if not front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
+ weapon_span(g,AXE,pose,context,tint,0.0,0.55)
+ if not front:weapon_span(g,AXE,pose,context,tint,0.55,1.0)
  BodySkin.draw(g,model,pose,look,context,tint)
  if not dead:fracture_marks(g,model,pose,look,clock)
- if front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
+ if front:weapon_span(g,AXE,pose,context,tint,0.55,1.0)
  if not dead and e.state=="strike" and e.get("bell_attack","")=="cleave" and e.state_time<Fight.STRIKE.cleave*0.55:
   var trail = PackedVector2Array()
   for sample in range(6):
@@ -76,7 +77,7 @@ static func weapon_span(g,texture: Texture2D,pose: Dictionary,context: Dictionar
  var size = texture.get_size()*2
  var uv = PackedVector2Array([Vector2(start,0),Vector2(end,0),Vector2(end,1),Vector2(start,1)])
  var points = PackedVector2Array()
- for xy in uv:points.append(pose.hand+((xy-Vector2(0.12,0.5))*size).rotated(pose.angle))
+ for xy in uv:points.append(pose.hand+((xy-Vector2(0.12,11.0/28.0))*size).rotated(pose.angle))
  Rig.quad(g,texture,points,uv,tint,context)
 static func arena(g):
  if g.floor_index!=0 or g.room.type!="boss": return

@@ -142,3 +142,8 @@ graphics now renders 920 silhouettes including both entrance variants.
 Private real-game footage exercises the actual approach room, full entrance
 and short retry with world/HUD rendering and original audio. It uses
 controlled room setup and does not establish balance or subjective grandeur.
+
+0.6.11: redesigned armor validated with 4660 anatomy checks and 920
+rendered poses (zero detached chunks). The whole-body mesh and physical
+arm/weapon positions remain unchanged. A separate axe texture retains
+the shaft grip and 84-world-pixel overall length.

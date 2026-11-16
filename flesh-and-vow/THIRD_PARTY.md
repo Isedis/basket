@@ -78,3 +78,7 @@ Private review captures are not exported or published with the game.
 Version 0.6.10: boss_hall.wav, boss_theme.wav, boss_gate.wav and boss_draw.wav
 are original deterministic additive/noise synthesis for this project. No
 third-party recordings or music are used. Private review captures stay private.
+
+0.6.11: redesigned boss body and axe are original AI-assisted artwork for
+this project, adapted through the native pixel-art import pipeline. No
+Elden Ring or other third-party game assets are included.
