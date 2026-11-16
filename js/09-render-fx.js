@@ -219,7 +219,9 @@ function nextToast() {
 // подсказки: каждая показывается один раз за всю игру
 function tip(key, title, text) {
   if (!S.tips) S.tips = {};
-  if (S.tips[key]) return; S.tips[key] = 1;
+  if (S.tips[key]) return;
+  if (typeof onbQuiet === 'function' && onbQuiet() && !TIP_OK[key]) return;   // первые минуты — только обучение, подсказка покажется позже
+  S.tips[key] = 1;
   toast(title, text + ' (тапни, чтобы закрыть)', 4500, 'tip');
 }
 // лента событий в левом нижнем углу: прирост, эволюции, формы

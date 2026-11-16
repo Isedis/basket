@@ -344,6 +344,7 @@ const flyMul = fromWave => wRule('fly') && !fromWave && !setOn(1, 4) ? .6 : 1;
 /* ---------- тап: удар молнии с неба ---------- */
 function addUlt(v) {
   if (ult >= 1) return;
+  if (!SIM && !(S.meta.rebirths || 0)) v *= 2;   // первая жизнь: ульта копится вдвое быстрее — раннее «вау»
   v *= (1 + .2 * perkL('ult')) * constUlt() * (1 + .2 * ctL('U2')) * (setT('Свет') >= 3 ? 1.5 : setT('Свет') >= 2 ? 1.2 : 1);
   if (ultCd > 0) { ult = Math.min(.999, ult + v * (D.energy || 1) * (1 + ta('ultc'))); return; }   // перезарядка: копится, но не больше 99%
   ult = Math.min(1, ult + v * (D.energy || 1) * (1 + ta('ultc')) * (on('x_ultra') ? .5 : 1) * (S.hpf < .5 ? 1 + ta('c_lowhp') : 1) * (cls() === 'priest' ? 1.5 * (1 + 2 * cq(1)) : 1));

@@ -653,3 +653,11 @@ body.wide #hud{padding-left:14px;padding-right:14px}
 #raidb{position:absolute;right:4px;top:12px;z-index:3;font-size:9px;padding:6px 8px;background:#6a1a2a;border:2px solid #ff5a6a;color:#fff;box-shadow:0 0 8px #ff3a4a}
 #raidb[hidden]{display:none}
 body.wide #raid{left:auto!important;right:0!important;width:var(--sidew)!important}
+/* обучение: пузырь-коуч со стрелкой и кольцо на цели */
+#coach{position:fixed;z-index:40;padding:9px 11px;background:#fff6d8;color:#2a1a10;border:3px solid #2a1a10;border-radius:6px;font-size:10px;line-height:1.6;box-shadow:0 4px 0 #000,0 0 18px rgba(255,216,74,.6);pointer-events:none;animation:coachBob 1s ease-in-out infinite}
+#coach[hidden],#coachRing[hidden]{display:none}
+#coach::after{content:'';position:absolute;left:var(--ax,50%);bottom:-11px;margin-left:-8px;border:8px solid transparent;border-top-color:#2a1a10;border-bottom:0}
+#coach.up::after{bottom:auto;top:-11px;border-top:0;border-bottom:8px solid #2a1a10}
+#coachRing{position:fixed;z-index:39;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid #ffd84a;border-radius:50%;box-shadow:0 0 12px #ffd84a;pointer-events:none;animation:coachPulse 1s ease-out infinite}
+@keyframes coachBob{50%{transform:translateY(-3px)}}
+@keyframes coachPulse{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
