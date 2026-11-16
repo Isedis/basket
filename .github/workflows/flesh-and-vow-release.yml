@@ -49,6 +49,7 @@ jobs:
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/doors.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/castle_hall.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/castle_floor.gd
+          Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/hazards.gd
           Godot_v4.6.3-stable_linux.x86_64 --headless --path flesh-and-vow --script res://tests/patches.gd
           python3 flesh-and-vow/tests/content_packs.py --godot Godot_v4.6.3-stable_linux.x86_64 --project flesh-and-vow
           python3 flesh-and-vow/tests/exported_patch.py --godot Godot_v4.6.3-stable_linux.x86_64 --project flesh-and-vow

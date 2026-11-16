@@ -41,3 +41,9 @@ Version 0.5.0 special-room furniture: the merchant stall, rack, paired altars,
 mirror, pedestal, stairs and relic stand were created for this project using
 image generation and prepared as castle_special.png with fixed native sprite
 dimensions. The large master is not exported or published with the game.
+
+Version 0.5.1 hazard art: original pit, puddle, trap and furnace components
+were created for this project using image generation, then prepared as
+castle_hazards.png (128x128) with hard alpha and fixed native dimensions.
+The game reuses one needle at twelve fixed sockets and keeps bases separate
+from moving parts. The illustration master is not exported or published.

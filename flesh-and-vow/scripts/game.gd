@@ -1,5 +1,6 @@
 extends Node2D
 
+const Hazards = preload("res://scripts/hazard_view.gd")
 const RoomLayout = preload("res://scripts/castle_layout.gd")
 const DoorMotion = preload("res://scripts/door_motion.gd")
 const Combat = preload("res://scripts/combat.gd")
@@ -547,7 +548,7 @@ func update_game(dt: float):
 	var movement = Input.get_vector("left","right","up","down")
 	var speed = 154.0*(1.0+count_item("haste")*0.15)
 	for hazard in hazards:
-		if hazard.type == "water" and hazard.rect.has_point(player): speed *= 0.64
+		speed *= Hazards.speed_factor(hazard,player)
 	var mass = float(player_motion.get("attack_weight",1.0))
 	if windup>0: speed *= maxf(0.4,0.68-(mass-1)*0.3)
 	elif swing>0:
@@ -612,7 +613,7 @@ func blocked(p: Vector2, radius: float) -> bool:
 	for block in blocks:
 		if block.grow(radius).has_point(p): return true
 	for hazard in hazards:
-		if hazard.type == "pit" and hazard.rect.grow(radius*0.35).has_point(p): return true
+		if Hazards.blocks(hazard,p,radius): return true
 	return false
 
 func move_body(p: Vector2, by: Vector2, radius: float) -> Vector2:
@@ -1013,8 +1014,8 @@ func update_zones(dt: float):
 func check_hazards():
 	for hazard in hazards:
 		if hazard.rect.has_point(player):
-			if hazard.type=="fire": hurt(1.0,player)
-			if hazard.type=="spikes" and fmod(anim+hazard.phase,2.5)<1.2: hurt(1.5,player)
+			var amount = Hazards.damage(hazard,elapsed)
+			if amount>0: hurt(amount,player)
 
 func hurt(amount: float, origin: Vector2):
 	if invincible>0 or mode!="playing": return

@@ -2,6 +2,7 @@ extends RefCounted
 
 const Combat = preload("res://scripts/combat.gd")
 const Art = preload("res://scripts/art_view.gd")
+const Hazards = preload("res://scripts/hazard_view.gd")
 const Special = preload("res://scripts/castle_special.gd")
 const Props = preload("res://scripts/castle_props.gd")
 const Castle = preload("res://scripts/castle_view.gd")
@@ -131,8 +132,12 @@ static func world(g):
 	entities.append({"type":"player","x":g.player.x,"y":g.player.y,"boss":false})
 	for prop in g.room_props:
 		if prop.get("solid",false): entities.append(prop)
+	for hazard in g.hazards: entities.append_array(Hazards.layers(hazard,g.elapsed))
 	entities.sort_custom(func(a,b): return a.y<b.y)
 	for e in entities:
+		if e.type=="hazard_fx":
+			Hazards.effect_layer(g,e)
+			continue
 		if e.type=="scenery":
 			Props.draw(g,e)
 			continue
@@ -237,30 +242,7 @@ static func doors(g):
 			centre(g,p+offset,MARKS[destination.type],10,GOLD)
 
 static func draw_hazard(g, h):
-	var b = h.rect
-	match h.type:
-		"pit":
-			rect(g,b.grow(3),Color("40303d"))
-			rect(g,b,Color("070a10"))
-			g.draw_line(b.position,b.position+Vector2(b.size.x,0),Color("66505c"),2)
-		"water":
-			g.draw_colored_polygon(PackedVector2Array([b.position+Vector2(8,0),b.position+Vector2(b.size.x-8,0),b.position+Vector2(b.size.x,8),b.end-Vector2(0,8),b.end-Vector2(8,0),b.position+Vector2(8,b.size.y),b.position+Vector2(0,b.size.y-8),b.position+Vector2(0,8)]),Color("22372f"))
-			for i in range(3):
-				g.draw_line(b.position+Vector2(6,7+i*9),b.position+Vector2(b.size.x-7+sin(g.anim*2+i)*3,7+i*9),Color("4b6250"),1)
-		"spikes":
-			rect(g,b,Color("29242e"),Color("675058"))
-			var raised = fmod(g.anim+h.phase,2.5)<1.2
-			for x in range(int(b.position.x)+5,int(b.end.x)-2,10):
-				for y in range(int(b.position.y)+10,int(b.end.y),12):
-					g.draw_colored_polygon(PackedVector2Array([Vector2(x,y),Vector2(x+3,y-(10 if raised else 3)),Vector2(x+6,y)]),Color("bc9a97") if raised else Color("64515d"))
-		"fire":
-			rect(g,b,Color("44272a"))
-			for i in range(7):
-				var x = b.position.x+3+i*b.size.x/7
-				var y = b.position.y+b.size.y/2+sin(i*4)*8
-				var high = 7+sin(g.anim*10+i*2)*5
-				rect(g,Rect2(x,y-high,5,high+5),Color("b8563c"))
-				rect(g,Rect2(x+1,y-high/2,2,high/2),Color("ecc47d"))
+	Hazards.floor_layer(g,h)
 
 static func room_prop(g):
 	var p = g.CENTRE
