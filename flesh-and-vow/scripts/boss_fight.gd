@@ -1,5 +1,6 @@
 extends RefCounted
 ## Castle boss: persisted state machine, shared visible/physical attack geometry.
+const Contact = preload("res://scripts/boss_contact.gd")
 const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const INTRO = 1.6
@@ -41,6 +42,14 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
    action = 3
    progress = 1.0
  var base = Combat.weapon_pose(p,motion,direction,action,progress,Combat.BASE_REACH,clock)
+ # A blocked blade withdraws from the exact contact pose instead of completing its sweep.
+ if attack=="cleave" and e.state=="recover" and e.get("bell_hit_kind","")=="stone":
+  var contact = Combat.weapon_pose(p,motion,direction,3,float(e.bell_hit_u),Combat.BASE_REACH,clock)
+  var rest = Combat.weapon_pose(p,motion,direction,0,0,Combat.BASE_REACH,clock)
+  var settle = Combat.curve((e.state_time-0.1)/0.36)
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] = contact[key].lerp(rest[key],settle)
+  base.angle = lerp_angle(contact.angle,rest.angle,settle)
+  for key in ["twist","coil","drive"]:base[key] = lerpf(contact[key],rest[key],settle)
  for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] = p+(base[key]-p)*2
  # Shoulder line follows the whole skin; weapon contact uses this same wrist.
  for key in ["shoulder","elbow","hand"]: base[key] += Vector2(0,-14)
@@ -54,6 +63,14 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
   base.head += Vector2(sin(clock*22)*u*1.6,-u*5)
  if e.state=="intro": base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
  if e.state=="fracture": base.head += Vector2(sin(e.state_time*28)*2,4*sin(e.state_time*PI/FRACTURE))
+ if attack=="cleave" and e.get("bell_hit_kind","") in ["flesh","stone"]:
+  var age = float(e.get("bell_hit_age",1.0))
+  var duration = 0.24 if e.bell_hit_kind=="stone" else 0.16
+  var recoil = sin(clampf(age/duration,0,1)*PI)*pow(1-clampf(age/duration,0,1),0.5)
+  var axis = Vector2(e.get("bell_hit_dx",direction.x),e.get("bell_hit_dy",direction.y))
+  var shift = -axis*recoil*(6 if e.bell_hit_kind=="stone" else 2.5)
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] += shift
+  base.angle -= Motion.hand_sign(Motion.look_index(motion,direction))*recoil*(0.18 if e.bell_hit_kind=="stone" else 0.08)
  base.torso = base.body+Vector2(0,-77)
  base.torso_angle = base.twist*0.6
  return base
@@ -62,6 +79,41 @@ static func blade(e: Dictionary, clock: float) -> PackedVector2Array:
  var result = PackedVector2Array()
  for xy in [Vector2(42,-18),Vector2(74,-18),Vector2(74,18),Vector2(42,18)]: result.append(weapon.hand+xy.rotated(weapon.angle))
  return result
+static func recovery(e: Dictionary) -> float:
+ return RECOVERY[e.get("bell_attack","cleave")]+(0.25 if e.get("bell_attack","")=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
+static func contact_at(g,probe: Dictionary,progress: float,boxes: Array,player_visible: bool) -> Dictionary:
+ probe.state_time = progress*STRIKE.cleave
+ var weapon = pose(probe,g.elapsed)
+ var hit = Contact.at(g,blade(probe,g.elapsed),weapon.hand,boxes,player_visible)
+ if not hit.is_empty():hit.progress = progress
+ return hit
+static func sweep_contact(g,e: Dictionary,start: float,end: float) -> Dictionary:
+ var boxes = Contact.surfaces(g)
+ var visible = not Combat.occluded(Vector2(e.x,e.y),g.player,g.blocks)
+ var probe = e.duplicate(true)
+ probe.bell_hit_kind = ""
+ probe.state_time = start*STRIKE.cleave
+ var a = pose(probe,g.elapsed).angle
+ probe.state_time = end*STRIKE.cleave
+ var b = pose(probe,g.elapsed).angle
+ var samples = clampi(int(ceil(absf(angle_difference(a,b))*150/3)),1,64)
+ var previous = start
+ for i in range(samples+1):
+  var u = lerpf(start,end,i/float(samples))
+  var hit = contact_at(g,probe,u,boxes,visible)
+  if not hit.is_empty():
+   var low = previous
+   var high = u
+   for _refine in range(7):
+    var middle = (low+high)*0.5
+    var candidate = contact_at(g,probe,middle,boxes,visible)
+    if candidate.is_empty():low = middle
+    else:
+     high = middle
+     hit = candidate
+   return hit
+  previous = u
+ return {}
 static func ring_radius(z: Dictionary) -> float: return maxf(0,float(z.get("age",0)))*RING_SPEED+12
 static func ring_hits(z: Dictionary, p: Vector2, previous_radius: float) -> bool:
  var offset = p-Vector2(z.x,z.y)
@@ -78,7 +130,7 @@ static func sound(g, kind: String):
  var player = AudioStreamPlayer.new()
  player.set_meta("castle_boss_sfx",true)
  player.stream = load("res://assets/boss_"+kind+".wav")
- player.volume_db = -11 if kind=="bell" else -14
+ player.volume_db = {"bell":-11,"flesh":-8,"stone":-10,"swing":-18}.get(kind,-14)
  g.add_child(player)
  player.finished.connect(player.queue_free)
  player.play()
@@ -86,6 +138,7 @@ static func ring(g, e: Dictionary, delay: float = 0.0):
  g.zones.append({"kind":"boss_ring","x":e.x,"y":e.y,"age":-delay,"timer":2.1+delay,"radius":12.0,"damage":2.0,"gap":e.get("bell_gap",0.0),"spent":false})
 static func update(g, e: Dictionary, dt: float, slow: float):
  ensure(e)
+ if e.has("bell_hit_age"):e.bell_hit_age = minf(2,float(e.bell_hit_age)+dt)
  var p = Vector2(e.x,e.y)
  var before = p
  if e.hp<=e.max*0.5 and e.bell_phase==1 and e.state!="strike":
@@ -113,6 +166,7 @@ static func update(g, e: Dictionary, dt: float, slow: float):
     g.shake = maxf(g.shake,2.5)
     sound(g,"bell")
    elif e.bell_attack=="charge": sound(g,"impact")
+   elif e.bell_attack=="cleave":sound(g,"swing")
  elif e.state=="strike":
   if e.bell_attack=="charge":
    var direction = Vector2(e.dx,e.dy)
@@ -128,23 +182,22 @@ static func update(g, e: Dictionary, dt: float, slow: float):
   elif e.bell_attack=="cleave":
    var start = maxf(Combat.CONTACT_RATIO,(e.state_time-dt)/STRIKE.cleave)
    var end = minf(Combat.ACTIVE_END,e.state_time/STRIKE.cleave)
-   if end>=start and not e.get("strike_hit",false) and not Combat.occluded(p,g.player,g.blocks):
-    var probe = e.duplicate(true)
-    for sample in range(9):
-     probe.state_time = lerpf(start,end,sample/8.0)*STRIKE.cleave
-     if Combat.polygon_capsule(blade(probe,g.elapsed),Combat.hurt_capsule(g.player,"player")).hit:
-      g.hurt(3,p)
-      e.strike_hit = true
-      break
-   if e.state_time>=STRIKE.cleave*Combat.CONTACT_RATIO and not e.get("bell_impact",false):
-    e.bell_impact = true
-    g.shake = maxf(g.shake,2.0)
-    sound(g,"impact")
-  if e.state_time>=STRIKE[e.bell_attack]:
+   if end>=start and not e.get("strike_hit",false):
+    var contact = sweep_contact(g,e,start,end)
+    if not contact.is_empty():
+     var old_time = e.state_time
+     e.state_time = contact.progress*STRIKE.cleave
+     if Contact.feedback(g,e,contact):
+      sound(g,contact.kind)
+      if contact.kind=="stone":
+       e.state = "recover"
+       e.state_time = 0.0
+     else:e.state_time = old_time
+  if e.state=="strike" and e.state_time>=STRIKE[e.bell_attack]:
    e.state = "recover"
    e.state_time = 0.0
  elif e.state=="recover":
-  if e.state_time>=RECOVERY[e.bell_attack]:
+  if e.state_time>=recovery(e):
    e.state = "chase"
    e.state_time = 0.0
    e.timer = 0.5 if e.bell_phase==2 else 0.8
@@ -156,6 +209,8 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    e.bell_attack = cycle[int(e.bell_turn)%cycle.size()]
    e.bell_turn += 1
    e.bell_impact = false
+   e.bell_hit_kind = ""
+   e.bell_hit_age = 2.0
    e.state = "windup"
    e.state_time = 0.0
    var direction = to.normalized() if to.length()>0.01 else Vector2.DOWN

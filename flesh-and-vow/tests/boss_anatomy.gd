@@ -67,6 +67,17 @@ func run():
    for age in [0.0,0.3,1.0]:
     e.age=age
     inspect(e,true)
+  for kind in ["flesh","stone"]:
+   for age in [0.0,0.06,0.12,0.35]:
+    var contact=entity(look)
+    contact.state="recover" if kind=="stone" else "strike"
+    contact.state_time=age if kind=="stone" else 0.35*Fight.STRIKE.cleave
+    contact.bell_hit_kind=kind
+    contact.bell_hit_u=0.35
+    contact.bell_hit_age=age
+    contact.bell_hit_dx=contact.dx
+    contact.bell_hit_dy=contact.dy
+    inspect(contact)
   var e=entity(look)
   e.bell_snapshot=e.duplicate(true)
   e.bell_clock=1.0

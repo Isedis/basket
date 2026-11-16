@@ -63,3 +63,8 @@ Version 0.6.4: boss_body.png contains original assembled full-body artwork
 generated from this project's boss reference and baked at native size with
 hard alpha, a limited palette and a single connected body silhouette per
 view. The illustration master remains private and is not distributed.
+
+
+Version 0.6.6: boss_flesh.wav, boss_stone.wav and boss_swing.wav are original
+additive/noise synthesis created for this project. No third-party samples
+are used. Private gameplay review media are not distributed.

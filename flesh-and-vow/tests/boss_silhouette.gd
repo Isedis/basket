@@ -64,6 +64,10 @@ func run():
      for ratio in [0.0,0.27,0.65,1.0]:cases.append({"look":look,"phase":phase,"attack":attack,"state":state,"ratio":ratio,"dead":false,"feet":0})
    for offset in [-24,0,24]:cases.append({"look":look,"phase":phase,"attack":"cleave","state":"chase","ratio":0.0,"dead":false,"feet":offset})
    for age in [0.0,0.3,0.7,1.0]:cases.append({"look":look,"phase":phase,"attack":"charge","state":"strike","ratio":0.5,"dead":true,"age":age,"feet":0})
+ for look in range(4):
+  for phase in [1,2]:
+   for kind in ["flesh","stone"]:
+    for age in [0.0,0.06,0.12,0.35]:cases.append({"look":look,"phase":phase,"attack":"cleave","state":"recover" if kind=="stone" else "strike","ratio":0.35,"dead":false,"feet":0,"contact":kind,"contact_age":age})
  var count = 0
  for c in cases:
   var p = Vector2(240,320)
@@ -71,6 +75,13 @@ func run():
   var e = {"x":p.x,"y":p.y,"dx":dir.x,"dy":dir.y,"state":c.state,"state_time":0.0,"bell_phase":c.phase,"bell_attack":c.attack,"motion":motion.initialize(p,1,c.look)}
   var duration = fight.windup(e) if c.state=="windup" else (fight.STRIKE[c.attack] if c.state=="strike" else fight.RECOVERY[c.attack])
   e.state_time = duration*c.ratio
+  if c.has("contact"):
+   e.bell_hit_kind=c.contact
+   e.bell_hit_u=0.35
+   e.bell_hit_age=c.contact_age
+   e.bell_hit_dx=dir.x
+   e.bell_hit_dy=dir.y
+   if c.contact=="stone":e.state_time=c.contact_age
   for i in range(2):
    e.motion.feet[i].x += dir.x*c.feet*(1 if i==0 else -1)
    e.motion.feet[i].y += dir.y*c.feet*(1 if i==0 else -1)

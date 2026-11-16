@@ -104,7 +104,7 @@ static func buttons(g):
 		centre(g,b.rect.position+Vector2(b.rect.size.x/2,b.rect.size.y/2+5),b.text,12,GOLD if hovered else WHITE,true)
 
 static func world(g):
-	var off = (g.shake_axis*sin(g.anim*60)*g.shake+g.shake_axis.orthogonal()*cos(g.anim*73)*g.shake*0.15).round()
+	var off = (g.shake_axis*sin(g.elapsed*60)*g.shake+g.shake_axis.orthogonal()*cos(g.elapsed*73)*g.shake*0.15).round()
 	g.draw_set_transform(off-g.room_camera)
 	Castle.background(g)
 	Castle.lights(g)
@@ -112,7 +112,7 @@ static func world(g):
 	doors(g)
 	for hazard in g.hazards: draw_hazard(g,hazard)
 	for b in g.blood:
-		var color = Color("2d4b4d") if b.get("kind","")=="ash" else (Color("63232b") if not b.bone else Color("96846a"))
+		var color = Color("57584e") if b.get("kind","")=="stone" else (Color("2d4b4d") if b.get("kind","")=="ash" else (Color("63232b") if not b.bone else Color("96846a")))
 		var position = Vector2(b.x,b.y).snapped(Vector2(2,2))
 		var width = maxi(2,int(b.size/2)*2)
 		rect(g,Rect2(position-Vector2(width/2,2),Vector2(width,4)),color)
@@ -210,11 +210,11 @@ static func slash(g, p: Vector2):
 		tail = tip
 
 static func impact(g, contact: Dictionary):
-	var age = clampf(1-float(contact.life)/0.14,0,1)
+	var age = clampf(1-float(contact.life)/float(contact.get("total",0.14)),0,1)
 	var power = float(contact.get("power",1.0))
 	var axis: Vector2 = contact.get("axis",Vector2.RIGHT)
 	var point: Vector2 = contact.point
-	var color = Color("f2cf8f") if contact.get("armored",false) else Color("f4d7b7")
+	var color = Color("e1b86c") if contact.get("material","")=="stone" else (Color("b84149") if contact.get("material","")=="flesh" else (Color("f2cf8f") if contact.get("armored",false) else Color("f4d7b7")))
 	color.a = 1-age
 	var length = (5+power*2)*(0.7+0.3*Combat.coast(age))
 	for angle in [-0.8,0.0,0.8]:

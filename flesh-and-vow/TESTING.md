@@ -83,3 +83,14 @@ overlap with distinct colors, the complete mesh must match the correct
 foreground surface. It reproduces the old index order as a regression
 reference. The CPU suite checks triangle preservation, nonempty depth groups
 and axe-handle/body/blade command order while retaining one connected skin.
+
+
+0.6.6: tests/boss_contact.gd covers misses, flesh and stone contact in four
+directions, invulnerability, actual blade/capsule overlap, single damage,
+hit-stop freezing, knockback, exact blocked pose, recovery, JSON persistence,
+visible tall-prop bounds and contact-time stability at 60/120 Hz (60 checks).
+The silhouette suite adds 64 real impact/recoil poses: 408 connected
+silhouettes, plus the existing depth-mask checks. The anatomy suite checks
+the same new poses without changing shared vertices or wrist binding.
+Private capture uses three controlled situations in the actual running game
+(miss, flesh, column); it does not establish balance or subjective feel.
