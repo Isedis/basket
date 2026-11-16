@@ -8,12 +8,12 @@ const onbFirst = () => !(S.meta.rebirths || 0);
 const onbQuiet = () => onbFirst() && (S.lt || 0) < 300;
 const TIP_OK = { tele: 1, raid: 1 };
 const fightVis = () => uiSec === 'fight' || (typeof isWide === 'function' && isWide());   // на компьютере бой виден всегда   // эти подсказки нужны и в начале
-let coachCur = null, coachT0 = 0, coachGap = 0, coachTaps = 0;
+let coachCur = null, coachT0 = 0, coachGap = 0, coachTaps = 0, coachLast = 0;   // время коуча — игровое (time): шаг виден N игровых секунд
 const COACH = [
   { id: 'tap', when: () => onbFirst() && (S.lt || 0) > 2 && fightVis() && mobs.length, text: 'Герой сражается сам. Тапай по врагам — твой удар сильнее!',
     at: () => { let n = null, nd = 1e9; for (const m of mobs) { const d = Math.hypot(m.x - hero.x, m.y - hero.y), vis = m.x > camX + 6 && m.x < camX + W - 6 && m.y > camY + 14 && m.y < camY + H - 6; if (!m.dead && vis && d < nd) { nd = d; n = m; } } return n ? { wx: n.x, wy: n.y - 4 } : { wx: hero.x, wy: hero.y - 6 }; },
     done: t => coachTaps >= 3 || t > 12 },
-  { id: 'boss', when: () => bossAlive && fightVis() && !S.raid && mobs.some(m => m.boss && m.ws && !m.dead), text: 'ВОЖАК! Тапай по жёлтой мигающей точке — урон ×12',
+  { id: 'boss', when: () => bossAlive && fightVis() && !S.raid && mobs.some(m => m.boss && m.ws && !m.dead && m.x > camX + 8 && m.x < camX + W - 8 && m.y + m.ws.oy > camY + 16 && m.y < camY + H - 4),   // вожак уже в кадре text: 'ВОЖАК! Тапай по жёлтой мигающей точке — урон ×12',
     at: () => { const b = mobs.find(m => m.boss && m.ws && !m.dead); return b ? { wx: b.x + b.ws.ox, wy: b.y + b.ws.oy } : null; }, done: t => !bossAlive || t > 14 },
   { id: 'ult', when: () => ult >= .999 && !S.meta.autoUlt && fightVis(), text: 'Ульта заряжена! Тапни по экрану — мощный удар',
     at: () => ({ wx: hero.x, wy: hero.y - 10 }), done: t => ult < .9 || !!US || t > 14 },
@@ -26,11 +26,11 @@ function coachTick() {
   if (SIM) return; const M = S.meta; if (!M.tutD) M.tutD = {};
   const box = $('coach'), ring = $('coachRing'); if (!box) return;
   if ((M.rebirths || 0) >= 3 && !coachCur) { box.hidden = true; ring.hidden = true; return; }
-  const now = performance.now() / 1000;
+  const now = time, dtc = Math.max(0, now - (coachLast || now)); coachLast = now;
   if (coachCur) { const t = now - coachT0; if (coachCur.done(t)) { M.tutD[coachCur.id] = 1; coachCur = null; coachGap = now + 1.5; box.hidden = true; ring.hidden = true; return; } }
   else if (now > coachGap && deathT <= 0) { coachCur = COACH.find(s => !M.tutD[s.id] && s.when()) || null; if (coachCur) { coachT0 = now; if (coachCur.id === 'tap') coachTaps = 0; } }
   const cr = $('croll'), busy = S.raid || EV || (cr && !cr.hidden) || (coachCur && !coachCur.el && !fightVis());   // шаги на поле — только когда бой на экране   // не мешать рейду, сцене эволюции и карточкам
-  if (!coachCur || busy) { box.hidden = true; ring.hidden = true; if (coachCur && busy) coachT0 += .12; return; }
+  if (!coachCur || busy) { box.hidden = true; ring.hidden = true; if (coachCur && busy) coachT0 += dtc; return; }   // пока шаг не виден — его время не идёт
   // цель: точка мира или кнопка интерфейса
   let x, y; const g = $('game').getBoundingClientRect();
   if (coachCur.el) { const r = $(coachCur.el).getBoundingClientRect(); if (!r.width) { box.hidden = true; ring.hidden = true; return; } x = r.left + r.width / 2; y = r.top + r.height / 2; }
