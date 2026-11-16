@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const VERSION = "0.6.2"
+const VERSION = "0.6.3"
 const PATCH_RUNTIME = "godot-4.6.3-patch-1"
 const FEED = "https://github.com/Isedis/basket/releases/download/flesh-latest/update.json"
 const ASSET_PREFIX = "https://github.com/Isedis/basket/releases/download/"

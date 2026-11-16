@@ -108,5 +108,27 @@ func run():
    for age in [0.0,0.3,1.0]:
     e.age = age
     inspect(e,true)
+ # Sliding corpses retain their frozen local anatomy instead of leaving the feet behind.
+ for look in range(4):
+  var e = entity(look)
+  e.state = "strike"
+  e.bell_attack = "charge"
+  e.state_time = 0.4
+  e.bell_snapshot = e.duplicate(true)
+  e.bell_clock = 1.0
+  e.age = 0.35
+  var first = Surface.new()
+  View.actor(first,e,true)
+  var delta = Vector2(180,-35)
+  e.x += delta.x
+  e.y += delta.y
+  Fight.Motion.shift(e.motion,delta)
+  var moved = Surface.new()
+  View.actor(moved,e,true)
+  var stable = first.calls.size()==moved.calls.size()
+  for i in range(mini(first.calls.size(),moved.calls.size())):
+   for j in range(4): stable = stable and moved.calls[i].points[j].distance_to(first.calls[i].points[j]+delta)<0.01
+  check(stable,"Sliding corpse translates all body and foot vertices together")
+  check(e.bell_snapshot.x==200 and e.bell_snapshot.y==210,"Drawing must not mutate the frozen saved death pose")
  print("BOSS ANATOMY CHECKS: %d | FAILURES: %d"%[checks,failures])
  quit(1 if failures else 0)

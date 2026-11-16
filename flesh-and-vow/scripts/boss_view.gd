@@ -29,6 +29,8 @@ static func actor(g, e: Dictionary, dead: bool = false):
  if dead:
   model = e.get("bell_snapshot",{}).duplicate(true)
   if model.is_empty(): model = {"x":e.x,"y":e.y,"dx":e.dx,"dy":e.dy,"motion":motion,"state":"chase","state_time":0.0,"bell_attack":"cleave"}
+  # Frozen pose stores world-space planted feet; translate it with the moving corpse.
+  Motion.shift(model.get("motion",{}),p-Vector2(model.x,model.y))
   model.x = e.x
   model.y = e.y
   clock = float(e.get("bell_clock",0))
