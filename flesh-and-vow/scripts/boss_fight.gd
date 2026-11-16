@@ -43,16 +43,36 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
  var base = Combat.weapon_pose(p,motion,direction,action,progress,Combat.BASE_REACH,clock)
  for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] = p+(base[key]-p)*2
  base.head = base.body+Vector2(0,-130)
- if attack=="charge" and e.state in ["windup","strike"]:
-  var coil = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else 1.0
+ if attack=="charge" and e.state in ["windup","strike","recover"]:
+  var coil = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   var shift = direction*coil*10+Vector2(0,coil*8)
   for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] += shift
- if attack=="toll" and e.state in ["windup","strike"]:
-  var u = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else 1.0
+ if attack=="toll" and e.state in ["windup","strike","recover"]:
+  var u = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   base.head += Vector2(sin(clock*22)*u*1.6,-u*5)
  if e.state=="intro": base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
  if e.state=="fracture": base.head += Vector2(sin(e.state_time*28)*2,4*sin(e.state_time*PI/FRACTURE))
+ base.torso = base.body+Vector2(0,-77)
+ base.torso_angle = base.twist*0.6
  return base
+static func leg_pose(e: Dictionary, pose: Dictionary, index: int) -> Dictionary:
+ var side = -1.0 if index==0 else 1.0
+ # Both thigh roots belong to the opaque waist of the rotated torso.
+ var hip = pose.torso+Vector2(side*9,18).rotated(pose.torso_angle)
+ var p = Vector2(e.x,e.y)
+ var desired = Motion.foot_position(e.get("motion",{}),index,p)+Vector2(side*12,0)
+ # Depth is foreshortened in this top-down projection; a planted foot cannot rise into the waist.
+ desired.y = clampf(desired.y,p.y-10,p.y+8)
+ var foot = hip+(desired-hip).limit_length(55.8)
+ var axis = foot-hip
+ var distance = maxf(0.001,axis.length())
+ axis = axis.normalized()
+ var along = (28.0*28-28.0*28+distance*distance)/(2*distance)
+ var height = sqrt(maxf(0,28.0*28-along*along))
+ var look = Motion.look_index(e.get("motion",{}),Vector2(e.dx,e.dy))
+ var bend = Motion.hand_sign(look) if look in [1,3] else side
+ var knee = hip+axis*along+Vector2(axis.y,-axis.x)*height*bend
+ return {"hip":hip,"knee":knee,"foot":foot}
 static func blade(e: Dictionary, clock: float) -> PackedVector2Array:
  var weapon = pose(e,clock)
  var result = PackedVector2Array()
@@ -162,4 +182,4 @@ static func update(g, e: Dictionary, dt: float, slow: float):
    Motion.set_look(e.get("motion",{}),direction)
  e.x = p.x
  e.y = p.y
- e.motion = Motion.update(e.get("motion",{}),before,p,dt)
+ e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)

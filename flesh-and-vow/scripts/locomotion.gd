@@ -33,7 +33,7 @@ static func initialize(p: Vector2, facing: float = 1.0, look: int = -1) -> Dicti
 		"started":false,"walk_weight":0.0,"feet":[{"x":p.x-SPREAD,"y":p.y,"lift":0.0,"stance":true,"sx":p.x-SPREAD,"sy":p.y},
 		{"x":p.x+SPREAD,"y":p.y,"lift":0.0,"stance":true,"sx":p.x+SPREAD,"sy":p.y}]}
 
-static func update(state: Dictionary, previous: Vector2, p: Vector2, dt: float) -> Dictionary:
+static func update(state: Dictionary, previous: Vector2, p: Vector2, dt: float, stride: float = STRIDE, reach: float = REACH) -> Dictionary:
 	if not state.has("feet"):
 		var normalized = initialize(previous,float(state.get("facing",1.0)))
 		normalized.merge(state,true)
@@ -51,13 +51,13 @@ static func update(state: Dictionary, previous: Vector2, p: Vector2, dt: float) 
 	if not state.get("started",false):
 		state.started = true
 		state.feet[1].stance = false
-		state.feet[1].sx = previous.x+SPREAD-dir.x*REACH
-		state.feet[1].sy = previous.y-dir.y*REACH
+		state.feet[1].sx = previous.x+SPREAD-dir.x*reach
+		state.feet[1].sy = previous.y-dir.y*reach
 	state.vx = dir.x
 	state.vy = dir.y
 	set_look(state,dir)
 	state.distance += distance
-	state.phase = fmod(float(state.phase)+distance/STRIDE*TAU,TAU)
+	state.phase = fmod(float(state.phase)+distance/maxf(1,stride)*TAU,TAU)
 	for i in range(2):
 		var foot = state.feet[i]
 		var phase = fmod(float(state.phase)+i*PI,TAU)
@@ -65,15 +65,15 @@ static func update(state: Dictionary, previous: Vector2, p: Vector2, dt: float) 
 		var side = Vector2(-SPREAD if i==0 else SPREAD,0)
 		if stance:
 			if not foot.stance:
-				foot.x = p.x+side.x+dir.x*REACH
-				foot.y = p.y+dir.y*REACH
+				foot.x = p.x+side.x+dir.x*reach
+				foot.y = p.y+dir.y*reach
 			foot.lift = 0.0
 		else:
 			if foot.stance:
 				foot.sx = foot.x
 				foot.sy = foot.y
 			var u = (phase-PI)/PI
-			var target = p+side+dir*REACH
+			var target = p+side+dir*reach
 			var xy = Vector2(foot.sx,foot.sy).lerp(target,smoothstep(0,1,u))
 			foot.x = xy.x
 			foot.y = xy.y

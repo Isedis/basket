@@ -59,3 +59,11 @@ actual one-hit damage, drawn blade contact, charge cover, save/load of phase
 and pending waves, death cleanup, rewards/unlocks and old-boss migration.
 Private movie capture uses the real AI and movement with scripted survival
 and health changes for an art review; it is not an unassisted balance test.
+
+0.6.2: tests/boss_anatomy.gd reproduces the old detached-thigh and split-bell
+failures using the actual draw polygons and native texture alpha. It checks
+opaque overlap of each thigh with the torso in four directions, both phases,
+all attacks and recovery, stride extremes, and corpse poses. It also checks
+one intact bell, fixed leg segment lengths and continuous recovery.
+The old release failed 475 of the initial 948 checks; the corrected code
+passes the expanded suite, including extreme saved foot placements.

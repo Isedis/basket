@@ -36,34 +36,18 @@ static func actor(g, e: Dictionary, dead: bool = false):
  var pose = Fight.pose(model,clock)
  var context = {"p":p,"fall":collapse*1.5*sign_hand,"drop":collapse*10,"shift":Vector2.ZERO,"fade":1.0}
  var tint = Color(1.5,1.25,1.05) if not dead and e.get("flash",0)>0 else Color.WHITE
- var left_foot = Motion.foot_position(motion,0,p)+Vector2(-12,0)
- var right_foot = Motion.foot_position(motion,1,p)+Vector2(12,0)
  var body = pose.body
  for i in range(2):
-  var foot = left_foot if i==0 else right_foot
-  var hip = pose.hips+Vector2(-17 if i==0 else 17,-48)
-  Rig.limb(g,art[4+i],hip,foot,4*sign_hand,flip,tint,context)
+  var leg = Fight.leg_pose(model,pose,i)
+  Rig.jointed_limb(g,art[4+i],leg.hip,leg.knee,leg.foot,flip,tint,context,0.88)
  var left_shoulder = body+Vector2(-28*sign_hand,-76)
  var left_hand = left_shoulder+Vector2(-7*sign_hand,43)
  Rig.limb(g,art[2],left_shoulder,left_hand,5*sign_hand,flip,tint,context)
  if look==2: weapon(g,art,pose,flip,tint,context)
  Rig.part(g,art[7],body+Vector2(-23*sign_hand,-100),sin(clock*2)*0.035,flip,tint,context,Vector2(0.5,0))
- Rig.part(g,art[1],body+Vector2(0,-77),pose.twist*0.6,flip,tint,context)
- # The bell remains the same pixels. Its existing fracture physically opens in phase two.
- var broken = int(model.get("bell_phase",1))==2
- var amount = 1.0
- if model.state=="fracture": amount = smoothstep(0,1,model.state_time/Fight.FRACTURE)
- var head = pose.head
- if broken or dead:
-  var tex: Texture2D = art[0]
-  var gap = (4*amount if broken else 0.0)+collapse*12
-  for half in range(2):
-   var region = Rect2i(half*SIZES[0].x/2,0,SIZES[0].x/2,SIZES[0].y)
-   var piece = AtlasTexture.new()
-   piece.atlas = tex
-   piece.region = region
-   Rig.part(g,piece,head+Vector2((-1 if half==0 else 1)*(SIZES[0].x/2+gap),0),(-0.05 if half==0 else 0.05)*amount,flip,tint,context)
- else: Rig.part(g,art[0],head,-pose.twist*0.18,flip,tint,context)
+ Rig.part(g,art[1],pose.torso,pose.torso_angle,flip,tint,context)
+ # Existing painted cracks stay on a single shell, including phase two and death.
+ Rig.part(g,art[0],pose.head,-pose.twist*0.18,flip,tint,context)
  if not dead and e.state=="strike" and e.get("bell_attack","")=="cleave" and e.state_time<Fight.STRIKE.cleave*0.55:
   var trail = PackedVector2Array()
   for sample in range(6):
