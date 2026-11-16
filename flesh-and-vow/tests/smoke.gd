@@ -24,9 +24,9 @@ func run():
 		while not queue.is_empty():
 			var k = queue.pop_front()
 			var r = map.rooms[k]
-			for direction in D.DIRS:
-				var next = D.key(Vector2i(r.x,r.y)+direction)
-				if map.rooms.has(next) and next not in reached:
+			for port in D.ports(map,r):
+				var next: String = port.target
+				if not next.is_empty() and next not in reached:
 					reached.append(next)
 					queue.append(next)
 		check(reached.size()==map.rooms.size(),"Connected seed %d"%seed_number)
@@ -91,39 +91,50 @@ func run():
 	for k in game.dungeon.rooms:
 		if game.dungeon.rooms[k].type=="secret": secret_key=k
 	var s = game.dungeon.rooms[secret_key]
-	var secret_pos = Vector2i(s.x,s.y)
-	for i in range(4):
-		var parent = secret_pos-Vector2i(game.DIRECTIONS[i])
-		if game.dungeon.rooms.has(D.key(parent)):
-			game.enter_room(parent,game.door_position(i)-game.DIRECTIONS[i]*21)
+	var tested_secret = false
+	for parent in game.dungeon.rooms.values():
+		var ports = D.ports(game.dungeon,parent)
+		for i in range(ports.size()):
+			if ports[i].target!=secret_key: continue
+			game.enter_room(Vector2i(parent.x,parent.y),Vector2.INF)
+			game.place_player(game.door_position(i)-game.DIRECTIONS[game.door_direction(i)]*21)
 			game.room.clear = true
 			game.enemies.clear()
-			game.swing_dir = game.DIRECTIONS[i]
+			game.swing_dir = game.DIRECTIONS[game.door_direction(i)]
 			for j in range(3): game.perform_attack()
-			check(s.revealed,"Secret revealed by three wall strikes")
+			check(s.revealed,"Secret revealed by three exterior wall strikes")
+			tested_secret = true
 			break
+		if tested_secret: break
+	check(tested_secret,"Secret always has a testable exterior entrance")
 	# Locked treasure uses exactly one key; re-entry is free.
 	game.new_run(299)
-	for k in game.dungeon.rooms:
-		var r = game.dungeon.rooms[k]
-		if r.type=="treasure":
+	var tested_lock = false
+	for parent in game.dungeon.rooms.values():
+		var ports = D.ports(game.dungeon,parent)
+		for i in range(ports.size()):
+			if ports[i].target.is_empty(): continue
+			var r = game.dungeon.rooms[ports[i].target]
+			if r.type!="treasure": continue
 			var target = Vector2i(r.x,r.y)
-			for i in range(4):
-				var parent = target-Vector2i(game.DIRECTIONS[i])
-				if game.dungeon.rooms.has(D.key(parent)):
-					game.enter_room(parent,game.door_position(i)-game.DIRECTIONS[i]*20)
-					game.room.clear = true
-					game.enemies.clear()
-					game.keys = 0
-					game.transition_cd = 0
-					game.check_doors()
-					check(game.coords==parent and not r.opened,"Locked door rejects missing key")
-					game.keys = 2
-					game.transition_cd = 0
-					game.check_doors()
-					check(game.coords==target and game.keys==1 and r.opened,"Treasure consumes one key")
-					break
+			game.enter_room(Vector2i(parent.x,parent.y),Vector2.INF)
+			game.place_player(game.door_position(i)-game.DIRECTIONS[game.door_direction(i)]*20)
+			game.room.clear = true
+			game.enemies.clear()
+			game.keys = 0
+			game.transition_cd = 0
+			game.check_doors()
+			check(game.coords==Vector2i(parent.x,parent.y) and not r.opened,"Locked door rejects missing key")
+			game.keys = 2
+			game.transition_cd = 0
+			game.check_doors()
+			game.DoorMotion.advance(game,1)
+			game.check_doors()
+			check(game.coords==target and game.keys==1 and r.opened,"Treasure consumes one key")
+			tested_lock = true
 			break
+		if tested_lock: break
+	check(tested_lock,"Treasure always has a testable exterior entrance")
 	# All enemy state machines and rendering exercise over deterministic simulation.
 	game.new_run(1024)
 	for floor_number in range(4):

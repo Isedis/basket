@@ -53,7 +53,7 @@ func run():
 	root.add_child(game)
 	await process_frame
 	game.new_run(97)
-	game.player = Vector2(709,320)
+	game.player = Vector2(game.room_floor_rect.end.x-11,320)
 	Input.action_press("right")
 	game.update_game(1.0/60)
 	Input.action_release("right")

@@ -1,5 +1,7 @@
 extends Node2D
 
+const RoomLayout = preload("res://scripts/castle_layout.gd")
+const DoorMotion = preload("res://scripts/door_motion.gd")
 const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const Catalog = preload("res://scripts/catalog.gd")
@@ -8,7 +10,7 @@ const View = preload("res://scripts/view.gd")
 var save_path = "user://run_v1.json"
 var profile_path = "user://profile_v1.json"
 const DIRECTIONS = [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]
-const CENTRE = Vector2(384,268)
+var CENTRE = Vector2(384,268)
 const ENEMY_NAMES = ["guard", "shadow", "skeleton", "assassin", "mage"]
 
 var font = preload("res://assets/regular.ttf")
@@ -97,6 +99,15 @@ var help_open = false
 var journal_open = false
 var last_error = ""
 var end_quote = ""
+var room_floor_rect = Rect2(48,168,1152,640)
+var room_torches: Array = [Vector2(248,142),Vector2(520,142)]
+var room_props: Array = []
+var room_ports: Array = []
+var camera_position = Vector2.ZERO
+var door_visuals: Array = []
+var room_camera = Vector2.ZERO
+var authored_room = false
+var room_wall_texture: Texture2D
 var room_texture: Texture2D
 var world_viewport: SubViewport
 
@@ -110,7 +121,7 @@ func _ready():
 	castle_art = ImageTexture.create_from_image(castle_image)
 	world_viewport = SubViewport.new()
 	world_viewport.name = "PixelWorld"
-	world_viewport.size = Vector2i(480,270)
+	world_viewport.size = Vector2i(352,182)
 	world_viewport.disable_3d = true
 	world_viewport.transparent_bg = true
 	world_viewport.gui_disable_input = true
@@ -119,6 +130,7 @@ func _ready():
 	var painter = preload("res://scripts/pixel_world.gd").new()
 	painter.state = self
 	painter.scale = Vector2(0.5,0.5)
+	painter.position = Vector2(-16,-42)
 	painter.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	world_viewport.add_child(painter)
 	bind_controls()
@@ -270,10 +282,10 @@ func start_practice_round(use_heavy: bool = false):
 	if not art_probe_active: return
 	new_run()
 	if use_heavy: inventory.append("heavy")
-	place_player(Vector2(316,330),Vector2.RIGHT)
+	place_player(CENTRE+Vector2(-110,40),Vector2.RIGHT)
 	invincible = 0
-	spawn_enemy("guard",Vector2(450,325),false)
-	spawn_enemy("assassin",Vector2(590,300),false)
+	spawn_enemy("guard",CENTRE+Vector2(24,35),false)
+	spawn_enemy("assassin",CENTRE+Vector2(164,10),false)
 	room.clear = false
 	notify("WASD — шаг, стрелки — удар. Q — оружие, R — заново.",5)
 	save_run()
@@ -344,7 +356,7 @@ func new_run(fixed_seed: int = -1):
 func new_floor():
 	dungeon = Dungeon.generate(rng,floor_index)
 	coords = Vector2i.ZERO
-	enter_room(coords,Vector2(384,320),false)
+	enter_room(coords,Vector2.INF,false)
 
 func place_player(position: Vector2, look_direction: Vector2 = Vector2.ZERO):
 	player = position
@@ -359,11 +371,15 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	if store and not room.is_empty():
 		store_room()
 	coords = where
-	room = dungeon.rooms[Dungeon.key(coords)]
+	var anchor = Dungeon.owner(dungeon,where)
+	if anchor.is_empty(): return
+	room = dungeon.rooms[anchor]
+	coords = Vector2i(int(room.x),int(room.y))
+	RoomLayout.configure(self)
 	room.visited = true
 	if not room.has("corpses"): room.corpses = []
 	corpses = room.corpses.duplicate(true)
-	player = spawn
+	player = CENTRE+Vector2(0,48) if spawn==Vector2.INF else spawn
 	player_motion = {}
 	attack_contact_pending = false
 	enemies = room.enemies.duplicate(true)
@@ -385,15 +401,24 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 	transition_cd = 0.45
 	setup_geometry()
 	if blocked(player,9):
-		for candidate in [CENTRE,Vector2(384,320),Vector2(384,210),Vector2(130,300),Vector2(620,300)]:
+		for candidate in [CENTRE,CENTRE+Vector2(0,64),CENTRE-Vector2(0,96),Vector2(128,CENTRE.y),Vector2(room_floor_rect.end.x-128,CENTRE.y)]:
 			if not blocked(candidate,9):
 				player = candidate
 				break
 	place_player(player,facing)
+	for enemy in enemies:
+		var old = Vector2(enemy.x,enemy.y)
+		var recovered = safe_position(old,15)
+		enemy.x = recovered.x
+		enemy.y = recovered.y
+		Motion.shift(enemy.get("motion",{}),recovered-old)
 	if not room.spawned:
 		room.spawned = true
 		populate_room()
 	make_floor_texture()
+	DoorMotion.reset(self)
+	camera_position = desired_camera()
+	room_camera = camera_position.snapped(Vector2(2,2))
 	if room.type == "boss" and not room.clear:
 		notify(Catalog.FLOORS[floor_index].boss,3)
 	elif room.type == "secret":
@@ -407,58 +432,51 @@ func store_room():
 	room.corpses = corpses.duplicate(true)
 
 func setup_geometry():
-	blocks.clear()
-	hazards.clear()
-	if room.type not in ["combat","boss"]:
-		return
-	# Six authored obstacle arrangements; central door lanes stay open.
-	var templates = [
-		[Rect2(172,176,48,36),Rect2(548,328,48,36)],
-		[Rect2(205,164,36,48),Rect2(527,164,36,48),Rect2(205,334,36,48),Rect2(527,334,36,48)],
-		[Rect2(286,182,44,30),Rect2(438,334,44,30)],
-		[Rect2(168,184,80,24),Rect2(520,338,80,24)],
-		[Rect2(240,180,32,32),Rect2(496,180,32,32),Rect2(240,330,32,32),Rect2(496,330,32,32)],
-		[Rect2(170,172,48,48),Rect2(550,316,48,48)]
-	]
-	if room.type != "boss":
-		blocks = templates[int(room.layout)].duplicate()
-	var hazard_types = ["spikes","fire","water","pit"]
-	var kind = hazard_types[(int(room.layout)+floor_index)%4]
-	var rect = Rect2(300,350,52,32) if int(room.layout)%2==0 else Rect2(424,160,52,32)
-	hazards.append({"rect":rect,"type":kind,"phase":float(int(room.seed)%7)})
-	if floor_index > 1:
-		hazards.append({"rect":Rect2(548,184,40,32),"type":"fire","phase":2.0})
+	RoomLayout.setup(self)
+	RoomLayout.special(self)
+
+func safe_position(p: Vector2, radius: float) -> Vector2:
+	if not blocked(p,radius): return p
+	for ring in range(1,13):
+		for step in range(16):
+			var candidate = p+Vector2.from_angle(step*TAU/16)*ring*12
+			if not blocked(candidate,radius): return candidate
+	return CENTRE
+
+func desired_camera() -> Vector2:
+	return Vector2(clampf(player.x-384,0,maxf(0,room_floor_rect.size.x-672)),clampf(player.y-300,0,maxf(0,room_floor_rect.size.y-264)))
 
 func make_floor_texture():
-	room_texture = preload("res://scripts/castle_view.gd").bake_floor(int(room.seed),floor_index)
+	var materials = preload("res://scripts/castle_view.gd").room_materials(int(room.seed),floor_index,room_floor_rect,room_torches)
+	room_texture = materials[0]
+	room_wall_texture = materials[1]
 
 func populate_room():
 	match room.type:
 		"combat":
-			var n = rng.randi_range(3,4)+floor_index
+			var n = rng.randi_range(3,4)+floor_index+2*(Dungeon.span(room).x*Dungeon.span(room).y-1)
 			for i in range(n):
 				spawn_enemy(ENEMY_NAMES[rng.randi_range(0,mini(4,2+floor_index))],free_spawn(),false)
-		"boss": spawn_enemy("boss"+str(floor_index),Vector2(384,195),true)
+		"boss": spawn_enemy("boss"+str(floor_index),CENTRE-Vector2(0,116),true)
 		"treasure","reliquary","secret":
 			room.clear = true
 			var count_items = 2 if room.type == "secret" else 1
 			for i in range(count_items):
-				add_drop("item",Vector2(350+i*68,260),1,choose_item())
+				add_drop("item",CENTRE+Vector2(-34+i*68,-8),1,choose_item())
 			if room.type == "secret":
-				add_drop("key",Vector2(384,310),1)
+				add_drop("key",CENTRE+Vector2(0,42),1)
 		"shop":
 			room.clear = true
-			add_drop("item",Vector2(330,250),1,choose_item(),8+floor_index*2)
-			add_drop("heal",Vector2(438,250),4,"",4)
-			add_drop("key",Vector2(384,320),1,"",3)
+			add_drop("item",CENTRE+Vector2(-54,-18),1,choose_item(),8+floor_index*2)
+			add_drop("heal",CENTRE+Vector2(54,-18),4,"",4)
+			add_drop("key",CENTRE+Vector2(0,52),1,"",3)
 		_ : room.clear = true
 
 func free_spawn() -> Vector2:
-	for attempt in range(80):
-		var p = Vector2(rng.randf_range(130,640),rng.randf_range(155,365))
-		if p.distance_to(player)>100 and not blocked(p,15):
-			return p
-	return Vector2(600,300)
+	for attempt in range(100):
+		var p = Vector2(rng.randf_range(room_floor_rect.position.x+80,room_floor_rect.end.x-80),rng.randf_range(224,room_floor_rect.end.y-64))
+		if p.distance_to(player)>160 and not blocked(p,18): return p
+	return safe_position(CENTRE,18)
 
 func spawn_enemy(type: String, p: Vector2, boss: bool):
 	var health = (65.0+floor_index*32) if boss else (9.0+floor_index*4)
@@ -478,6 +496,9 @@ func _process(delta):
 		if buttons[i].rect.has_point(get_global_mouse_position()): menu_hover = i
 	if mode == "playing" and not help_open:
 		advance_frame(delta)
+	if not room.is_empty() and mode not in ["title","confirm_new"]:
+		camera_position = camera_position.lerp(desired_camera(),1-exp(-delta*8))
+		room_camera = camera_position.snapped(Vector2(2,2))
 	queue_redraw()
 
 func advance_frame(delta: float):
@@ -486,7 +507,9 @@ func advance_frame(delta: float):
 		var frozen = minf(hit_stop,remaining)
 		hit_stop -= frozen
 		remaining -= frozen
-	if remaining>0: update_game(minf(remaining,0.04))
+	if remaining>0:
+		update_game(minf(remaining,0.04))
+		DoorMotion.advance(self,minf(remaining,0.04))
 
 func update_game(dt: float):
 	elapsed += dt
@@ -584,7 +607,7 @@ func update_game(dt: float):
 		save_time = 0
 
 func blocked(p: Vector2, radius: float) -> bool:
-	if p.x<50+radius or p.x>718-radius or p.y<176+radius or p.y>425-radius:
+	if p.x<room_floor_rect.position.x+2+radius or p.x>room_floor_rect.end.x-2-radius or p.y<176+radius or p.y>room_floor_rect.end.y-7-radius:
 		return true
 	for block in blocks:
 		if block.grow(radius).has_point(p): return true
@@ -698,18 +721,17 @@ func perform_attack(reset_swing: bool = true):
 		fire_bullet(player+swing_dir*16,swing_dir*235,3.5,"ally",1.6)
 	if has_item("echo"):
 		zones.append({"x":player.x+swing_dir.x*38,"y":player.y+swing_dir.y*38,"radius":40.0,"timer":0.23,"kind":"echo","damage":attack_damage()*0.7})
-	# Stone responds only after the room is safe, encouraging observation.
+	# Secret entrances are tied to exterior ports, including the second cell of a hall.
 	if room.clear:
-		for i in range(4):
-			var next = coords+Vector2i(DIRECTIONS[i])
-			var k = Dungeon.key(next)
-			if dungeon.rooms.has(k) and dungeon.rooms[k].type == "secret" and not dungeon.rooms[k].revealed:
+		for i in range(room_ports.size()):
+			var dest = door_destination(i)
+			if dest.get("type")=="secret" and not dest.revealed:
 				var centre = door_position(i)
-				if player.distance_to(centre)<75 and swing_dir.dot(DIRECTIONS[i])>0.8:
-					dungeon.rooms[k].cracks += 1
+				if player.distance_to(centre)<75 and swing_dir.dot(DIRECTIONS[door_direction(i)])>0.8:
+					dest.cracks += 1
 					burst(centre,Color("b4a28b"),12)
-					if dungeon.rooms[k].cracks>=3:
-						dungeon.rooms[k].revealed = true
+					if dest.cracks>=3:
+						dest.revealed = true
 						notify("Камень уступил. Проход открыт.",3)
 						save_run()
 					else: notify("Из трещины доносится дыхание…",2)
@@ -798,7 +820,7 @@ func kill_enemy(enemy: Dictionary):
 	if enemy.boss:
 		var unlock = "boss"+str(floor_index+1) if floor_index<3 else "victory"
 		unlock_content(unlock)
-		add_drop("item",Vector2(384,210),1,choose_item())
+		add_drop("item",CENTRE-Vector2(0,58),1,choose_item())
 
 func update_enemies(dt: float):
 	for enemy in enemies.duplicate():
@@ -1037,9 +1059,9 @@ func clear_room():
 		heal(3)
 		notify("Обет разорван. Забери дар и подойди к печати. [E]",5)
 	else:
-		if rng.randf()<0.24: add_drop("heal",Vector2(384,270),2)
-		if rng.randf()<0.28: add_drop("key",Vector2(410,270),1)
-		if drops.is_empty(): add_drop("coin",Vector2(384,270),1)
+		if rng.randf()<0.24: add_drop("heal",CENTRE,2)
+		if rng.randf()<0.28: add_drop("key",CENTRE+Vector2(26,0),1)
+		if drops.is_empty(): add_drop("coin",CENTRE,1)
 	save_run()
 
 func has_item(id: String) -> bool:
@@ -1125,8 +1147,8 @@ func interact():
 			notify("Два деления плоти отданы навсегда. В этом забеге.",4)
 		"oracle":
 			# Two opposing altars: left renounces faith, right embraces it.
-			faith = clampi(faith+(-2 if player.x<384 else 2),-6,6)
-			if player.x<384:
+			faith = clampi(faith+(-2 if player.x<CENTRE.x else 2),-6,6)
+			if player.x<CENTRE.x:
 				coins += 5
 				notify("Ты отверг ответ. Пять монет и шаг во тьму.",4)
 			else:
@@ -1163,28 +1185,52 @@ func use_active():
 	active_cd = 0.4
 	save_run()
 
+func door_direction(index: int) -> int:
+	return int(room_ports[index].dir)
+
+func door_destination(index: int) -> Dictionary:
+	var anchor = Dungeon.owner(dungeon,room_ports[index].to)
+	return dungeon.rooms.get(anchor,{})
+
 func door_position(index: int) -> Vector2:
-	return [Vector2(384,180),Vector2(715,268),Vector2(384,426),Vector2(52,268)][index]
+	var port: Dictionary = room_ports[index]
+	var offset: Vector2i = port.from-Vector2i(int(room.x),int(room.y))
+	match int(port.dir):
+		0: return Vector2(48+(offset.x+0.5)*1152,180)
+		1: return Vector2(room_floor_rect.end.x-5,168+(offset.y+0.5)*640)
+		2: return Vector2(48+(offset.x+0.5)*1152,room_floor_rect.end.y-6)
+		_: return Vector2(52,168+(offset.y+0.5)*640)
 
 func check_doors():
 	if not room.clear or transition_cd>0: return
-	for i in range(4):
-		var next = coords+Vector2i(DIRECTIONS[i])
-		var k = Dungeon.key(next)
-		if not dungeon.rooms.has(k): continue
-		var dest = dungeon.rooms[k]
-		if not dest.revealed: continue
-		if player.distance_to(door_position(i))<28:
-			if not dest.opened:
-				if keys<=0:
-					notify("Нужен ключ.",2)
-					transition_cd = 1
-					return
-				keys -= 1
-				dest.opened = true
-			var spawns = [Vector2(384,393),Vector2(80,268),Vector2(384,210),Vector2(688,268)]
-			enter_room(next,spawns[i])
+	for i in range(room_ports.size()):
+		var dest = door_destination(i)
+		if dest.is_empty() or not dest.revealed or player.distance_to(door_position(i))>=28: continue
+		if not dest.opened:
+			if keys<=0:
+				notify("Нужен ключ.",2)
+				transition_cd = 0.5
+				return
+			keys -= 1
+			dest.opened = true
+			DoorMotion.unlock(self,i)
+			notify("Замок открыт.",1.5)
+			save_run()
 			return
+		if not DoorMotion.ready(self,i): continue
+		var exit: Dictionary = room_ports[i]
+		var target = Vector2i(int(dest.x),int(dest.y))
+		var target_ports = Dungeon.ports(dungeon,dest)
+		var entry = -1
+		for j in range(target_ports.size()):
+			if target_ports[j].from==exit.to and target_ports[j].to==exit.from: entry = j
+		if entry<0: continue
+		enter_room(target,Vector2.INF)
+		place_player(door_position(entry)-DIRECTIONS[door_direction(entry)]*34)
+		camera_position = desired_camera()
+		room_camera = camera_position.snapped(Vector2(2,2))
+		save_run()
+		return
 
 func interaction_text() -> String:
 	if not room.clear: return "ДВЕРИ ЗАПЕЧАТАНЫ"
@@ -1197,7 +1243,7 @@ func interaction_text() -> String:
 		if not room.used:
 			match room.type:
 				"torture": return "[E] ДАР ЗА 2 МАКСИМАЛЬНОЙ ПЛОТИ"
-				"oracle": return "[E] "+("ОТВЕРГНУТЬ: −2 ВЕРЫ, +5 МОНЕТ" if player.x<384 else "ПРИНЯТЬ: +2 ВЕРЫ, ЛЕЧЕНИЕ")
+				"oracle": return "[E] "+("ОТВЕРГНУТЬ: −2 ВЕРЫ, +5 МОНЕТ" if player.x<CENTRE.x else "ПРИНЯТЬ: +2 ВЕРЫ, ЛЕЧЕНИЕ")
 				"reliquary": return "[E] ЗАМЕНИТЬ ДАР  ·  3 МОНЕТЫ"
 	return ""
 
@@ -1241,7 +1287,7 @@ func save_profile():
 func save_run():
 	if dungeon.is_empty() or mode in ["dead","victory"]: return
 	store_room()
-	var data = {"version":1,"seed":seed_value,"rng_state":str(rng.state),"floor":floor_index,
+	var data = {"version":1,"room_geometry":2,"seed":seed_value,"rng_state":str(rng.state),"floor":floor_index,
 		"dungeon":dungeon,"coords":[coords.x,coords.y],"player":[player.x,player.y],"facing":[facing.x,facing.y],
 		"hp":hp,"max_hp":max_hp,"pain":pain,"coins":coins,"keys":keys,"faith":faith,"inventory":inventory,
 		"active":active,"charge":charge,"elapsed":elapsed,"kills":kills,"rooms":rooms_cleared,"character":character,
@@ -1265,6 +1311,8 @@ func load_run() -> bool:
 	if not data is Dictionary or data.get("version",0)!=1 or not data.has("dungeon"):
 		notify("Сохранение не читается. Можно начать новый забег.",5)
 		return false
+	RoomLayout.upgrade_save(data)
+	Dungeon.rebuild_cells(data.dungeon)
 	for field in ["hp","max_hp","pain","coins","keys","faith","inventory","active","charge","elapsed","kills","character"]:
 		set(field,data[field])
 	seed_value = int(data.seed)

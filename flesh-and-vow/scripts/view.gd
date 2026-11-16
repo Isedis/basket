@@ -2,6 +2,8 @@ extends RefCounted
 
 const Combat = preload("res://scripts/combat.gd")
 const Art = preload("res://scripts/art_view.gd")
+const Special = preload("res://scripts/castle_special.gd")
+const Props = preload("res://scripts/castle_props.gd")
 const Castle = preload("res://scripts/castle_view.gd")
 const Catalog = preload("res://scripts/catalog.gd")
 const Dungeon = preload("res://scripts/dungeon.gd")
@@ -48,7 +50,7 @@ static func render(g):
 		title_screen(g)
 	else:
 		if g.world_viewport!=null:
-			g.draw_texture_rect(g.world_viewport.get_texture(),Rect2(0,0,960,540),false)
+			g.draw_texture_rect(g.world_viewport.get_texture(),Rect2(32,84,704,364),false)
 		else: world(g)
 		hud(g)
 		if g.mode == "paused" and not g.help_open and not g.journal_open:
@@ -101,7 +103,7 @@ static func buttons(g):
 
 static func world(g):
 	var off = (g.shake_axis*sin(g.anim*60)*g.shake+g.shake_axis.orthogonal()*cos(g.anim*73)*g.shake*0.15).round()
-	g.draw_set_transform(off)
+	g.draw_set_transform(off-g.room_camera)
 	Castle.background(g)
 	Castle.lights(g)
 	doors(g)
@@ -113,7 +115,10 @@ static func world(g):
 		rect(g,Rect2(position-Vector2(width/2,2),Vector2(width,4)),color)
 		if not b.bone:
 			rect(g,Rect2(position-Vector2(width/3,4),Vector2(maxi(2,width-4),8)),Color("4d2026"))
-	for b in g.blocks: Art.stone(g,b)
+	for prop in g.room_props:
+		if not prop.get("solid",false): Props.draw(g,prop)
+	if not g.authored_room:
+		for b in g.blocks: Art.stone(g,b)
 	Art.corpses(g)
 	room_prop(g)
 	for z in g.zones:
@@ -124,8 +129,13 @@ static func world(g):
 	# Draw entities in foot-position order for correct top-down overlap.
 	var entities = g.enemies.duplicate()
 	entities.append({"type":"player","x":g.player.x,"y":g.player.y,"boss":false})
+	for prop in g.room_props:
+		if prop.get("solid",false): entities.append(prop)
 	entities.sort_custom(func(a,b): return a.y<b.y)
 	for e in entities:
+		if e.type=="scenery":
+			Props.draw(g,e)
+			continue
 		var p = Vector2(e.x,e.y)
 		var is_player = e.type=="player"
 		var size = 2.0 if e.boss else 1.0
@@ -215,16 +225,15 @@ static func debug_shapes(g):
 		g.draw_circle(contact.point,3,Color("f4d395"))
 
 static func doors(g):
-	for i in range(4):
-		var key = Dungeon.key(g.coords+Vector2i(g.DIRECTIONS[i]))
-		var destination: Dictionary = g.dungeon.rooms.get(key,{})
+	for i in range(g.room_ports.size()):
+		var destination: Dictionary = g.door_destination(i)
 		var state = Castle.door_state(g.room.clear,destination)
 		Castle.doorway(g,i,state)
 		if not destination.is_empty() and not destination.revealed:
 			Castle.secret_crack(g,i,g.has_item("sight"))
-		elif state=="open":
+		elif state=="open" and destination.type not in ["start","combat"]:
 			var p = g.door_position(i)
-			var offset = [Vector2(0,17),Vector2(-18,4),Vector2(0,-12),Vector2(18,4)][i]
+			var offset = [Vector2(0,17),Vector2(-18,4),Vector2(0,-12),Vector2(18,4)][g.door_direction(i)]
 			centre(g,p+offset,MARKS[destination.type],10,GOLD)
 
 static func draw_hazard(g, h):
@@ -256,17 +265,21 @@ static func draw_hazard(g, h):
 static func room_prop(g):
 	var p = g.CENTRE
 	var type = g.room.type
+	if g.authored_room and type in ["shop","torture","oracle","reliquary"]: return
 	if type in ["combat","secret","shop","start"]:
 		if type=="start":
 			g.draw_arc(p,42,0,TAU,32,Color("453641"),1)
 			g.draw_line(p-Vector2(20,0),p+Vector2(20,0),Color("453641"),1)
 			g.draw_line(p-Vector2(0,20),p+Vector2(0,20),Color("453641"),1)
 		if type=="shop":
-			actor(g,"mage",Vector2(384,184),0,1.2,false,Color("bcb09b"))
-			text(g,Vector2(289,144),"«Я продаю лишь то, что пережило хозяев».",14,MUTED)
+			actor(g,"mage",p-Vector2(0,84),0,1.2,false,Color("bcb09b"))
+			text(g,p-Vector2(95,124),"«Я продаю лишь то, что пережило хозяев».",14,MUTED)
 		return
 	if type=="boss":
 		if g.room.clear:
+			if g.authored_room:
+				Special.draw(g,{"kind":6,"x":p.x,"y":p.y+10})
+				return
 			g.draw_circle(p,27,Color("272332"))
 			g.draw_arc(p,28,0,TAU,40,GOLD,2)
 			g.draw_arc(p,19,g.anim,TAU+g.anim,24,Color("8e566c"),1)
@@ -299,8 +312,9 @@ static func draw_drop(g, d):
 	var bob = sin(g.anim*3+d.x)*2
 	if d.type=="item":
 		g.draw_circle(p+Vector2(0,5),16,Color("24212d"))
-		rect(g,Rect2(p-Vector2(13,0),Vector2(26,11)),Color("3e3540"),Color("69555a"))
-		item_icon(g,d.id,p-Vector2(24,47+bob),2)
+		if g.authored_room: Special.draw(g,{"kind":5,"x":p.x,"y":p.y+10})
+		else: rect(g,Rect2(p-Vector2(13,0),Vector2(26,11)),Color("3e3540"),Color("69555a"))
+		item_icon(g,d.id,p-Vector2(24,(71 if g.authored_room else 47)+bob),2)
 		if g.player.distance_to(p)<47:
 			g.draw_arc(p,19,0,TAU,28,GOLD,1)
 	elif d.type=="coin":
@@ -376,32 +390,36 @@ static func hud(g):
 
 static func minimap(g):
 	var visible: Array = []
-	for key in g.dungeon.rooms:
-		var r = g.dungeon.rooms[key]
+	for r in g.dungeon.rooms.values():
 		if not r.revealed and not g.has_item("sight"): continue
-		var p = Vector2i(int(r.x),int(r.y))
 		var show = r.visited or g.has_item("sight")
-		for d in Dungeon.DIRS:
-			var adjacent = Dungeon.key(p+d)
-			if g.dungeon.rooms.has(adjacent) and g.dungeon.rooms[adjacent].visited: show = true
+		for port in Dungeon.ports(g.dungeon,r):
+			var next: Dictionary = g.dungeon.rooms.get(port.target,{})
+			if next.get("visited",false): show = true
 		if show: visible.append(r)
 	if visible.is_empty(): return
 	var lo = Vector2(100,100)
 	var hi = Vector2(-100,-100)
 	for r in visible:
 		lo = lo.min(Vector2(r.x,r.y))
-		hi = hi.max(Vector2(r.x,r.y))
+		hi = hi.max(Vector2(r.x,r.y)+Vector2(Dungeon.span(r))-Vector2.ONE)
 	var spacing = minf(23,142.0/maxf(hi.x-lo.x+1,hi.y-lo.y+1))
 	var mid = (lo+hi)/2
 	for r in visible:
-		var p = Vector2(846,184)+(Vector2(r.x,r.y)-mid)*spacing
-		for d in [Vector2i.RIGHT,Vector2i.DOWN]:
-			var key = Dungeon.key(Vector2i(int(r.x),int(r.y))+d)
-			if g.dungeon.rooms.has(key) and g.dungeon.rooms[key] in visible:
-				g.draw_line(p,p+Vector2(d)*spacing,BORDER,2)
+		for port in Dungeon.ports(g.dungeon,r):
+			if port.dir not in [1,2]: continue
+			var next: Dictionary = g.dungeon.rooms.get(port.target,{})
+			if next.is_empty() or next not in visible: continue
+			var start = Vector2(846,184)+(Vector2(port.from)-mid)*spacing
+			g.draw_line(start,start+Vector2(Dungeon.DIRS[port.dir])*spacing,BORDER,2)
+	for r in visible:
+		var extent = Vector2(Dungeon.span(r))
+		var center = Vector2(r.x,r.y)+(extent-Vector2.ONE)/2
+		var p = Vector2(846,184)+(center-mid)*spacing
 		var current = int(r.x)==g.coords.x and int(r.y)==g.coords.y
 		var color = Color("5b3d50") if current else (Color("33303c") if r.visited else Color("1c1d28"))
-		rect(g,Rect2(p-Vector2(8,6),Vector2(16,12)),color,GOLD if current else BORDER)
+		var size = extent*spacing-Vector2(5,7)
+		rect(g,Rect2(p-size/2,size),color,GOLD if current else BORDER)
 		centre(g,p+Vector2(0,4),MARKS[r.type] if r.visited or g.has_item("sight") else "·",10,GOLD if current else MUTED)
 
 static func help_screen(g):

@@ -10,7 +10,7 @@ func check(ok: bool, label: String):
   push_error(label)
 func _initialize(): call_deferred("run")
 func run():
- check(Castle.ATLAS.get_size()==Vector2(256,128),"Environment uses a native 32px tile atlas")
+ check(Castle.ATLAS.get_size()==Vector2(384,144),"Environment uses native 48px sculpted wall modules")
  var game = load("res://main.tscn").instantiate()
  game.save_path = "user://castle-test-run.json"
  game.profile_path = "user://castle-test-profile.json"
@@ -25,10 +25,10 @@ func run():
  check(game.rng.state==gameplay_rng,"Environment does not consume gameplay randomness")
  game.save_run()
  check(game.load_run() and first==game.room_texture.get_image().get_data(),"A saved room restores exactly the same ground")
- check(first!=Castle.bake_floor(int(game.room.seed)+1,0).get_image().get_data(),"Different rooms have different ground layouts")
+ check(first!=Castle.bake_floor(int(game.room.seed)+1,0,game.room_floor_rect,game.room_torches).get_image().get_data(),"Different rooms have different ground layouts")
  for floor_index in range(4):
-  var image = Castle.bake_floor(9876,floor_index).get_image()
-  check(image.get_size()==Vector2i(336,132),"Ground texture fits collision-space boundaries on floor %d"%floor_index)
+  var image = Castle.bake_floor(9876,floor_index,game.room_floor_rect,game.room_torches).get_image()
+  check(image.get_size()==Vector2i(576,320),"Ground texture fits collision-space boundaries on floor %d"%floor_index)
   var peak = 0.0
   var opaque = true
   for y in range(image.get_height()):
@@ -55,6 +55,8 @@ func run():
   check(game.coords==Vector2i.ZERO and not room.opened,"Visible locked exit rejects missing key")
   game.keys = 2
   game.transition_cd = 0
+  game.check_doors()
+  game.DoorMotion.advance(game,1)
   game.check_doors()
   check(game.coords==target and room.opened and game.keys==1,"Approaching each drawn exit consumes exactly one key")
   check(Castle.door_state(true,room)=="open","Opened exit displays a passage")

@@ -88,10 +88,11 @@ func run():
 		check(game.hit_stop==0 and game.melee_contacts.is_empty(),"A miss has no fake impact freeze or hit flash")
 	check(absf(travel[0]-travel[1])<0.01,"Attack step is independent of simulation frequency")
 	prepare()
-	game.place_player(Vector2(709,185),Vector2.RIGHT)
+	var wall_x = game.room_floor_rect.end.x-11
+	game.place_player(Vector2(wall_x,185),Vector2.RIGHT)
 	game.begin_attack(Vector2.RIGHT)
 	for tick in range(40): game.update_game(1.0/60)
-	check(game.player.x==709 and not game.player_motion.moving,"Attack step cannot move through a wall or animate sliding feet")
+	check(game.player.x==wall_x and not game.player_motion.moving,"Attack step cannot move through a wall or animate sliding feet")
 	prepare()
 	game.spawn_enemy("guard",game.player+Vector2(44,0),false)
 	var target = game.enemies.back()

@@ -12,6 +12,8 @@ func _get(property: StringName):
 func attack_range() -> float: return state.attack_range()
 func has_item(id: String) -> bool: return state.has_item(id)
 func door_position(index: int) -> Vector2: return state.door_position(index)
+func door_direction(index: int) -> int: return state.door_direction(index)
+func door_destination(index: int) -> Dictionary: return state.door_destination(index)
 
 func _process(_dt): queue_redraw()
 
