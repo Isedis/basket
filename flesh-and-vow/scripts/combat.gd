@@ -126,6 +126,7 @@ static func blade_polygon(pose: Dictionary) -> PackedVector2Array:
 	return points
 
 static func hurt_capsule(p: Vector2, type: String = "guard", boss: bool = false) -> Dictionary:
+	if type=="boss0": return {"a":p+Vector2(0,-25),"b":p+Vector2(0,-136),"radius":28.0}
 	var rigged = Style.is_rigged(type) and not boss
 	var top = -47 if type=="assassin" else (-53 if rigged else -65)
 	return {"a":p+Vector2(0,-13 if rigged else -16),"b":p+Vector2(0,-108 if boss else top),"radius":20.0 if boss else (18.0 if type=="guard" else 13.0)}

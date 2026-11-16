@@ -50,3 +50,12 @@ colliders, actual AI volley sizes and projectile physics, hand launch offsets,
 material-specific debris, pre-stagger death snapshots, practice roster and
 JSON save/load compatibility. The preview uses deterministic walk/cast states
 in the actual game renderer and the original projectile simulation.
+
+0.6.0: tests/boss.gd covers isolated boss practice/retry, ordinary-save
+preservation, native parts, encounter camera, introduction visibility and
+immunity, committed attack cycle, locked aim and gaps, exact windup timing,
+recovery, one-time fracture, double waves, safe/harmful wave geometry and
+actual one-hit damage, drawn blade contact, charge cover, save/load of phase
+and pending waves, death cleanup, rewards/unlocks and old-boss migration.
+Private movie capture uses the real AI and movement with scripted survival
+and health changes for an art review; it is not an unassisted balance test.

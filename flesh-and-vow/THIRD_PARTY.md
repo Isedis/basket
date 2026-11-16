@@ -52,3 +52,9 @@ Version 0.5.2 ordinary enemy art: skeleton, shadow and mage component masters
 were generated for this project, then baked into castle_enemies.png (256x320)
 with fixed native sizes, hard alpha and limited material palettes. The three
 large masters and private gameplay captures are not exported or published.
+
+Version 0.6.0: Bell Executioner component art and arena seal were generated
+for this project, then baked into castle_boss.png and castle_boss_seal.png
+with fixed native sizes, hard alpha and limited palettes. Large masters and
+private review media are not distributed. boss_bell.wav, boss_impact.wav and
+boss_break.wav are original deterministic additive/noise synthesis.

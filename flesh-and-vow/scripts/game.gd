@@ -1,5 +1,6 @@
 extends Node2D
 
+const BossFight = preload("res://scripts/boss_fight.gd")
 const EnemyPose = preload("res://scripts/enemy_pose.gd")
 const Hazards = preload("res://scripts/hazard_view.gd")
 const RoomLayout = preload("res://scripts/castle_layout.gd")
@@ -23,6 +24,7 @@ var corpses: Array = []
 var hit_stop = 0.0
 var death_elapsed = 0.0
 var art_probe_active = false
+var boss_practice = false
 var original_save_path = ""
 var original_profile_path = ""
 var original_profile: Dictionary = {}
@@ -152,6 +154,9 @@ func bind_controls():
 		ev.physical_keycode = bindings[action]
 		InputMap.action_add_event(action,ev)
 
+func _exit_tree():
+	BossFight.stop_sounds(self)
+
 func _notification(what):
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if mode in ["playing","paused"]:
@@ -187,7 +192,7 @@ func _unhandled_input(event):
 			mode = "paused" if journal_open else "playing"
 			return
 		if art_probe_active and event.keycode==KEY_R and mode in ["playing","dead","victory"]:
-			start_practice_round(has_item("heavy"))
+			start_boss_round(has_item("heavy")) if boss_practice else start_practice_round(has_item("heavy"))
 			return
 		if art_probe_active and event.keycode==KEY_Q and mode=="playing":
 			toggle_practice_weapon()
@@ -237,6 +242,7 @@ func menu_buttons() -> Array:
 		arr.append({"rect":Rect2(72,346,320,42),"text":"НОВЫЙ ЗАБЕГ  ·  N", "action":"new_confirm" if FileAccess.file_exists(save_path) else "new"})
 		arr.append({"rect":Rect2(72,396,320,36),"text":"КАК ИГРАТЬ  ·  F1", "action":"help"})
 		arr.append({"rect":Rect2(420,440,300,32),"text":"ИСПЫТАТЬ НОВЫЙ БОЙ", "action":"art_probe"})
+		arr.append({"rect":Rect2(420,478,300,30),"text":"ИСПЫТАТЬ БОССА", "action":"boss_probe"})
 		arr.append({"rect":Rect2(72,440,320,32),"text":"ПРОВЕРИТЬ ОБНОВЛЕНИЯ", "action":"updates"})
 		if "boss1" in profile.unlocks:
 			arr.append({"rect":Rect2(72,480,320,26),"text":"ГЕРОЙ: "+("УЗНИК" if character==0 else "ОТСТУПНИК")+"  ·  C", "action":"character"})
@@ -263,6 +269,9 @@ func menu_action(action: String):
 				profile_path += ".art-probe"
 				art_probe_active = true
 			start_practice_round()
+		"boss_probe":
+			menu_action("art_probe")
+			start_boss_round()
 		"updates": updater.open()
 		"new": new_run()
 		"new_confirm": mode = "confirm_new"
@@ -281,6 +290,7 @@ func menu_action(action: String):
 		"end": mode = "title"
 
 func start_practice_round(use_heavy: bool = false):
+	boss_practice = false
 	if not art_probe_active: return
 	new_run()
 	if use_heavy: inventory.append("heavy")
@@ -293,6 +303,20 @@ func start_practice_round(use_heavy: bool = false):
 	spawn_enemy("mage",Vector2(160,300),false)
 	room.clear = false
 	notify("WASD — шаг, стрелки — удар. Q — оружие, R — заново.",5)
+	save_run()
+
+func start_boss_round(use_heavy: bool = false):
+	if not art_probe_active: return
+	boss_practice = true
+	new_run(711)
+	if use_heavy: inventory.append("heavy")
+	for r in dungeon.rooms.values():
+		if r.type=="boss":
+			enter_room(Vector2i(int(r.x),int(r.y)),Vector2.INF)
+			break
+	place_player(CENTRE+Vector2(0,110),Vector2.UP)
+	invincible = 0
+	notify("Колокольный палач. R — повторить, Q — сменить тесак.",4)
 	save_run()
 
 func toggle_practice_weapon() -> bool:
@@ -308,14 +332,17 @@ func toggle_practice_weapon() -> bool:
 
 func leave_art_probe():
 	if not art_probe_active: return
+	BossFight.stop_sounds(self)
 	delete_run()
 	if FileAccess.file_exists(profile_path): DirAccess.remove_absolute(profile_path)
 	save_path = original_save_path
 	profile_path = original_profile_path
 	profile = original_profile.duplicate(true)
 	art_probe_active = false
+	boss_practice = false
 
 func new_run(fixed_seed: int = -1):
+	BossFight.stop_sounds(self)
 	seed_value = fixed_seed if fixed_seed >= 0 else int(Time.get_unix_time_from_system()) ^ randi()
 	rng.seed = seed_value
 	floor_index = 0
@@ -449,6 +476,13 @@ func safe_position(p: Vector2, radius: float) -> Vector2:
 	return CENTRE
 
 func desired_camera() -> Vector2:
+	for e in enemies:
+		if e.type!="boss0": continue
+		var low = minf(player.y-72,e.y-170)-12
+		var high = maxf(player.y+12,e.y+12)+12
+		var y = clampf((low+high)*0.5-266,player.y-410,player.y-170)
+		var x = clampf((player.x+e.x)*0.5-384,player.x-650,player.x-110)
+		return Vector2(clampf(x,0,maxf(0,room_floor_rect.size.x-672)),clampf(y,0,maxf(0,room_floor_rect.size.y-264)))
 	return Vector2(clampf(player.x-384,0,maxf(0,room_floor_rect.size.x-672)),clampf(player.y-300,0,maxf(0,room_floor_rect.size.y-264)))
 
 func make_floor_texture():
@@ -462,7 +496,7 @@ func populate_room():
 			var n = rng.randi_range(3,4)+floor_index+2*(Dungeon.span(room).x*Dungeon.span(room).y-1)
 			for i in range(n):
 				spawn_enemy(ENEMY_NAMES[rng.randi_range(0,mini(4,2+floor_index))],free_spawn(),false)
-		"boss": spawn_enemy("boss"+str(floor_index),CENTRE-Vector2(0,116),true)
+		"boss": spawn_enemy("boss"+str(floor_index),CENTRE-Vector2(0,24 if floor_index==0 else 116),true)
 		"treasure","reliquary","secret":
 			room.clear = true
 			var count_items = 2 if room.type == "secret" else 1
@@ -490,6 +524,13 @@ func spawn_enemy(type: String, p: Vector2, boss: bool):
 	enemies.append({"type":type,"x":p.x,"y":p.y,"hp":health,"max":health,"boss":boss,
 		"timer":rng.randf_range(0.5,1.7),"state":"chase","state_time":0.0,"dx":0.0,"dy":1.0,
 		"flash":0.0,"burn":0.0,"poison":0.0,"slow":0.0,"tick":0.0,"phase":0})
+	if type=="boss0":
+		var e = enemies.back()
+		e.hp = 165.0
+		e.max = 165.0
+		e.state = "intro"
+		e.motion = Motion.initialize(p,1,0)
+		BossFight.ensure(e)
 
 func _process(delta):
 	if mode == "title" and art_probe_active: leave_art_probe()
@@ -760,6 +801,7 @@ func enemy_weapon_angle(enemy: Dictionary) -> float:
 
 func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bool, impact: float = -1, impact_direction: Vector2 = Vector2.ZERO, hit_point: Vector2 = Vector2.INF):
 	if enemy.hp<=0: return
+	if enemy.type=="boss0" and enemy.state in ["intro","fracture"]: return
 	if impact<0: impact = 1.0 if effects else 0.0
 	if enemy.type in EnemyPose.TYPES and enemy.hp<=amount:
 		var snapshot = enemy.get("motion",{}).duplicate(true)
@@ -820,7 +862,8 @@ func kill_enemy(enemy: Dictionary):
 		corpse_motion.death_dx = enemy.dx
 		corpse_motion.death_dy = enemy.dy
 		corpse_motion.death_clock = elapsed
-	corpses.append({"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0,"vx":float(enemy.get("knock_x",0)),"vy":float(enemy.get("knock_y",0)),"motion":corpse_motion})
+	var bell_snapshot = enemy.duplicate(true) if enemy.type=="boss0" else {}
+	corpses.append({"bell_snapshot":bell_snapshot,"bell_clock":elapsed,"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0,"vx":float(enemy.get("knock_x",0)),"vy":float(enemy.get("knock_y",0)),"motion":corpse_motion})
 	if corpses.size()>24: corpses.pop_front()
 	if enemy.get("last_impact",0)>0: hit_stop = maxf(hit_stop,0.07)
 	enemies.erase(enemy)
@@ -838,6 +881,9 @@ func kill_enemy(enemy: Dictionary):
 	if has_item("void"):
 		for other in enemies:
 			other.slow = maxf(float(other.slow),1.0)
+	if enemy.type=="boss0":
+		zones = zones.filter(func(z): return z.kind!="boss_ring")
+		BossFight.sound(self,"break")
 	if enemy.boss:
 		var unlock = "boss"+str(floor_index+1) if floor_index<3 else "victory"
 		unlock_content(unlock)
@@ -949,6 +995,9 @@ func steer_move(p: Vector2, by: Vector2, radius: float) -> Vector2:
 	return next
 
 func update_boss(enemy: Dictionary, dt: float, slow: float):
+	if enemy.type=="boss0":
+		BossFight.update(self,enemy,dt,slow)
+		return
 	var p = Vector2(enemy.x,enemy.y)
 	var to = player-p
 	var enraged = enemy.hp < enemy.max*0.45
@@ -1020,6 +1069,16 @@ func update_bullets(dt: float):
 
 func update_zones(dt: float):
 	for z in zones.duplicate():
+		if z.kind=="boss_ring":
+			var previous = BossFight.ring_radius(z)
+			z.age = float(z.get("age",0))+dt
+			z.timer -= dt
+			z.radius = BossFight.ring_radius(z)
+			if z.age>=0 and not z.get("spent",false) and BossFight.ring_hits(z,player,previous):
+				hurt(z.damage,Vector2(z.x,z.y))
+				z.spent = true
+			if z.timer<=0: zones.erase(z)
+			continue
 		z.timer -= dt
 		if z.timer<=0:
 			var p = Vector2(z.x,z.y)

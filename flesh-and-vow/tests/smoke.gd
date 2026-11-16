@@ -151,7 +151,10 @@ func run():
 			game.update_game(1.0/60)
 			if frame%60==0: await process_frame
 		check(game.enemies.size()>=6,"Boss and enemy simulation floor %d"%floor_number)
-		for enemy in game.enemies.duplicate(): game.damage_enemy(enemy,99999,game.player,true)
+		for enemy in game.enemies.duplicate():
+			# Forced clear is separate from introduction/phase immunity checks in boss.gd.
+			if enemy.type=="boss0" and enemy.state in ["intro","fracture"]: enemy.state = "recover"
+			game.damage_enemy(enemy,99999,game.player,true)
 		game.clear_room()
 		check(game.room.clear and game.enemies.is_empty(),"Boss clear floor %d"%floor_number)
 		game.player = game.CENTRE

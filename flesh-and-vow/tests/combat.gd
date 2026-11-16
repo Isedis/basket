@@ -17,6 +17,7 @@ func target(p: Vector2, boss: bool = false) -> Dictionary:
 	e.max = 100.0
 	e.training_dummy = true
 	e.motion = Motion.initialize(p,-1)
+	if boss: e.state = "chase"
 	return e
 func prepare():
 	game.new_run(808)

@@ -15,6 +15,7 @@ const GOLD = Color("c5a373")
 const WHITE = Color("e0d6c3")
 const MUTED = Color("88828e")
 const RED = Color("c64d65")
+const Boss = preload("res://scripts/boss_view.gd")
 const ROOM_NAMES = {"start":"ПРОБУЖДЕНИЕ", "combat":"ЗАЛ ЗАБЫТЫХ", "boss":"ХРАНИТЕЛЬ ОБЕТА", "treasure":"ЗАПЕЧАТАННЫЙ ДАР", "shop":"ТОРГОВЕЦ ОСТАТКАМИ", "torture":"КОМНАТА ПЫТОК", "oracle":"ДВА ОТВЕТА", "reliquary":"ЗЕРКАЛО ВОЗМОЖНОГО", "secret":"МЕЖДУ СТЕН"}
 const MARKS = {"start":"·","combat":"·","boss":"†","treasure":"◆","shop":"$","torture":"×","oracle":"±","reliquary":"◇","secret":"?"}
 
@@ -66,7 +67,7 @@ static func render(g):
 	if g.art_probe_active and g.mode=="playing":
 		rect(g,Rect2(40,90,688,18),Color(0.03,0.035,0.03,0.92))
 		var weapon = "ТЯЖЁЛЫЙ ТЕСАК" if g.has_item("heavy") else "ТЕСАК"
-		text(g,Vector2(48,103),"ИСПЫТАНИЕ БОЯ · "+weapon+" · Q — ОРУЖИЕ · R — ЗАНОВО",11,GOLD)
+		text(g,Vector2(48,103),("ИСПЫТАНИЕ БОССА · " if g.boss_practice else "ИСПЫТАНИЕ БОЯ · ")+weapon+" · Q — ОРУЖИЕ · R — ЗАНОВО",11,GOLD)
 	if g.mode == "confirm_new":
 		veil(g)
 		panel(g,Rect2(220,185,520,190))
@@ -107,6 +108,7 @@ static func world(g):
 	g.draw_set_transform(off-g.room_camera)
 	Castle.background(g)
 	Castle.lights(g)
+	Boss.arena(g)
 	doors(g)
 	for hazard in g.hazards: draw_hazard(g,hazard)
 	for b in g.blood:
@@ -123,6 +125,9 @@ static func world(g):
 	Art.corpses(g)
 	room_prop(g)
 	for z in g.zones:
+		if z.kind=="boss_ring":
+			Boss.ring(g,z)
+			continue
 		var c = Color("c290df") if z.kind=="echo" else Color("db865e")
 		g.draw_circle(Vector2(z.x,z.y),z.radius,Color(c,0.07))
 		g.draw_arc(Vector2(z.x,z.y),z.radius,0,TAU,40,Color(c,0.6+0.3*sin(g.anim*15)),2)
@@ -146,7 +151,8 @@ static func world(g):
 		var size = 2.0 if e.boss else 1.0
 		g.draw_circle(p+Vector2(0,3),11*size,Color(0,0,0,0.25))
 		if not is_player:
-			if e.state=="windup":
+			if e.type=="boss0": Boss.telegraph(g,e)
+			if e.state=="windup" and e.type!="boss0":
 				var dir = Vector2(e.dx,e.dy)
 				g.draw_circle(p,23*size,Color(0.9,0.3,0.3,0.07))
 				g.draw_arc(p,23*size,0,TAU,32,Color("d78c66"),1)
@@ -346,7 +352,7 @@ static func hud(g):
 	Art.rune_border(g,Rect2(32,460,704,42))
 	Art.pixel_text(g,Vector2(46,478),Catalog.FLOORS[g.floor_index].short.to_upper(),GOLD)
 	text(g,Vector2(46,494),ROOM_NAMES[g.room.type],9,MUTED)
-	var count = mini(11,g.inventory.size())
+	var count = 0 if g.enemies.any(func(e): return e.type=="boss0") else mini(11,g.inventory.size())
 	for i in range(count):
 		item_icon(g,g.inventory[g.inventory.size()-count+i],Vector2(315+i*35,467))
 	text(g,Vector2(32,523),"WASD · шаг     СТРЕЛКИ · удар     E · взять     TAB · дары",10,MUTED)
@@ -366,6 +372,12 @@ static func hud(g):
 		text(g,Vector2(233,160),entry.hint,10,WHITE)
 	for e in g.enemies:
 		if e.boss:
+			if e.type=="boss0":
+				centre(g,Vector2(142,478),"II · РАСКОЛОТЫЙ ОБЕТ" if e.get("bell_phase",1)==2 else "I · ПРИГОВОР",9,GOLD)
+				rect(g,Rect2(255,472,462,7),Color("302027"))
+				rect(g,Rect2(255,472,462*maxf(0,e.hp/e.max),7),RED)
+				centre(g,Vector2(486,495),"КОЛОКОЛЬНЫЙ ПАЛАЧ",11,WHITE)
+				break
 			rect(g,Rect2(173,390,422,5),Color("302027"))
 			rect(g,Rect2(173,390,422*maxf(0,e.hp/e.max),5),RED)
 			centre(g,Vector2(384,411),Catalog.FLOORS[g.floor_index].boss,10,WHITE)

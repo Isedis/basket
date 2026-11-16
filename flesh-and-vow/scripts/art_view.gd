@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Boss = preload("res://scripts/boss_view.gd")
 const Style = preload("res://scripts/character_style.gd")
 const Rig = preload("res://scripts/rig_view.gd")
 const ATLAS = preload("res://assets/actors_v3.png")
@@ -23,6 +24,9 @@ static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, f
 	g.draw_texture_rect_region(ATLAS,dest,source,tint)
 
 static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, flash: bool, tint: Color, entity: Dictionary = {}):
+	if type=="boss0" and not entity.is_empty():
+		Boss.actor(g,entity)
+		return
 	if Style.is_rigged(type):
 		Rig.actor(g,type,p,flash,tint,entity)
 		return
@@ -77,7 +81,9 @@ static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, f
 static func corpses(g):
 	for c in g.corpses:
 		var frame = mini(7,int(c.age/0.085))
-		if Style.is_rigged(c.type):
+		if c.type=="boss0":
+			Boss.actor(g,c,true)
+		elif Style.is_rigged(c.type):
 			Rig.draw(g,c.type,Vector2(c.x,c.y),c.get("motion",{}),Vector2(c.dx,c.dy),5,minf(1,c.age/0.68),Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 		else: pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 
