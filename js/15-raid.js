@@ -19,7 +19,7 @@ const RAIDS = [
 const TRO_D = { hp: 'HP', armor: 'брони', hit: 'урона', regen: 'регенерации', aps: 'скорости атаки', crit: 'шанса крита', critd: 'силы крита', gain: 'прироста статов' };
 const troTxt = (b, L) => '+' + pct(b.tro.v * L) + ' ' + TRO_D[b.tro.k];
 const weekIdx = () => Math.floor((Date.now() / 864e5 + 3) / 7);   // неделя с понедельника
-const dayKey = () => new Date().toDateString();
+const dayKey = () => new Date(Date.now()).toDateString();
 function RA() { const M = S.meta; if (!M.raid) M.raid = { tro: {} }; const A = M.raid; if (!A.tro) A.tro = {};
   if (A.wk !== weekIdx()) { A.wk = weekIdx(); A.hp = 0; A.hpEst = 0; A.dmg = 0; A.won = 0; A.last = null; }
   if (A.day !== dayKey()) { A.day = dayKey(); A.tries = 0; } return A; }
@@ -55,7 +55,7 @@ function raidStart() {
 const raidDmg = bm => D.maxHP * (.16 + .05 * (bm.phase || 0)) / Math.max(.1, 1 - D.armor);   // удар из красной зоны ≈ 16–26% HP
 function raidTick(dt) {
   const R = S.raid; if (!R) return; R.t -= dt; const e = RAID_TIME - R.t, bm = mobs.find(m => m.raid && !m.dead);
-  if (!bm) { raidEnd(true); return; }
+  if (!bm) { raidEnd(false, 'lost'); return; }   // босс пропал (перезагрузка, сброс поля) — это не победа: победа только через killMob
   { const dx = bm.x - hero.x, dy = bm.y - hero.y, d = Math.hypot(dx, dy) || 1; if (d < 18) { bm.x = clamp(hero.x + dx / d * 18, 10, AW - 10); bm.y = clamp(hero.y + dy / d * 18, 20, AH - 4); } }   // гигант не наползает на героя
   const ph = e > 40 ? 2 : e > 20 ? 1 : 0;
   if (ph !== R.ph) { R.ph = ph; bm.phase = ph; bm.atkT = Math.min(bm.atkT || 0, 1);
@@ -74,9 +74,10 @@ function raidEnd(win, why) {
   A.last = { dealt, win: win ? 1 : 0, why: why || '', f: dealt / A.hp };
   S.raid = null; mobs = []; tele = []; proj = []; waves = []; bossAlive = false; hero.pool = 0; hero.hp = Math.max(R.hp0, D.maxHP * .5); hero.iframe = 1.5; S.lt = R.lt; S.zk = R.zk;
   buildGround(); recalc(); save(true);
-  if (win) { toast('БОСС НЕДЕЛИ ПОВЕРЖЕН!', 'трофей «' + B.tro.n + '» ' + roman(A.tro[B.id]) + ': ' + troTxt(B, A.tro[B.id]) + ' навсегда', 5000); flashT = .3; shake = 14; slowT = 1;
+  if (win) { flashT = .3; shake = 14; slowT = 1.2; if (bm) { for (let i = 0; i < 4; i++) burst(bm.x, bm.y - 10, ['#ffffff', '#ffd84a', '#ff5a6a', '#bb88ff'][i], 40, 90); for (let i = 0; i < 3; i++) ring(bm.x, bm.y - 6, 20 + i * 14, i % 2 ? '#ffd84a' : '#ffffff'); puff(bm.x, bm.y - 4, 18, '#2a2030', 8); }
     [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .25, 'triangle', .05, 0, i * .1)); }
-  else toast(why === 'time' ? 'ВРЕМЯ ВЫШЛО' : 'ГЕРОЙ ОТСТУПИЛ', 'урон: ' + fmt(dealt) + ' (' + pct(dealt / A.hp) + ' босса) · всего ' + pct(A.dmg / A.hp) + ' · попыток сегодня: ' + raidLeft(), 4500);
+  else [392, 330, 262].forEach((f, i) => tone(f, .18, 'triangle', .04, 0, i * .12));
+  if (why !== 'silent') setTimeout(() => raidCard(win, dealt, why), win ? 900 : 300);
   renderRaid();
 }
 // арена рейда: тёмный камень, круг рун, жаровни
@@ -94,12 +95,33 @@ function raidArena() {
 // панель рейда поверх боя: имя, таймер, прогресс недели
 function raidHUD(k) {
   const R = S.raid; if (!R) return; const A = RA(), bm = mobs.find(m => m.raid), base = Math.max(8, Math.round(SC * 2)) * DPR;
-  const fs = Math.round(base * .75 / DPR) * DPR, y = 10 * k; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
+  const fs = Math.round(base * .95 / DPR) * DPR, y = 11 * k; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.lineWidth = Math.max(2, fs / 3); fctx.strokeStyle = '#000';
   fctx.font = `${fs}px "Press Start 2P", monospace`; const tl = Math.ceil(R.t), txt = raidBoss().n.toUpperCase() + ' · ' + tl + ' с';
   fctx.fillStyle = tl <= 10 && Math.sin(time * 10) > 0 ? '#ff5a5a' : '#ffe08a'; fctx.strokeText(txt, fx.width / 2, y); fctx.fillText(txt, fx.width / 2, y);
   const dealt = R.dealt, f = A.hp ? (A.dmg + dealt) / A.hp : 0, s2 = (R.first ? 'замер силы босса' : 'неделя: ' + pct(Math.min(1, f))) + ' · урон: ' + fmt(Math.max(0, dealt));
-  fctx.font = `${Math.round(fs * .8)}px "Press Start 2P", monospace`; fctx.fillStyle = '#c8b8e0'; fctx.strokeText(s2, fx.width / 2, y + fs * 1.4); fctx.fillText(s2, fx.width / 2, y + fs * 1.4);
+  fctx.font = `${Math.round(fs * .72)}px "Press Start 2P", monospace`; fctx.fillStyle = '#c8b8e0'; fctx.strokeText(s2, fx.width / 2, y + fs * 1.4); fctx.fillText(s2, fx.width / 2, y + fs * 1.4);
+  // полоса времени: три фазы (обычная · подмога · ярость)
+  const bw = Math.round(fx.width * .6), bx = Math.round((fx.width - bw) / 2), by = Math.round(y + fs * 2.4), bh = Math.max(6, Math.round(k * 1.8)), e = RAID_TIME - R.t;
+  fctx.fillStyle = '#000'; fctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+  const PH = [['#7a8aa8', 'ФАЗА I'], ['#bb66ff', 'ФАЗА II · ПОДМОГА'], ['#ff3a4a', 'ФАЗА III · ЯРОСТЬ']];
+  for (let i = 0; i < 3; i++) { const x0 = bx + Math.round(bw * i / 3), w = Math.round(bw / 3) - 1; fctx.fillStyle = shade(PH[i][0], -.6); fctx.fillRect(x0, by, w, bh); const fill = clamp((e - i * 20) / 20, 0, 1); fctx.fillStyle = PH[i][0]; fctx.fillRect(x0, by, Math.round(w * fill), bh); }
+  const pl = PH[R.ph][1]; fctx.font = `${Math.round(fs * .72)}px "Press Start 2P", monospace`; fctx.fillStyle = PH[R.ph][0]; fctx.strokeText(pl, fx.width / 2, by + bh + fs); fctx.fillText(pl, fx.width / 2, by + bh + fs);
 }
+
+// карточка итога попытки
+function raidCard(win, dealt, why) {
+  if (SIM) return; const A = RA(), B = raidBoss(), f = A.hp ? Math.min(1, A.dmg / A.hp) : 0, L = A.tro[B.id] || 0, el = cardEl(); el.hidden = false; el._t = 0; el.style.borderColor = win ? '#ffd84a' : '#ff5a6a';
+  const head = win ? '<span style="color:#ffd84a">БОСС НЕДЕЛИ ПОВЕРЖЕН!</span>' : '<span style="color:#ff9a9a">' + (why === 'time' ? 'ВРЕМЯ ВЫШЛО' : why === 'dead' ? 'ГЕРОЙ ОТСТУПИЛ' : 'ПОПЫТКА ОКОНЧЕНА') + '</span>';
+  const body = win ? `<div class="ll">Трофей <b>«${B.tro.n}» ${roman(L)}</b><br>${troTxt(B, L)} — навсегда</div>`
+    : `<div class="ll">${B.n}<br>урон за попытку: <b>${fmt(dealt)}</b> · <b>${pct(dealt / (A.hp || 1))}</b> босса</div>`;
+  const bar = `<div class="rcbar"><i style="width:${(f * 100).toFixed(1)}%"></i><span>неделя: ${pct(f)}</span></div>`;
+  const left = raidLeft(), btn = !win && left ? `<div class="cbtns"><button class="btn" id="rcagain" style="background:#6a1a2a;border-color:#ff5a6a">ЕЩЁ ПОПЫТКА · ${left}</button></div>` : '';
+  el.innerHTML = head + '<div style="font-size:10px;line-height:1.7;max-width:260px">' + body + '</div>' + bar + `<small>${win ? 'следующий босс — в понедельник' : left ? 'попыток сегодня: ' + left : 'попытки обновятся завтра'}</small>` + btn + '<span class="tap">тапни, чтобы закрыть</span>';
+  const ag = $('rcagain'); if (ag) ag.onclick = e => { e.stopPropagation(); el.hidden = true; uiTap(); raidStart(); };
+}
+// свечение под рейд-боссом (мир, перед врагами)
+function raidGroundFx() { const bm = S.raid && mobs.find(m => m.raid && !m.dead); if (!bm) return; glow(bm.x, bm.y - 2, '#ff3a4a', 16 + Math.sin(time * 4) * 2, .45);
+  ctx.globalAlpha = .5; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(bm.x, bm.y, 15, 4, 0, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; }
 
 /* ---------- экран рейда ---------- */
 function renderRaid() {
@@ -117,6 +139,7 @@ function renderRaid() {
 }
 function openRaid() { $('raid').hidden = false; renderRaid(); }
 function raidInit() {
+  if (S.raid) { mobs = mobs.filter(m => !m.raid); raidEnd(false, 'lost'); }   // игру закрыли посреди попытки: засчитываем набранный урон, без победы
   const b = $('raidb'); if (b) b.onclick = () => { uiTap(); go('hero', 'raid'); };
   setInterval(() => { const bb = $('raidb'); if (!bb) return; const show = raidCan() && !S.raid && deathT <= 0; bb.hidden = !show; if (show) bb.textContent = '⚔ РЕЙД ' + raidLeft(); }, 1000);
 }

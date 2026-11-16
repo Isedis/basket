@@ -6,17 +6,18 @@
 // Ранние «вау»: в первой жизни ульта копится ×2; на 5-й зоне (в первой или второй жизни) — «Дар новичка»: мастерство до 9 очков пути и первая эволюция облика.
 const onbFirst = () => !(S.meta.rebirths || 0);
 const onbQuiet = () => onbFirst() && (S.lt || 0) < 300;
-const TIP_OK = { tele: 1, raid: 1 };   // эти подсказки нужны и в начале
+const TIP_OK = { tele: 1, raid: 1 };
+const fightVis = () => uiSec === 'fight' || (typeof isWide === 'function' && isWide());   // на компьютере бой виден всегда   // эти подсказки нужны и в начале
 let coachCur = null, coachT0 = 0, coachGap = 0, coachTaps = 0;
 const COACH = [
-  { id: 'tap', when: () => onbFirst() && (S.lt || 0) > 2 && uiSec === 'fight' && mobs.length, text: 'Герой сражается сам. Тапай по врагам — твой удар сильнее!',
-    at: () => { let n = null, nd = 1e9; for (const m of mobs) { const d = Math.hypot(m.x - hero.x, m.y - hero.y); if (!m.dead && d < nd) { nd = d; n = m; } } return n ? { wx: n.x, wy: n.y - 4 } : { wx: hero.x, wy: hero.y - 6 }; },
+  { id: 'tap', when: () => onbFirst() && (S.lt || 0) > 2 && fightVis() && mobs.length, text: 'Герой сражается сам. Тапай по врагам — твой удар сильнее!',
+    at: () => { let n = null, nd = 1e9; for (const m of mobs) { const d = Math.hypot(m.x - hero.x, m.y - hero.y), vis = m.x > camX + 6 && m.x < camX + W - 6 && m.y > camY + 14 && m.y < camY + H - 6; if (!m.dead && vis && d < nd) { nd = d; n = m; } } return n ? { wx: n.x, wy: n.y - 4 } : { wx: hero.x, wy: hero.y - 6 }; },
     done: t => coachTaps >= 3 || t > 12 },
-  { id: 'boss', when: () => bossAlive && uiSec === 'fight' && !S.raid && mobs.some(m => m.boss && m.ws && !m.dead), text: 'ВОЖАК! Тапай по жёлтой мигающей точке — урон ×12',
+  { id: 'boss', when: () => bossAlive && fightVis() && !S.raid && mobs.some(m => m.boss && m.ws && !m.dead), text: 'ВОЖАК! Тапай по жёлтой мигающей точке — урон ×12',
     at: () => { const b = mobs.find(m => m.boss && m.ws && !m.dead); return b ? { wx: b.x + b.ws.ox, wy: b.y + b.ws.oy } : null; }, done: t => !bossAlive || t > 14 },
-  { id: 'ult', when: () => ult >= .999 && !S.meta.autoUlt && uiSec === 'fight', text: 'Ульта заряжена! Тапни по экрану — мощный удар',
+  { id: 'ult', when: () => ult >= .999 && !S.meta.autoUlt && fightVis(), text: 'Ульта заряжена! Тапни по экрану — мощный удар',
     at: () => ({ wx: hero.x, wy: hero.y - 10 }), done: t => ult < .9 || !!US || t > 14 },
-  { id: 'stats', when: () => stats.length >= 4 && (S.lt || 0) > 30 && uiSec === 'fight', text: 'Открылся новый стат — загляни: ГЕРОЙ',
+  { id: 'stats', when: () => stats.length >= 4 && (S.lt || 0) > 30 && fightVis(), text: 'Открылся новый стат — загляни: ГЕРОЙ',
     el: 'nHero', done: t => uiSec === 'hero' || t > 12 },
   { id: 'souls', when: () => (S.meta.rebirths || 0) >= 1 && !$('nUp').hidden && (S.meta.souls || 0) > 0, text: 'Души павшего героя — это таланты. Открой ПРОКАЧКА',
     el: 'nUp', done: t => uiSec === 'up' || t > 20 },
@@ -28,11 +29,12 @@ function coachTick() {
   const now = performance.now() / 1000;
   if (coachCur) { const t = now - coachT0; if (coachCur.done(t)) { M.tutD[coachCur.id] = 1; coachCur = null; coachGap = now + 1.5; box.hidden = true; ring.hidden = true; return; } }
   else if (now > coachGap && deathT <= 0) { coachCur = COACH.find(s => !M.tutD[s.id] && s.when()) || null; if (coachCur) { coachT0 = now; if (coachCur.id === 'tap') coachTaps = 0; } }
-  if (!coachCur) { box.hidden = true; ring.hidden = true; return; }
+  const cr = $('croll'), busy = S.raid || EV || (cr && !cr.hidden);   // не мешать рейду, сцене эволюции и карточкам
+  if (!coachCur || busy) { box.hidden = true; ring.hidden = true; if (coachCur && busy) coachT0 += .12; return; }
   // цель: точка мира или кнопка интерфейса
   let x, y; const g = $('game').getBoundingClientRect();
   if (coachCur.el) { const r = $(coachCur.el).getBoundingClientRect(); if (!r.width) { box.hidden = true; ring.hidden = true; return; } x = r.left + r.width / 2; y = r.top + r.height / 2; }
-  else { const p = coachCur.at(); if (!p) return; x = g.left + (p.wx - camX) * SC; y = g.top + (p.wy - camY) * SC; }
+  else { const p = coachCur.at(); if (!p) return; x = clamp(g.left + (p.wx - camX) * SC, g.left + 20, g.right - 20); y = clamp(g.top + (p.wy - camY) * SC, g.top + 20, g.bottom - 20); }   // цель всегда в пределах поля
   ring.hidden = false; ring.style.left = Math.round(x) + 'px'; ring.style.top = Math.round(y) + 'px';
   box.hidden = false; box.textContent = coachCur.text;
   const bw = Math.min(260, innerWidth - 24), above = y > g.top + 120; box.style.width = bw + 'px';

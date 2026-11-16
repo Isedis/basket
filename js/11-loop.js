@@ -235,7 +235,7 @@ function render() {
     const ac = ARMOR[(rk + 4) % ARMOR.length], rad = 6 + Math.min(10, (rk - 4) * .5) + Math.sin(time * 4);
     glow(hero.x, hero.y - 1, ac, rad, .35 + .1 * Math.sin(time * 3));
   }
-  drawHazGround();
+  drawHazGround(); if (S.raid) raidGroundFx();
   // объекты по y
   const all = mobs.slice(); all.push(hero); all.sort((a, b) => a.y - b.y);
   for (const o of all) {

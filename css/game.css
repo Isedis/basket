@@ -661,3 +661,6 @@ body.wide #raid{left:auto!important;right:0!important;width:var(--sidew)!importa
 #coachRing{position:fixed;z-index:39;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid #ffd84a;border-radius:50%;box-shadow:0 0 12px #ffd84a;pointer-events:none;animation:coachPulse 1s ease-out infinite}
 @keyframes coachBob{50%{transform:translateY(-3px)}}
 @keyframes coachPulse{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
+#croll .rcbar{position:relative;height:16px;margin:8px 0 4px;background:#0a0710;border:2px solid #5a2a3a}
+#croll .rcbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(#ff5a6a,#a81a2a)}
+#croll .rcbar span{position:relative;display:block;line-height:12px;font-size:7px;color:#fff;text-shadow:1px 1px 0 #000}
