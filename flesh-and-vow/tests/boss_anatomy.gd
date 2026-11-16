@@ -112,6 +112,17 @@ func run():
     toll.state="strike" if t<0.35 else "recover"
     toll.state_time=t if t<0.35 else t-0.35
     inspect(toll)
+  for full in [true,false]:
+   var times=[0.0,0.8,1.0,1.35,1.8,2.2,2.7,2.85,3.15,3.45,4.8,5.6] if full else [0.0,0.2,0.4,0.6,0.9,1.2]
+   for t in times:
+    var intro=entity(look)
+    intro.state="intro"
+    intro.state_time=t
+    intro.bell_entrance=true
+    intro.bell_intro_started=true
+    intro.bell_intro_full=full
+    intro.bell_intro_duration=5.6 if full else 1.2
+    inspect(intro)
   for phase in [1,2]:
    var e=entity(look)
    e.bell_phase=phase

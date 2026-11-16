@@ -1,5 +1,6 @@
 extends RefCounted
 ## Castle boss: persisted state machine, shared visible/physical attack geometry.
+const Entrance = preload("res://scripts/boss_entrance.gd")
 const Toll = preload("res://scripts/boss_toll.gd")
 const Charge = preload("res://scripts/boss_charge.gd")
 const Contact = preload("res://scripts/boss_contact.gd")
@@ -85,7 +86,8 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
  elif attack=="toll" and e.state in ["windup","strike","recover"]:
   var u = Combat.curve(e.state_time/windup(e)) if e.state=="windup" else (1-Combat.curve(e.state_time/0.25) if e.state=="recover" else 1.0)
   base.head += Vector2(sin(clock*22)*u*1.6,-u*5)
- if e.state=="intro": base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
+ if Entrance.enabled(e):base=Entrance.pose(base,e)
+ elif e.state=="intro":base.head += Vector2(0,12*(1-Combat.curve(e.state_time/INTRO)))
  if e.state=="fracture":
   var brace = sin(clampf(e.state_time/FRACTURE,0,1)*PI)
   # The complete skin braces together; never pull the helmet off the neck.
@@ -178,13 +180,13 @@ static func stop_sounds(g):
    child.stop()
    child.stream = null
    child.queue_free()
-static func sound(g, kind: String, pitch: float = 1.0):
+static func sound(g, kind: String, pitch: float = 1.0, volume: float = INF):
  if DisplayServer.get_name()=="headless": return
  var player = AudioStreamPlayer.new()
  player.set_meta("castle_boss_sfx",true)
  player.stream = load("res://assets/boss_"+kind+".wav")
  player.pitch_scale = pitch
- player.volume_db = {"bell":-11,"flesh":-8,"stone":-10,"swing":-18,"step":-22,"launch":-14,"brake":-19}.get(kind,-14)
+ player.volume_db = volume if is_finite(volume) else {"bell":-11,"flesh":-8,"stone":-10,"swing":-18,"step":-22,"launch":-14,"brake":-19}.get(kind,-14)
  g.add_child(player)
  player.finished.connect(player.queue_free)
  player.play()
@@ -213,6 +215,10 @@ static func update(g, e: Dictionary, dt: float, slow: float):
   g.shake_axis = Vector2(0,1)
   g.burst(p+Vector2(0,-130),Color("e3a35d"),18)
   sound(g,"break")
+ if Entrance.enabled(e):
+  Entrance.update(g,e)
+  e.motion=Motion.update(e.get("motion",{}),before,p,dt,96,24)
+  return
  if e.state=="intro" and g.player.distance_to(p)>230: e.state_time = 0.0
  if e.state in ["intro","fracture"]:
   if e.state_time> (INTRO if e.state=="intro" else FRACTURE):

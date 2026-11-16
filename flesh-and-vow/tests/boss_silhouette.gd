@@ -84,6 +84,9 @@ func run():
    var times=[0.0,0.06,0.12,0.24,0.4,0.8,1.2] if phase==1 else [0.0,0.06,0.12,0.24,0.36,0.5,0.58,0.6,0.66,0.74,0.9,1.2,1.4]
    for t in times:cases.append({"look":look,"phase":phase,"attack":"toll","state":"strike" if t<0.35 else "recover","ratio":0.0,"dead":false,"feet":0,"toll":t})
   for age in [0.0,0.35,1.0]:cases.append({"look":look,"phase":2,"attack":"toll","state":"recover","ratio":0.0,"dead":true,"age":age,"feet":0,"toll":0.66})
+ for look in range(4):
+  for t in [0.0,0.8,1.0,1.35,1.8,2.2,2.7,2.85,3.15,3.45,4.8,5.6]:cases.append({"look":look,"phase":1,"attack":"cleave","state":"intro","ratio":0.0,"dead":false,"feet":0,"entrance":t,"full":true})
+  for t in [0.0,0.2,0.4,0.6,0.9,1.2]:cases.append({"look":look,"phase":1,"attack":"cleave","state":"intro","ratio":0.0,"dead":false,"feet":0,"entrance":t,"full":false})
  var count = 0
  for c in cases:
   var p = Vector2(240,320)
@@ -111,6 +114,12 @@ func run():
    if c.state!="windup":e.state_time=c.toll if c.state=="strike" else maxf(0,c.toll-0.35)
    var spread=fight.Toll.posture(e).spread
    for i in range(2):e.motion.feet[i].x=p.x+(-1 if i==0 else 1)*(6+8*spread)
+  if c.has("entrance"):
+   e.bell_entrance=true
+   e.bell_intro_started=true
+   e.bell_intro_full=c.full
+   e.bell_intro_duration=5.6 if c.full else 1.2
+   e.state_time=c.entrance
   if c.has("contact"):
    e.bell_hit_kind=c.contact
    e.bell_hit_u=0.35

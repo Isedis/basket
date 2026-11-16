@@ -67,6 +67,7 @@ static func parameters(e: Dictionary, pose: Dictionary, look: int) -> Dictionary
  for i in range(2):
   var raw = Motion.foot_position(e.get("motion",{}),i,p)-(p+Vector2(-6 if i==0 else 6,0))
   feet.append(Vector2(clampf(raw.x,-8,8),clampf(raw.y,-5,4)))
+ for i in range(2):feet[i].x+=(-1 if i==0 else 1)*float(pose.get("intro_spread",0))
  if pose.get("charge_rig",false):feet = Charge.visual_feet(e)
  var arms: Array = []
  var view = view_index(look)

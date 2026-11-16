@@ -25,6 +25,7 @@ var hit_stop = 0.0
 var death_elapsed = 0.0
 var art_probe_active = false
 var boss_practice = false
+var practice_intro_seen = false
 var original_save_path = ""
 var original_profile_path = ""
 var original_profile: Dictionary = {}
@@ -191,9 +192,11 @@ func _unhandled_input(event):
 			journal_open = not journal_open
 			mode = "paused" if journal_open else "playing"
 			return
+		if mode=="playing" and event.keycode==KEY_ENTER and BossFight.Entrance.skip(self):return
 		if art_probe_active and event.keycode==KEY_R and mode in ["playing","dead","victory"]:
 			start_boss_round(has_item("heavy")) if boss_practice else start_practice_round(has_item("heavy"))
 			return
+		if mode=="playing" and not BossFight.Entrance.active(self).is_empty():return
 		if art_probe_active and event.keycode==KEY_Q and mode=="playing":
 			toggle_practice_weapon()
 			return
@@ -340,6 +343,7 @@ func leave_art_probe():
 	profile = original_profile.duplicate(true)
 	art_probe_active = false
 	boss_practice = false
+	practice_intro_seen = false
 
 func new_run(fixed_seed: int = -1):
 	BossFight.stop_sounds(self)
@@ -449,6 +453,7 @@ func enter_room(where: Vector2i, spawn: Vector2, store: bool = true):
 		populate_room()
 	make_floor_texture()
 	DoorMotion.reset(self)
+	BossFight.Entrance.arrive(self)
 	camera_position = desired_camera()
 	room_camera = camera_position.snapped(Vector2(2,2))
 	if room.type == "boss" and not room.clear:
@@ -531,10 +536,12 @@ func spawn_enemy(type: String, p: Vector2, boss: bool):
 		e.state = "intro"
 		e.motion = Motion.initialize(p,1,0)
 		BossFight.ensure(e)
+		BossFight.Entrance.prepare(self,e)
 
 func _process(delta):
 	if mode == "title" and art_probe_active: leave_art_probe()
 	anim += delta
+	BossFight.Entrance.Audio.update(self,delta)
 	if mode == "dead": death_elapsed += delta
 	menu_hover = -1
 	var buttons = menu_buttons()
@@ -559,6 +566,12 @@ func advance_frame(delta: float):
 
 func update_game(dt: float):
 	elapsed += dt
+	if not BossFight.Entrance.active(self).is_empty():
+		moving = false
+		player_motion = Motion.update(player_motion,player,player,dt)
+		update_enemies(dt)
+		update_particles(dt)
+		return
 	if player_motion.has("impact_age"): player_motion.impact_age = minf(1,float(player_motion.impact_age)+dt)
 	for c in corpses:
 		c.age = minf(1.0,c.age+dt)
@@ -1394,6 +1407,7 @@ func load_run() -> bool:
 	if not data is Dictionary or data.get("version",0)!=1 or not data.has("dungeon"):
 		notify("Сохранение не читается. Можно начать новый забег.",5)
 		return false
+	BossFight.stop_sounds(self)
 	RoomLayout.upgrade_save(data)
 	Dungeon.rebuild_cells(data.dungeon)
 	for field in ["hp","max_hp","pain","coins","keys","faith","inventory","active","charge","elapsed","kills","character"]:

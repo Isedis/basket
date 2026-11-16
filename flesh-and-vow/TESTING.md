@@ -130,3 +130,15 @@ The complete-body graphics suite now renders 848 silhouettes, including
 both toll impulses and their frozen corpse poses. CPU anatomy performs
 4228 checks. Private real-game capture shows one and two waves, bell audio,
 recoil and safe wedges in controlled encounters; it is not a balance test.
+
+
+0.6.10: tests/boss_entrance.gd covers visibility/proximity gating, harmless
+first scene, held movement and attack input, blocked active-item use, turn
+views, consumed draw/extraction cues, saved timeline, music reveal, pause,
+continuous combat handoff, response window, short repeats, Enter skip,
+trial/profile isolation, legacy timing, actual adjacent-door sensing and
+grip binding (79 checks). CPU anatomy performs 4660 checks; complete-body
+graphics now renders 920 silhouettes including both entrance variants.
+Private real-game footage exercises the actual approach room, full entrance
+and short retry with world/HUD rendering and original audio. It uses
+controlled room setup and does not establish balance or subjective grandeur.

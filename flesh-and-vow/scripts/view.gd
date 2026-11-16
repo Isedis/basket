@@ -15,6 +15,7 @@ const GOLD = Color("c5a373")
 const WHITE = Color("e0d6c3")
 const MUTED = Color("88828e")
 const RED = Color("c64d65")
+const Entrance = preload("res://scripts/boss_entrance.gd")
 const Boss = preload("res://scripts/boss_view.gd")
 const ROOM_NAMES = {"start":"ПРОБУЖДЕНИЕ", "combat":"ЗАЛ ЗАБЫТЫХ", "boss":"ХРАНИТЕЛЬ ОБЕТА", "treasure":"ЗАПЕЧАТАННЫЙ ДАР", "shop":"ТОРГОВЕЦ ОСТАТКАМИ", "torture":"КОМНАТА ПЫТОК", "oracle":"ДВА ОТВЕТА", "reliquary":"ЗЕРКАЛО ВОЗМОЖНОГО", "secret":"МЕЖДУ СТЕН"}
 const MARKS = {"start":"·","combat":"·","boss":"†","treasure":"◆","shop":"$","torture":"×","oracle":"±","reliquary":"◇","secret":"?"}
@@ -52,9 +53,10 @@ static func render(g):
 		title_screen(g)
 	else:
 		if g.world_viewport!=null:
-			g.draw_texture_rect(g.world_viewport.get_texture(),Rect2(32,84,704,364),false)
+			g.draw_texture_rect(g.world_viewport.get_texture(),Rect2(32+round(96*Entrance.frame_weight(Entrance.active(g))/2)*2,84,704,364),false)
 		else: world(g)
-		hud(g)
+		if Entrance.active(g).is_empty():hud(g)
+		Entrance.overlay(g)
 		if g.mode == "paused" and not g.help_open and not g.journal_open:
 			veil(g)
 			panel(g,Rect2(300,152,360,270))
@@ -64,7 +66,7 @@ static func render(g):
 			ending(g)
 	if g.help_open: help_screen(g)
 	if g.journal_open: journal(g)
-	if g.art_probe_active and g.mode=="playing":
+	if g.art_probe_active and g.mode=="playing" and Entrance.active(g).is_empty():
 		rect(g,Rect2(40,90,688,18),Color(0.03,0.035,0.03,0.92))
 		var weapon = "ТЯЖЁЛЫЙ ТЕСАК" if g.has_item("heavy") else "ТЕСАК"
 		text(g,Vector2(48,103),("ИСПЫТАНИЕ БОССА · " if g.boss_practice else "ИСПЫТАНИЕ БОЯ · ")+weapon+" · Q — ОРУЖИЕ · R — ЗАНОВО",11,GOLD)
@@ -374,6 +376,7 @@ static func hud(g):
 	for e in g.enemies:
 		if e.boss:
 			if e.type=="boss0":
+				if Entrance.enabled(e) and not e.get("bell_intro_music",false):break
 				centre(g,Vector2(142,478),"II · РАСКОЛОТЫЙ ОБЕТ" if e.get("bell_phase",1)==2 else "I · ПРИГОВОР",9,GOLD)
 				rect(g,Rect2(255,472,462,7),Color("302027"))
 				rect(g,Rect2(255,472,462*maxf(0,e.hp/e.max),7),RED)

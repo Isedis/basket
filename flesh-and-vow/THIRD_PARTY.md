@@ -73,3 +73,8 @@ are used. Private gameplay review media are not distributed.
 Version 0.6.8: boss_step.wav, boss_launch.wav and boss_brake.wav are original
 additive/noise synthesis for this project, without third-party samples.
 Private review captures are not exported or published with the game.
+
+
+Version 0.6.10: boss_hall.wav, boss_theme.wav, boss_gate.wav and boss_draw.wav
+are original deterministic additive/noise synthesis for this project. No
+third-party recordings or music are used. Private review captures stay private.
