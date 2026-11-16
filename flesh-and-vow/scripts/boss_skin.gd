@@ -9,6 +9,7 @@ static var retained: Dictionary = {}
 static var source: PackedVector2Array = PackedVector2Array()
 static var indices: PackedInt32Array = PackedInt32Array()
 static var uv_sets: Array = []
+static var body_groups: Array = []
 static func prepare():
  if not source.is_empty():return
  var image = ATLAS.get_image()
@@ -32,6 +33,31 @@ static func prepare():
   var uv = PackedVector2Array()
   for p in source:uv.append(Vector2((view*128+p.x/2+64)/384.0,(p.y/2+90)/96.0))
   uv_sets.append(uv)
+ for look in range(4):
+  var arm_indices = PackedInt32Array()
+  var core_indices = PackedInt32Array()
+  var side = Motion.hand_sign(look)
+  var flip = -1.0 if look==3 else 1.0
+  for i in range(0,indices.size(),3):
+   var center = (source[indices[i]]+source[indices[i+1]]+source[indices[i+2]])/3
+   var weight = smoothstep(17,29,center.x*flip*side)*(1-smoothstep(12,23,absf(center.y+86)))
+   var triangle = PackedInt32Array([indices[i],indices[i+1],indices[i+2]])
+   if weight>0.15:arm_indices.append_array(triangle)
+   else:core_indices.append_array(triangle)
+  body_groups.append({"arm":arm_indices,"core":core_indices})
+static func arm_in_front(pose: Dictionary, look: int) -> bool:
+ # The visible weapon arm crosses the chest in front/side views. From behind,
+ # an upward strike goes away from the camera and is covered by the torso.
+ return look!=2 or pose.hand.y>pose.shoulder.y+4
+static func draw_indices(pose: Dictionary,look: int,selection: String = "all") -> PackedInt32Array:
+ prepare()
+ if selection=="arm":return body_groups[look].arm
+ if selection=="core":return body_groups[look].core
+ var result = PackedInt32Array()
+ var front = arm_in_front(pose,look)
+ result.append_array(body_groups[look].core if front else body_groups[look].arm)
+ result.append_array(body_groups[look].arm if front else body_groups[look].core)
+ return result
 static func view_index(look: int) -> int:return 0 if look==0 else (2 if look==2 else 1)
 static func parameters(e: Dictionary, pose: Dictionary, look: int) -> Dictionary:
  var p = Vector2(e.x,e.y)
@@ -76,7 +102,7 @@ static func mapped_point(v: Vector2, info: Dictionary) -> Vector2:
  return info.p+q
 static func point(v: Vector2, e: Dictionary, pose: Dictionary, look: int) -> Vector2:
  return mapped_point(v,parameters(e,pose,look))
-static func mesh(e: Dictionary, pose: Dictionary, look: int, context: Dictionary) -> ArrayMesh:
+static func mesh(e: Dictionary, pose: Dictionary, look: int, context: Dictionary, selection: String = "all") -> ArrayMesh:
  prepare()
  var vertices = PackedVector3Array()
  var flip = -1.0 if look==3 else 1.0
@@ -90,12 +116,12 @@ static func mesh(e: Dictionary, pose: Dictionary, look: int, context: Dictionary
  arrays.resize(Mesh.ARRAY_MAX)
  arrays[Mesh.ARRAY_VERTEX] = vertices
  arrays[Mesh.ARRAY_TEX_UV] = uv_sets[view_index(look)]
- arrays[Mesh.ARRAY_INDEX] = indices
+ arrays[Mesh.ARRAY_INDEX] = draw_indices(pose,look,selection)
  var result = ArrayMesh.new()
  result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
  return result
-static func draw(g,e: Dictionary,pose: Dictionary,look: int,context: Dictionary,tint: Color):
- var result = mesh(e,pose,look,context)
+static func draw(g,e: Dictionary,pose: Dictionary,look: int,context: Dictionary,tint: Color,selection: String = "all"):
+ var result = mesh(e,pose,look,context,selection)
  if DisplayServer.get_name()!="headless":
   var frame = Engine.get_process_frames()
   if not retained.has(frame):retained[frame] = []

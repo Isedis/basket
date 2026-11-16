@@ -76,3 +76,10 @@ separately held axe, for 344 cases. tests/boss_silhouette.py performs an
 of eight or more rendered pixels. CI runs this with software OpenGL under
 Xvfb. tests/boss_anatomy.gd checks one complete body mesh, shared valid
 vertices, wrist-to-weapon binding and coherent corpse translation.
+
+0.6.5: the graphics suite also renders arm-only and core-only reference masks
+for sixteen windup/contact poses in all four directions. At every opaque
+overlap with distinct colors, the complete mesh must match the correct
+foreground surface. It reproduces the old index order as a regression
+reference. The CPU suite checks triangle preservation, nonempty depth groups
+and axe-handle/body/blade command order while retaining one connected skin.

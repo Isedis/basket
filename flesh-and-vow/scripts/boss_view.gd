@@ -38,8 +38,11 @@ static func actor(g, e: Dictionary, dead: bool = false):
  var context = {"p":p,"fall":collapse*1.5*sign_hand,"drop":collapse*10,"shift":Vector2.ZERO,"fade":1.0}
  var tint = Color(1.5,1.25,1.05) if not dead and e.get("flash",0)>0 else Color.WHITE
  # No independent head, torso, arm, leg or chain draws: one full connected skin.
- Rig.part(g,textures(look)[6],pose.hand,pose.angle,1,tint,context,Vector2(0.12,0.5))
+ var front = BodySkin.arm_in_front(pose,look)
+ weapon_span(g,textures(look)[6],pose,context,tint,0.0,0.55)
+ if not front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
  BodySkin.draw(g,model,pose,look,context,tint)
+ if front:weapon_span(g,textures(look)[6],pose,context,tint,0.55,1.0)
  if not dead and e.state=="strike" and e.get("bell_attack","")=="cleave" and e.state_time<Fight.STRIKE.cleave*0.55:
   var trail = PackedVector2Array()
   for sample in range(6):
@@ -48,6 +51,12 @@ static func actor(g, e: Dictionary, dead: bool = false):
    var old_pose = Fight.pose(probe,clock)
    trail.append((old_pose.hand+Vector2.from_angle(old_pose.angle)*74).snapped(Vector2(2,2)))
   g.draw_polyline(trail,Color(0.79,0.67,0.44,0.5),4)
+static func weapon_span(g,texture: Texture2D,pose: Dictionary,context: Dictionary,tint: Color,start: float,end: float):
+ var size = texture.get_size()*2
+ var uv = PackedVector2Array([Vector2(start,0),Vector2(end,0),Vector2(end,1),Vector2(start,1)])
+ var points = PackedVector2Array()
+ for xy in uv:points.append(pose.hand+((xy-Vector2(0.12,0.5))*size).rotated(pose.angle))
+ Rig.quad(g,texture,points,uv,tint,context)
 static func arena(g):
  if g.floor_index!=0 or g.room.type!="boss": return
  g.draw_texture_rect(SEAL,Rect2((g.CENTRE-Vector2(160,100)).snapped(Vector2(2,2)),Vector2(320,200)),false,Color(0.85,0.85,0.85))

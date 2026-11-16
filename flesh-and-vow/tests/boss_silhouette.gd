@@ -16,6 +16,24 @@ class Body extends Node2D:
   proxy.canvas = self
   proxy.held = renderer.textures(int(model.motion.look))[6]
   renderer.actor(proxy,model,dead)
+class Layer extends Node2D:
+ var skin
+ var model: Dictionary
+ var pose: Dictionary
+ var look = 0
+ var part = "all"
+ var old_meshes: Array = []
+ func _draw():
+  var context={"p":Vector2(model.x,model.y),"fall":0.0,"drop":0.0}
+  if part=="original":
+   var mesh=skin.mesh(model,pose,look,context)
+   var arrays=mesh.surface_get_arrays(0)
+   arrays[Mesh.ARRAY_INDEX]=skin.indices
+   var old=ArrayMesh.new()
+   old.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+   old_meshes.append(old)
+   draw_mesh(old,skin.ATLAS)
+  else:skin.draw(self,model,pose,look,context,Color.WHITE,part)
 func _initialize():call_deferred("run")
 func run():
  var packs = OS.get_cmdline_user_args()
@@ -72,5 +90,39 @@ func run():
   count += 1
  var file = FileAccess.open(out.path_join("cases.json"),FileAccess.WRITE)
  file.store_string(JSON.stringify(cases))
+ body.queue_free()
+ v.queue_free()
+ var layers: Array=[]
+ var layer_views: Array=[]
+ for part in ["all","arm","core","original"]:
+  var view=SubViewport.new()
+  view.size=Vector2i(480,480)
+  view.transparent_bg=true
+  view.render_target_update_mode=SubViewport.UPDATE_ALWAYS
+  root.add_child(view)
+  var node=Layer.new()
+  node.skin=renderer.BodySkin
+  node.part=part
+  node.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+  view.add_child(node)
+  layer_views.append({"view":view,"node":node,"part":part})
+ for look in range(4):
+  for ratio in [0.0,0.27,0.4,0.49]:
+   var p=Vector2(240,320)
+   var dir:Vector2=[Vector2.DOWN,Vector2.RIGHT,Vector2.UP,Vector2.LEFT][look]
+   var e={"x":p.x,"y":p.y,"dx":dir.x,"dy":dir.y,"state":"windup" if ratio==0 else "strike","state_time":0.0,"bell_phase":1,"bell_attack":"cleave","motion":motion.initialize(p,1,look)}
+   e.state_time=fight.windup(e) if ratio==0 else fight.STRIKE.cleave*ratio
+   var pose=fight.pose(e,1.0)
+   for item in layer_views:
+    item.node.model=e
+    item.node.pose=pose
+    item.node.look=look
+    item.node.queue_redraw()
+   await process_frame
+   await RenderingServer.frame_post_draw
+   for item in layer_views:item.view.get_texture().get_image().save_png(out.path_join("layer-%02d-%s.png"%[layers.size(),item.part]))
+   layers.append({"look":look,"ratio":ratio,"front":look!=2})
+ var layer_file=FileAccess.open(out.path_join("layers.json"),FileAccess.WRITE)
+ layer_file.store_string(JSON.stringify(layers))
  print("RENDERED BODY CASES: ",count)
  quit()
