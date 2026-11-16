@@ -13,7 +13,7 @@ function update(dt) {
   spawnMob.hw = Math.min(1, Math.sqrt(cb / Math.max(1, want - (ev && ev.type === 'inv' ? want * .6 : 0))));
   if (hordeC() > 0 && time > packT) { packT = time + 1.2 + rnd() * .8; packA = rnd() * 6.2832; }
   zoneTick(dt);
-  if (S.raid) raidTick(dt);
+  if (S.raid) { raidTick(dt); spawnMob.hw = 0; }   // подмога в рейде наград не даёт — рейд не ферма
   if (spawnT <= 0 && mobs.length < want && !zSpawnHold() && !S.raid) { const n = Math.min(want - mobs.length, 1 + Math.floor(S.zone / 15) + Math.round(hordeC() * 18)); for (let i = 0; i < Math.min(n, 4 + Math.round(hordeC() * 18)); i++) spawnMob(false); spawnT = (mobs.length < want / 2 ? .15 : .45) / (1 + ta('spawn')); }
   if (S.zk > zoneNeed()) S.zk = zoneNeed();
   bossCd -= dt;
@@ -251,6 +251,10 @@ function render() {
     const fly = wRule('fly') ? -3 - Math.round(Math.sin(time * 3 + o.x) * 1.5) : 0;
     if (o.ph) ctx.globalAlpha = .25;
     ctx.drawImage(mobSprite(o, o.fl > 0 && !o.raid), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1;
+    if (o.raid) { const cx = Math.round(o.x), cy = yo + bob + fly - 2, u = Math.max(1, Math.round(o.sz / 2));   // корона рейд-босса
+      ctx.fillStyle = '#0c0814'; ctx.fillRect(cx - 6 * u, cy - 4 * u, 12 * u + 1, 4 * u + 1);
+      ctx.fillStyle = '#e8b830'; ctx.fillRect(cx - 5 * u, cy - 2 * u, 10 * u, 2 * u); for (const dx of [-5, -1, 3]) ctx.fillRect(cx + dx * u, cy - 4 * u, 2 * u, 2 * u);
+      ctx.fillStyle = '#fff2a8'; ctx.fillRect(cx - 5 * u, cy - 2 * u, 10 * u, u); ctx.fillStyle = '#ff3a4a'; ctx.fillRect(cx - u, cy - 2 * u, 2 * u, u); }
     if (o.raid && o.fl > 0) { ctx.globalAlpha = .3; ctx.drawImage(mobSprite(o, true), xo, yo + bob + fly, sw, sh2); ctx.globalAlpha = 1; }   // рейд-босса бьют без перерыва: лёгкий налёт вместо белой вспышки
     if (o.shd > 0) { ctx.globalAlpha = .55; circ(o.x, o.y - s / 2, s * .6 + 1, '#7ad8ff', 14, .9, time); ctx.globalAlpha = 1; }
     if (o.af) { let q = 0; for (let i = 0; i < AFF.length; i++) if (o.af >> i & 1) { pix(x + q * 2, y - 4 + bob, AFF[i].c); q++; } }

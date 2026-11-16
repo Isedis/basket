@@ -29,7 +29,7 @@ function coachTick() {
   const now = performance.now() / 1000;
   if (coachCur) { const t = now - coachT0; if (coachCur.done(t)) { M.tutD[coachCur.id] = 1; coachCur = null; coachGap = now + 1.5; box.hidden = true; ring.hidden = true; return; } }
   else if (now > coachGap && deathT <= 0) { coachCur = COACH.find(s => !M.tutD[s.id] && s.when()) || null; if (coachCur) { coachT0 = now; if (coachCur.id === 'tap') coachTaps = 0; } }
-  const cr = $('croll'), busy = S.raid || EV || (cr && !cr.hidden);   // не мешать рейду, сцене эволюции и карточкам
+  const cr = $('croll'), busy = S.raid || EV || (cr && !cr.hidden) || (coachCur && !coachCur.el && !fightVis());   // шаги на поле — только когда бой на экране   // не мешать рейду, сцене эволюции и карточкам
   if (!coachCur || busy) { box.hidden = true; ring.hidden = true; if (coachCur && busy) coachT0 += .12; return; }
   // цель: точка мира или кнопка интерфейса
   let x, y; const g = $('game').getBoundingClientRect();
