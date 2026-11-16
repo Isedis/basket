@@ -1,16 +1,18 @@
 extends RefCounted
 ## Native-pixel character parts; animation changes joints, never the artwork.
+const EnemyPose = preload("res://scripts/enemy_pose.gd")
 const Combat = preload("res://scripts/combat.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const Style = preload("res://scripts/character_style.gd")
 const ATLAS = preload("res://assets/castle_characters.png")
+const ENEMY_ATLAS = preload("res://assets/castle_enemies.png")
 static var parts: Array = []
 static var vertical_parts: Array = []
 
 static func load_parts():
 	if not parts.is_empty(): return
-	var image = ATLAS.get_image()
-	for actor in range(3):
+	for actor in range(Style.TYPES.size()):
+		var image = ATLAS.get_image() if actor<3 else ENEMY_ATLAS.get_image()
 		var views: Array = []
 		for view in range(3):
 			var components: Array = []
@@ -18,8 +20,8 @@ static func load_parts():
 				components.append(ImageTexture.create_from_image(image.get_region(Style.region(actor,view,part_index))))
 			views.append(components)
 		# All views hold the same weapon object, with one physical grip point.
-		views[1][6] = views[0][6]
-		views[2][6] = views[0][6]
+		var held = views[1][6] if Style.TYPES[actor]=="mage" else views[0][6]
+		for view in views: view[6] = held
 		parts.append(views[0])
 		vertical_parts.append(views[1])
 		vertical_parts.append(views[2])
@@ -31,7 +33,19 @@ static func textures_for(type: String, look: int) -> Array:
 	if look==2: return vertical_parts[actor*2+1]
 	return parts[actor]
 
-static func armed_layers(g, textures: Array, weapon: Dictionary, hand_sign: float, texture_flip: float, tint: Color, context: Dictionary):
+static func armed_layers(g, textures: Array, weapon: Dictionary, hand_sign: float, texture_flip: float, tint: Color, context: Dictionary, type: String = ""):
+	if type in EnemyPose.TYPES:
+		var axis = (weapon.hand-weapon.elbow).normalized()
+		if type=="skeleton": part(g,textures[6],weapon.hand,weapon.angle,1,tint,context,Vector2(0.2,0.5))
+		jointed_limb(g,textures[3],weapon.shoulder,weapon.elbow,weapon.hand+axis*3,texture_flip,tint,context,0.9)
+		if type=="shadow": part(g,textures[6],weapon.hand+axis*3,weapon.angle,1,tint,context,Vector2(0,0.5))
+		if type=="mage":
+			part(g,textures[6],weapon.hand,0,1,tint,context)
+			var charge = float(weapon.get("cast_charge",0))
+			if charge>0:
+				for corner in [Vector2(-8,-6),Vector2(6,-6),Vector2(-8,6),Vector2(6,6)]:
+					g.draw_rect(Rect2((weapon.hand+corner).snapped(Vector2(2,2)),Vector2(2,2)),Color(0.55,0.78,0.64,charge*0.85))
+		return
 	# Draw the handle behind the closed fist. The cleaver's handle sits above its blade.
 	var grip = Vector2(0.13,0.3 if textures[6]==parts[0][6] else 0.5)
 	weapon_part(g,textures[6],weapon,grip,hand_sign,tint,context)
@@ -75,14 +89,15 @@ static func weapon_angle(direction: Vector2, action: int, progress: float, facin
 	return Combat.weapon_angle(direction,action,progress,facing)
 
 static func vertices(points: PackedVector2Array, context: Dictionary) -> PackedVector2Array:
-	if context.fall==0: return points
+	if context.fall==0 and context.get("shift",Vector2.ZERO)==Vector2.ZERO: return points
 	var result = PackedVector2Array()
 	for point in points:
-		result.append(context.p+(point-context.p).rotated(context.fall)+Vector2(0,context.drop))
+		result.append(context.p+(point-context.p).rotated(context.fall)+Vector2(0,context.drop)+context.get("shift",Vector2.ZERO))
 	return result
 
 static func quad(g, tex: Texture2D, points: PackedVector2Array, uv: PackedVector2Array, tint: Color, context: Dictionary):
-	g.draw_polygon(vertices(points,context),PackedColorArray([tint]),uv,tex)
+	var color = Color(tint,tint.a*float(context.get("fade",1.0)))
+	g.draw_polygon(vertices(points,context),PackedColorArray([color]),uv,tex)
 
 static func part(g, tex: Texture2D, at: Vector2, angle: float, flip: float, tint: Color, context: Dictionary, pivot: Vector2 = Vector2(0.5,0.5), scale_x: float = 1.0):
 	var size = tex.get_size()*2
@@ -123,28 +138,47 @@ static func draw(g, type: String, p: Vector2, motion: Dictionary, direction: Vec
 	var clock = g.elapsed if g.mode!="title" else g.anim
 	var reach = g.attack_range() if type=="player" else Combat.BASE_REACH
 	var stance = Vector2(facing*2,6) if type=="assassin" else Vector2.ZERO
-	var weapon = Combat.weapon_pose(p+stance,motion,direction,action,progress,reach,clock)
+	var pose_action = int(motion.get("death_action",0)) if action==5 and type in EnemyPose.TYPES else action
+	var pose_progress = float(motion.get("death_progress",0)) if action==5 and type in EnemyPose.TYPES else progress
+	var pose_aim = Vector2(motion.get("death_dx",direction.x),motion.get("death_dy",direction.y)) if action==5 and type in EnemyPose.TYPES else direction
+	if action==5 and type in EnemyPose.TYPES: clock = float(motion.get("death_clock",0))
+	var weapon = EnemyPose.pose(type,p,motion,pose_aim,pose_action,pose_progress,clock) if type in EnemyPose.TYPES else Combat.weapon_pose(p+stance,motion,direction,action,progress,reach,clock)
 	var collapse = smooth_curve(progress) if action==5 else 0.0
-	var context = {"p":p,"fall":collapse*facing*1.35,"drop":collapse*5}
+	var context = {"p":p,"fall":collapse*facing*1.35,"drop":collapse*5,"shift":Vector2.ZERO,"fade":1-collapse*0.65 if type=="shadow" else 1.0}
 	var body = weapon.body
 	var left_foot = Motion.foot_position(motion,0,p)
 	var right_foot = Motion.foot_position(motion,1,p)
 	var hips = [weapon.hips+Vector2(-6,-19),weapon.hips+Vector2(6,-19)]
 	var knee = 4.0 if type=="assassin" else 2.0
+	component(context,type,collapse,4)
 	limb(g,textures[5 if look==0 else 4],hips[0],left_foot,knee*facing,texture_flip,tint,context)
+	component(context,type,collapse,5)
 	limb(g,textures[4 if look==0 else 5],hips[1],right_foot,knee*facing,texture_flip,tint,context)
 	var sway = sin(phase)*0.15*walk_weight
 	var chest = Vector2(0,-31)
 	var left_shoulder = body+chest+(Vector2(-12*facing,Combat.BODY_SHOULDER.y)-chest).rotated(weapon.twist)
 	var counterbalance = Vector2(-facing*(3+sin(phase)*2*walk_weight),21)-direction*weapon.drive*2+Vector2(0,-weapon.coil*2)
-	var left_hand = left_shoulder+counterbalance.limit_length(21.5)
+	var left_hand = EnemyPose.free_hand(type,left_shoulder,weapon,direction,counterbalance) if type in EnemyPose.TYPES else left_shoulder+counterbalance.limit_length(21.5)
+	component(context,type,collapse,2)
 	limb(g,textures[2],left_shoulder,left_hand,3*facing,texture_flip,tint,context)
-	if look==2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context)
+	component(context,type,collapse,3)
+	if look==2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context,type)
+	component(context,type,collapse,7)
 	if look!=2: part(g,textures[7],body+Vector2(-7*facing,-35),sway,texture_flip,tint,context,Vector2(0.5,0))
+	component(context,type,collapse,1)
 	part(g,textures[1],body+Vector2(0,-31),weapon.twist,texture_flip,tint,context)
 	if look==2: part(g,textures[7],body+Vector2(0,-38),sway,1,tint,context,Vector2(0.5,0))
+	component(context,type,collapse,0)
 	part(g,textures[0],weapon.head+Vector2(facing if look in [1,3] else 0,0),-weapon.twist*0.2,texture_flip,tint,context)
-	if look!=2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context)
+	component(context,type,collapse,3)
+	if look!=2: armed_layers(g,textures,weapon,facing,texture_flip,tint,context,type)
+
+static func component(context: Dictionary, type: String, collapse: float, index: int):
+	context.shift = Vector2.ZERO
+	if type=="skeleton":
+		var offsets = [Vector2(-17,-8),Vector2(2,4),Vector2(-16,8),Vector2(19,3),Vector2(-12,12),Vector2(17,13),Vector2(22,5),Vector2(-5,7)]
+		context.shift = offsets[index]*collapse
+	elif type=="shadow": context.shift = Vector2((index%3-1)*9,4+index)*collapse
 
 static func actor(g, type: String, p: Vector2, flash: bool, tint: Color, entity: Dictionary = {}):
 	var direction = g.facing

@@ -1,5 +1,6 @@
 extends Node2D
 
+const EnemyPose = preload("res://scripts/enemy_pose.gd")
 const Hazards = preload("res://scripts/hazard_view.gd")
 const RoomLayout = preload("res://scripts/castle_layout.gd")
 const DoorMotion = preload("res://scripts/door_motion.gd")
@@ -287,6 +288,9 @@ func start_practice_round(use_heavy: bool = false):
 	invincible = 0
 	spawn_enemy("guard",CENTRE+Vector2(24,35),false)
 	spawn_enemy("assassin",CENTRE+Vector2(164,10),false)
+	spawn_enemy("skeleton",Vector2(840,232),false)
+	spawn_enemy("shadow",Vector2(1100,610),false)
+	spawn_enemy("mage",Vector2(160,300),false)
 	room.clear = false
 	notify("WASD — шаг, стрелки — удар. Q — оружие, R — заново.",5)
 	save_run()
@@ -757,7 +761,16 @@ func enemy_weapon_angle(enemy: Dictionary) -> float:
 func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bool, impact: float = -1, impact_direction: Vector2 = Vector2.ZERO, hit_point: Vector2 = Vector2.INF):
 	if enemy.hp<=0: return
 	if impact<0: impact = 1.0 if effects else 0.0
+	if enemy.type in EnemyPose.TYPES and enemy.hp<=amount:
+		var snapshot = enemy.get("motion",{}).duplicate(true)
+		snapshot.death_action = 2 if enemy.state=="windup" else (3 if enemy.state=="strike" else 0)
+		snapshot.death_progress = clampf(enemy.state_time/(0.52 if enemy.state=="windup" else 0.25),0,1)
+		snapshot.death_dx = enemy.dx
+		snapshot.death_dy = enemy.dy
+		snapshot.death_clock = elapsed
+		enemy.motion = snapshot
 	var p = Vector2(enemy.x,enemy.y)
+	var wound_color = Color("b3a282") if enemy.type=="skeleton" else (Color("44676a") if enemy.type=="shadow" else Color("a82a32"))
 	var spray = impact_direction if impact_direction!=Vector2.ZERO else (p-origin).normalized()
 	var point = hit_point if hit_point!=Vector2.INF else p-Vector2(0,34)
 	enemy.hp -= amount
@@ -784,22 +797,29 @@ func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bo
 		for n in range(5):
 			emit_particle(point,Color("d9bd80"),spray.rotated(rng.randf_range(-1.0,1.0))*rng.randf_range(80,150),0.16,2)
 	for n in range(int(6+impact*4) if impact>0 else 2):
-		emit_particle(point,Color("a82a32"),spray.rotated(rng.randf_range(-0.6,0.6))*rng.randf_range(70,180),0.4,2+rng.randi_range(0,2))
+		emit_particle(point,wound_color,spray.rotated(rng.randf_range(-0.6,0.6))*rng.randf_range(70,180),0.4,2+rng.randi_range(0,2))
 	for n in range(3 if impact>0 else 1):
-		blood.append({"x":enemy.x+spray.x*rng.randf_range(10,35),"y":enemy.y+spray.y*rng.randf_range(10,35),"size":rng.randf_range(3,7),"bone":false})
+		blood.append({"x":enemy.x+spray.x*rng.randf_range(10,35),"y":enemy.y+spray.y*rng.randf_range(10,35),"size":rng.randf_range(3,7),"bone":enemy.type=="skeleton","kind":"ash" if enemy.type=="shadow" else "blood"})
 	if effects:
 		if has_item("ember"): enemy.burn = 3.0
 		if has_item("rot"): enemy.poison = 4.0
 		if has_item("frost"): enemy.slow = 2.2
-	burst(point,Color("ae3f51"),4)
+	burst(point,wound_color,4)
 	if enemy.hp<=0: kill_enemy(enemy)
 
 func kill_enemy(enemy: Dictionary):
 	if not enemies.has(enemy): return
 	var p = Vector2(enemy.x,enemy.y)
+	var wound_color = Color("b3a282") if enemy.type=="skeleton" else (Color("44676a") if enemy.type=="shadow" else Color("a82a32"))
 	var spray_dir = (p-player).normalized()
 	var corpse_motion = enemy.get("motion",{}).duplicate(true)
 	corpse_motion.weapon_override = enemy_weapon_angle(enemy)
+	if enemy.type in EnemyPose.TYPES and not corpse_motion.has("death_clock"):
+		corpse_motion.death_action = 2 if enemy.state=="windup" else (3 if enemy.state=="strike" else 0)
+		corpse_motion.death_progress = clampf(enemy.state_time/(0.52 if enemy.state=="windup" else 0.25),0,1)
+		corpse_motion.death_dx = enemy.dx
+		corpse_motion.death_dy = enemy.dy
+		corpse_motion.death_clock = elapsed
 	corpses.append({"type":enemy.type,"x":p.x,"y":p.y,"dx":spray_dir.x,"dy":spray_dir.y,"age":0.0,"vx":float(enemy.get("knock_x",0)),"vy":float(enemy.get("knock_y",0)),"motion":corpse_motion})
 	if corpses.size()>24: corpses.pop_front()
 	if enemy.get("last_impact",0)>0: hit_stop = maxf(hit_stop,0.07)
@@ -807,9 +827,9 @@ func kill_enemy(enemy: Dictionary):
 	kills += 1
 	if enemy.get("last_impact",0)>0: shake = maxf(shake,3.5 if not enemy.boss else 7)
 	for i in range(5 if not enemy.boss else 15):
-		blood.append({"x":p.x+rng.randf_range(-19,19),"y":p.y+rng.randf_range(-10,12),"size":rng.randf_range(5,15),"bone":i%4==0})
+		blood.append({"x":p.x+rng.randf_range(-19,19),"y":p.y+rng.randf_range(-10,12),"size":rng.randf_range(5,15),"bone":enemy.type=="skeleton" or (enemy.type!="shadow" and i%4==0),"kind":"ash" if enemy.type=="shadow" else "blood"})
 	if blood.size()>160: blood = blood.slice(blood.size()-160)
-	burst(p,Color("bd5260"),20 if not enemy.boss else 50)
+	burst(p,wound_color,20 if not enemy.boss else 50)
 	if rng.randf()<0.65 or enemy.boss:
 		add_drop("coin",p,1 if not enemy.boss else 7)
 	if has_item("leech") and rng.randf()<0.24: heal(0.5)
@@ -874,7 +894,8 @@ func update_enemies(dt: float):
 				if enemy.type in ["skeleton","mage"]:
 					var dir = Vector2(enemy.dx,enemy.dy)
 					for angle in ([-0.24,0.0,0.24] if enemy.type=="mage" else [0.0]):
-						fire_bullet(p,dir.rotated(angle)*145,1.5,"enemy",4)
+						var launch = EnemyPose.pose(enemy.type,p,enemy.get("motion",{}),dir,3,0,elapsed).hand-p
+						fire_bullet(p,dir.rotated(angle)*145,1.5,"enemy",4,"bone" if enemy.type=="skeleton" else "curse",launch)
 				elif enemy.type == "shadow":
 					zones.append({"x":p.x,"y":p.y,"radius":44.0,"timer":0.1,"kind":"hostile","damage":2.0})
 		elif enemy.state == "strike":
@@ -974,12 +995,13 @@ func update_boss(enemy: Dictionary, dt: float, slow: float):
 	enemy.x = p.x
 	enemy.y = p.y
 
-func fire_bullet(p: Vector2, velocity: Vector2, damage: float, type: String, life: float):
-	bullets.append({"x":p.x,"y":p.y,"vx":velocity.x,"vy":velocity.y,"damage":damage,"type":type,"life":life})
+func fire_bullet(p: Vector2, velocity: Vector2, damage: float, type: String, life: float, visual: String = "", launch: Vector2 = Vector2.ZERO):
+	bullets.append({"x":p.x,"y":p.y,"vx":velocity.x,"vy":velocity.y,"damage":damage,"type":type,"life":life,"visual":visual,"lx":launch.x,"ly":launch.y,"age":0.0})
 
 func update_bullets(dt: float):
 	for b in bullets.duplicate():
 		b.life -= dt
+		b.age = float(b.get("age",0))+dt
 		b.x += b.vx*dt
 		b.y += b.vy*dt
 		var p = Vector2(b.x,b.y)

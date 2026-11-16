@@ -114,7 +114,7 @@ func run():
 	game.menu_action("art_probe")
 	check(game.toggle_practice_weapon() and game.has_item("heavy"),"Practice room can compare normal and heavy weapons immediately")
 	game.start_practice_round(true)
-	check(game.original_save_path==original_path and game.enemies.size()==2 and game.has_item("heavy"),"Practice retry preserves its weapon and original save reference")
+	check(game.original_save_path==original_path and game.enemies.size()==5 and game.has_item("heavy"),"Practice retry preserves its weapon and original save reference")
 	game.leave_art_probe()
 	check(game.save_path==original_path and FileAccess.get_file_as_string(original_path)==original_save,"Practice switching and retry never overwrite the ordinary run")
 	game.delete_run()

@@ -110,12 +110,12 @@ static func world(g):
 	doors(g)
 	for hazard in g.hazards: draw_hazard(g,hazard)
 	for b in g.blood:
-		var color = Color("63232b") if not b.bone else Color("96846a")
+		var color = Color("2d4b4d") if b.get("kind","")=="ash" else (Color("63232b") if not b.bone else Color("96846a"))
 		var position = Vector2(b.x,b.y).snapped(Vector2(2,2))
 		var width = maxi(2,int(b.size/2)*2)
 		rect(g,Rect2(position-Vector2(width/2,2),Vector2(width,4)),color)
 		if not b.bone:
-			rect(g,Rect2(position-Vector2(width/3,4),Vector2(maxi(2,width-4),8)),Color("4d2026"))
+			rect(g,Rect2(position-Vector2(width/3,4),Vector2(maxi(2,width-4),8)),Color("1c3439") if b.get("kind","")=="ash" else Color("4d2026"))
 	for prop in g.room_props:
 		if not prop.get("solid",false): Props.draw(g,prop)
 	if not g.authored_room:
@@ -171,6 +171,7 @@ static func world(g):
 	for contact in g.melee_contacts: impact(g,contact)
 	if g.debug_combat: debug_shapes(g)
 	for b in g.bullets:
+		if Art.projectile(g,b): continue
 		var c = Color("d95d71") if b.type=="ally" else (Color("a8b774") if b.type=="rot" else Color("e9b777"))
 		var pos = Vector2(b.x,b.y)
 		g.draw_line(pos,pos-Vector2(b.vx,b.vy).normalized()*8,Color(c,0.4),3)

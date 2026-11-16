@@ -47,3 +47,8 @@ were created for this project using image generation, then prepared as
 castle_hazards.png (128x128) with hard alpha and fixed native dimensions.
 The game reuses one needle at twelve fixed sockets and keeps bases separate
 from moving parts. The illustration master is not exported or published.
+
+Version 0.5.2 ordinary enemy art: skeleton, shadow and mage component masters
+were generated for this project, then baked into castle_enemies.png (256x320)
+with fixed native sizes, hard alpha and limited material palettes. The three
+large masters and private gameplay captures are not exported or published.

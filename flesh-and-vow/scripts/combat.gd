@@ -1,5 +1,6 @@
 extends RefCounted
 ## Shared visual and collision geometry. Coordinates are projected screen-world units.
+const Style = preload("res://scripts/character_style.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const CONTACT_RATIO = 0.06/0.22
 const ACTIVE_END = 0.5
@@ -125,7 +126,7 @@ static func blade_polygon(pose: Dictionary) -> PackedVector2Array:
 	return points
 
 static func hurt_capsule(p: Vector2, type: String = "guard", boss: bool = false) -> Dictionary:
-	var rigged = type in ["player","guard","assassin"] and not boss
+	var rigged = Style.is_rigged(type) and not boss
 	var top = -47 if type=="assassin" else (-53 if rigged else -65)
 	return {"a":p+Vector2(0,-13 if rigged else -16),"b":p+Vector2(0,-108 if boss else top),"radius":20.0 if boss else (18.0 if type=="guard" else 13.0)}
 

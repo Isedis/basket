@@ -43,3 +43,10 @@ and advancement of the player death animation and isolation of the art probe fro
 The combat preview movie is a capture of the running Godot scene with input
 injected for the demonstration; it is not an animation composited in a video editor.
 New atlas north/south poses and other zone environments are not final.
+
+0.5.2: tests/enemies.gd checks native dimensions, hard alpha and palettes,
+shared held objects, continuous release/recovery poses, anatomical reach,
+colliders, actual AI volley sizes and projectile physics, hand launch offsets,
+material-specific debris, pre-stagger death snapshots, practice roster and
+JSON save/load compatibility. The preview uses deterministic walk/cast states
+in the actual game renderer and the original projectile simulation.

@@ -1,9 +1,11 @@
 extends RefCounted
 
+const Style = preload("res://scripts/character_style.gd")
 const Rig = preload("res://scripts/rig_view.gd")
 const ATLAS = preload("res://assets/actors_v3.png")
 static var hero_sheet: Texture2D
 static var guard_sheet: Texture2D
+static var projectiles: Dictionary = {}
 const TYPES = ["player","guard","shadow","skeleton","assassin","mage","boss0","boss1","boss2","boss3"]
 
 static func direction_index(v: Vector2) -> int:
@@ -11,7 +13,7 @@ static func direction_index(v: Vector2) -> int:
 	return 0 if v.y>=0 else 2
 
 static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, frame: int, tint: Color = Color.WHITE):
-	if type in ["player","guard","assassin"]:
+	if Style.is_rigged(type):
 		Rig.draw(g,type,p,{},direction,action,frame/7.0,tint)
 		return
 	var actor_index = maxi(0,TYPES.find(type))
@@ -21,7 +23,7 @@ static func pose(g, type: String, p: Vector2, direction: Vector2, action: int, f
 	g.draw_texture_rect_region(ATLAS,dest,source,tint)
 
 static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, flash: bool, tint: Color, entity: Dictionary = {}):
-	if type in ["player","guard","assassin"]:
+	if Style.is_rigged(type):
 		Rig.actor(g,type,p,flash,tint,entity)
 		return
 	var direction = g.facing
@@ -75,7 +77,7 @@ static func actor(g, type: String, p: Vector2, _old_frame: int, _scale: float, f
 static func corpses(g):
 	for c in g.corpses:
 		var frame = mini(7,int(c.age/0.085))
-		if c.type in ["player","guard","assassin"]:
+		if Style.is_rigged(c.type):
 			Rig.draw(g,c.type,Vector2(c.x,c.y),c.get("motion",{}),Vector2(c.dx,c.dy),5,minf(1,c.age/0.68),Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 		else: pose(g,c.type,Vector2(c.x,c.y),Vector2(c.dx,c.dy),5,frame,Color("b7aaa0") if c.age>0.7 else Color.WHITE)
 
@@ -91,3 +93,22 @@ static func rune_border(g, b: Rect2):
 
 static func pixel_text(g, p: Vector2, value: String, color: Color = Color("c1b18e")):
 	g.draw_string(g.pixel_font,p,value,HORIZONTAL_ALIGNMENT_LEFT,-1,8,color)
+
+static func projectile(g, bullet: Dictionary) -> bool:
+	var visual: String = bullet.get("visual","")
+	if visual not in ["bone","curse"]: return false
+	if projectiles.is_empty():
+		var image = Rig.ENEMY_ATLAS.get_image()
+		projectiles["bone"] = ImageTexture.create_from_image(image.get_region(Rect2i(0,288,6,3)))
+		projectiles["curse"] = ImageTexture.create_from_image(image.get_region(Rect2i(32,288,4,4)))
+	var offset = Vector2(bullet.get("lx",0),bullet.get("ly",0))*pow(1-clampf(float(bullet.get("age",0))/0.16,0,1),2)
+	var at = Vector2(bullet.x,bullet.y)+offset
+	var direction = Vector2(bullet.vx,bullet.vy).normalized()
+	var angle = direction.angle() if visual=="bone" else 0.0
+	var tex: Texture2D = projectiles[visual]
+	var half = tex.get_size()
+	var points = PackedVector2Array()
+	for xy in [Vector2(-1,-1),Vector2(1,-1),Vector2(1,1),Vector2(-1,1)]: points.append(at+(xy*half).rotated(angle))
+	g.draw_line((at-direction*7).snapped(Vector2(2,2)),at.snapped(Vector2(2,2)),Color(0.64,0.56,0.4,0.3) if visual=="bone" else Color(0.25,0.6,0.48,0.3),2)
+	g.draw_polygon(points,PackedColorArray([Color.WHITE]),PackedVector2Array([Vector2.ZERO,Vector2(1,0),Vector2.ONE,Vector2(0,1)]),tex)
+	return true
