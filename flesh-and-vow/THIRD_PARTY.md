@@ -58,3 +58,8 @@ for this project, then baked into castle_boss.png and castle_boss_seal.png
 with fixed native sizes, hard alpha and limited palettes. Large masters and
 private review media are not distributed. boss_bell.wav, boss_impact.wav and
 boss_break.wav are original deterministic additive/noise synthesis.
+
+Version 0.6.4: boss_body.png contains original assembled full-body artwork
+generated from this project's boss reference and baked at native size with
+hard alpha, a limited palette and a single connected body silhouette per
+view. The illustration master remains private and is not distributed.

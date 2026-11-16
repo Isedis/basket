@@ -1,5 +1,6 @@
 extends RefCounted
 const Fight = preload("res://scripts/boss_fight.gd")
+const BodySkin = preload("res://scripts/boss_skin.gd")
 const Rig = preload("res://scripts/rig_view.gd")
 const Motion = preload("res://scripts/locomotion.gd")
 const SEAL = preload("res://assets/castle_boss_seal.png")
@@ -21,8 +22,6 @@ static func actor(g, e: Dictionary, dead: bool = false):
  var motion = e.get("motion",{})
  var look = Motion.look_index(motion,direction)
  var sign_hand = Motion.hand_sign(look)
- var flip = -1.0 if look==3 else 1.0
- var art = textures(look)
  var model = e
  var clock = g.elapsed
  var collapse = 0.0
@@ -38,18 +37,9 @@ static func actor(g, e: Dictionary, dead: bool = false):
  var pose = Fight.pose(model,clock)
  var context = {"p":p,"fall":collapse*1.5*sign_hand,"drop":collapse*10,"shift":Vector2.ZERO,"fade":1.0}
  var tint = Color(1.5,1.25,1.05) if not dead and e.get("flash",0)>0 else Color.WHITE
- var body = pose.body
- for i in range(2):
-  var leg = Fight.leg_pose(model,pose,i)
-  Rig.jointed_limb(g,art[4+i],leg.hip,leg.knee,leg.foot,flip,tint,context,0.88)
- var left_shoulder = body+Vector2(-28*sign_hand,-76)
- var left_hand = left_shoulder+Vector2(-7*sign_hand,43)
- Rig.limb(g,art[2],left_shoulder,left_hand,5*sign_hand,flip,tint,context)
- if look==2: weapon(g,art,pose,flip,tint,context)
- Rig.part(g,art[7],body+Vector2(-23*sign_hand,-100),sin(clock*2)*0.035,flip,tint,context,Vector2(0.5,0))
- Rig.part(g,art[1],pose.torso,pose.torso_angle,flip,tint,context)
- # Existing painted cracks stay on a single shell, including phase two and death.
- Rig.part(g,art[0],pose.head,-pose.twist*0.18,flip,tint,context)
+ # No independent head, torso, arm, leg or chain draws: one full connected skin.
+ Rig.part(g,textures(look)[6],pose.hand,pose.angle,1,tint,context,Vector2(0.12,0.5))
+ BodySkin.draw(g,model,pose,look,context,tint)
  if not dead and e.state=="strike" and e.get("bell_attack","")=="cleave" and e.state_time<Fight.STRIKE.cleave*0.55:
   var trail = PackedVector2Array()
   for sample in range(6):
@@ -58,14 +48,9 @@ static func actor(g, e: Dictionary, dead: bool = false):
    var old_pose = Fight.pose(probe,clock)
    trail.append((old_pose.hand+Vector2.from_angle(old_pose.angle)*74).snapped(Vector2(2,2)))
   g.draw_polyline(trail,Color(0.79,0.67,0.44,0.5),4)
- if look!=2: weapon(g,art,pose,flip,tint,context)
 static func arena(g):
  if g.floor_index!=0 or g.room.type!="boss": return
  g.draw_texture_rect(SEAL,Rect2((g.CENTRE-Vector2(160,100)).snapped(Vector2(2,2)),Vector2(320,200)),false,Color(0.85,0.85,0.85))
-static func weapon(g, art: Array, pose: Dictionary, flip: float, tint: Color, context: Dictionary):
- Rig.part(g,art[6],pose.hand,pose.angle,1,tint,context,Vector2(0.12,0.5))
- var axis = (pose.hand-pose.elbow).normalized()
- Rig.jointed_limb(g,art[3],pose.shoulder,pose.elbow,pose.hand+axis*5,flip,tint,context,0.85)
 static func pixel_arc(g, center: Vector2, radius: float, from: float, to: float, color: Color, width: float = 2.0):
  var segments = maxi(2,int(absf(to-from)*radius/7))
  var previous = (center+Vector2.from_angle(from)*radius).snapped(Vector2(2,2))

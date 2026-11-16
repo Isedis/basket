@@ -64,6 +64,15 @@ jobs:
           cp flesh-and-vow/assets/*LICENSE.txt dist/FleshAndVow-Windows/
           cp flesh-and-vow/README.md dist/FleshAndVow-Windows/README-RU.md
           cd dist && zip -qr FleshAndVow-Windows.zip FleshAndVow-Windows
+      - name: Test compiled complete boss silhouette
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri libxinerama1 libxcursor1 libxi6 libxrandr2 libxrender1
+          python3 -m venv "$RUNNER_TEMP/boss-render-env"
+          "$RUNNER_TEMP/boss-render-env/bin/python" -m pip install pillow
+          "$RUNNER_TEMP/boss-render-env/bin/python" flesh-and-vow/tests/boss_silhouette.py --godot Godot_v4.6.3-stable_linux.x86_64 --project flesh-and-vow --pack "$PWD/dist/FleshAndVow-Windows/FleshAndVow.exe"
       - name: Publish game and update feed
         env:
           GH_TOKEN: ${{ github.token }}

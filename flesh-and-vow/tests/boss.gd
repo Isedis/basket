@@ -49,15 +49,13 @@ func run():
  game.damage_enemy(e,10,game.player,true)
  check(e.hp==initial,"Introduction cannot be skipped with damage")
  for look in range(4):
-  var textures = View.textures(look)
-  var valid = true
-  for i in range(8):
-   var image = textures[i].get_image()
-   valid = valid and image.get_size()==View.SIZES[i] and image.get_used_rect().has_area()
-   for y in range(image.get_height()):
-    for x in range(image.get_width()): valid = valid and image.get_pixel(x,y).a in [0.0,1.0]
-  check(valid,"Native immutable anatomy and hard alpha in each facing")
-  check(textures[6]==View.textures(1)[6],"One unchanged axe across all facings")
+  var view = View.BodySkin.view_index(look)
+  var image = View.BodySkin.ATLAS.get_image().get_region(Rect2i(view*128,0,128,96))
+  var valid = image.get_size()==Vector2i(128,96) and image.get_used_rect().has_area()
+  for y in range(image.get_height()):
+   for x in range(image.get_width()):valid = valid and image.get_pixel(x,y).a in [0.0,1.0]
+  check(valid,"Native complete body skin and hard alpha in each facing")
+  check(View.textures(look)[6]==View.textures(1)[6],"One unchanged axe across all facings")
  game.place_player(Vector2(624,590),Vector2.UP)
  e = ready_boss()
  for attack in ["cleave","toll","charge","cleave"]:

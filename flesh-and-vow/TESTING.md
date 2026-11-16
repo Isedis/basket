@@ -67,3 +67,12 @@ all attacks and recovery, stride extremes, and corpse poses. It also checks
 one intact bell, fixed leg segment lengths and continuous recovery.
 The old release failed 475 of the initial 948 checks; the corrected code
 passes the expanded suite, including extreme saved foot placements.
+
+0.6.4 supersedes the earlier joint-overlap proof. The previous renderer
+still produced disconnected full-body silhouettes despite those checks.
+tests/boss_silhouette.gd renders the actual complete body, excluding the
+separately held axe, for 344 cases. tests/boss_silhouette.py performs an
+8-neighbor flood fill on the captured alpha and rejects detached regions
+of eight or more rendered pixels. CI runs this with software OpenGL under
+Xvfb. tests/boss_anatomy.gd checks one complete body mesh, shared valid
+vertices, wrist-to-weapon binding and coherent corpse translation.
