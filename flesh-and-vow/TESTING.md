@@ -147,3 +147,8 @@ controlled room setup and does not establish balance or subjective grandeur.
 rendered poses (zero detached chunks). The whole-body mesh and physical
 arm/weapon positions remain unchanged. A separate axe texture retains
 the shaft grip and 84-world-pixel overall length.
+
+0.6.12: boss_wounds.gd checks accepted versus immune/zero damage, contact
+origin and direction, bounded flesh count, pause, expiration, saved floor
+traces, lighter periodic damage, independent cosmetic RNG and particle/mark
+caps (50 checks). Private footage exercises actual player melee sweeps.

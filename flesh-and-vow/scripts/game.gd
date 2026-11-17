@@ -1,5 +1,6 @@
 extends Node2D
 
+const BossWounds = preload("res://scripts/boss_wounds.gd")
 const BossFight = preload("res://scripts/boss_fight.gd")
 const EnemyPose = preload("res://scripts/enemy_pose.gd")
 const Hazards = preload("res://scripts/hazard_view.gd")
@@ -813,7 +814,7 @@ func enemy_weapon_angle(enemy: Dictionary) -> float:
 	return current
 
 func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bool, impact: float = -1, impact_direction: Vector2 = Vector2.ZERO, hit_point: Vector2 = Vector2.INF):
-	if enemy.hp<=0: return
+	if enemy.hp<=0 or amount<=0: return
 	if enemy.type=="boss0" and enemy.state in ["intro","fracture"]: return
 	if impact<0: impact = 1.0 if effects else 0.0
 	if enemy.type in EnemyPose.TYPES and enemy.hp<=amount:
@@ -829,6 +830,9 @@ func damage_enemy(enemy: Dictionary, amount: float, origin: Vector2, effects: bo
 	var spray = impact_direction if impact_direction!=Vector2.ZERO else (p-origin).normalized()
 	var point = hit_point if hit_point!=Vector2.INF else p-Vector2(0,34)
 	enemy.hp -= amount
+	if enemy.type=="boss0":
+		BossWounds.emit(self,enemy,point,spray,impact)
+		if impact>0: BossFight.sound(self,"flesh",1.12,-14)
 	enemy.flash = 0.10 if impact>0 else 0.04
 	enemy.last_impact = impact
 	if impact>0:
@@ -1356,6 +1360,10 @@ func burst(p: Vector2, color: Color, count: int):
 
 func update_particles(dt: float):
 	for p in particles.duplicate():
+		if p.get("wound",false):
+			BossWounds.update(self,p,dt)
+			if p.life<=0: particles.erase(p)
+			continue
 		p.life -= dt
 		p.x += p.vx*dt
 		p.y += p.vy*dt

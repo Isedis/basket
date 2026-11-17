@@ -16,6 +16,7 @@ const WHITE = Color("e0d6c3")
 const MUTED = Color("88828e")
 const RED = Color("c64d65")
 const Entrance = preload("res://scripts/boss_entrance.gd")
+const BossWounds = preload("res://scripts/boss_wounds.gd")
 const Boss = preload("res://scripts/boss_view.gd")
 const ROOM_NAMES = {"start":"ПРОБУЖДЕНИЕ", "combat":"ЗАЛ ЗАБЫТЫХ", "boss":"ХРАНИТЕЛЬ ОБЕТА", "treasure":"ЗАПЕЧАТАННЫЙ ДАР", "shop":"ТОРГОВЕЦ ОСТАТКАМИ", "torture":"КОМНАТА ПЫТОК", "oracle":"ДВА ОТВЕТА", "reliquary":"ЗЕРКАЛО ВОЗМОЖНОГО", "secret":"МЕЖДУ СТЕН"}
 const MARKS = {"start":"·","combat":"·","boss":"†","treasure":"◆","shop":"$","torture":"×","oracle":"±","reliquary":"◇","secret":"?"}
@@ -120,6 +121,8 @@ static func world(g):
 		rect(g,Rect2(position-Vector2(width/2,2),Vector2(width,4)),color)
 		if not b.bone:
 			rect(g,Rect2(position-Vector2(width/3,4),Vector2(maxi(2,width-4),8)),Color("1c3439") if b.get("kind","")=="ash" else Color("4d2026"))
+		if b.get("kind","")=="flesh":
+			rect(g,Rect2(position-Vector2(2,2),Vector2(4,2)),Color("aa4851"))
 	for prop in g.room_props:
 		if not prop.get("solid",false): Props.draw(g,prop)
 	if not g.authored_room:
@@ -190,6 +193,9 @@ static func world(g):
 		g.draw_arc(g.player,42,0,TAU,40,Color(0.8,0.7,0.5,0.09),1)
 		rect(g,Rect2(orb-Vector2(4,4),Vector2(8,8)),GOLD,WHITE)
 	for p in g.particles:
+		if p.get("wound",false):
+			BossWounds.draw(g,p)
+			continue
 		var c = Color(p.color,p.life/p.max)
 		rect(g,Rect2(p.x,p.y,p.size,p.size),c)
 	g.draw_set_transform(Vector2.ZERO)
