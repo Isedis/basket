@@ -152,3 +152,11 @@ the shaft grip and 84-world-pixel overall length.
 origin and direction, bounded flesh count, pause, expiration, saved floor
 traces, lighter periodic damage, independent cosmetic RNG and particle/mark
 caps (50 checks). Private footage exercises actual player melee sweeps.
+
+0.6.13: boss_rhythm.gd verifies distance choices, alternation, bounded
+turn at 60/120 Hz, planted pauses, acceleration, pre-warning hold, saved
+preparation, committed aim, punishable miss, continuous axe recovery,
+legacy timing, finite aiming under orbiting, phase-two toll and pause
+(110 checks). Graphics coverage adds 64 recovery poses, 984 total.
+Private capture uses controlled hero placement and live boss decisions;
+it demonstrates behavior, not a completed player balance study.

@@ -87,6 +87,9 @@ func run():
  for look in range(4):
   for t in [0.0,0.8,1.0,1.35,1.8,2.2,2.7,2.85,3.15,3.45,4.8,5.6]:cases.append({"look":look,"phase":1,"attack":"cleave","state":"intro","ratio":0.0,"dead":false,"feet":0,"entrance":t,"full":true})
   for t in [0.0,0.2,0.4,0.6,0.9,1.2]:cases.append({"look":look,"phase":1,"attack":"cleave","state":"intro","ratio":0.0,"dead":false,"feet":0,"entrance":t,"full":false})
+ for look in range(4):
+  for phase in [1,2]:
+   for ratio in [0.0,0.10,0.18,0.25,0.35,0.45,0.6,1.0]:cases.append({"look":look,"phase":phase,"attack":"cleave","state":"recover","ratio":ratio,"dead":false,"feet":0,"rhythm":true})
  var count = 0
  for c in cases:
   var p = Vector2(240,320)
@@ -104,6 +107,7 @@ func run():
     e.motion.feet[i].x=p.x+(-6 if i==0 else 6)+dir.x*at
     e.motion.feet[i].y=p.y+dir.y*at
     e.motion.feet[i].lift=maxf(0,sin(e.motion.phase+i*PI))*4
+  if c.get("rhythm",false):e.bell_rhythm_attack=true
   if c.get("combo",false):e.bell_combo_step=1
   var duration = fight.FRACTURE if c.state=="fracture" else (fight.windup(e) if c.state=="windup" else (fight.STRIKE[c.attack] if c.state=="strike" else fight.recovery(e)))
   e.state_time = duration*c.ratio

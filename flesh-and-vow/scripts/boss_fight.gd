@@ -1,5 +1,6 @@
 extends RefCounted
 ## Castle boss: persisted state machine, shared visible/physical attack geometry.
+const Rhythm = preload("res://scripts/boss_rhythm.gd")
 const Entrance = preload("res://scripts/boss_entrance.gd")
 const Toll = preload("res://scripts/boss_toll.gd")
 const Charge = preload("res://scripts/boss_charge.gd")
@@ -57,6 +58,12 @@ static func pose(e: Dictionary, clock: float) -> Dictionary:
   for key in ["body","hips","head","shoulder","elbow","hand"]:base[key] = contact[key].lerp(rest[key],settle)
   base.angle = lerp_angle(contact.angle,rest.angle,settle)
   for key in ["twist","coil","drive"]:base[key] = lerpf(contact[key],rest[key],settle)
+ if e.get("bell_rhythm_attack",false) and attack=="cleave" and e.state=="recover" and e.get("bell_hit_kind","")!="stone":
+  var rest=Combat.weapon_pose(p,motion,direction,0,0,Combat.BASE_REACH,clock)
+  var settle=Combat.curve((e.state_time-0.14)/0.48)
+  for key in ["body","hips","head","shoulder","elbow","hand"]:base[key]=base[key].lerp(rest[key],settle)
+  base.angle=lerp_angle(base.angle,rest.angle,settle)
+  for key in ["twist","coil","drive"]:base[key]=lerpf(base[key],rest[key],settle)
  for key in ["body","hips","head","shoulder","elbow","hand"]: base[key] = p+(base[key]-p)*2
  # Shoulder line follows the whole skin; weapon contact uses this same wrist.
  for key in ["shoulder","elbow","hand"]: base[key] += Vector2(0,-14)
@@ -114,8 +121,13 @@ static func recovery(e: Dictionary) -> float:
  var attack = e.get("bell_attack","cleave")
  if Charge.enabled(e) and e.get("bell_charge_wall",false):return Charge.WALL_RECOVERY
  if attack=="charge" and e.get("bell_followup_pending",false):return CHARGE_LINK
- return RECOVERY[attack]+(0.3 if e.get("bell_combo_step",0)==1 else 0.0)+(0.25 if attack=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
+ var missed=0.25 if e.get("bell_rhythm_attack",false) and attack=="cleave" and e.get("bell_hit_kind","")=="" else 0.0
+ return missed+RECOVERY[attack]+(0.3 if e.get("bell_combo_step",0)==1 else 0.0)+(0.25 if attack=="cleave" and e.get("bell_hit_kind","")=="stone" else 0.0)
 static func begin_attack(g,e: Dictionary,attack: String,followup: bool = false):
+ e.bell_rhythm_attack = Rhythm.enabled(e)
+ if Rhythm.enabled(e):
+  Rhythm.reset(e)
+  if not followup:e.bell_last_primary=attack
  e.bell_attack = attack
  if attack=="toll":Toll.prepare(e)
  else:e.bell_toll_rig = false
@@ -131,6 +143,7 @@ static func begin_attack(g,e: Dictionary,attack: String,followup: bool = false):
  e.state_time = 0.0
  var to = g.player-Vector2(e.x,e.y)
  var direction = to.normalized() if to.length()>0.01 else Vector2.DOWN
+ if Rhythm.enabled(e) and not followup:direction=Vector2(e.dx,e.dy).normalized()
  e.dx = direction.x
  e.dy = direction.y
  # Aim and safe wedge commit once, including the separately warned follow-up.
@@ -289,15 +302,27 @@ static func update(g, e: Dictionary, dt: float, slow: float):
     e.state_time = 0.0
     e.timer = 0.5 if e.bell_phase==2 else 0.8
  else:
-  var to = g.player-p
-  if to.length()>90: p = g.steer_move(p,to.normalized()*dt*43*slow,28)
-  if e.timer<=0:
-   var cycle = ["cleave","toll","charge","cleave"]
-   var attack = cycle[int(e.bell_turn)%cycle.size()]
-   e.bell_turn += 1
-   begin_attack(g,e,attack)
+  # Adopt the rhythm only between actions, never halfway through a saved attack.
+  if e.get("bell_intro_music",false):Rhythm.prepare(e)
+  if Rhythm.enabled(e):
+   var next=Rhythm.step(g,e,dt,slow)
+   p=next.p
+   if next.attack!="":
+    e.x=p.x
+    e.y=p.y
+    e.bell_turn+=1
+    begin_attack(g,e,next.attack)
+  else:
+   var to = g.player-p
+   if to.length()>90: p = g.steer_move(p,to.normalized()*dt*43*slow,28)
+   if e.timer<=0:
+    var cycle = ["cleave","toll","charge","cleave"]
+    var attack = cycle[int(e.bell_turn)%cycle.size()]
+    e.bell_turn += 1
+    begin_attack(g,e,attack)
  e.x = p.x
  e.y = p.y
  if Toll.enabled(e) and e.state in ["windup","strike","recover"]:Toll.gait(e,before,p,dt)
  elif Charge.enabled(e) and e.state in ["windup","strike","recover"]:Charge.gait(g,e,before,p,dt)
  else:e.motion = Motion.update(e.get("motion",{}),before,p,dt,96,24)
+ if Rhythm.enabled(e) and e.state=="chase":Motion.set_look(e.motion,Vector2(e.dx,e.dy))
